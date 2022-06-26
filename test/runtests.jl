@@ -27,3 +27,7 @@ end
 @testset "Rewrite" begin
   include("Rewrite.jl")
 end
+
+@testset "Search" begin
+  include("Search.jl")
+end
