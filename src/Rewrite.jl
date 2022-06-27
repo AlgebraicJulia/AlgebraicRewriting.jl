@@ -107,7 +107,6 @@ function rewrite_maps(r::Rule{T}, G; initial=Dict(), random=false, seen=Set(),
       continue
     end
     DPO_pass = T != :DPO || can_pushout_complement(ComposablePair(r′.L, m′))
-
     if DPO_pass && all(N->isnothing(extend_morphism(m′, N; monic=true)), r′.N)
       res = rewrite_match_maps(r′, m′; kw...)
       if all(s->!is_isomorphic(s,get_result(T,res)), seen)

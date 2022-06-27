@@ -28,7 +28,6 @@ this in advance, use [`can_pushout_complement`](@ref).
 function pushout_complement(pair::ComposablePair{<:FinSet{Int}})
   l, m = pair
   I, L, G = dom(l), codom(l), codom(m)
-
   # Construct inclusion g: K ↪ G.
   l_image = Set(collect(l))
   m_image = Set([ m(x) for x in L if x ∉ l_image ])
@@ -37,10 +36,10 @@ function pushout_complement(pair::ComposablePair{<:FinSet{Int}})
 
   # Construct morphism k: I → K using partial inverse of g.
   g_inv = Dict{Int,Int}(zip(collect(g), K))
-  k = FinFunction(map(I) do x
+  k = FinFunction(Vector{Int}(map(I) do x
     y = m(l(x))
     get(g_inv, y) do; error("Identification failed for domain element $x") end
-  end, I, K)
+  end), I, K)
 
   return ComposablePair(k, g)
 end
