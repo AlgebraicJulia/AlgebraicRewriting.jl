@@ -1,9 +1,11 @@
 module Schedules
 export ListSchedule, WhileSchedule, rewrite_schedule, RandomSchedule, apply_schedule, res, ScheduleResult
 
-using DataStructures
+using DataStructures, Random
+
 using Catlab, Catlab.CategoricalAlgebra
 using ..Rewrite
+using ..Rewrite: rewrite_with_match
 
 abstract type Schedule end
 
