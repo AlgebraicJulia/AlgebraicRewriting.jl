@@ -156,7 +156,7 @@ end
 
 function backtracking_search(f, X::StructACSet{S}, Y::StructACSet{S};
   monic=false, iso=false, type_components=(;), initial=(;),
-  bindvars=false) where {Ob, Hom, Attr, S<:SchemaDescType{Ob,Hom,Attr}}
+  bindvars=false, init_check=true) where {Ob, Hom, Attr, S<:SchemaDescType{Ob,Hom,Attr}}
   # Fail early if no monic/isos exist on cardinality grounds.
   if iso isa Bool
     iso = iso ? Ob : ()
@@ -170,8 +170,10 @@ function backtracking_search(f, X::StructACSet{S}, Y::StructACSet{S};
   # Injections between finite sets are bijections, so reduce to that case.
   monic = unique([iso..., monic...])
   for c in monic
-    nparts(X,c) <= nparts(Y,c) || return false
+    nparts(X,c) <= nparts(Y,c) || (haskey(initial, c) && !init_check) || return false
   end
+  # we still can fail fast if init_check is off
+  # but it's just a bit more complicated: #todo
 
   # Initialize state variables for search.
   assignment = NamedTuple{Ob}(zeros(Int, nparts(X, c)) for c in Ob)
@@ -184,7 +186,7 @@ function backtracking_search(f, X::StructACSet{S}, Y::StructACSet{S};
   # Get variables
   d = Dict{Symbol, Union{Nothing, Dict}}([x=>Dict() for x in Attr])
   map(zip(attr(S), acodom(S))) do (f, D)
-    if !bindvars && any(v->v isa Var, Y[f]) # WHY DO WE NEED THIS AGAIN?
+    if !(bindvars && any(v->v isa Var, X[f]))
         d[D] = nothing
     end
     map(filter(v->v isa Var, X[f])) do (v)
@@ -201,10 +203,10 @@ function backtracking_search(f, X::StructACSet{S}, Y::StructACSet{S};
   # Make any initial assignments, failing immediately if inconsistent.
   for (c, c_assignments) in pairs(initial)
     for (x, y) in partial_assignments(c_assignments)
-      assign_elem!(state, 0, Val{c}, x, y) || return false
+      assign_elem!(state, 0, Val{c}, x, y;
+                   enforce_monic=init_check) || return false
     end
   end
-
   # Start the main recursion for backtracking search.
   backtracking_search(f, state, 1)
 end
@@ -245,31 +247,30 @@ end
 """ Find an unassigned element having the minimum remaining values (MRV).
 """
 function find_mrv_elem(state::BacktrackingState{S}, depth) where S
-mrv, mrv_elem = Inf, nothing
-Y = state.codom
-for c in ob(S), (x, y) in enumerate(state.assignment[c])
-y == 0 || continue
-n = count(can_assign_elem(state, depth, Val{c}, x, y) for y in parts(Y, c))
-if n < mrv
-mrv, mrv_elem = n, (c, x)
-end
-end
-(mrv, mrv_elem)
+  mrv, mrv_elem = Inf, nothing
+  Y = state.codom
+  for c in ob(S), (x, y) in enumerate(state.assignment[c])
+    y == 0 || continue
+    n = count(can_assign_elem(state, depth, Val{c}, x, y) for y in parts(Y, c))
+    if n < mrv
+      mrv, mrv_elem = n, (c, x)
+    end
+  end
+  (mrv, mrv_elem)
 end
 
 """ Check whether element (c,x) can be assigned to (c,y) in current assignment.
 """
-function can_assign_elem(state::BacktrackingState, depth,
-::Type{Val{c}}, x, y) where c
-# Although this method is nonmutating overall, we must temporarily mutate the
-# backtracking state, for several reasons. First, an assignment can be a
-# consistent at each individual subpart but not consistent for all subparts
-# simultaneously (consider trying to assign a self-loop to an edge with
-# distinct vertices). Moreover, in schemas with non-trivial endomorphisms, we
-# must keep track of which elements we have visited to avoid looping forever.
-ok = assign_elem!(state, depth, Val{c}, x, y)
-unassign_elem!(state, depth, Val{c}, x)
-return ok
+function can_assign_elem(state::BacktrackingState, depth,::Type{Val{c}}, x, y) where c
+  # Although this method is nonmutating overall, we must temporarily mutate the
+  # backtracking state, for several reasons. First, an assignment can be a
+  # consistent at each individual subpart but not consistent for all subparts
+  # simultaneously (consider trying to assign a self-loop to an edge with
+  # distinct vertices). Moreover, in schemas with non-trivial endomorphisms, we
+  # must keep track of which elements we have visited to avoid looping forever.
+  ok = assign_elem!(state, depth, Val{c}, x, y)
+  unassign_elem!(state, depth, Val{c}, x)
+  return ok
 end
 
 """ Attempt to assign element (c,x) to (c,y) in the current assignment.
@@ -278,49 +279,51 @@ Returns whether the assignment succeeded. Note that the backtracking state can
 be mutated even when the assignment fails.
 """
 @generated function assign_elem!(state::BacktrackingState{S}, depth,
-      ::Type{Val{c}}, x, y) where {S, c}
-quote
-y′ = state.assignment.$c[x]
-y′ == y && return true  # If x is already assigned to y, return immediately.
-y′ == 0 || return false # Otherwise, x must be unassigned.
-if !isnothing(state.inv_assignment.$c) && state.inv_assignment.$c[y] != 0
-# Also, y must unassigned in the inverse assignment.
-return false
-end
+      ::Type{Val{c}}, x, y; enforce_monic=true) where {S, c}
+  quote
+    y′ = state.assignment.$c[x]
+    y′ == y && return true  # If x is already assigned to y, return immediately.
+    y′ == 0 || return false # Otherwise, x must be unassigned.
+    if (enforce_monic
+        && !isnothing(state.inv_assignment.$c)
+        && state.inv_assignment.$c[y] != 0)
+      # Also, y must unassigned in the inverse assignment.
+      return false
+    end
 
-# Check attributes first to fail as quickly as possible.
-X, Y = state.dom, state.codom
-$(map(zip(attr(S), adom(S), acodom(S))) do (f, c_, d)
-:($(quot(c_))!=c
-||(subpart(X,x,$(quot(f))) isa Var && !isnothing(state.var_assign[$(quot(d))])
-&& (state.var_assign[$(quot(d))][subpart(X,x,$(quot(f)))][1] == 0
-||(state.var_assign[$(quot(d))][subpart(X,x,$(quot(f)))][2] == subpart(Y,y,$(quot(f)))) ))
-|| state.type_components[$(quot(d))](subpart(X,x,$(quot(f))))
-== subpart(Y,y,$(quot(f))) || return false)
-end...)
+  # Check attributes first to fail as quickly as possible.
+  X, Y = state.dom, state.codom
+  $(map(zip(attr(S), adom(S), acodom(S))) do (f, c_, d)
+    :($(quot(c_))!=c
+      ||(subpart(X,x,$(quot(f))) isa Var && !isnothing(state.var_assign[$(quot(d))])
+      && (state.var_assign[$(quot(d))][subpart(X,x,$(quot(f)))][1] == 0
+      ||(state.var_assign[$(quot(d))][subpart(X,x,$(quot(f)))][2] == subpart(Y,y,$(quot(f)))) ))
+      || state.type_components[$(quot(d))](subpart(X,x,$(quot(f))))
+      == subpart(Y,y,$(quot(f))) || return false)
+  end...)
 
-# Make the assignment and recursively assign subparts.
-state.assignment.$c[x] = y
-state.assignment_depth.$c[x] = depth
-if !isnothing(state.inv_assignment.$c)
-state.inv_assignment.$c[y] = x
-end
-$(map(zip(attr(S), adom(S), acodom(S))) do (f, c_, d)
-:(if ($(quot(c_))==c
-&& subpart(X,x,$(quot(f))) isa Var
-&& !isnothing(state.var_assign[$(quot(d))]))
-state.var_assign[$(quot(d))][subpart(X,x,$(quot(f)))]=(
-state.var_assign[$(quot(d))][subpart(X,x,$(quot(f)))][1]+1,subpart(Y,y,$(quot(f))))
-end)
-end...)
+  # Make the assignment and recursively assign subparts.
+  state.assignment.$c[x] = y
+  state.assignment_depth.$c[x] = depth
+  if !isnothing(state.inv_assignment.$c)
+    state.inv_assignment.$c[y] = x
+  end
+  $(map(zip(attr(S), adom(S), acodom(S))) do (f, c_, d)
+  :(if ($(quot(c_))==c
+    && subpart(X,x,$(quot(f))) isa Var
+    && !isnothing(state.var_assign[$(quot(d))]))
+      state.var_assign[$(quot(d))][subpart(X,x,$(quot(f)))]=(
+      state.var_assign[$(quot(d))][subpart(X,x,$(quot(f)))][1]+1,subpart(Y,y,$(quot(f))))
+  end)
+  end...)
 
-$(map(out_hom(S, c)) do (f, d)
-:(assign_elem!(state, depth, Val{$(quot(d))}, subpart(X,x,$(quot(f))),
-subpart(Y,y,$(quot(f)))) || return false)
-end...)
+  $(map(out_hom(S, c)) do (f, d)
+    :(assign_elem!(state, depth, Val{$(quot(d))}, subpart(X,x,$(quot(f))),
+    subpart(Y,y,$(quot(f)))) || return false)
+  end...)
 
-return true
-end
+  return true
+  end
 end
 
 """ Unassign the element (c,x) in the current assignment.

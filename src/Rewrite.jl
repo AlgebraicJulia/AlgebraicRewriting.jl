@@ -1,11 +1,13 @@
 module Rewrite
 
-export Rule, rewrite, rewrite_match, rewrite_parallel, rewrite_maps,
+export Rule, NAC, rewrite, rewrite_match, rewrite_parallel, rewrite_maps,
        rewrite_match_maps, rewrite_parallel_maps, rewrite_dpo, rewrite_spo,
        rewrite_sqpo, final_pullback_complement, pullback_complement
 
 using Catlab, Catlab.Theories
-using Catlab.CategoricalAlgebra: CSetTransformation, ACSetTransformation, LooseACSetTransformation, pullback, pushout, components, StructACSet, ComposablePair, is_natural, copair, Span, universal, ¬
+using Catlab.CategoricalAlgebra: CSetTransformation, ACSetTransformation, LooseACSetTransformation, pullback, pushout,  StructACSet, ComposablePair, copair, Span, universal, ¬
+import Catlab.Theories: dom, codom
+import Catlab.CategoricalAlgebra: is_natural,components
 using AutoHashEquals
 using Random
 
@@ -14,6 +16,20 @@ import ..Variables: sub_vars
 
 # Generic rewriting tooling
 ###########################
+struct NAC
+  f::ACSetTransformation
+  monic::Union{Bool, Vector{Symbol}}
+  init_check::Bool
+end
+
+NAC(f::ACSetTransformation, m=false, init_check=true) = NAC(f, m, init_check)
+NAC(nac::NAC) = nac
+codom(n::NAC) = codom(n.f)
+dom(n::NAC) = dom(n.f)
+is_natural(n::NAC) = is_natural(n.f)
+sub_vars(nac::NAC, m) = NAC(sub_vars(nac.f, m), nac.monic)
+components(n::NAC) = components(n.f)
+
 """
 Rewrite rules are encoded as spans. The L morphism encodes a pattern to be
 matched. The R morphism encodes a replacement pattern to be substituted in.
@@ -23,26 +39,51 @@ A semantics (DPO, SPO, or SqPO) must be chosen.
 Control the match-finding process by specifying whether the match is
 intended to be monic or not, as well as an optional negative application
 condition(s) (i.e. forbid any match m: L->G for which there exists a commuting
-triangle L->Nᵢ->G, for each Nᵢ).
+triangle L->Nᵢ->G, for each Nᵢ). Monic constraints can be independently given
+to the match morphism and to the morphisms searched for when checking NAC.
+
+An important subtlety is that monicity is only checked during NAC evaluation
+for the elements that are not assigned in virtue of the match morphism. Here
+is an example:
+
+We want to rewrite vertices with exactly two inneighbors.
+L has three vertices (a cospan shape), since the two inneighbors might be
+different (therefore, the match constraint is not monic).
+
+The NAC
+
+
 """
 struct Rule{T}
   L::Any
   R::Any
-  N::Vector{Any}
-  monic::Bool
-  function Rule{T}(L, R, N=nothing; monic::Bool=false) where {T}
+  N::Vector{NAC}
+  monic::Union{Bool, Vector{Symbol}}
+  function Rule{T}(L, R, N=nothing; monic=false) where {T}
     dom(L) == dom(R) || error("L<->R not a span")
-    Ns = isnothing(N) ? [] : (N isa ACSetTransformation ? Any[N] : N)
+    Ns = isnothing(N) ? NAC[] : (N isa AbstractVector ? NAC.(N) : [NAC(N)])
     all(N-> dom(N) == codom(L), Ns) || error("NAC does not compose with L")
+    map(enumerate([L,R,Ns...])) do (i, f)
+      if !is_natural(f)
+        println(stdout, "text/plain",dom(f))
+        println(stdout, "text/plain",codom(f))
+        error("unnatural map #$i: $f")
+      end
+    end
     new{T}(L, R, Ns, monic)
   end
 end
-Rule(L,R,N=nothing;monic::Bool=false) = Rule{:DPO}(L,R,N; monic=monic)
+Rule(L,R,N=nothing;monic=false) = Rule{:DPO}(L,R,N; monic=monic)
 
 
+"""
+Negative application conditions that are rendered unnatural by substitution
+are inactive. E.g. an edge weight is a variable in L but set to 0 in the NAC.
+When a nonzero edge is matched, this NAC becomes unnatural.
+"""
 function sub_vars(R::Rule, m::LooseACSetTransformation)
-  Rule(sub_vars(R.L, m), sub_vars(R.R, m),
-     [sub_vars(N, m) for N in R.N], monic=R.monic)
+  Ns = filter(is_natural, [sub_vars(N, m) for N in R.N])
+  Rule(sub_vars(R.L, m), sub_vars(R.R, m), Ns, monic=R.monic)
 end
 
 
@@ -95,22 +136,26 @@ the match morphism + all computed data.
 """
 function rewrite_maps(r::Rule{T}, G; initial=Dict(), random=false, seen=Set(),
                       kw...) where {T}
-  ms = homomorphisms(codom(r.L), G; monic=r.monic, initial=NamedTuple(initial))
+  ms = homomorphisms(codom(r.L), G; bindvars=true, monic=r.monic, initial=NamedTuple(initial))
   if random
     shuffle!(ms)
   end
   for m in ms
     var = hasvar(codom(r.L))
     r′ ,m′ = var ? (sub_vars(r, m), sub_vars(m, m)) : (r, m)
-    if !all(is_natural, r.N)
-      error("unnatural $(components.(r.N))")
-      continue
-    end
+
     DPO_pass = T != :DPO || can_pushout_complement(ComposablePair(r′.L, m′))
-    if DPO_pass && all(N->isnothing(extend_morphism(m′, N; monic=true)), r′.N)
-      res = rewrite_match_maps(r′, m′; kw...)
-      if all(s->!is_isomorphic(s,get_result(T,res)), seen)
-        return m => res
+
+    if DPO_pass
+      nac = all(r′.N) do N
+        tri = extend_morphism(m′, N.f;  monic=N.monic, init_check=N.init_check)
+        isnothing(tri)
+      end
+      if nac
+        res = rewrite_match_maps(r′, m′; kw...)
+        if all(s->!is_isomorphic(s,get_result(T,res)), seen)
+          return m => res
+        end
       end
     end
   end
@@ -131,7 +176,10 @@ function rewrite_parallel_maps(rs::Vector{Rule{T}}, G::StructACSet{S};
     ms_ = homomorphisms(codom(r.L), G; monic=r.monic, initial=init)
     for m in ms_
       DPO_pass = T != :DPO || can_pushout_complement(ComposablePair(r.L, m))
-      if DPO_pass && all(N->isnothing(extend_morphism(m,N)), r.N)
+      if DPO_pass && all(r.N) do N
+        tri = extend_morphism(m, N.f;  monic=N.monic, init_check=N.init_check)
+        isnothing(tri)
+      end
         new_dels = map(zip(components(r.L), components(m))) do (l_comp, m_comp)
             L_image = Set(collect(l_comp))
             del = Set([m_comp(x) for x in codom(l_comp) if x ∉ L_image])

@@ -2,7 +2,7 @@ module CSets
 export topo_obs, check_eqs, eval_path, extend_morphism, pushout_complement, can_pushout_complement, dangling_condition, is_injective, invert_hom, homomorphisms
 
 using Catlab, Catlab.Theories, Catlab.Graphs
-using Catlab.CategoricalAlgebra: ACSet, StructACSet, ACSetTransformation, ComposablePair, preimage, components, Subobject, parts, SubACSet
+using Catlab.CategoricalAlgebra: ACSet, StructACSet, ACSetTransformation, ComposablePair, preimage, components, Subobject, parts, SubACSet, SliceHom
 using Catlab.CategoricalAlgebra.CSets: unpack_diagram
 import ..FinSets: pushout_complement, can_pushout_complement, is_injective, is_surjective
 using ..Search
@@ -48,7 +48,8 @@ commuting triangle if possible.
    f
 """
 function extend_morphism(f::ACSetTransformation, g::ACSetTransformation;
-                         monic=false)::Union{Nothing, ACSetTransformation}
+                         monic=false, init_check=true
+                         )::Union{Nothing, ACSetTransformation}
   dom(f) == dom(g) || error("f and g are not a span: $jf \n$jg")
 
   init = Dict{Symbol, Dict{Int,Int}}()
@@ -64,7 +65,8 @@ function extend_morphism(f::ACSetTransformation, g::ACSetTransformation;
     end
     init[ob] = Dict(init_comp)
   end
-  homomorphism(codom(g), codom(f); initial=NamedTuple(init), monic=monic)
+  homomorphism(codom(g), codom(f); initial=NamedTuple(init), monic=monic,
+               bindvars=true, init_check=init_check)
 end
 
 """ Compute pushout complement of attributed C-sets, if possible.
@@ -90,6 +92,40 @@ function can_pushout_complement(pair::ComposablePair{<:ACSet})
   all(can_pushout_complement, unpack_diagram(pair)) &&
     isempty(dangling_condition(pair))
 end
+
+
+"""    pushout_complement(f::SliceHom, g::SliceHom)
+Compute a pushout complement in a slice category by using the pushout complement
+in the underlying category.
+
+     f
+  B <-- A ---⌝
+  | ↘ ↙      |
+ g|  X       | f′
+  ↓ ↗  ↖ cx  |
+  D <--- C <--
+      g′
+
+"""
+function pushout_complement(f::SliceHom, g::SliceHom)
+    f′, g′ = pushout_complement(ComposablePair(f.f, g.f))
+    D = codom(g)
+    C = Slice(compose(g′, D.slice))
+    return SliceHom(dom(f), C, f′) => SliceHom(C, D, g′)
+end
+
+""" Pushout complement: extend composable pair to a pushout square.
+
+[Pushout complements](https://ncatlab.org/nlab/show/pushout+complement) are the
+essential ingredient for double pushout (DPO) rewriting.
+"""
+pushout_complement(f, g) = pushout_complement(ComposablePair(f, g))
+
+""" Can a pushout complement be constructed for a composable pair?
+
+Even in nice categories, this is not generally possible.
+"""
+can_pushout_complement(f, g) = can_pushout_complement(ComposablePair(f, g))
 
 """
 Check the dangling condition for a pushout comlement: m doesn't map a deleted
