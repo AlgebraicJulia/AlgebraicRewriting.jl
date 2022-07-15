@@ -9,36 +9,69 @@ Here we walk through basic examples of double-pushout (DPO), single-pushout (SPO
 This is the classic setting of graph transformation. Suppose we wish to rewrite this graph:
 
 ```@example X
-using Catlab
-using Catlab.Graphs
-using Catlab.Graphics
-using Catlab.CategoricalAlgebra
+using Catlab, Catlab.Graphs, Catlab.Graphics, Catlab.CategoricalAlgebra
 
 G = @acset Graph begin
     V=3; E=3;
     src=[1,2,2];
     tgt=[2,3,3]
 end
-to_graphviz(G; node_labels=true)
+to_graphviz(G; node_labels=true) # hide
 ```
 
-Our rewrite rule will look for parallel arrows and replace them with a loop.
+Our rewrite rule will look for parallel arrows
 
-```julia
-L = @acset Graph begin V=2; E=2; src=1; tgt=1 end # matched pattern
-I = @acset Graph begin V=2; E=1; src=1; tgt=1 end # interface: non-deleted subset of L
+```@example X
+L = @acset Graph begin V=2; E=2; src=1; tgt=2 end # matched pattern
+to_graphviz(L; node_labels=true) # hide
+```
+
+Then remove one of the edges (by defining the *non-deleted* subpart of the
+pattern as the following graph)
+
+```@example X
+I = @acset Graph begin V=2; E=1; src=1; tgt=2 end # interface: non-deleted subset of L
+to_graphviz(I; node_labels=true) # hide
+```
+
+
+And lastly replacing the pattern with one that collapses the two matched
+vertices to form a loop.
+
+```@example X
 R = @acset Graph begin V=1; E=1; src=1; tgt=1 end # Replacement pattern
-rul = Rule(hom(I,L), hom(I,R)) # Rewrite rule as span L ↩ I → R
-to_graphviz(apply_rule(rul, G))
+to_graphviz(R; node_labels=true) # hide
 ```
 
-However, we are not limited to rewriting (directed multi-) graphs.
+We assemble this information into a rewrite rule by forming a span `L ↩ I → R`
+```@example X
+using AlgebraicRewriting
+using AlgebraicRewriting: rewrite
+const hom = AlgebraicRewriting.homomorphism
+rule = Rule(hom(I,L), hom(I,R))
+H = rewrite(rule, G)
+to_graphviz(H; node_labels=true) # hide
+```
+
+Something to note here is that the result is only defined up to isomorphism,
+e.g. the vertex which corresponded to vertex #1 in the original graph may not
+be #1 in the result.
+
+As the following example shows, we are not limited to rewriting
+(directed multi-) graphs.
 
 ## Double pushout rewriting of triangle mesh
 
 Suppose we want to perform rewriting on a mesh with triangles defined over certain triples of edges.
 
-```julia
+```@example X
+using Catlab.Graphs.BasicGraphs: TheoryGraph
+using CairoMakie, GeometryBasics # hide
+using Base.Iterators # hide
+using CombinatorialSpaces # hide
+import AlgebraicPetri # hide
+using CombinatorialSpaces.SimplicialSets: get_edge! # hide
+
 @present ThSemisimplicialSet  <: TheoryGraph begin
   T :: Ob
   (d1,d2,d3)::Hom(T,E)
@@ -54,38 +87,129 @@ quadrangle = @acset SSet begin
     src=[1,1,1,2,3]
     tgt=[4,2,3,4,4]
 end
+
+function plot_sset(ss::SSet, points::Vector, # hide
+                   tri_colors::Union{Nothing,Vector}=nothing) # hide
+    dflt = collect(take(cycle([:blue,:red,:green, :purple, :pink, :yellow, :grey, :orange, :brown, :cyan]), nparts(ss, :T))) # hide
+    tri_colors = isnothing(tri_colors) ? dflt : tri_colors # hide
+    # Validate inputs # hide
+    lengthscale=0.8 # hide
+    dim = length(points[1]) # hide
+    length(points) == nparts(ss,:V) || error("# of points") # hide
+    if dim == 2 # hide
+        points = [(p1,p2,0.) for (p1,p2) in points] # hide
+    elseif dim != 3 # hide
+        error("dim $dim") # hide
+    end # hide
+    tri_colors = tri_colors[1:nparts(ss, :T)] # hide
+
+    # Convert SSet to EmbeddedDeltaSet2D # hide
+    s = EmbeddedDeltaSet2D{Bool, Point{3, Float64}}() # hide
+
+    edge_colors = [:black for _ in nparts(ss, :E)] # hide
+    add_vertices!(s, length(points), point=points) # hide
+    for (src, tgt) in zip(ss[:src], ss[:tgt]) # hide
+        get_edge!(s, src, tgt) # hide
+    end # hide
+
+    for t in parts(ss,:T) # hide
+    glue_sorted_triangle!(s, ss[t,[:d1,:src]], # hide
+                             ss[t,[:d3,:src]], # hide
+                             ss[t, [:d1,:tgt]]) # hide
+    end # hide
+
+    # Split mesh into component triangles # hide
+  m = GeometryBasics.Mesh(s) # hide
+  x = faces(m) # hide
+  m_points = m.position[vcat([[t[1],t[2],t[3]] for t in x]...)] # hide
+  m_faces = TriangleFace{Int}[[((t-1) * 3) .+ (1,2,3) for t in  1:length(x)]...]  # hide
+  new_m = GeometryBasics.Mesh(Point{3, Float64}[m_points...], m_faces) # hide
+  if ntriangles(s) == 0  # hide
+     fig, ax, ob = arrows((s[s[:∂v0], :point] * (0.5 + lengthscale / 2)  # hide
+                            .+ s[s[:∂v1], :point] * (0.5 - lengthscale / 2)) ,  # hide
+                          (s[s[:∂v1], :point] .- s[s[:∂v0], :point]),  # hide
+            lengthscale=lengthscale, arrowsize=0.05, shininess=0.0,  # hide
+           color=edge_colors, diffuse=[0.0,0.0,0.0])  # hide
+  else  # hide
+    fig, ax, ob = mesh(new_m, color=vcat([[v,v,v] for v in tri_colors]...))  # hide
+     arrows!((s[s[:∂v0], :point] * (0.5 + lengthscale / 2)  # hide
+                    .+ s[s[:∂v1], :point] * (0.5 - lengthscale / 2)) ,  # hide
+             (s[s[:∂v1], :point] .- s[s[:∂v0], :point]),  # hide
+            lengthscale=lengthscale, arrowsize=0.05, shininess=0.0,  # hide
+           color=edge_colors, diffuse=[0.0,0.0,0.0])  # hide
+  end  # hide
+  if dim == 2  # hide
+      # hidespines!(ax); hidedecorations!(ax)  # hide
+      ax.aspect = AxisAspect(1.0) # Remove this line if 3D embedding  # hide
+  end  # hide
+  fig  # hide
+end # hide
+
+
+quad_coords = [(0,1,0), (1,1,0), (0,0,0),(1,0,0)] # hide
+plot_sset(quadrangle, quad_coords) # hide
 ```
 
-There is no difference in methodology despite the different schema: we provide an instance of the datatype to serve as our pattern for replacement.
+There is no difference in methodology from the case of graphs, despite the
+different schema: we provide an instance of the datatype to serve as our pattern
+for replacement (such as the quadrangle above) and then need an instance to
+serve as our non-deleted subset of that pattern.
 
-```julia
+```@example X
 L = quadrangle
-I = @acset SSet begin # remove the triangles and the internal edge
+I = @acset SSet begin
   E=4; V=4
   src=[1,1,2,3]
   tgt=[2,3,4,4]
 end
-R = @acset SSet begin # re-add the triangles and edge, but perpendicular
+quad_coords = [(0,1,0), (1,1,0), (0,0,0),(1,0,0)] # hide
+plot_sset(I, quad_coords) #
+```
+
+
+Our replacement pattern will add two triangles and an edge, but now the edge
+is perpendicular to where it was before.
+
+```@example X
+R = @acset SSet begin
   T=2; E=5; V=4
   d1=[2,3]; d2=[1,5]; d3=[5,4]
   src=[1,1,2,3,2]
   tgt=[2,3,4,4,3]
 end
-r = Rule(homomorphism(I, R; monic=true)
-         homomorphism(I, L; monic=true))
-```
-We can construct a mesh to test this rewrite on by gluing together two
-quadrilaterals via apushout along a common edge.
-```julia
-edge = @acset SSet begin E=1; V=2; src=[1]; tgt=[2] end
-edge_left = homomorphism(edge, L; initial=Dict([:V=>[1,3]]))
-edge_right = homomorphism(edge, L; initial=Dict([:V=>[2,4]]))
-G = apex(pushout(edge_left, edge_right))
+quad_coords = [(0,1,0), (1,1,0), (0,0,0),(1,0,0)] # hide
+plot_sset(R, quad_coords) # hide
 ```
 
-```julia
-rewrite(r, G; monic=true)
+Again we create a rewrite rule by relating the `I` to `L` and `R`.
+
+```@example X
+r = Rule(hom(I, R; monic=true),
+         hom(I, L; monic=true);
+         monic=true)
 ```
+
+We can construct a mesh to test this rewrite on by gluing together two
+quadrilaterals via apushout along a common edge.
+
+```@example X
+edge = @acset SSet begin E=1; V=2; src=[1]; tgt=[2] end
+edge_left = hom(edge, L; initial=Dict([:V=>[1,3]]))
+edge_right = hom(edge, L; initial=Dict([:V=>[2,4]]))
+G = apex(pushout(edge_left, edge_right))
+six_coords = vcat(quad_coords,[(-1.,1.,0.),(-1.,0.,0.),]) # hide
+plot_sset(G, six_coords) # hide
+
+```
+We then can perform the rewrite in larger contexts than just the pattern, such
+as a mesh with two quadrilaterals.
+
+```julia
+res = rewrite(r, G)
+plot_sset(res, six_coords) # hide
+```
+![Alt Text](assets/meshres.png)
+
 
 ## Applied example: Lotka-Volterra agent-based model
 
@@ -96,9 +220,8 @@ The main difference with our reconstruction of the NetLogo model is that we mode
 
 ### Defining the datatype we are rewriting
 
-```julia
-using Catlab, Catlab.Theories, Catlab.CategoricalAlgebra
-using Catlab.Graphs.BasicGraphs: TheoryGraph, HasGraph
+```@example X
+using Catlab.Graphs.BasicGraphs: HasGraph # hide
 @present TheoryLV <: TheoryGraph begin # inherit Graph schema
   (Sheep,Wolf,Grass)::Ob               # three more types of entities
   (Dir, GrassVal, Eng)::AttrType       # three more types of attributes
@@ -114,7 +237,7 @@ end
 @acset_type LV_Generic(TheoryLV) <: HasGraph  # inherit Graph API
 const LV = LV_Generic{Union{Var,Expr,Symbol}, # Dir
                       Union{Var,Expr,Int},    # GrassVal
-                      Union{Var,Expr,Int}}    # Eng
+                      Union{Var,Expr,Int}};   # Eng
 ```
 
 - `grassval == 0` means alive grass; `grassval > 0` represents the time
@@ -125,7 +248,7 @@ until the grass is alive.
 
 There is a certain symmetry between wolves and sheep in the schema, which we can make explicit with the following endofunctor:
 
-```julia
+```@example X
 F = FinFunctor(
   Dict([:Sheep => :Wolf, :Wolf => :Sheep, :Grass => :Grass, :V=>:V, :E=>:E,
         :Dir=>:Dir, :GrassVal=>:GrassVal, :Eng=>:Eng]),
@@ -134,7 +257,7 @@ F = FinFunctor(
         :src=>:src,:tgt=>:tgt,:dir=>:dir,
         :grassval=>:grassval,:grass=>:grass]),
   TheoryLV, TheoryLV
-)
+);
 ```
 
 We can apply `F` to a rewrite rule defined for sheep (e.g. that one dies when it has zero energy) and obtain the analogous rule for wolves without any effort.
@@ -151,35 +274,94 @@ overall = WhileSchedule(ListSchedule(seq), :main, extinct, 10);
 
 Let's show some of the things that went into `seq`. Below we define sheep reproduction to occur with probability 0.04 and wolf reproduction to occur with probability 0.05.
 
-```julia
+```@example X
+using Catlab.Graphics.Graphviz: Attributes, Statement, Node # hide
+using Catlab.Graphics.Graphviz # hide
+
+
+supscript_d = Dict(['1'=>'¹', '2'=>'²', '3'=>'³', '4'=>'⁴', '5'=>'⁵', # hide
+                    '6'=>'⁶', '7'=>'⁷', '8'=>'⁸', '9'=>'⁹', '0'=>'⁰']) # hide
+supscript(x::String) = join([get(supscript_d, c, c) for c in x]) # hide
+function Graph(p::LV,positions; name="G", prog="neato", title="") # hide
+  pstr = ["$(i),$(j)!" for (i,j) in positions] # hide
+  stmts = Statement[] # hide
+    for s in 1:nv(p) # hide
+        vx, vy = positions[s] # hide
+        if !isempty(incident(p, s, :grass)) # hide
+          gv = p[only(incident(p, s, :grass)), :grassval] # hide
+        else # hide
+          gv = 0 # hide
+        end # hide
+        col = gv  == 0 ? "lightgreen" : "tan" # hide
+        push!(stmts,Node("v$s", Attributes( # hide
+                    :label=>gv == 0 ? "" : string(gv),  # hide
+                    :shape=>"circle", # hide
+                    :color=> col, :pos=>pstr[s]))) # hide
+    end # hide
+  d = Dict([:E=>(1,0),:N=>(0,1), :S=>(0,1),:W=>(-1,0),]) # hide
+  for e in edges(p) # hide
+    s, t = src(p,e),tgt(p,e) # hide
+    dx, dy = get(d, p[e, :dir], (1,0)) # hide
+    (sx,sy), (tx,ty) = positions[s], positions[t] # hide
+
+    for (is_wolf, loc, eng) in [(:true,:wolf_loc,:wolf_eng), (false, :sheep_loc, :sheep_eng)] # hide
+        for w in incident(p, e, loc) # hide
+            L, R = 0.25, 0.2 # hide
+            wx = sx+L*dx+R*rand() # hide
+            wy = sy+L*dy+R*rand() # hide
+            ID = "$(is_wolf ? :w : :s)$w" # hide
+            append!(stmts,[Node(ID, Attributes( # hide
+                            :label=>"$w"*supscript("$(p[w,eng])"), # hide
+                            :shape=>"square", :width=>"0.3px", :height=>"0.3px", :fixedsize=>"true", # hide
+                            :pos=>"$(wx),$(wy)!",:color=> is_wolf ? "red" : "lightblue")), # hide
+                           ]) # hide
+        end # hide
+    end # hide
+  end # hide
+  g = Graphviz.Digraph(name, Statement[stmts...]; prog=prog, # hide
+        graph_attrs=Attributes(:label=>title, :labelloc=>"t"), # hide
+        node_attrs=Attributes(:shape=>"plain", :style=>"filled")) # hide
+  return g # hide
+end # hide
+
 s_reprod_l =  @acset LV begin
   Sheep=1; V=2; E=1; src=1;tgt=2; dir=[Var(:d)];
   sheep_eng=[Var(:a)]; sheep_loc=1
 end
+
+Graph(s_reprod_l, [0=>0,0=>1]) # hide
 ```
 This defines a *pattern* which we wish to match. The suffix `_l` indicates that this is the `L` of a rewrite rule, which is a partial map `L → R`, i.e. `L ↩ I → R`.
 
 We need to define the interface `I`, which contains the subobject of `L` which is *not deleted*.
 
-```julia
+```@example X
 s_reprod_i = deepcopy(s_reprod_l); rem_part!(s_reprod_i, :Sheep, 1)
 ```
-And the right object, `R`, includes things that are added. So we remove a sheep with energy `a` at a certain position and replace it with two sheep with `a/2` energy.
+And the right object, `R`, includes things that are added. So we've removed a sheep with energy `a` at a certain position and replace it with two sheep with `a/2` energy.
 
-```julia
+```@example X
 s_reprod_r = deepcopy(s_reprod_i)
 add_parts!(s_reprod_r, :Sheep, 2; sheep_loc=[1,1],
            sheep_eng=[:(round(Int, a/2, RoundDown))])
+Graph(s_reprod_r, [0=>0,0=>1]) # hide
+```
 
-sheep_reprod = Rule(hom(s_reprod_i,s_reprod_l),hom(s_reprod_i,s_reprod_r))
+We assemble this data into a rewrite rule.
+
+```@example X
+sheep_reprod = Rule(hom(s_reprod_i,s_reprod_l),
+                    hom(s_reprod_i,s_reprod_r));
 ```
 
 As mentioned before, we can turn this into a wolf reproduction rule by applying our functor. Then we add the two rules along with their probabilities. The `false` here refers to whether or not we apply the rule only once or whether we apply it for every match we find (which is what we want to do, to give each sheep a 4% chance of reproducing).
 
 ```julia
 wolf_reprod = F(sheep_reprod)
+```
 
 
+```julia
 append!(seq, [RuleSchedule(sheep_reprod,:sheep_reprod, false,0.04),
               RuleSchedule(wolf_reprod, :wolf_reprod, false,0.05)]);
 ```
@@ -188,23 +370,26 @@ Note that our pattern `L` can have `Var` variables, and our right hand side `R` 
 
 Another illustrative example is the 'move forward' rule. We simultaneously advance the sheep forward one space and decrement its energy by 1.
 
-```julia
+```@example X
 s_move_forward_l = @acset LV begin
   Sheep=1; V=3; E=2;
   src=[1,2]; tgt=[2,3]; dir=[Var(:a), Var(:a)]
   sheep_eng=[Var(:x)]; sheep_loc=1
 end
+Graph(s_move_forward_l, [0=>0,0=>1,0=>2]) # hide
 ```
 
 This pattern has two contiguous edges that are in the same direction (implicitly constrainted by using `Var(:a)` twice) and the sheep in the first position.
 
-```julia
+```@example X
 
 s_move_forward_i = deepcopy(s_move_forward_l)
 rem_part!(s_move_forward_i, :Sheep, 1)
 
 s_move_forward_r = deepcopy(s_move_forward_i)
 add_part!(s_move_forward_r, :Sheep; sheep_loc=2, sheep_eng=:(x-1))
+
+Graph(s_move_forward_r, [0=>0,0=>1,0=>2]) # hide
 ```
 
 We delete the sheep and recreate one in position #2, with one fewer energy.
@@ -214,18 +399,18 @@ pattern `L` in a larger context `N` that has the semantics of: if `L` *and* `N`
 are matched, then actually don't fire the rule. The pattern we want to avoid
 is one where the sheep has zero energy.
 
-```julia
+```@example X
 zero_s = deepcopy(s_move_forward_l)
 set_subpart!(zero_s, :sheep_eng, 0)
+Graph(zero_s, [0=>0,0=>1,0=>2]) # hide
+```
 
+```julia
 sheep_move_forward = Rule(hom(s_move_forward_i, s_move_forward_l),
                           hom(s_move_forward_i, s_move_forward_r),
                           [NAC(hom(s_move_forward_l,zero_s; bindvars=true))])
 
 wolf_move_forward = F(sheep_move_forward)
-
-append!(seq, [R(sheep_move_forward,:sheep_move_forward),
-              R(wolf_move_forward, :wolf_move_forward)]);
 ```
 
 In all these cases, automatic homomorphism finding is sufficient for obtaining
@@ -234,7 +419,7 @@ the morphism data of `L ↩ I → R`.
 ### Other functions
 Functions to initialize and visualize the world-states are defined in the Jupyter notebook. Important functionality only possible in the notebook is the ability to move a slider and view the progression of a simulation.
 
-![Alt Text](assets/slider.gif)
+![Alt Text](assets/slider2.gif)
 
 
 

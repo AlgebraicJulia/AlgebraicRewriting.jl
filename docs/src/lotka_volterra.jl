@@ -37,7 +37,6 @@ end
 @acset_type LV_Generic(TheoryLV) <: HasGraph
 const LV = LV_Generic{Union{Var,Expr,Symbol}, Union{Var,Expr,Int}, Union{Var,Expr,Int}}
 
-vars(s,n) = [Var(Symbol("$s$i")) for i in 1:n]
 F = FinFunctor(
   Dict([:Sheep => :Wolf, :Wolf => :Sheep, :Grass => :Grass, :V=>:V, :E=>:E,
         :Dir=>:Dir, :GrassVal=>:GrassVal, :Eng=>:Eng]),
