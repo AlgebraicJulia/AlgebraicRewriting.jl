@@ -186,7 +186,7 @@ function backtracking_search(f, X::StructACSet{S}, Y::StructACSet{S};
   # Get variables
   d = Dict{Symbol, Union{Nothing, Dict}}([x=>Dict() for x in Attr])
   map(zip(attr(S), acodom(S))) do (f, D)
-    if !(bindvars && any(v->v isa Var, X[f]))
+    if !bindvars || !(haskey(d,D)  || any(v->v isa Var, X[f]))
         d[D] = nothing
     end
     map(filter(v->v isa Var, X[f])) do (v)
@@ -207,6 +207,7 @@ function backtracking_search(f, X::StructACSet{S}, Y::StructACSet{S};
                    enforce_monic=init_check) || return false
     end
   end
+
   # Start the main recursion for backtracking search.
   backtracking_search(f, state, 1)
 end

@@ -1,10 +1,10 @@
 module CSets
-export topo_obs, check_eqs, eval_path, extend_morphism, pushout_complement, can_pushout_complement, dangling_condition, is_injective, invert_hom, homomorphisms
+export topo_obs, check_eqs, eval_path, extend_morphism, pushout_complement, can_pushout_complement, dangling_condition, is_injective, invert_hom, homomorphisms, gluing_conditions
 
 using Catlab, Catlab.Theories, Catlab.Graphs
 using Catlab.CategoricalAlgebra: ACSet, StructACSet, ACSetTransformation, ComposablePair, preimage, components, Subobject, parts, SubACSet, SliceHom
 using Catlab.CategoricalAlgebra.CSets: unpack_diagram
-import ..FinSets: pushout_complement, can_pushout_complement, is_injective, is_surjective
+import ..FinSets: pushout_complement, can_pushout_complement, is_injective, is_surjective, id_condition
 using ..Search
 
 
@@ -91,6 +91,17 @@ end
 function can_pushout_complement(pair::ComposablePair{<:ACSet})
   all(can_pushout_complement, unpack_diagram(pair)) &&
     isempty(dangling_condition(pair))
+end
+
+function gluing_conditions(pair::ComposablePair{<:ACSet})
+  viols = []
+  for (k,x) in pairs(unpack_diagram(pair))
+    a,b = collect.(id_condition(x))
+    append!(viols, [("Id: nondeleted ↦ deleted ", k, aa) for aa in a])
+    append!(viols,[("Id: nonmonic deleted", k, bb) for bb in b])
+  end
+  append!(viols, [("Dangling", d...) for d in dangling_condition(pair)])
+  return viols
 end
 
 

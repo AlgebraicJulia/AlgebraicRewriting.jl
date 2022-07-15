@@ -1,77 +1,184 @@
 module Schedules
-export ListSchedule, WhileSchedule, rewrite_schedule, RandomSchedule, apply_schedule, res, ScheduleResult
+export Schedule, ListSchedule, RuleSchedule, WhileSchedule, rewrite_schedule, RandomSchedule, apply_schedule, traj_res, ScheduleResult, rename_schedule, view_traj
 
 using DataStructures, Random
 
 using Catlab, Catlab.CategoricalAlgebra
 using ..Rewrite
 using ..Rewrite: rewrite_with_match
+using Catlab.CategoricalAlgebra.DataMigrations: MigrationFunctor
+using Interact
+import Base: map
 
 abstract type Schedule end
 
+(F::MigrationFunctor)(s::Schedule) = map(F, s)
+
 struct ListSchedule <: Schedule
-  rules::OrderedDict{Symbol, Rule}
-  ListSchedule(l::Vector{Pair{Symbol, Rule}})=  new(OrderedDict(l))
+  rules::Vector{Schedule}
+  name::Symbol
+  ListSchedule(l::Vector{Schedule}, name=:list) =  new(l, name)
 end
 
-ListSchedule(rs::Vector{Rule}) = ListSchedule([
-  Symbol("r$i")=>r for (i,r) in enumerate(rs)])
+struct RuleSchedule{T} <: Schedule
+  rule::Rule
+  name::Symbol
+  single::Bool # fire once vs for all matches in a random order
+  match_prob::Float64 # probability for each match considered
+  RuleSchedule(rule::Rule{T}, name=:_, single=false, prob=1.0) where T =
+    new{T}(rule, name, single, 1.)
+end
+
+RuleSchedule{T}(pn::Pair{Symbol, Rule{T}}) where T  = RuleSchedule(pn[2], pn[1])
+
+ListSchedule(rs::Vector{Rule}, name=:list) = ListSchedule(Schedule[
+  RuleSchedule(Symbol("r$i")=>r) for (i,r) in enumerate(rs)], name)
 
 struct RandomSchedule <: Schedule
-    rules::Vector{Rule}
+  rules::Vector{Rule}
+  name::Symbol
 end
+
 struct WhileSchedule <: Schedule
-    sch::Schedule
+  sch::Schedule
+  name::Symbol
+  cond::Function
+  n::Int
+  WhileSchedule(s::Schedule, name=:loop, cond=is_isomorphic, n=10) = new(s, name, cond, n)
 end
 
-mutable struct ScheduleResult
-  traj::Vector{Tuple{Symbol, ACSetTransformation, StructACSet}}
+WhileSchedule(r::Rule, name=:loop,cond=is_isomorphic,n=10) = WhileSchedule(RuleSchedule([r]), name, cond, n)
+
+# Renaming schedules
+function sub_symb(sym::Symbol, d::Dict{String, String})
+  s = string(sym)
+  for (k,v) in collect(d)
+    s = replace(s, k=>v)
+  end
+  return Symbol(s)
 end
-res(s::ScheduleResult) = last(last(s.traj))
+rename_schedule(s::RuleSchedule{T}, n::Symbol) where T =
+  RuleSchedule(s.rule, n, s.match_prob)
+rename_schedule(s::ListSchedule, n::Symbol) = ListSchedule(s.rules, n)
+rename_schedule(s::WhileSchedule, n::Symbol) = WhileSchedule(s.sch, n, s.cond)
+rename_schedule(s::RuleSchedule{T}, n::Dict{String,String}) where T =
+  RuleSchedule(s.rule, sub_symb(s.name, n), s.match_prob)
+rename_schedule(s::ListSchedule, n::Dict{String,String}) =
+  ListSchedule(Schedule[rename_schedule(r,n) for r in s.rules], sub_symb(s.name, n))
+rename_schedule(s::WhileSchedule, n::Dict{String,String}) =
+  WhileSchedule(rename_schedule(s.sch,n), sub_symb(s.name, n), s.cond)
 
-WhileSchedule(r::Rule) = WhileSchedule(ListSchedule([r]))
+# Mapping over schedules
+map(F, s::RuleSchedule{T}) where T =  RuleSchedule(F(s.rule), s.name, s.match_prob)
 
+map(F, s::ListSchedule) = ListSchedule(Schedule[map(F,s.rules)...], s.name)
+map(F, s::RandomSchedule) =
+  RandomSchedule(OrderedDict(s.name, [k=>F(v) for (k,v) in collect(s.rules)]))
+map(F, s::WhileSchedule) = WhileSchedule(s.name, F(s.sch), s.cond, s.n)
+
+struct TrajStep
+  title::Symbol # rule that got applied
+  G::StructACSet # current graph
+  m::ACSetTransformation # match morphism that was used
+  pmap::Span # partial map into this graph
+end
+
+function TrajStep(G::StructACSet)
+  h=id(typeof(G)());
+  TrajStep(:create, G, h, Span(h, create(G)))
+end
+
+const ScheduleResult = Vector{TrajStep}
+traj_res(s::ScheduleResult) = last(s).G
+
+
+function view_traj(rG::ScheduleResult, viewer; positions=nothing)
+  positions_cache = Vector{Any}(fill(nothing, length(rG)))
+  positions_cache[1] = positions
+  # Push forward previous positions along partial map if current ones unknown
+  function get_positions(i)
+    if      isnothing(positions)          return nothing
+    elseif !isnothing(positions_cache[i]) return positions_cache[i]
+    end
+    old_pos, morph = get_positions(i-1), rG[i]
+    pos = Vector{Any}(fill(nothing, nv(rG[i].G)))
+    l, r = rG[i].pmap
+    for (v, lv) in enumerate(collect(l[:V]))
+      pos[r[:V](v)] = old_pos[lv]
+    end
+    return positions_cache[i] = pos
+  end
+  println("length $(length(rG))")
+  return @manipulate for n in slider(1:length(rG), value=1, label="Step:")
+      step = rG[n]
+      if n == length(rG)
+        name, c = "end", ""
+      else
+        name = rG[n+1].title
+        c = join([string(k=>c) for (k,c) in pairs(components(rG[n+1].m))
+                  if !isempty(collect(c.func))], '\n')
+      end
+      viewer(step.G, get_positions(n); title="$name \n $c")
+  end
+end;
 
 """apply schedule and return whether or not the input changed"""
-function apply_schedule(s::ListSchedule, G; sr = nothing, random=false,kw...)
-  sr = isnothing(sr) ? ScheduleResult([(:create, create(G), G)]) : sr
+function apply_schedule(s::ListSchedule; G=nothing, sr = nothing, random=false, verbose=false,kw...)::ScheduleResult
+  sr = isnothing(sr) ? [TrajStep(G)] : sr
   f = random ? shuffle : identity
-  for (n,r) in f(collect(s.rules))
-    G_ = rewrite_with_match(r, res(sr); random=random, kw...)
-    if !isnothing(G_)
-      push!(sr.traj, (n, G_[2], G_[1]))
+  if verbose println("applying sequence $(s.name)") end
+  for r in f(s.rules)
+    apply_schedule(r; sr=sr, random=random, verbose=verbose, kw...)
+  end
+  sr
+end
+
+function apply_schedule(r::RuleSchedule{T}; G=nothing, sr=nothing, random=false,
+                        verbose=false, kw...)::ScheduleResult where T
+  sr = isnothing(sr) ? [TrajStep(G)] : sr
+  if verbose println("applying rule $(r.name)") end
+  if r.single
+    r_ = rewrite_with_match(r.rule, traj_res(sr); random=random, kw...);
+    if !isnothing(r_)
+      push!(sr, TrajStep(r.name, get_result(T, r_[2]), r_[1],
+                              get_pmap(T, r_[2])))
+    end
+  else
+    r_ = rewrite_sequential_maps(r.rule, traj_res(sr); random=random,
+                                 prob=r.match_prob, verbose=verbose, kw...)
+    for (m, s, g) in r_
+      push!(sr, TrajStep(r.name, g, m, s))
     end
   end
   return sr
 end
 
-function apply_schedule(s::RandomSchedule, G; kw...)
+function apply_schedule(s::RandomSchedule; G=nothing, sr=nothing, kw...)::ScheduleResult
+  sr = isnothing(sr) ? [TrajStep(G)] : sr
+
   for (n,r) in shuffle(s.rules)
-    G_ = rewrite(r, G; kw...)
-    if !isnothing(G_)
-      push!(sr.traj, (n, G_[2], G_[1]))
-    end
+    rewrite_schedule(r; sr=sr, kw...)
   end
-  return G => changed
+  sr
 end
 
-function apply_schedule(s::WhileSchedule, G;
-                        sr = nothing,
-                        no_repeat::Bool=false, kw...)
+function apply_schedule(s::WhileSchedule;
+                        sr = nothing, G = nothing,
+                        no_repeat::Bool=false, verbose::Bool=false, kw...)::ScheduleResult
 
-  nmax = 10
-  sr = isnothing(sr) ? ScheduleResult([(:create, create(G), G)]) : sr
+  sr = isnothing(sr) ? [TrajStep(G)] : sr
   seen = Set(no_repeat ? [G] : [])
-  for _ in 1:nmax
-    l = length(sr.traj)
-    apply_schedule(s.sch, res(sr); seen=seen, sr=sr, kw...)
-    if length(sr.traj) == l
+  for i in 1:s.n
+    if verbose println("applying rule $(s.name) iter $i") end
+    l = length(sr)
+    apply_schedule(s.sch; sr=sr, kw...)
+    if length(sr)>1 && s.cond(sr[end-1].G, sr[end].G)
       return sr
     end
-    if no_repeat seen = Set(last.(sr.traj)) end
+
   end
-  println("WARNING: hit nmax $nmax for WhileSchedule")
-  sr
+  println("WARNING: hit nmax $(s.n) for WhileSchedule")
+  return sr
 end
 
 rewrite_schedule(s::Schedule, G; kw...) = res(apply_schedule(s, G; kw...))

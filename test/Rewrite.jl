@@ -1,67 +1,69 @@
 module TestRewrite
+
 using Test
-
 using Catlab, Catlab.Theories
-
 # once rewriting is removed from catlab, we can import the entire namespace
-using Catlab.CategoricalAlgebra: ACSetTransformation, CSetTransformation, homomorphism, homomorphisms, @acset_type, @acset, add_part!, add_parts!,nparts, ComposablePair, is_isomorphic, pushout, pullback, force, apex
-
-using Catlab.Graphs, Catlab.WiringDiagrams
+using Catlab.CategoricalAlgebra: ACSetTransformation, CSetTransformation, @acset_type, @acset, add_part!, add_parts!,nparts, ComposablePair, is_isomorphic, pushout, pullback, force, apex, rem_part!
+using Catlab.Graphs, Catlab.WiringDiagrams, Catlab.Programs
 using Catlab.CategoricalAlgebra.FinSets: id_condition
 using Catlab.CategoricalAlgebra.CSets: dangling_condition
 using AlgebraicRewriting
+import AlgebraicRewriting: homomorphism, homomorphisms
 
 
 
 # Wiring diagrams
 #################
 
-A, B, C, D = [:A], [:B], [:C], [:D];
-f,g,h,i = Box(:f, A, B), Box(:g, B, C),Box(:h, C, D), Box(:i, [:D,:B], [:D,:B]);
+@present Tst(FreeSymmetricMonoidalCategory) begin
+  X::Ob
+  (f,g,h)::Hom(X, X)
+  i::Hom(X⊗X, X⊗X)
+end
 
-GWD = WiringDiagram([:A,:A],[:D,:B])
-fv, gv, hv, fv2 = add_box!(GWD, f), add_box!(GWD, g), add_box!(GWD, h), add_box!(GWD, f);
-add_wires!(GWD, Pair[
-  (input_id(GWD),1) => (fv,1),
-  (fv,1) => (gv,1),
-  (gv,1) => (hv,1),
-  (hv,1) => (output_id(GWD),1),
-  (input_id(GWD),2) => (fv2,1),
-  (fv2,1) => (output_id(GWD),2)]);
+GWD = @program Tst (x::X,y::X) begin
+  h(g(f(x))), f(y)
+end
 
-RWD = WiringDiagram([], []);
-fv, iv, gv = add_box!(RWD, Box(:f,[],B)), add_box!(RWD, i), add_box!(RWD, Box(:g,B,[]));
-add_wires!(RWD, Pair[(iv,1) => (iv, 1),
-                     (fv, 1) => (iv, 2),
-                     (iv, 2)=>(gv,1)]);
+LWD = @program Tst (x::X) begin
+  g(f(x))
+  return ()
+end
+rem_wires!(LWD, -2, 1)
+rem_part!(LWD.diagram, :OuterInPort, 1)
 
-LWD = WiringDiagram([], []);
-fv, gv = add_box!(LWD, Box(:f,[],B)), add_box!(LWD, Box(:g,B,[]));
-add_wires!(LWD, Pair[
-  (fv,1) => (gv,1),
-]);
+RWD = @program Tst (x::X) begin
+  _, y = i(f(x),x)
+  g(y)
+  return ()
+end
+[rem_wires!(RWD, -2, i) for i in [1,2]]
+rem_part!(RWD.diagram, :OuterInPort, 1)
+add_wire!(RWD, (2,1)=>(2,2))
 
+dtype = Catlab.WiringDiagrams.DirectedWiringDiagrams.WiringDiagramACSet{Any, Any, Any, DataType}
 
-IWD = WiringDiagram([], []);
-fv, gv = add_box!(IWD, Box(:f,[],[])), add_box!(IWD, Box(:g,[],[]));
+IWD = @program Tst (x::X) begin
+  _, _ = f(x), g(x)
+  return ()
+end
+[rem_wires!(IWD, -2, i) for i in [1,2]]
+rem_part!(IWD.diagram, :OuterInPort, 1)
 
-XWD = WiringDiagram([:A,:A],[:D,:B])
-fv, gv, hv = add_box!(XWD, f), add_box!(XWD, g), add_box!(XWD, h)
-fv2, iv = add_box!(XWD, f), add_box!(XWD, i);
-add_wires!(XWD, Pair[
-  (input_id(XWD),1) => (fv,1),
-  (iv,1) => (iv, 1), (fv, 1) => (iv, 2), (iv, 2)=>(gv,1),
-  (gv,1) => (hv,1),
-  (hv,1) => (output_id(XWD),1),
-  (input_id(XWD),2) => (fv2,1),
-  (fv2,1) => (output_id(XWD),2)]);
+XWD = @program Tst (x::X,y::X) begin
+  h(g(i(f(x),x)[2])), f(y)
+end
+rem_wires!(XWD, -2, 2)
+add_wire!(XWD, (2,1)=>(2,2))
 
-L=ACSetTransformation(IWD.diagram, LWD.diagram, Box=[1,2]);
-R=ACSetTransformation(IWD.diagram, RWD.diagram, Box=[1,3]);
-m=ACSetTransformation(LWD.diagram, GWD.diagram, Box=[1,2],InPort=[2],
-  OutPort=[1],Wire=[1]);
+L=homomorphism(IWD.diagram, LWD.diagram)
+R=homomorphism(IWD.diagram, RWD.diagram)
+m=homomorphism(LWD.diagram, GWD.diagram)
+rewrite(Rule(L,R), GWD.diagram)
 @test is_isomorphic(XWD.diagram, rewrite_match(Rule(L,R), m))
 
+
+IWD.diagram
 # Graphs with attributes
 ########################
 
@@ -128,18 +130,15 @@ I2 = Graph(2)
 I3 = Graph(3)
 #   e1   e2
 # 1 <- 2 -> 3
-span = Graph(3)
-add_edges!(span, [2,2],[1,3])
+span = @acset Graph begin V=3;E=2;src=[2,2];tgt=[1,3] end
 # 1 -> 2
 arr = path_graph(Graph, 2)
 # 1 <-> 2
-biarr = Graph(2)
-add_edges!(biarr, [1,2],[2,1])
+biarr = @acset Graph begin V=2; E=2; src=[1,2]; tgt=[2,1] end
 # 1 -> 2 -> 3 -> 1
 tri = cycle_graph(Graph, 3)
 # 4 <- 1 -> 2 and 2 <- 3 -> 4
-dispan = Graph(4)
-add_edges!(dispan, [1,1,3,3],[2,4,2,4])
+dispan = @acset Graph begin V=4; E=4; src= [1,1,3,3]; tgt=[2,4,2,4] end
 
 #      e1
 #    1 -> 2

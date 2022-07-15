@@ -1,5 +1,5 @@
 module TestVariables
-using Revise
+
 using Test
 using Catlab, Catlab.Theories
 using Catlab.CategoricalAlgebra: @acset, @acset_type
