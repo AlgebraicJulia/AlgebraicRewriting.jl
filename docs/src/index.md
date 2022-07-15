@@ -206,7 +206,6 @@ as a mesh with two quadrilaterals.
 
 ```julia
 res = rewrite(r, G)
-plot_sset(res, six_coords) # hide
 ```
 ![Alt Text](assets/meshres.png)
 
@@ -329,7 +328,7 @@ s_reprod_l =  @acset LV begin
   sheep_eng=[Var(:a)]; sheep_loc=1
 end
 
-Graph(s_reprod_l, [0=>0,0=>1]) # hide
+Graph(s_reprod_l, [0=>0,1=>0]) # hide
 ```
 This defines a *pattern* which we wish to match. The suffix `_l` indicates that this is the `L` of a rewrite rule, which is a partial map `L → R`, i.e. `L ↩ I → R`.
 
@@ -344,7 +343,7 @@ And the right object, `R`, includes things that are added. So we've removed a sh
 s_reprod_r = deepcopy(s_reprod_i)
 add_parts!(s_reprod_r, :Sheep, 2; sheep_loc=[1,1],
            sheep_eng=[:(round(Int, a/2, RoundDown))])
-Graph(s_reprod_r, [0=>0,0=>1]) # hide
+Graph(s_reprod_r, [0=>0,1=>0]) # hide
 ```
 
 We assemble this data into a rewrite rule.
@@ -376,7 +375,7 @@ s_move_forward_l = @acset LV begin
   src=[1,2]; tgt=[2,3]; dir=[Var(:a), Var(:a)]
   sheep_eng=[Var(:x)]; sheep_loc=1
 end
-Graph(s_move_forward_l, [0=>0,0=>1,0=>2]) # hide
+Graph(s_move_forward_l, [0=>0,1=>0,2=>0]) # hide
 ```
 
 This pattern has two contiguous edges that are in the same direction (implicitly constrainted by using `Var(:a)` twice) and the sheep in the first position.
@@ -389,7 +388,7 @@ rem_part!(s_move_forward_i, :Sheep, 1)
 s_move_forward_r = deepcopy(s_move_forward_i)
 add_part!(s_move_forward_r, :Sheep; sheep_loc=2, sheep_eng=:(x-1))
 
-Graph(s_move_forward_r, [0=>0,0=>1,0=>2]) # hide
+Graph(s_move_forward_r, [0=>0,1=>0,2=>0]) # hide
 ```
 
 We delete the sheep and recreate one in position #2, with one fewer energy.
@@ -402,7 +401,7 @@ is one where the sheep has zero energy.
 ```@example X
 zero_s = deepcopy(s_move_forward_l)
 set_subpart!(zero_s, :sheep_eng, 0)
-Graph(zero_s, [0=>0,0=>1,0=>2]) # hide
+Graph(zero_s, [0=>0,1=>0,2=>0]) # hide
 ```
 
 ```julia
