@@ -315,7 +315,7 @@ function rewrite_parallel_maps(rs::Vector{Rule{T}}, G::StructACSet{S};
     seen = [Set{Int}() for _ in ob(S)]
     init = NamedTuple(initial)
     for r in rs
-      ms = get_matches(r,G,initial=initial, seen=seen, single=single)
+      ms = get_matches(r,G,initial=initial, seen=seen)
       for m in ms
         new_dels = map(zip(components(r.L), components(m))) do (l_comp, m_comp)
           L_image = Set(collect(l_comp))

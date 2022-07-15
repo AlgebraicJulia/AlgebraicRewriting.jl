@@ -8,7 +8,8 @@ Here we walk through basic examples of double-pushout (DPO), single-pushout (SPO
 
 This is the classic setting of graph transformation. Suppose we wish to rewrite this graph:
 
-```julia
+```@example X
+using Catlab, Catlab.Graphs, Catlab.Graphics, Catlab.CategoricalAlgebra
 G = @acset Graph begin
     V=3; E=3;
     src=[1,2,2];

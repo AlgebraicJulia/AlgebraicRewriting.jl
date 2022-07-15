@@ -466,29 +466,17 @@ m = CSetTransformation(L, Tri, V=[1]);
 resSqPO= rewrite_match(r, m; pres=ThSemisimplicialSet) # pass in the equations
 @test nparts(resSqPO, :T) == 2 # the right number of triangles
 
-# Parallel rewriting
-####################
-# Remove three self loops in parallel
-t = apex(terminal(Graph))
-G = t ⊕ t ⊕ t
-L = homomorphism(Graph(1), t)
-rule = Rule(L, id(Graph(1)))
-@test rewrite_parallel(rule, G) == Graph(3)
-
-# Three edges to remove but, because we remove two at a time, they cannot all
-# be removed in parallel
-l = @acset Graph begin V=3; E=2; src=1; tgt=[2,3] end
-L = homomorphism(Graph(3), l; monic=true); R=id(Graph(3))
-G = @acset Graph begin V=4; E=3; src=1; tgt=[2,3,4] end
-@test ne(rewrite_parallel(Rule(L,R; monic=true), G)) == 1
-
 # Negative application conditions
 #################################
 #(using the same l as example immediately above)
-n = @acset Graph begin V=3; E=4; src=[1,1,2,3]; tgt=[2,3,2,3] end
-N = homomorphism(l,n; monic=true)
+
+L = @acset Graph begin V=3; E=2; src=1; tgt=[2,3] end
+l = homomorphism(Graph(3), L; monic=true); R=id(Graph(3))
+r = id(Graph(3))
+N = @acset Graph begin V=3; E=4; src=[1,1,2,3]; tgt=[2,3,2,3] end
+n = homomorphism(L,N; monic=true)
 G = @acset Graph begin V=4; E=6; src=[1,1,1,2,3,4]; tgt=[2,3,4,2,3,4] end
-@test rewrite_parallel(Rule(L,R,N; monic=true), G) === nothing
-@test rewrite_parallel(Rule(L,R,[N]; monic=true), G) === nothing
+@test rewrite_parallel(Rule(l,r,n; monic=true), G) === nothing
+@test rewrite_parallel(Rule(l,r,[n]; monic=true), G) === nothing
 
 end # module

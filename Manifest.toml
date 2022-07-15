@@ -31,9 +31,9 @@ version = "0.1.1"
 
 [[deps.Catlab]]
 deps = ["AutoHashEquals", "Compose", "DataStructures", "GeneralizedGenerated", "JSON", "LightXML", "LinearAlgebra", "Logging", "MLStyle", "Pkg", "PrettyTables", "Random", "Reexport", "Requires", "SparseArrays", "StaticArrays", "Statistics", "Tables"]
-path = "../Catlab.jl"
+git-tree-sha1 = "b09da82bc19d5a5f659a4f9dff6b99a7ea85b41e"
 uuid = "134e5e36-593f-5add-ad60-77f754baafbe"
-version = "0.13.11"
+version = "0.13.12"
 
 [[deps.ColorTypes]]
 deps = ["FixedPointNumbers", "Random"]
