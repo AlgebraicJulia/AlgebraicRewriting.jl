@@ -1,4 +1,3 @@
-using Revise
 using Catlab, Catlab.Theories, Catlab.CategoricalAlgebra
 using Catlab.Graphs.BasicGraphs: TheoryGraph, HasGraph
 using AlgebraicRewriting

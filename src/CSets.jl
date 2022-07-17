@@ -11,6 +11,17 @@ import ..Search: homomorphism, homomorphisms
 import Base: getindex
 
 
+"""
+Enumerate subobjects of a C-Set up to isomorphism
+E.g. for a discrete graph or complete graph of N vertices, there should only be
+N subobjects.
+"""
+function enum_subobject(X::StructACSet{S}) where S
+  for o in ob(S)
+    # todo
+  end
+end
+
 """Get topological sort of objects of a schema. Fail if cyclic"""
 function topo_obs(S::Type)::Vector{Symbol}
   G = Graph(length(ob(S)))

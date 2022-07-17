@@ -1,5 +1,4 @@
 module TestRewrite
-using Revise
 using Test
 using Catlab, Catlab.Theories
 # once rewriting is removed from catlab, we can import the entire namespace
