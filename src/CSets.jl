@@ -2,10 +2,13 @@ module CSets
 export topo_obs, check_eqs, eval_path, extend_morphism, pushout_complement, can_pushout_complement, dangling_condition, is_injective, invert_hom, homomorphisms, gluing_conditions
 
 using Catlab, Catlab.Theories, Catlab.Graphs
-using Catlab.CategoricalAlgebra: ACSet, StructACSet, ACSetTransformation, ComposablePair, preimage, components, Subobject, parts, SubACSet, SliceHom
+using Catlab.CategoricalAlgebra: ACSet, StructACSet, ACSetTransformation, ComposablePair, preimage, components, Subobject, parts, SubACSet, SliceHom, force
 using Catlab.CategoricalAlgebra.CSets: unpack_diagram
 import ..FinSets: pushout_complement, can_pushout_complement, is_injective, is_surjective, id_condition
+import Catlab.CategoricalAlgebra: is_natural, Slice, SliceHom, components
 using ..Search
+import ..Search: homomorphism, homomorphisms
+import Base: getindex
 
 
 """Get topological sort of objects of a schema. Fail if cyclic"""
@@ -37,19 +40,11 @@ function eval_path(x::StructACSet, h, i::Int)::Int
   return val
 end
 
-"""    extend_morphism(f::ACSetTransformation,g::ACSetTransformation,monic=false)::Union{Nothing, ACSetTransformation}
 
-Given a span of morphisms, we seek to find a morphism B → C that makes a
-commuting triangle if possible.
-
-    B
- g ↗ ↘ ?
- A ⟶ C
-   f
-"""
-function extend_morphism(f::ACSetTransformation, g::ACSetTransformation;
-                         monic=false, init_check=true
-                         )::Union{Nothing, ACSetTransformation}
+function extend_morphism_constraints(f::ACSetTransformation,
+                                     g::ACSetTransformation
+                                     )::Union{Nothing,
+                                              Dict{Symbol, Dict{Int,Int}}}
   dom(f) == dom(g) || error("f and g are not a span: $jf \n$jg")
 
   init = Dict{Symbol, Dict{Int,Int}}()
@@ -65,6 +60,24 @@ function extend_morphism(f::ACSetTransformation, g::ACSetTransformation;
     end
     init[ob] = Dict(init_comp)
   end
+  return init
+end
+
+"""    extend_morphism(f::ACSetTransformation,g::ACSetTransformation,monic=false)::Union{Nothing, ACSetTransformation}
+
+Given a span of morphisms, we seek to find a morphism B → C that makes a
+commuting triangle if possible.
+
+    B
+ g ↗ ↘ ?
+ A ⟶ C
+   f
+"""
+function extend_morphism(f::ACSetTransformation, g::ACSetTransformation;
+                         monic=false, init_check=true
+                         )::Union{Nothing, ACSetTransformation}
+  init = extend_morphism_constraints(f,g)
+  if isnothing(init) return nothing end
   homomorphism(codom(g), codom(f); initial=NamedTuple(init), monic=monic,
                bindvars=true, init_check=init_check)
 end
@@ -93,6 +106,10 @@ function can_pushout_complement(pair::ComposablePair{<:ACSet})
     isempty(dangling_condition(pair))
 end
 
+gluing_conditions(pair::ComposablePair{<:Slice}) =
+  gluing_conditions(ComposablePair(pair[1].f, pair[2].f))
+
+
 function gluing_conditions(pair::ComposablePair{<:ACSet})
   viols = []
   for (k,x) in pairs(unpack_diagram(pair))
@@ -118,7 +135,8 @@ in the underlying category.
       g′
 
 """
-function pushout_complement(f::SliceHom, g::SliceHom)
+function pushout_complement(fg::ComposablePair{Slice})
+    f, g = fg
     f′, g′ = pushout_complement(ComposablePair(f.f, g.f))
     D = codom(g)
     C = Slice(compose(g′, D.slice))
@@ -212,5 +230,25 @@ function invert_hom(f::ACSetTransformation,s::Symbol)::ACSetTransformation
   return ACSetTransformation(codom(f), dom(f); d...)
 end
 
+# This should be upstreamed as a PR to Catlab
+#############################################
+is_natural(x::SliceHom) = is_natural(x.f)
+components(x::SliceHom) = components(x.f)
+Base.getindex(α::SliceHom, c) = x.f[c]
+
+"""
+This could be made more efficient as a constraint during homomorphism finding.
+"""
+function homomorphisms(X::Slice,Y::Slice; kw...)
+  map(filter(h->force(X.slice)==force(h⋅Y.slice),
+         homomorphisms(dom(X), dom(Y); kw...)) ) do h
+    SliceHom(X, Y, h)
+  end |> collect
+end
+
+function homomorphism(X::Slice,Y::Slice; kw...)
+  hs = homomorphisms(X,Y; kw...)
+  return isempty(hs) ? nothing : first(hs)
+end
 
 end # module

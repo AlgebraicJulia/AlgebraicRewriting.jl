@@ -176,7 +176,7 @@ instantiate(r,m) = hasvar(codom(r.L)) ? (sub_vars(r,m), sub_vars(m,m)) : (r,m)
 Returns nothing if the match is acceptable for rewriting according to the
 rule, otherwise returns the reason why it should be rejected
 """
-function can_match(r::Rule{T}, m::ACSetTransformation; initial=Dict(),
+function can_match(r::Rule{T}, m; initial=Dict(),
                    seen=Set()) where T
   for (k,v) in pairs(components(m))
     if has_comp(r.monic,k) && !is_injective(v)
@@ -219,7 +219,7 @@ function can_match(r::Rule{T}, m::ACSetTransformation; initial=Dict(),
 end
 
 """Get list of possible matches based on the constraints of the rule"""
-function get_matches(r::Rule{T}, G::StructACSet; initial=Dict(), seen=Set(),
+function get_matches(r::Rule{T}, G; initial=Dict(), seen=Set(),
                      verbose=false) where T
   hs = homomorphisms(codom(r.L), G; bindvars=true, monic=r.monic,
                      initial=NamedTuple(initial))
@@ -255,6 +255,8 @@ Convert a match L->G to a match L->H using a partial morphism G->H, if possible.
        L ========= L
      m ↓           ↓ m'
        G <-- K --> H
+
+This ought be written more generically so that it can work with, e.g., slices.
 """
 function postcompose_partial(kgh::Span, m::ACSetTransformation)
   d = Dict()

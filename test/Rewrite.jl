@@ -1,15 +1,30 @@
 module TestRewrite
-
+using Revise
 using Test
 using Catlab, Catlab.Theories
 # once rewriting is removed from catlab, we can import the entire namespace
-using Catlab.CategoricalAlgebra: ACSetTransformation, CSetTransformation, @acset_type, @acset, add_part!, add_parts!,nparts, ComposablePair, is_isomorphic, pushout, pullback, force, apex, rem_part!
+using Catlab.CategoricalAlgebra: ACSetTransformation, CSetTransformation, @acset_type, @acset, add_part!, add_parts!,nparts, ComposablePair, is_isomorphic, pushout, pullback, force, apex, rem_part!, Slice
 using Catlab.Graphs, Catlab.WiringDiagrams, Catlab.Programs
 using Catlab.CategoricalAlgebra.FinSets: id_condition
 using Catlab.CategoricalAlgebra.CSets: dangling_condition
 using AlgebraicRewriting
 import AlgebraicRewriting: homomorphism, homomorphisms
 
+# Slice
+#######
+two = @acset Graph begin V=2; E=2; src=[1,2]; tgt=[2,1] end
+L_ = path_graph(Graph, 2)
+L = Slice(ACSetTransformation(L_, two, V=[2,1], E=[2]))
+I_ = Graph(1)
+I = Slice(ACSetTransformation(I_, two, V=[2]))
+R_ = Graph(2)
+R = Slice(ACSetTransformation(R_, two, V=[2, 1]))
+
+rule = Rule(homomorphism(I, L), homomorphism(I, R))
+G_ = path_graph(Graph, 3)
+G = Slice(ACSetTransformation(G_, two, V=[1,2,1], E=[1,2])) # (S) ⟶ [T] ⟶ (S)
+
+H = rewrite(rule, G)
 
 
 # Wiring diagrams
@@ -478,5 +493,7 @@ n = homomorphism(L,N; monic=true)
 G = @acset Graph begin V=4; E=6; src=[1,1,1,2,3,4]; tgt=[2,3,4,2,3,4] end
 @test rewrite_parallel(Rule(l,r,n; monic=true), G) === nothing
 @test rewrite_parallel(Rule(l,r,[n]; monic=true), G) === nothing
+
+
 
 end # module

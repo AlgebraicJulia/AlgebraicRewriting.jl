@@ -163,9 +163,8 @@ I = @acset SSet begin
   tgt=[2,3,4,4]
 end
 quad_coords = [(0,1,0), (1,1,0), (0,0,0),(1,0,0)] # hide
-plot_sset(I, quad_coords) #
+plot_sset(I, quad_coords) # hide
 ```
-
 
 Our replacement pattern will add two triangles and an edge, but now the edge
 is perpendicular to where it was before.
@@ -187,16 +186,17 @@ Again we create a rewrite rule by relating the `I` to `L` and `R`.
 r = Rule(hom(I, R; monic=true),
          hom(I, L; monic=true);
          monic=true)
+nothing # hide
 ```
 
 We can construct a mesh to test this rewrite on by gluing together two
-quadrilaterals via apushout along a common edge.
+quadrilaterals (via a *pushout* along a common edge).
 
 ```@example X
 edge = @acset SSet begin E=1; V=2; src=[1]; tgt=[2] end
 edge_left = hom(edge, L; initial=Dict([:V=>[1,3]]))
 edge_right = hom(edge, L; initial=Dict([:V=>[2,4]]))
-G = apex(pushout(edge_left, edge_right))
+G = pushout(edge_left, edge_right) |> apex
 six_coords = vcat(quad_coords,[(-1.,1.,0.),(-1.,0.,0.),]) # hide
 plot_sset(G, six_coords) # hide
 
@@ -467,6 +467,77 @@ are built on top of C-Sets
 
 ### Slices
 
+Rewriting on interesting data types is easy - our real limitation for showing
+examples of slice rewriting is the visualization of examples. Luckily, it turns
+Petri nets (which are visualized in AlgebraicPetri, where they are used to model
+chemical reaction networks) are equivalent to a certain kind of slice in graph.
+Therefore we will use AlgebraicPetri's visualization code to represent graph
+homomorphisms into this following graph:
+
+```@example X
+two = @acset Graph begin V=2; E=2; src=[1,2]; tgt=[2,1] end
+to_graphviz(two; node_labels=true) # hide
+```
+
+Vertices that are sent to vertex #1 will be thought of as "species", whereas
+vertices that are sent to vertex #2 will be thought of as "transitions". Whether
+or not the edge is from a transition or to a transition determines whether it
+will correspond to an "input" or an "output", and the fact there exists a
+homomorphism into `two` at all guarantees there are no species-species or
+transition-transition edges.
+
+To rewrite a slice, we first need a pattern slice. We start with the graph
+that will be made into a slice by giving a homomorphism into `two`:
+```@example X
+L_ = path_graph(Graph, 2)
+to_graphviz(L_; node_labels=true) # hide
+```
+Then we turn this into a slice
+
+```@example X
+
+function graph_slice(s::Slice)  # hide
+    h = s.slice  # hide
+    V, E = collect.([h[:V], h[:E]])  # hide
+    g = dom(h)  # hide
+    (S,T), (I,O) = [[findall(==(i),X) for i in 1:2] for X in [V,E]]  # hide
+    nS,nT,nI,nO = length.([S,T,I,O])  # hide
+    findS, findT = [x->findfirst(==(x), X) for X in [S,T]]  # hide
+    AlgebraicPetri.Graph(@acset AlgebraicPetri.PetriNet begin  # hide
+        S=nS; T=nT; I=nI; O=nO  # hide
+        is=findS.(g[I,:src]); it=findT.(g[I, :tgt])  # hide
+        ot=findT.(g[O,:src]); os=findS.(g[O, :tgt]) end)  # hide
+end; # hide
+
+L = Slice(ACSetTransformation(L_, two, V=[2,1], E=[2]))
+graph_slice(L) # hide
+```
+
+```@example X
+I_ = Graph(1)
+I = Slice(ACSetTransformation(I_, two, V=[2]))
+
+R_ = Graph(2)
+R = Slice(ACSetTransformation(R_, two, V=[2, 1]))
+graph_slice(R) # hide
+```
+
+```@example X
+rule = Rule(hom(I, L), hom(I, R))
+```
+
+The instance of a slice we are rewriting:
+```@example X
+G_ = path_graph(Graph, 3)
+G = Slice(ACSetTransformation(G_, two, V=[1,2,1], E=[1,2]))
+graph_slice(G) # hide
+```
+
+```@example X
+using AlgebraicRewriting: rewrite # hide
+H = rewrite(rule, G)
+graph_slice(H) # hide
+```
 ### Structured cospans
 
 ### Diagrams

@@ -65,4 +65,7 @@ function hasvar(s::StructACSet{S}) where S
   end)
 end
 
+hasvar(s::Slice) = hasvar(dom(s.slice))
+
+
 end # module
