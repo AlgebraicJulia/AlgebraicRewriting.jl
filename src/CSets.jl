@@ -1,8 +1,10 @@
 module CSets
-export topo_obs, check_eqs, eval_path, extend_morphism, pushout_complement, can_pushout_complement, dangling_condition, is_injective, invert_hom, homomorphisms, gluing_conditions
+export topo_obs, check_eqs, eval_path, extend_morphism, pushout_complement,
+       can_pushout_complement, dangling_condition, is_injective, invert_hom,
+       homomorphisms, gluing_conditions
 
 using Catlab, Catlab.Theories, Catlab.Graphs
-using Catlab.CategoricalAlgebra: ACSet, StructACSet, ACSetTransformation, ComposablePair, preimage, components, Subobject, parts, SubACSet, SliceHom, force
+using Catlab.CategoricalAlgebra: ACSet, StructACSet, ACSetTransformation, ComposablePair, preimage, components, Subobject, parts, SubACSet, SliceHom, force, nparts, legs, apex, pushout, Cospan
 using Catlab.CategoricalAlgebra.CSets: unpack_diagram
 import ..FinSets: pushout_complement, can_pushout_complement, is_injective, is_surjective, id_condition
 import Catlab.CategoricalAlgebra: is_natural, Slice, SliceHom, components
@@ -10,17 +12,6 @@ using ..Search
 import ..Search: homomorphism, homomorphisms
 import Base: getindex
 
-
-"""
-Enumerate subobjects of a C-Set up to isomorphism
-E.g. for a discrete graph or complete graph of N vertices, there should only be
-N subobjects.
-"""
-function enum_subobject(X::StructACSet{S}) where S
-  for o in ob(S)
-    # todo
-  end
-end
 
 """Get topological sort of objects of a schema. Fail if cyclic"""
 function topo_obs(S::Type)::Vector{Symbol}
@@ -50,7 +41,6 @@ function eval_path(x::StructACSet, h, i::Int)::Int
   end
   return val
 end
-
 
 function extend_morphism_constraints(f::ACSetTransformation,
                                      g::ACSetTransformation
@@ -85,11 +75,11 @@ commuting triangle if possible.
    f
 """
 function extend_morphism(f::ACSetTransformation, g::ACSetTransformation;
-                         monic=false, init_check=true
+                         monic=false, iso=false, init_check=true
                          )::Union{Nothing, ACSetTransformation}
   init = extend_morphism_constraints(f,g)
   if isnothing(init) return nothing end
-  homomorphism(codom(g), codom(f); initial=NamedTuple(init), monic=monic,
+  homomorphism(codom(g), codom(f); initial=NamedTuple(init), monic=monic, iso=iso,
                bindvars=true, init_check=init_check)
 end
 

@@ -12,3 +12,11 @@ Interact = "c601a237-2ae4-5e1e-952c-7a85b0c7eef1"
 Random = "9a3f8284-a2c9-5f02-9a11-845980a1fd5c"
 Reexport = "189a3867-3050-52da-a836-e630ba90ab69"
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
+
+[compat]
+AutoHashEquals = "0.2.0"
+Catlab = "0.14"
+DataStructures = "0.17, 0.18"
+Interact = "0.10"
+Reexport = "^1"
+julia = "1.6"

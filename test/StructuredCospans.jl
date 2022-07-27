@@ -2,8 +2,10 @@ module TestStructuredCospans
 
 using Test
 using Catlab, Catlab.Theories, Catlab.Graphs
-using Catlab.CategoricalAlgebra: @acset, @acset_type, FinFunction, FinSet, apex, terminal, OpenCSetTypes, Span, nparts, ACSetTransformation, CSetTransformation
+using Catlab.CategoricalAlgebra
 using AlgebraicRewriting
+const homs = AlgebraicRewriting.homomorphisms
+const iso = AlgebraicRewriting.is_isomorphic
 
 # Horizontal composition of epidemiological model rewrites
 #---------------------------------------------------------
@@ -126,7 +128,7 @@ expected_bottom = @acset PetriNet begin
   is = [1,2,2, 4, 2, 5, 5]
   os = [2,4,3, 2, 5, 3, 2]
 end
-@test is_isomorphic(bottom, expected_bottom)
+@test iso(bottom, expected_bottom)
 
 # Program optimization example
 #-----------------------------
@@ -192,10 +194,10 @@ expected2 = @acset PetriNet begin
 end
 
 
-@test length(open_homomorphisms(o_pattern, o_prog)) == 1
-m = open_homomorphisms(o_pattern, o_prog)[1].maps[1];
+@test length(homs(o_pattern, o_prog)) == 1
+m = homs(o_pattern, o_prog)[1].maps[1];
 l = left(c_rule.data).maps[1];
-@test is_isomorphic(apex(open_rewrite(c_rule, o_prog)), expected2)
+@test iso(apex(open_rewrite(c_rule, o_prog)), expected2)
 
 # Rewriting
 ###########
@@ -286,10 +288,10 @@ square_m = StructuredMultiCospanHom(openarr, opensquare,
   ACSetTransformation[ACSetTransformation(Arrow, Square, V=[1,2], E=[1]), id_1, id_1])
 
 res = open_rewrite_match(squash, square_m)
-@test is_isomorphic(apex(res), Tri)
+@test iso(apex(res), Tri)
 
 res = open_rewrite_match(composeV_(squash, add_loop), square_m)
-@test is_isomorphic(apex(res), LoopTri)
+@test iso(apex(res), LoopTri)
 
 sqsq = composeH_(squash, squash); # squashes a path of length 2 into a point
 sqsq_m = StructuredMultiCospanHom(openp2, opensquare2,
@@ -297,6 +299,6 @@ sqsq_m = StructuredMultiCospanHom(openp2, opensquare2,
     path_graph(Graph, 3), Square, V=[1,2,4], E=[1,3]), id_1, id_1])
 res = open_rewrite_match(sqsq, sqsq_m)
 # squash one path of a commutative square and obtain •⇆•
-@test is_isomorphic(apex(res), BiArrow)
+@test iso(apex(res), BiArrow)
 
 end # module

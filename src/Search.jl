@@ -138,6 +138,7 @@ is_isomorphic(X::ACSet, Y::ACSet, alg::BacktrackingSearch; kw...) =
 """
 struct BacktrackingState{S <: SchemaDescType,
     Assign <: NamedTuple, PartialAssign <: NamedTuple, LooseFun <: NamedTuple,
+    InvParts <: NamedTuple,
     Dom <: StructACSet{S}, Codom <: StructACSet{S}, VAssign <: NamedTuple}
   """ The current assignment, a partially-defined homomorphism of ACSets. """
   assignment::Assign
@@ -145,6 +146,8 @@ struct BacktrackingState{S <: SchemaDescType,
   assignment_depth::Assign
   """ Inverse assignment for monic components or if finding a monomorphism. """
   inv_assignment::PartialAssign
+  """ Parition of domain for purposes of inverse assignment"""
+  inv_parts::InvParts
   """ Domain ACSet: the "variables" in the CSP. """
   dom::Dom
   """ Codomain ACSet: the "values" in the CSP. """
@@ -162,26 +165,58 @@ function backtracking_search(f, X::StructACSet{S}, Y::StructACSet{S};
     iso = iso ? Ob : ()
   end
   for c in iso
+    if monic isa Bool
+      monic = true
+    elseif monic isa AbstractVector
+      push!(monic, c)
+    elseif monic isa Dict
+      monic[c] = ones(Int, nparts(X,c))
+    end
     nparts(X,c) == nparts(Y,c) || return false
   end
+
   if monic isa Bool
     monic = monic ? Ob : ()
   end
-  # Injections between finite sets are bijections, so reduce to that case.
-  monic = unique([iso..., monic...])
-  for c in monic
-    nparts(X,c) <= nparts(Y,c) || (haskey(initial, c) && !init_check) || return false
+  if monic isa AbstractVector || monic isa Tuple
+    monic = Dict([o=>ones(Int,nparts(X, o)) for o in monic])
+  elseif monic isa Dict
+    for (k,v) in collect(monic)
+      if isempty(v)
+        delete!(monic,k)
+      else
+      sort(collect(Set(v))) == 1:maximum(v) || error("monic not a partition")
+      end
+    end
+  elseif !(monic isa Dict)
+    error("typeof monic $(typeof(monic))")
   end
-  # we still can fail fast if init_check is off
-  # but it's just a bit more complicated: #todo
+  # no init_check is a special case of a partitioned inv_assignment
+  # Where everything that has been initialized gets a unique part
+  if !init_check
+    for (k,v) in collect(pairs(initial))
+      error("TODO")
+    end
+  end
+
+  # Injections between finite sets are bijections, so reduce to that case.
+  #monic = unique([iso..., monic...])
+  for (c,v) in collect(monic)
+    if !isempty(v) && haskey(initial, c)
+      nmax = maximum([count(==(i), v) for i in 1:maximum(v)])
+      nmax <= nparts(Y,c) || return false
+    end
+  end
 
   # Initialize state variables for search.
   assignment = NamedTuple{Ob}(zeros(Int, nparts(X, c)) for c in Ob)
   assignment_depth = map(copy, assignment)
   inv_assignment = NamedTuple{Ob}(
-  (c in monic ? zeros(Int, nparts(Y, c)) : nothing) for c in Ob)
+  ((haskey(monic,c) && !isempty(monic[c]) ? zeros(
+      Int, (nparts(Y, c), maximum(monic[c]))) : nothing) for c in Ob))
   loosefuns = NamedTuple{Attr}(
-  isnothing(type_components) ? identity : get(type_components, c, identity) for c in Attr)
+    isnothing(type_components) ? identity : get(
+      type_components, c, identity) for c in Attr)
 
   # Get variables
   d = Dict{Symbol, Union{Nothing, Dict}}([x=>Dict() for x in Attr])
@@ -196,15 +231,13 @@ function backtracking_search(f, X::StructACSet{S}, Y::StructACSet{S};
     end
   end
   vassign = NamedTuple{Attr}([d[a] for a in Attr])
-
-  state = BacktrackingState(assignment, assignment_depth, inv_assignment, X, Y,
+  state = BacktrackingState(assignment, assignment_depth, inv_assignment, NamedTuple(monic), X, Y,
   loosefuns, vassign)
 
   # Make any initial assignments, failing immediately if inconsistent.
   for (c, c_assignments) in pairs(initial)
     for (x, y) in partial_assignments(c_assignments)
-      assign_elem!(state, 0, Val{c}, x, y;
-                   enforce_monic=init_check) || return false
+      assign_elem!(state, 0, Val{c}, x, y) || return false
     end
   end
 
@@ -280,14 +313,13 @@ Returns whether the assignment succeeded. Note that the backtracking state can
 be mutated even when the assignment fails.
 """
 @generated function assign_elem!(state::BacktrackingState{S}, depth,
-      ::Type{Val{c}}, x, y; enforce_monic=true) where {S, c}
+      ::Type{Val{c}}, x, y) where {S, c}
   quote
     y′ = state.assignment.$c[x]
     y′ == y && return true  # If x is already assigned to y, return immediately.
     y′ == 0 || return false # Otherwise, x must be unassigned.
-    if (enforce_monic
-        && !isnothing(state.inv_assignment.$c)
-        && state.inv_assignment.$c[y] != 0)
+    if (!isnothing(state.inv_assignment.$c)
+        && state.inv_assignment.$c[y, state.inv_parts[c][x]] != 0)
       # Also, y must unassigned in the inverse assignment.
       return false
     end
@@ -307,7 +339,7 @@ be mutated even when the assignment fails.
   state.assignment.$c[x] = y
   state.assignment_depth.$c[x] = depth
   if !isnothing(state.inv_assignment.$c)
-    state.inv_assignment.$c[y] = x
+    state.inv_assignment.$c[y, state.inv_parts[c][x]] = x
   end
   $(map(zip(attr(S), adom(S), acodom(S))) do (f, c_, d)
   :(if ($(quot(c_))==c
@@ -337,9 +369,10 @@ quote
   @assert assign_depth <= depth
   if assign_depth == depth
     X = state.dom
+
     if !isnothing(state.inv_assignment.$c)
       y = state.assignment.$c[x]
-      state.inv_assignment.$c[y] = 0
+      state.inv_assignment.$c[y, state.inv_parts[c][x]] = 0
     end
     $(map(zip(attr(S), adom(S), acodom(S))) do (f, c_, d)
     :(if ($(quot(c_))==c && !isnothing(state.var_assign[$(quot(d))])

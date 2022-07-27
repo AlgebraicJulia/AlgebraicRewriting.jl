@@ -1,11 +1,12 @@
 module StructuredCospans
 
-export StructuredMultiCospanHom, StructuredMulticospan, openrule, open_homomorphisms, can_open_pushout_complement, open_rewrite, open_rewrite_match, idH_, idV_, composeV_, composeH_, id2_, id2V_, id2H_
+export StructuredMultiCospanHom, StructuredMulticospan, openrule, can_open_pushout_complement, open_rewrite, open_rewrite_match, idH_, idV_, composeV_, composeH_, id2_, id2V_, id2H_
 
 using Catlab, Catlab.CategoricalAlgebra, Catlab.Theories
 using Catlab.CategoricalAlgebra.CSetDataStructures: struct_acset
 import Catlab.Theories: dom, codom, compose, ⋅, id
-using ..CSets: invert_hom
+using ..CSets: invert_hom, can_pushout_complement, pushout_complement
+import ..Search: homomorphisms
 
 # Maps between structured multicospans
 ######################################
@@ -50,7 +51,7 @@ dynamic acset, and the current hack will be replaced once those are available.
 A homomorphism backend that uses SAT/SMT would also make this viable to do
 without hacking.
 """
-function open_homomorphisms(pat::StructuredMulticospan{L},
+function homomorphisms(pat::StructuredMulticospan{L},
                             tgt::StructuredMulticospan{L};
                             monic::Bool=false
                            )::Vector{StructuredMultiCospanHom{L}} where L
@@ -309,7 +310,7 @@ function open_rewrite(rule::openrule, G::StructuredMulticospan;
                       monic::Bool=false, m_index::Int=1)::StructuredMulticospan
 
   ms = filter(m->can_open_pushout_complement(left(rule.data), m),
-              open_homomorphisms(left(rule.data).tgt, G, monic=monic))
+              homomorphisms(left(rule.data).tgt, G, monic=monic))
   if 0 < m_index <= length(ms)
     open_rewrite_match(rule, ms[m_index])
   else

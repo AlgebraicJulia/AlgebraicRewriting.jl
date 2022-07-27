@@ -1,5 +1,8 @@
 using Test
 
+include("../docs/src/lotka_volterra.jl") # this shouldn't crash
+
+
 @testset "Variables" begin
   include("Variables.jl")
 end
