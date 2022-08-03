@@ -7,8 +7,8 @@ using Catlab, Catlab.CategoricalAlgebra
 using ..Rewrite
 using ..Rewrite: rewrite_with_match
 using Catlab.CategoricalAlgebra.DataMigrations: MigrationFunctor
-using Interact
 import Base: map
+using Requires
 
 abstract type Schedule end
 
@@ -91,6 +91,8 @@ end
 const ScheduleResult = Vector{TrajStep}
 traj_res(s::ScheduleResult) = last(s).G
 
+function __init__()
+  @require Interact = "c601a237-2ae4-5e1e-952c-7a85b0c7eef1" begin
 
 function view_traj(rG::ScheduleResult, viewer; positions=nothing)
   positions_cache = Vector{Any}(fill(nothing, length(rG)))
@@ -108,8 +110,7 @@ function view_traj(rG::ScheduleResult, viewer; positions=nothing)
     end
     return positions_cache[i] = pos
   end
-  println("length $(length(rG))")
-  return @manipulate for n in slider(1:length(rG), value=1, label="Step:")
+  return Interact.@manipulate for n in Interact.slider(1:length(rG), value=1, label="Step:")
       step = rG[n]
       if n == length(rG)
         name, c = "end", ""
@@ -121,6 +122,8 @@ function view_traj(rG::ScheduleResult, viewer; positions=nothing)
       viewer(step.G, get_positions(n); title="$name \n $c")
   end
 end;
+end
+end
 
 """apply schedule and return whether or not the input changed"""
 function apply_schedule(s::ListSchedule; G=nothing, sr = nothing, random=false, verbose=false,kw...)::ScheduleResult
