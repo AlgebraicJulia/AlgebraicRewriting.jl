@@ -327,4 +327,4 @@ overall = WhileSchedule(step, :main, only_sheep);
 
 G, coords = initialize(2, .25, .25)
 res = apply_schedule(step, G=G, verbose=false)
-view_traj(res, Graph; positions=coords)
+# view_traj(res, Graph; positions=coords)
