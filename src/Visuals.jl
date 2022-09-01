@@ -1,4 +1,5 @@
 using Interact
+import ..Visuals: view_traj
 
 function view_traj(rG::ScheduleResult, viewer; positions=nothing)
   positions_cache = Vector{Any}(fill(nothing, length(rG)))

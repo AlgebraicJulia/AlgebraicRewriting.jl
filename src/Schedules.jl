@@ -32,7 +32,7 @@ end
 RuleSchedule{T}(pn::Pair{Symbol, Rule{T}}) where T  = RuleSchedule(pn[2], pn[1])
 
 ListSchedule(rs::Vector{Rule}, name=:list) = ListSchedule(Schedule[
-  RuleSchedule(Symbol("r$i")=>r) for (i,r) in enumerate(rs)], name)
+  RuleSchedule(r,Symbol("r$i")) for (i,r) in enumerate(rs)], name)
 
 struct RandomSchedule <: Schedule
   rules::Vector{Rule}
@@ -90,6 +90,8 @@ end
 
 const ScheduleResult = Vector{TrajStep}
 traj_res(s::ScheduleResult) = last(s).G
+
+view_traj() = nothing
 
 function __init__()
   @require Interact = "c601a237-2ae4-5e1e-952c-7a85b0c7eef1" include("Visuals.jl")

@@ -435,8 +435,9 @@ Define D to be Im(g) to make it the largest possible subset of C such that we
 can get a pullback.
 """
 function pullback_complement(f, g)
+    is_injective(f) || error("can only take pullback complement if f is mono")
     A = dom(f)
-    d_to_c = hom(¬g(¬f(A)))
+    d_to_c = hom(¬g(¬f(A))) # why isn't this just g(B)?
     # force square to commute by looking for the index in D making it commute
     ad = Dict(map(collect(pairs(components(compose(f,g))))) do (cmp, fg_as)
       cmp => Vector{Int}(map(collect(fg_as)) do fg_a
