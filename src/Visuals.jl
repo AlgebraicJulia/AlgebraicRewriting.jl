@@ -1,5 +1,9 @@
+module Visuals
+export view_traj
+
+using ..Schedules
+
 using Interact
-import ..Visuals: view_traj
 
 function view_traj(rG::ScheduleResult, viewer; positions=nothing)
   positions_cache = Vector{Any}(fill(nothing, length(rG)))
@@ -29,3 +33,5 @@ function view_traj(rG::ScheduleResult, viewer; positions=nothing)
       viewer(step.G, get_positions(n); title="$name \n $c")
   end
 end;
+
+end # module

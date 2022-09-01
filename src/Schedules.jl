@@ -1,5 +1,5 @@
 module Schedules
-export Schedule, ListSchedule, RuleSchedule, WhileSchedule, rewrite_schedule, RandomSchedule, apply_schedule, traj_res, ScheduleResult, rename_schedule, view_traj
+export Schedule, ListSchedule, RuleSchedule, WhileSchedule, rewrite_schedule, RandomSchedule, apply_schedule, traj_res, ScheduleResult, rename_schedule
 
 using DataStructures, Random
 
@@ -8,7 +8,6 @@ using ..Rewrite
 using ..Rewrite: rewrite_with_match
 using Catlab.CategoricalAlgebra.DataMigrations: MigrationFunctor
 import Base: map
-using Requires
 
 abstract type Schedule end
 
@@ -90,12 +89,6 @@ end
 
 const ScheduleResult = Vector{TrajStep}
 traj_res(s::ScheduleResult) = last(s).G
-
-view_traj() = nothing
-
-function __init__()
-  @require Interact = "c601a237-2ae4-5e1e-952c-7a85b0c7eef1" include("Visuals.jl")
-end
 
 """apply schedule and return whether or not the input changed"""
 function apply_schedule(s::ListSchedule; G=nothing, sr = nothing, random=false, verbose=false,kw...)::ScheduleResult
