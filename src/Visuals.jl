@@ -2,7 +2,7 @@ module Visuals
 export view_traj
 
 using ..Schedules
-
+using Catlab.CategoricalAlgebra
 using Interact
 
 function view_traj(rG::ScheduleResult, viewer; positions=nothing)
