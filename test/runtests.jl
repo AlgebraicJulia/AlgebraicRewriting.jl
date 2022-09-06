@@ -1,5 +1,10 @@
 using Test
 
+using AlgebraicRewriting
+@test length(methods(view_traj)) == 1
+using Interact
+@test length(methods(view_traj)) == 2
+
 include("../docs/src/lotka_volterra.jl") # this shouldn't crash
 
 

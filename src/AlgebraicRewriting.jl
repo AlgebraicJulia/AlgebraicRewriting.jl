@@ -1,6 +1,5 @@
 module AlgebraicRewriting
 using Reexport
-using Requires
 
 include("Variables.jl")
 include("FinSets.jl")
@@ -10,6 +9,7 @@ include("StructuredCospans.jl")
 include("PartialMap.jl")
 include("Rewrite.jl")
 include("Schedules.jl")
+include("Visuals.jl")
 
 @reexport using .Variables
 @reexport using .FinSets
@@ -19,12 +19,8 @@ include("Schedules.jl")
 @reexport using .PartialMap
 @reexport using .Rewrite
 @reexport using .Schedules
+@reexport using .Visuals
 
-function __init__()
-  @require Interact = "c601a237-2ae4-5e1e-952c-7a85b0c7eef1" begin
-    include("Visuals.jl")
-    @reexport using .Visuals
-  end
-end
+
 
 end # module
