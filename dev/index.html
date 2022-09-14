@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/><title>AlgebraicRewriting.jl · AlgebraicRewriting</title><script data-outdated-warner src="assets/warner.js"></script><link href="https://cdnjs.cloudflare.com/ajax/libs/lato-font/3.0.0/css/lato-font.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/juliamono/0.045/juliamono.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/fontawesome.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/solid.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/brands.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.13.24/katex.min.css" rel="stylesheet" type="text/css"/><script>documenterBaseURL="."</script><script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.6/require.min.js" data-main="assets/documenter.js"></script><script src="siteinfo.js"></script><script src="../versions.js"></script><link class="docs-theme-link" rel="stylesheet" type="text/css" href="assets/themes/documenter-dark.css" data-theme-name="documenter-dark" data-theme-primary-dark/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="assets/themes/documenter-light.css" data-theme-name="documenter-light" data-theme-primary/><script src="assets/themeswap.js"></script></head><body><div id="documenter"><nav class="docs-sidebar"><a class="docs-logo" href><img src="assets/logo.png" alt="AlgebraicRewriting logo"/></a><div class="docs-package-name"><span class="docs-autofit"><a href>AlgebraicRewriting</a></span></div><form class="docs-search" action="search/"><input class="docs-search-query" id="documenter-search-query" name="q" type="text" placeholder="Search docs"/></form><ul class="docs-menu"><li class="is-active"><a class="tocitem" href>AlgebraicRewriting.jl</a><ul class="internal"><li><a class="tocitem" href="#Double-pushout-rewriting-of-graphs"><span>Double pushout rewriting of graphs</span></a></li><li><a class="tocitem" href="#Double-pushout-rewriting-of-triangle-mesh"><span>Double pushout rewriting of triangle mesh</span></a></li><li><a class="tocitem" href="#Applied-example:-Lotka-Volterra-agent-based-model"><span>Applied example: Lotka-Volterra agent-based model</span></a></li><li><a class="tocitem" href="#Alternative-rewriting-semantics"><span>Alternative rewriting semantics</span></a></li><li><a class="tocitem" href="#Rewriting-things-that-aren&#39;t-C-Sets"><span>Rewriting things that aren&#39;t C-Sets</span></a></li></ul></li></ul><div class="docs-version-selector field has-addons"><div class="control"><span class="docs-label button is-static is-size-7">Version</span></div><div class="docs-selector control is-expanded"><div class="select is-fullwidth is-size-7"><select id="documenter-version-selector"></select></div></div></div></nav><div class="docs-main"><header class="docs-navbar"><nav class="breadcrumb"><ul class="is-hidden-mobile"><li class="is-active"><a href>AlgebraicRewriting.jl</a></li></ul><ul class="is-hidden-tablet"><li class="is-active"><a href>AlgebraicRewriting.jl</a></li></ul></nav><div class="docs-right"><a class="docs-edit-link" href="https://github.com/AlgebraicJulia/AlgebraicRewriting.jl/blob/main/docs/src/index.md" title="Edit on GitHub"><span class="docs-icon fab"></span><span class="docs-label is-hidden-touch">Edit on GitHub</span></a><a class="docs-settings-button fas fa-cog" id="documenter-settings-button" href="#" title="Settings"></a><a class="docs-sidebar-button fa fa-bars is-hidden-desktop" id="documenter-sidebar-button" href="#"></a></div></header><article class="content" id="documenter-page"><h1 id="AlgebraicRewriting.jl"><a class="docs-heading-anchor" href="#AlgebraicRewriting.jl">AlgebraicRewriting.jl</a><a id="AlgebraicRewriting.jl-1"></a><a class="docs-heading-anchor-permalink" href="#AlgebraicRewriting.jl" title="Permalink"></a></h1><p>Here we walk through basic examples of double-pushout (DPO), single-pushout (SPO), and sesqui-pushout (SqPO) rewriting. We also consider the rewriting of graphs, Petri nets, and 2D semisimplicial sets (which are all instances of rewriting in C-set categories) in addition to rewriting C-set slice categories and structured cospans of C-sets. Future work will allow us to perform rewriting of diagrams in C-set categories.</p><h2 id="Double-pushout-rewriting-of-graphs"><a class="docs-heading-anchor" href="#Double-pushout-rewriting-of-graphs">Double pushout rewriting of graphs</a><a id="Double-pushout-rewriting-of-graphs-1"></a><a class="docs-heading-anchor-permalink" href="#Double-pushout-rewriting-of-graphs" title="Permalink"></a></h2><p>This is the classic setting of graph transformation. Suppose we wish to rewrite this graph:</p><pre><code class="language- hljs">using Catlab, Catlab.Graphs, Catlab.Graphics, Catlab.CategoricalAlgebra
+<html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/><title>AlgebraicRewriting.jl · AlgebraicRewriting</title><script data-outdated-warner src="assets/warner.js"></script><link href="https://cdnjs.cloudflare.com/ajax/libs/lato-font/3.0.0/css/lato-font.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/juliamono/0.045/juliamono.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/fontawesome.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/solid.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/brands.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.13.24/katex.min.css" rel="stylesheet" type="text/css"/><script>documenterBaseURL="."</script><script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.6/require.min.js" data-main="assets/documenter.js"></script><script src="siteinfo.js"></script><script src="../versions.js"></script><link class="docs-theme-link" rel="stylesheet" type="text/css" href="assets/themes/documenter-dark.css" data-theme-name="documenter-dark" data-theme-primary-dark/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="assets/themes/documenter-light.css" data-theme-name="documenter-light" data-theme-primary/><script src="assets/themeswap.js"></script></head><body><div id="documenter"><nav class="docs-sidebar"><a class="docs-logo" href><img src="assets/logo.png" alt="AlgebraicRewriting logo"/></a><div class="docs-package-name"><span class="docs-autofit"><a href>AlgebraicRewriting</a></span></div><form class="docs-search" action="search/"><input class="docs-search-query" id="documenter-search-query" name="q" type="text" placeholder="Search docs"/></form><ul class="docs-menu"><li class="is-active"><a class="tocitem" href>AlgebraicRewriting.jl</a><ul class="internal"><li><a class="tocitem" href="#Double-pushout-rewriting-of-graphs"><span>Double pushout rewriting of graphs</span></a></li><li><a class="tocitem" href="#Applied-example:-Lotka-Volterra-agent-based-model"><span>Applied example: Lotka-Volterra agent-based model</span></a></li><li><a class="tocitem" href="#Alternative-rewriting-semantics"><span>Alternative rewriting semantics</span></a></li><li><a class="tocitem" href="#Rewriting-things-that-aren&#39;t-C-Sets"><span>Rewriting things that aren&#39;t C-Sets</span></a></li></ul></li></ul><div class="docs-version-selector field has-addons"><div class="control"><span class="docs-label button is-static is-size-7">Version</span></div><div class="docs-selector control is-expanded"><div class="select is-fullwidth is-size-7"><select id="documenter-version-selector"></select></div></div></div></nav><div class="docs-main"><header class="docs-navbar"><nav class="breadcrumb"><ul class="is-hidden-mobile"><li class="is-active"><a href>AlgebraicRewriting.jl</a></li></ul><ul class="is-hidden-tablet"><li class="is-active"><a href>AlgebraicRewriting.jl</a></li></ul></nav><div class="docs-right"><a class="docs-edit-link" href="https://github.com/AlgebraicJulia/AlgebraicRewriting.jl/blob/main/docs/src/index.md" title="Edit on GitHub"><span class="docs-icon fab"></span><span class="docs-label is-hidden-touch">Edit on GitHub</span></a><a class="docs-settings-button fas fa-cog" id="documenter-settings-button" href="#" title="Settings"></a><a class="docs-sidebar-button fa fa-bars is-hidden-desktop" id="documenter-sidebar-button" href="#"></a></div></header><article class="content" id="documenter-page"><h1 id="AlgebraicRewriting.jl"><a class="docs-heading-anchor" href="#AlgebraicRewriting.jl">AlgebraicRewriting.jl</a><a id="AlgebraicRewriting.jl-1"></a><a class="docs-heading-anchor-permalink" href="#AlgebraicRewriting.jl" title="Permalink"></a></h1><p>Here we walk through basic examples of double-pushout (DPO), single-pushout (SPO), and sesqui-pushout (SqPO) rewriting. We also consider the rewriting of graphs, Petri nets, and 2D semisimplicial sets (which are all instances of rewriting in C-set categories) in addition to rewriting C-set slice categories and structured cospans of C-sets. Future work will allow us to perform rewriting of diagrams in C-set categories.</p><h2 id="Double-pushout-rewriting-of-graphs"><a class="docs-heading-anchor" href="#Double-pushout-rewriting-of-graphs">Double pushout rewriting of graphs</a><a id="Double-pushout-rewriting-of-graphs-1"></a><a class="docs-heading-anchor-permalink" href="#Double-pushout-rewriting-of-graphs" title="Permalink"></a></h2><p>This is the classic setting of graph transformation. Suppose we wish to rewrite this graph:</p><pre><code class="language- hljs">using Catlab, Catlab.Graphs, Catlab.Graphics, Catlab.CategoricalAlgebra
 
 G = @acset Graph begin
     V=3; E=3;
@@ -14,113 +14,8 @@ using AlgebraicRewriting: rewrite
 const hom = AlgebraicRewriting.homomorphism
 rule = Rule(hom(I,L), hom(I,R))
 H = rewrite(rule, G)
-to_graphviz(H; node_labels=true) # hide</code></pre><p>Something to note here is that the result is only defined up to isomorphism, e.g. the vertex which corresponded to vertex #1 in the original graph may not be #1 in the result.</p><p>As the following example shows, we are not limited to rewriting (directed multi-) graphs.</p><h2 id="Double-pushout-rewriting-of-triangle-mesh"><a class="docs-heading-anchor" href="#Double-pushout-rewriting-of-triangle-mesh">Double pushout rewriting of triangle mesh</a><a id="Double-pushout-rewriting-of-triangle-mesh-1"></a><a class="docs-heading-anchor-permalink" href="#Double-pushout-rewriting-of-triangle-mesh" title="Permalink"></a></h2><p>Suppose we want to perform rewriting on a mesh with triangles defined over certain triples of edges.</p><pre><code class="language- hljs">using Catlab.Graphs.BasicGraphs: TheoryGraph
-using CairoMakie, GeometryBasics # hide
-using Base.Iterators # hide
-using CombinatorialSpaces # hide
-import AlgebraicPetri # hide
-using CombinatorialSpaces.SimplicialSets: get_edge! # hide
-
-@present ThSemisimplicialSet  &lt;: TheoryGraph begin
-  T :: Ob
-  (d1,d2,d3)::Hom(T,E)
-  compose(d1, src) == compose(d2, src)
-  compose(d1, tgt) == compose(d3, tgt)
-  compose(d2, tgt) == compose(d3, src)
-end
-@acset_type SSet(ThSemisimplicialSet)
-
-quadrangle = @acset SSet begin
-    T=2; E=5; V=4
-    d1=[1,1]; d2=[2,3]; d3=[4,5]
-    src=[1,1,1,2,3]
-    tgt=[4,2,3,4,4]
-end
-
-function plot_sset(ss::SSet, points::Vector, # hide
-                   tri_colors::Union{Nothing,Vector}=nothing) # hide
-    dflt = collect(take(cycle([:blue,:red,:green, :purple, :pink, :yellow, :grey, :orange, :brown, :cyan]), nparts(ss, :T))) # hide
-    tri_colors = isnothing(tri_colors) ? dflt : tri_colors # hide
-    # Validate inputs # hide
-    lengthscale=0.8 # hide
-    dim = length(points[1]) # hide
-    length(points) == nparts(ss,:V) || error(&quot;# of points&quot;) # hide
-    if dim == 2 # hide
-        points = [(p1,p2,0.) for (p1,p2) in points] # hide
-    elseif dim != 3 # hide
-        error(&quot;dim $dim&quot;) # hide
-    end # hide
-    tri_colors = tri_colors[1:nparts(ss, :T)] # hide
-
-    # Convert SSet to EmbeddedDeltaSet2D # hide
-    s = EmbeddedDeltaSet2D{Bool, Point{3, Float64}}() # hide
-
-    edge_colors = [:black for _ in nparts(ss, :E)] # hide
-    add_vertices!(s, length(points), point=points) # hide
-    for (src, tgt) in zip(ss[:src], ss[:tgt]) # hide
-        get_edge!(s, src, tgt) # hide
-    end # hide
-
-    for t in parts(ss,:T) # hide
-    glue_sorted_triangle!(s, ss[t,[:d1,:src]], # hide
-                             ss[t,[:d3,:src]], # hide
-                             ss[t, [:d1,:tgt]]) # hide
-    end # hide
-
-    # Split mesh into component triangles # hide
-  m = GeometryBasics.Mesh(s) # hide
-  x = faces(m) # hide
-  m_points = m.position[vcat([[t[1],t[2],t[3]] for t in x]...)] # hide
-  m_faces = TriangleFace{Int}[[((t-1) * 3) .+ (1,2,3) for t in  1:length(x)]...]  # hide
-  new_m = GeometryBasics.Mesh(Point{3, Float64}[m_points...], m_faces) # hide
-  if ntriangles(s) == 0  # hide
-     fig, ax, ob = arrows((s[s[:∂v0], :point] * (0.5 + lengthscale / 2)  # hide
-                            .+ s[s[:∂v1], :point] * (0.5 - lengthscale / 2)) ,  # hide
-                          (s[s[:∂v1], :point] .- s[s[:∂v0], :point]),  # hide
-            lengthscale=lengthscale, arrowsize=0.05, shininess=0.0,  # hide
-           color=edge_colors, diffuse=[0.0,0.0,0.0])  # hide
-  else  # hide
-    fig, ax, ob = mesh(new_m, color=vcat([[v,v,v] for v in tri_colors]...))  # hide
-     arrows!((s[s[:∂v0], :point] * (0.5 + lengthscale / 2)  # hide
-                    .+ s[s[:∂v1], :point] * (0.5 - lengthscale / 2)) ,  # hide
-             (s[s[:∂v1], :point] .- s[s[:∂v0], :point]),  # hide
-            lengthscale=lengthscale, arrowsize=0.05, shininess=0.0,  # hide
-           color=edge_colors, diffuse=[0.0,0.0,0.0])  # hide
-  end  # hide
-  if dim == 2  # hide
-      # hidespines!(ax); hidedecorations!(ax)  # hide
-      ax.aspect = AxisAspect(1.0) # Remove this line if 3D embedding  # hide
-  end  # hide
-  fig  # hide
-end # hide
-
-
-quad_coords = [(0,1,0), (1,1,0), (0,0,0),(1,0,0)] # hide
-plot_sset(quadrangle, quad_coords) # hide</code></pre><p>There is no difference in methodology from the case of graphs, despite the different schema: we provide an instance of the datatype to serve as our pattern for replacement (such as the quadrangle above) and then need an instance to serve as our non-deleted subset of that pattern.</p><pre><code class="language- hljs">L = quadrangle
-I = @acset SSet begin
-  E=4; V=4
-  src=[1,1,2,3]
-  tgt=[2,3,4,4]
-end
-quad_coords = [(0,1,0), (1,1,0), (0,0,0),(1,0,0)] # hide
-plot_sset(I, quad_coords) # hide</code></pre><p>Our replacement pattern will add two triangles and an edge, but now the edge is perpendicular to where it was before.</p><pre><code class="language- hljs">R = @acset SSet begin
-  T=2; E=5; V=4
-  d1=[2,3]; d2=[1,5]; d3=[5,4]
-  src=[1,1,2,3,2]
-  tgt=[2,3,4,4,3]
-end
-quad_coords = [(0,1,0), (1,1,0), (0,0,0),(1,0,0)] # hide
-plot_sset(R, quad_coords) # hide</code></pre><p>Again we create a rewrite rule by relating the <code>I</code> to <code>L</code> and <code>R</code>.</p><pre><code class="language- hljs">r = Rule(hom(I, R; monic=true),
-         hom(I, L; monic=true);
-         monic=true)
-nothing # hide</code></pre><p>We can construct a mesh to test this rewrite on by gluing together two quadrilaterals (via a <em>pushout</em> along a common edge).</p><pre><code class="language- hljs">edge = @acset SSet begin E=1; V=2; src=[1]; tgt=[2] end
-edge_left = hom(edge, L; initial=Dict([:V=&gt;[1,3]]))
-edge_right = hom(edge, L; initial=Dict([:V=&gt;[2,4]]))
-G = pushout(edge_left, edge_right) |&gt; apex
-six_coords = vcat(quad_coords,[(-1.,1.,0.),(-1.,0.,0.),]) # hide
-plot_sset(G, six_coords) # hide
-</code></pre><p>We then can perform the rewrite in larger contexts than just the pattern, such as a mesh with two quadrilaterals.</p><pre><code class="language-julia hljs">res = rewrite(r, G)</code></pre><p><img src="assets/meshres.png" alt="Alt Text"/></p><h2 id="Applied-example:-Lotka-Volterra-agent-based-model"><a class="docs-heading-anchor" href="#Applied-example:-Lotka-Volterra-agent-based-model">Applied example: Lotka-Volterra agent-based model</a><a id="Applied-example:-Lotka-Volterra-agent-based-model-1"></a><a class="docs-heading-anchor-permalink" href="#Applied-example:-Lotka-Volterra-agent-based-model" title="Permalink"></a></h2><h3 id="Overview"><a class="docs-heading-anchor" href="#Overview">Overview</a><a id="Overview-1"></a><a class="docs-heading-anchor-permalink" href="#Overview" title="Permalink"></a></h3><p>The aim to recapture the dynamics of NetLogo&#39;s <a href="https://ccl.northwestern.edu/netlogo/models/WolfSheepPredation">Wolf Sheep predation</a> model in terms of declarative rewrite rules, rather than standard code-based interfaced. This models wolves in sheeps living in a periodic 2D space, which is also covered by grass. Wolves eat sheep to gain energy, sheep eat grass to gain energy, and grass takes time to grow back after it has been eaten. Each wolf/sheep has a direction and is moving in that direction (veering left or right randomly with some probability). At some rate, wolves/sheep undergo mitosis and their energy is split in half. As the wolves/sheep move, they lose energy, and they die if they are eaten or run out of energy. The simulation could go on indefinitely, or it could be ended when one of the two species completely dies out.</p><p>The main difference with our reconstruction of the NetLogo model is that we model the 2D space as a discrete grid. This is more amenable to the style of pattern matching characteristic of AlgebraicRewriting, in contrast to floating point coordinates and collision checking to see when two entities occupy the same space.</p><h3 id="Defining-the-datatype-we-are-rewriting"><a class="docs-heading-anchor" href="#Defining-the-datatype-we-are-rewriting">Defining the datatype we are rewriting</a><a id="Defining-the-datatype-we-are-rewriting-1"></a><a class="docs-heading-anchor-permalink" href="#Defining-the-datatype-we-are-rewriting" title="Permalink"></a></h3><pre><code class="language- hljs">using Catlab.Graphs.BasicGraphs: HasGraph # hide
-@present TheoryLV &lt;: TheoryGraph begin # inherit Graph schema
+to_graphviz(H; node_labels=true) # hide</code></pre><p>Something to note here is that the result is only defined up to isomorphism, e.g. the vertex which corresponded to vertex #1 in the original graph may not be #1 in the result.</p><p>As the example <code>mesh.jl</code>, shows, we are not limited to rewriting (directed multi-) graphs - we can rewrite triangle meshes with the same methodology: we provide an instance of the datatype to serve as our pattern for replacement (such as the quadrangle above) and then need an instance to serve as our non-deleted subset of that pattern.</p><p><img src="assets/meshres.png" alt="Alt Text"/></p><h2 id="Applied-example:-Lotka-Volterra-agent-based-model"><a class="docs-heading-anchor" href="#Applied-example:-Lotka-Volterra-agent-based-model">Applied example: Lotka-Volterra agent-based model</a><a id="Applied-example:-Lotka-Volterra-agent-based-model-1"></a><a class="docs-heading-anchor-permalink" href="#Applied-example:-Lotka-Volterra-agent-based-model" title="Permalink"></a></h2><h3 id="Overview"><a class="docs-heading-anchor" href="#Overview">Overview</a><a id="Overview-1"></a><a class="docs-heading-anchor-permalink" href="#Overview" title="Permalink"></a></h3><p>The aim to recapture the dynamics of NetLogo&#39;s <a href="https://ccl.northwestern.edu/netlogo/models/WolfSheepPredation">Wolf Sheep predation</a> model in terms of declarative rewrite rules, rather than standard code-based interfaced. This models wolves in sheeps living in a periodic 2D space, which is also covered by grass. Wolves eat sheep to gain energy, sheep eat grass to gain energy, and grass takes time to grow back after it has been eaten. Each wolf/sheep has a direction and is moving in that direction (veering left or right randomly with some probability). At some rate, wolves/sheep undergo mitosis and their energy is split in half. As the wolves/sheep move, they lose energy, and they die if they are eaten or run out of energy. The simulation could go on indefinitely, or it could be ended when one of the two species completely dies out.</p><p>The main difference with our reconstruction of the NetLogo model is that we model the 2D space as a discrete grid. This is more amenable to the style of pattern matching characteristic of AlgebraicRewriting, in contrast to floating point coordinates and collision checking to see when two entities occupy the same space.</p><h3 id="Defining-the-datatype-we-are-rewriting"><a class="docs-heading-anchor" href="#Defining-the-datatype-we-are-rewriting">Defining the datatype we are rewriting</a><a id="Defining-the-datatype-we-are-rewriting-1"></a><a class="docs-heading-anchor-permalink" href="#Defining-the-datatype-we-are-rewriting" title="Permalink"></a></h3><pre><code class="language- hljs">using Catlab.Graphs.BasicGraphs: HasGraph # hide
+@present TheoryLV &lt;: SchGraph begin # inherit Graph schema
   (Sheep,Wolf,Grass)::Ob               # three more types of entities
   (Dir, GrassVal, Eng)::AttrType       # three more types of attributes
   sheep_loc::Hom(Sheep, E)             # sheep live on edges
@@ -208,7 +103,7 @@ Graph(s_reprod_r, [0=&gt;0,1=&gt;0]) # hide</code></pre><p>We assemble this data
   src=[1,2]; tgt=[2,3]; dir=[Var(:a), Var(:a)]
   sheep_eng=[Var(:x)]; sheep_loc=1
 end
-Graph(s_move_forward_l, [0=&gt;0,1=&gt;0,2=&gt;0]) # hide</code></pre><p>This pattern has two contiguous edges that are in the same direction (implicitly constrainted by using <code>Var(:a)</code> twice) and the sheep in the first position.</p><pre><code class="language- hljs">
+Graph(s_move_forward_l, [0=&gt;0,1=&gt;0,2=&gt;0]) # hide</code></pre><p>This pattern has two contiguous edges that are in the same direction (implicitly constrained by using <code>Var(:a)</code> twice) and the sheep in the first position.</p><pre><code class="language- hljs">
 s_move_forward_i = deepcopy(s_move_forward_l)
 rem_part!(s_move_forward_i, :Sheep, 1)
 
@@ -221,23 +116,19 @@ Graph(zero_s, [0=&gt;0,1=&gt;0,2=&gt;0]) # hide</code></pre><pre><code class="la
                           hom(s_move_forward_i, s_move_forward_r),
                           [NAC(hom(s_move_forward_l,zero_s; bindvars=true))])
 
-wolf_move_forward = F(sheep_move_forward)</code></pre><p>In all these cases, automatic homomorphism finding is sufficient for obtaining the morphism data of <code>L ↩ I → R</code>.</p><h3 id="Other-functions"><a class="docs-heading-anchor" href="#Other-functions">Other functions</a><a id="Other-functions-1"></a><a class="docs-heading-anchor-permalink" href="#Other-functions" title="Permalink"></a></h3><p>Functions to initialize and visualize the world-states are defined in the Jupyter notebook. Important functionality only possible in the notebook is the ability to move a slider and view the progression of a simulation.</p><p><img src="assets/slider2.gif" alt="Alt Text"/></p><h2 id="Alternative-rewriting-semantics"><a class="docs-heading-anchor" href="#Alternative-rewriting-semantics">Alternative rewriting semantics</a><a id="Alternative-rewriting-semantics-1"></a><a class="docs-heading-anchor-permalink" href="#Alternative-rewriting-semantics" title="Permalink"></a></h2><p>A nice property of DPO is that you can analyze the relationship between <code>I</code> and <code>L</code> to see exactly what will be deleted (likewise for <code>I</code> and <code>R</code> to see what will be added). However, this is sometimes not what we want: we wish to delete <em>outside the context</em> <code>L</code>, or to implicitly create things. The former is possible in single pushout rewriting, and both are possible in sesqui pushout rewriting.</p><h3 id="Single-pushout-rewriting"><a class="docs-heading-anchor" href="#Single-pushout-rewriting">Single pushout rewriting</a><a id="Single-pushout-rewriting-1"></a><a class="docs-heading-anchor-permalink" href="#Single-pushout-rewriting" title="Permalink"></a></h3><p>Implicit deletion works like a cascading delete: if you delete a vertex (for example), then you implicitly delete an edge which refers to that vertex (and a triangle that refers to that edge, and so on). Here we delete a triangle and a vertex explicitly, but implicitly the deleted vertex</p><pre><code class="language-julia hljs">Tri = @acset SSet begin
-    T=1; E=3; V=3;
-    d1=[1]; d2=[2]; d3=[3];
-    src=[1,1,2]; tgt=[3,2,3]
-end
-L = Tri
-r = Rule{:SPO}(homomorphisms(edge, L)[2],id(edge))
-m = homomorphism(L, quadrangle)
-# can_pushout_complement(r.L, m) == false
-rewrite_match(r,m)</code></pre><h3 id="Sesqui-pushout-rewriting"><a class="docs-heading-anchor" href="#Sesqui-pushout-rewriting">Sesqui pushout rewriting</a><a id="Sesqui-pushout-rewriting-1"></a><a class="docs-heading-anchor-permalink" href="#Sesqui-pushout-rewriting" title="Permalink"></a></h3><p>Here our rewrite rule takes a vertex and duplicates it.</p><pre><code class="language-julia hljs">L = @acset SSet begin V=1 end
-I = @acset SSet begin V=2 end
-r=Rule{:SqPO}(homomorphism(I,L),id(I))</code></pre><p>With sesqui-pushout semantics, when we apply this to the vertex of a triangle, this will create two triangles.</p><pre><code class="language-julia hljs">G = Tri
-m = CSetTransformation(L, G, V=[1]);
-nparts(sesqui_pushout_rewrite(l, r, m), :T) == 4 || error(&quot;We get 4 &#39;triangles&#39; when we ignore equations&quot;)
-rewrite_match(r, m; pres=ThSemisimplicialSet) # pass in the equations</code></pre><h2 id="Rewriting-things-that-aren&#39;t-C-Sets"><a class="docs-heading-anchor" href="#Rewriting-things-that-aren&#39;t-C-Sets">Rewriting things that aren&#39;t C-Sets</a><a id="Rewriting-things-that-aren&#39;t-C-Sets-1"></a><a class="docs-heading-anchor-permalink" href="#Rewriting-things-that-aren&#39;t-C-Sets" title="Permalink"></a></h2><p>Anything that implements some basic features (e.g. <code>pushout</code>, <code>pushout_complement</code>) can be used with this rewriting infrastructure. Generally, constructions that are built on top of C-Sets</p><h3 id="Slices"><a class="docs-heading-anchor" href="#Slices">Slices</a><a id="Slices-1"></a><a class="docs-heading-anchor-permalink" href="#Slices" title="Permalink"></a></h3><p>Rewriting on interesting data types is easy - our real limitation for showing examples of slice rewriting is the visualization of examples. Luckily, it turns Petri nets (which are visualized in AlgebraicPetri, where they are used to model chemical reaction networks) are equivalent to a certain kind of slice in graph. Therefore we will use AlgebraicPetri&#39;s visualization code to represent graph homomorphisms into this following graph:</p><pre><code class="language- hljs">two = @acset Graph begin V=2; E=2; src=[1,2]; tgt=[2,1] end
+wolf_move_forward = F(sheep_move_forward)</code></pre><p>In all these cases, automatic homomorphism finding is sufficient for obtaining the morphism data of <code>L ↩ I → R</code>.</p><h3 id="Other-functions"><a class="docs-heading-anchor" href="#Other-functions">Other functions</a><a id="Other-functions-1"></a><a class="docs-heading-anchor-permalink" href="#Other-functions" title="Permalink"></a></h3><p>Functions to initialize and visualize the world-states are defined in the file <code>lotka_volterra.jl</code>. Important functionality only possible in the notebook is the ability to move a slider and view the progression of a simulation.</p><p><img src="assets/slider2.gif" alt="Alt Text"/></p><h2 id="Alternative-rewriting-semantics"><a class="docs-heading-anchor" href="#Alternative-rewriting-semantics">Alternative rewriting semantics</a><a id="Alternative-rewriting-semantics-1"></a><a class="docs-heading-anchor-permalink" href="#Alternative-rewriting-semantics" title="Permalink"></a></h2><p>A nice property of DPO is that you can analyze the relationship between <code>I</code> and <code>L</code> to see exactly what will be deleted (likewise for <code>I</code> and <code>R</code> to see what will be added). However, this is sometimes not what we want: we wish to delete <em>outside the context</em> <code>L</code>, or to implicitly create things. The former is possible in single pushout rewriting, and both are possible in sesqui pushout rewriting.</p><h3 id="Single-pushout-rewriting"><a class="docs-heading-anchor" href="#Single-pushout-rewriting">Single pushout rewriting</a><a id="Single-pushout-rewriting-1"></a><a class="docs-heading-anchor-permalink" href="#Single-pushout-rewriting" title="Permalink"></a></h3><p>Implicit deletion works like a cascading delete: if you delete a vertex (for example), then you implicitly delete an edge which refers to that vertex.</p><pre><code class="language- hljs">L = ACSetTransformation(Graph(), Graph(1)) # a vertex is deleted
+R = id(Graph()) # nothing is added
+r = Rule{:SPO}(L,R)
+m = hom(Graph(1), path_graph(Graph, 3)) # rewriting • → • → •
+res = rewrite_match(r,m)
+to_graphviz(res; node_labels=true) # hide</code></pre><h3 id="Sesqui-pushout-rewriting"><a class="docs-heading-anchor" href="#Sesqui-pushout-rewriting">Sesqui pushout rewriting</a><a id="Sesqui-pushout-rewriting-1"></a><a class="docs-heading-anchor-permalink" href="#Sesqui-pushout-rewriting" title="Permalink"></a></h3><p>Here our rewrite rule takes a vertex and duplicates it. Sesqui pushout rewriting allows &quot;implicit copying&quot;, so copying a vertex that is connected to another via an edge will create a new connected vertex, rather than an isolated vertex.</p><pre><code class="language- hljs">L = hom(Graph(2), Graph(1))
+R = id(Graph(2))
+r = Rule{:SqPO}(L,R)
+m = hom(Graph(1), path_graph(Graph, 2)) # rewriting • → •
+res = rewrite_match(r,m)
+to_graphviz(res; node_labels=true) # hide</code></pre><h2 id="Rewriting-things-that-aren&#39;t-C-Sets"><a class="docs-heading-anchor" href="#Rewriting-things-that-aren&#39;t-C-Sets">Rewriting things that aren&#39;t C-Sets</a><a id="Rewriting-things-that-aren&#39;t-C-Sets-1"></a><a class="docs-heading-anchor-permalink" href="#Rewriting-things-that-aren&#39;t-C-Sets" title="Permalink"></a></h2><p>Anything that implements some basic features (e.g. <code>pushout</code>, <code>pushout_complement</code>) can be used with this rewriting infrastructure. Generally, these are constructions that are built on top of C-Sets.</p><h3 id="Slices"><a class="docs-heading-anchor" href="#Slices">Slices</a><a id="Slices-1"></a><a class="docs-heading-anchor-permalink" href="#Slices" title="Permalink"></a></h3><p>The category-theoretic notion of a <em>slice</em> allows us to consider a mapping between objects as an object itself. AlgebraicRewriting then allows us to implement rewriting these slice objects.</p><p>In general it is difficult to visualize examples of slice rewriting . Luckily, it turns out <em>Petri nets</em> (which are visualized in <a href="https://github.com/AlgebraicJulia/AlgebraicPetri.jl">AlgebraicPetri</a>, where they are used to model chemical reaction networks) are equivalent to a certain kind of slice in graph. Therefore we will use AlgebraicPetri&#39;s visualization code to represent graph homomorphisms into this following graph:</p><pre><code class="language- hljs">two = @acset Graph begin V=2; E=2; src=[1,2]; tgt=[2,1] end
 to_graphviz(two; node_labels=true) # hide</code></pre><p>Vertices that are sent to vertex #1 will be thought of as &quot;species&quot;, whereas vertices that are sent to vertex #2 will be thought of as &quot;transitions&quot;. Whether or not the edge is from a transition or to a transition determines whether it will correspond to an &quot;input&quot; or an &quot;output&quot;, and the fact there exists a homomorphism into <code>two</code> at all guarantees there are no species-species or transition-transition edges.</p><p>To rewrite a slice, we first need a pattern slice. We start with the graph that will be made into a slice by giving a homomorphism into <code>two</code>:</p><pre><code class="language- hljs">L_ = path_graph(Graph, 2)
-to_graphviz(L_; node_labels=true) # hide</code></pre><p>Then we turn this into a slice</p><pre><code class="language- hljs">
+to_graphviz(L_; node_labels=true) # hide</code></pre><p>Then we turn this into a slice</p><pre><code class="language- hljs">using AlgebraicPetri
 function graph_slice(s::Slice)  # hide
     h = s.slice  # hide
     V, E = collect.([h[:V], h[:E]])  # hide
@@ -252,13 +143,11 @@ function graph_slice(s::Slice)  # hide
 end; # hide
 
 L = Slice(ACSetTransformation(L_, two, V=[2,1], E=[2]))
-graph_slice(L) # hide</code></pre><pre><code class="language- hljs">I_ = Graph(1)
-I = Slice(ACSetTransformation(I_, two, V=[2]))
+graph_slice(L) # hide</code></pre><pre><code class="language- hljs">I = Slice(ACSetTransformation(Graph(1), two, V=[2]))
 
-R_ = Graph(2)
-R = Slice(ACSetTransformation(R_, two, V=[2, 1]))
-graph_slice(R) # hide</code></pre><pre><code class="language- hljs">rule = Rule(hom(I, L), hom(I, R))</code></pre><p>The instance of a slice we are rewriting:</p><pre><code class="language- hljs">G_ = path_graph(Graph, 3)
+R = Slice(ACSetTransformation(Graph(2), two, V=[2, 1]))
+graph_slice(R) # hide</code></pre><p>Thus our rewrite rule will delete an <em>output</em> edge.</p><pre><code class="language- hljs">rule = Rule(hom(I, L), hom(I, R));</code></pre><p>The instance of a slice we are rewriting:</p><pre><code class="language- hljs">G_ = path_graph(Graph, 3)
 G = Slice(ACSetTransformation(G_, two, V=[1,2,1], E=[1,2]))
 graph_slice(G) # hide</code></pre><pre><code class="language- hljs">using AlgebraicRewriting: rewrite # hide
 H = rewrite(rule, G)
-graph_slice(H) # hide</code></pre><h3 id="Structured-cospans"><a class="docs-heading-anchor" href="#Structured-cospans">Structured cospans</a><a id="Structured-cospans-1"></a><a class="docs-heading-anchor-permalink" href="#Structured-cospans" title="Permalink"></a></h3><h3 id="Diagrams"><a class="docs-heading-anchor" href="#Diagrams">Diagrams</a><a id="Diagrams-1"></a><a class="docs-heading-anchor-permalink" href="#Diagrams" title="Permalink"></a></h3></article><nav class="docs-footer"><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 0.27.23 on <span class="colophon-date" title="Tuesday 6 September 2022 19:04">Tuesday 6 September 2022</span>. Using Julia version 1.7.3.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
+graph_slice(H) # hide</code></pre><h3 id="Coming:-Structured-cospans-and-Diagrams"><a class="docs-heading-anchor" href="#Coming:-Structured-cospans-and-Diagrams">Coming: Structured cospans and Diagrams</a><a id="Coming:-Structured-cospans-and-Diagrams-1"></a><a class="docs-heading-anchor-permalink" href="#Coming:-Structured-cospans-and-Diagrams" title="Permalink"></a></h3></article><nav class="docs-footer"><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 0.27.23 on <span class="colophon-date" title="Wednesday 14 September 2022 11:42">Wednesday 14 September 2022</span>. Using Julia version 1.7.3.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
