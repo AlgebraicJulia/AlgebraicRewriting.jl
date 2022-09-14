@@ -1,21 +1,194 @@
 <!DOCTYPE html>
-<html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/><title>AlgebraicRewriting.jl · AlgebraicRewriting</title><script data-outdated-warner src="assets/warner.js"></script><link href="https://cdnjs.cloudflare.com/ajax/libs/lato-font/3.0.0/css/lato-font.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/juliamono/0.045/juliamono.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/fontawesome.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/solid.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/brands.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.13.24/katex.min.css" rel="stylesheet" type="text/css"/><script>documenterBaseURL="."</script><script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.6/require.min.js" data-main="assets/documenter.js"></script><script src="siteinfo.js"></script><script src="../versions.js"></script><link class="docs-theme-link" rel="stylesheet" type="text/css" href="assets/themes/documenter-dark.css" data-theme-name="documenter-dark" data-theme-primary-dark/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="assets/themes/documenter-light.css" data-theme-name="documenter-light" data-theme-primary/><script src="assets/themeswap.js"></script></head><body><div id="documenter"><nav class="docs-sidebar"><a class="docs-logo" href><img src="assets/logo.png" alt="AlgebraicRewriting logo"/></a><div class="docs-package-name"><span class="docs-autofit"><a href>AlgebraicRewriting</a></span></div><form class="docs-search" action="search/"><input class="docs-search-query" id="documenter-search-query" name="q" type="text" placeholder="Search docs"/></form><ul class="docs-menu"><li class="is-active"><a class="tocitem" href>AlgebraicRewriting.jl</a><ul class="internal"><li><a class="tocitem" href="#Double-pushout-rewriting-of-graphs"><span>Double pushout rewriting of graphs</span></a></li><li><a class="tocitem" href="#Applied-example:-Lotka-Volterra-agent-based-model"><span>Applied example: Lotka-Volterra agent-based model</span></a></li><li><a class="tocitem" href="#Alternative-rewriting-semantics"><span>Alternative rewriting semantics</span></a></li><li><a class="tocitem" href="#Rewriting-things-that-aren&#39;t-C-Sets"><span>Rewriting things that aren&#39;t C-Sets</span></a></li></ul></li></ul><div class="docs-version-selector field has-addons"><div class="control"><span class="docs-label button is-static is-size-7">Version</span></div><div class="docs-selector control is-expanded"><div class="select is-fullwidth is-size-7"><select id="documenter-version-selector"></select></div></div></div></nav><div class="docs-main"><header class="docs-navbar"><nav class="breadcrumb"><ul class="is-hidden-mobile"><li class="is-active"><a href>AlgebraicRewriting.jl</a></li></ul><ul class="is-hidden-tablet"><li class="is-active"><a href>AlgebraicRewriting.jl</a></li></ul></nav><div class="docs-right"><a class="docs-edit-link" href="https://github.com/AlgebraicJulia/AlgebraicRewriting.jl/blob/main/docs/src/index.md" title="Edit on GitHub"><span class="docs-icon fab"></span><span class="docs-label is-hidden-touch">Edit on GitHub</span></a><a class="docs-settings-button fas fa-cog" id="documenter-settings-button" href="#" title="Settings"></a><a class="docs-sidebar-button fa fa-bars is-hidden-desktop" id="documenter-sidebar-button" href="#"></a></div></header><article class="content" id="documenter-page"><h1 id="AlgebraicRewriting.jl"><a class="docs-heading-anchor" href="#AlgebraicRewriting.jl">AlgebraicRewriting.jl</a><a id="AlgebraicRewriting.jl-1"></a><a class="docs-heading-anchor-permalink" href="#AlgebraicRewriting.jl" title="Permalink"></a></h1><p>Here we walk through basic examples of double-pushout (DPO), single-pushout (SPO), and sesqui-pushout (SqPO) rewriting. We also consider the rewriting of graphs, Petri nets, and 2D semisimplicial sets (which are all instances of rewriting in C-set categories) in addition to rewriting C-set slice categories and structured cospans of C-sets. Future work will allow us to perform rewriting of diagrams in C-set categories.</p><h2 id="Double-pushout-rewriting-of-graphs"><a class="docs-heading-anchor" href="#Double-pushout-rewriting-of-graphs">Double pushout rewriting of graphs</a><a id="Double-pushout-rewriting-of-graphs-1"></a><a class="docs-heading-anchor-permalink" href="#Double-pushout-rewriting-of-graphs" title="Permalink"></a></h2><p>This is the classic setting of graph transformation. Suppose we wish to rewrite this graph:</p><pre><code class="language- hljs">using Catlab, Catlab.Graphs, Catlab.Graphics, Catlab.CategoricalAlgebra
+<html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/><title>AlgebraicRewriting.jl · AlgebraicRewriting</title><script data-outdated-warner src="assets/warner.js"></script><link href="https://cdnjs.cloudflare.com/ajax/libs/lato-font/3.0.0/css/lato-font.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/juliamono/0.045/juliamono.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/fontawesome.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/solid.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/brands.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.13.24/katex.min.css" rel="stylesheet" type="text/css"/><script>documenterBaseURL="."</script><script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.6/require.min.js" data-main="assets/documenter.js"></script><script src="siteinfo.js"></script><script src="../versions.js"></script><link class="docs-theme-link" rel="stylesheet" type="text/css" href="assets/themes/documenter-dark.css" data-theme-name="documenter-dark" data-theme-primary-dark/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="assets/themes/documenter-light.css" data-theme-name="documenter-light" data-theme-primary/><script src="assets/themeswap.js"></script></head><body><div id="documenter"><nav class="docs-sidebar"><a class="docs-logo" href><img src="assets/logo.png" alt="AlgebraicRewriting logo"/></a><div class="docs-package-name"><span class="docs-autofit"><a href>AlgebraicRewriting</a></span></div><form class="docs-search" action="search/"><input class="docs-search-query" id="documenter-search-query" name="q" type="text" placeholder="Search docs"/></form><ul class="docs-menu"><li class="is-active"><a class="tocitem" href>AlgebraicRewriting.jl</a><ul class="internal"><li><a class="tocitem" href="#Double-pushout-rewriting-of-graphs"><span>Double pushout rewriting of graphs</span></a></li><li><a class="tocitem" href="#Applied-example:-Lotka-Volterra-agent-based-model"><span>Applied example: Lotka-Volterra agent-based model</span></a></li><li><a class="tocitem" href="#Alternative-rewriting-semantics"><span>Alternative rewriting semantics</span></a></li><li><a class="tocitem" href="#Rewriting-things-that-aren&#39;t-C-Sets"><span>Rewriting things that aren&#39;t C-Sets</span></a></li></ul></li></ul><div class="docs-version-selector field has-addons"><div class="control"><span class="docs-label button is-static is-size-7">Version</span></div><div class="docs-selector control is-expanded"><div class="select is-fullwidth is-size-7"><select id="documenter-version-selector"></select></div></div></div></nav><div class="docs-main"><header class="docs-navbar"><nav class="breadcrumb"><ul class="is-hidden-mobile"><li class="is-active"><a href>AlgebraicRewriting.jl</a></li></ul><ul class="is-hidden-tablet"><li class="is-active"><a href>AlgebraicRewriting.jl</a></li></ul></nav><div class="docs-right"><a class="docs-edit-link" href="https://github.com/AlgebraicJulia/AlgebraicRewriting.jl/blob/main/docs/src/index.md" title="Edit on GitHub"><span class="docs-icon fab"></span><span class="docs-label is-hidden-touch">Edit on GitHub</span></a><a class="docs-settings-button fas fa-cog" id="documenter-settings-button" href="#" title="Settings"></a><a class="docs-sidebar-button fa fa-bars is-hidden-desktop" id="documenter-sidebar-button" href="#"></a></div></header><article class="content" id="documenter-page"><h1 id="AlgebraicRewriting.jl"><a class="docs-heading-anchor" href="#AlgebraicRewriting.jl">AlgebraicRewriting.jl</a><a id="AlgebraicRewriting.jl-1"></a><a class="docs-heading-anchor-permalink" href="#AlgebraicRewriting.jl" title="Permalink"></a></h1><p>Here we walk through basic examples of double-pushout (DPO), single-pushout (SPO), and sesqui-pushout (SqPO) rewriting. We also consider the rewriting of graphs, Petri nets, and 2D semisimplicial sets (which are all instances of rewriting in C-set categories) in addition to rewriting C-set slice categories and structured cospans of C-sets. Future work will allow us to perform rewriting of diagrams in C-set categories.</p><h2 id="Double-pushout-rewriting-of-graphs"><a class="docs-heading-anchor" href="#Double-pushout-rewriting-of-graphs">Double pushout rewriting of graphs</a><a id="Double-pushout-rewriting-of-graphs-1"></a><a class="docs-heading-anchor-permalink" href="#Double-pushout-rewriting-of-graphs" title="Permalink"></a></h2><p>This is the classic setting of graph transformation. Suppose we wish to rewrite this graph:</p><pre><code class="language-julia hljs">using Catlab, Catlab.Graphs, Catlab.Graphics, Catlab.CategoricalAlgebra
 
 G = @acset Graph begin
     V=3; E=3;
     src=[1,2,2];
     tgt=[2,3,3]
-end
-to_graphviz(G; node_labels=true) # hide</code></pre><p>Our rewrite rule will look for parallel arrows</p><pre><code class="language- hljs">L = @acset Graph begin V=2; E=2; src=1; tgt=2 end # matched pattern
-to_graphviz(L; node_labels=true) # hide</code></pre><p>Then remove one of the edges (by defining the <em>non-deleted</em> subpart of the pattern as the following graph)</p><pre><code class="language- hljs">I = @acset Graph begin V=2; E=1; src=1; tgt=2 end # interface: non-deleted subset of L
-to_graphviz(I; node_labels=true) # hide</code></pre><p>And lastly replacing the pattern with one that collapses the two matched vertices to form a loop.</p><pre><code class="language- hljs">R = @acset Graph begin V=1; E=1; src=1; tgt=1 end # Replacement pattern
-to_graphviz(R; node_labels=true) # hide</code></pre><p>We assemble this information into a rewrite rule by forming a span <code>L ↩ I → R</code></p><pre><code class="language- hljs">using AlgebraicRewriting
+end</code></pre><img src='data:image/svg+xml;utf-8,<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN"
+ "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+<!-- Generated by graphviz version 2.43.0 (0)
+ -->
+<!-- Title: G Pages: 1 -->
+<svg width="144pt" height="29pt"
+ viewBox="0.00 0.00 143.64 29.21" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+<g id="graph0" class="graph" transform="scale(1 1) rotate(0) translate(4 25.21)">
+<title>G</title>
+<polygon fill="white" stroke="transparent" points="-4,4 -4,-25.21 139.64,-25.21 139.64,4 -4,4"/>
+<!-- n1 -->
+<g id="node1" class="node">
+<title>n1</title>
+<ellipse fill="none" stroke="black" cx="10.61" cy="-10.61" rx="10.71" ry="10.71"/>
+<text text-anchor="middle" x="10.61" y="-6.91" font-family="Times,serif" font-size="14.00">1</text>
+</g>
+<!-- n2 -->
+<g id="node2" class="node">
+<title>n2</title>
+<ellipse fill="none" stroke="black" cx="67.82" cy="-10.61" rx="10.71" ry="10.71"/>
+<text text-anchor="middle" x="67.82" y="-6.91" font-family="Times,serif" font-size="14.00">2</text>
+</g>
+<!-- n1&%2345;&gt;n2 -->
+<g id="edge1" class="edge">
+<title>n1&%2345;&gt;n2</title>
+<path fill="none" stroke="black" d="M21.22,-10.61C29.67,-10.61 42.1,-10.61 51.84,-10.61"/>
+<polygon fill="black" stroke="black" points="51.94,-12.36 56.94,-10.61 51.94,-8.86 51.94,-12.36"/>
+</g>
+<!-- n3 -->
+<g id="node3" class="node">
+<title>n3</title>
+<ellipse fill="none" stroke="black" cx="125.03" cy="-10.61" rx="10.71" ry="10.71"/>
+<text text-anchor="middle" x="125.03" y="-6.91" font-family="Times,serif" font-size="14.00">3</text>
+</g>
+<!-- n2&%2345;&gt;n3 -->
+<g id="edge2" class="edge">
+<title>n2&%2345;&gt;n3</title>
+<path fill="none" stroke="black" d="M77.45,-5.54C86.33,-3.61 100.3,-3.34 110.63,-4.72"/>
+<polygon fill="black" stroke="black" points="110.42,-6.46 115.65,-5.6 111.02,-3.02 110.42,-6.46"/>
+</g>
+<!-- n2&%2345;&gt;n3 -->
+<g id="edge3" class="edge">
+<title>n2&%2345;&gt;n3</title>
+<path fill="none" stroke="black" d="M77.45,-15.67C86.33,-17.6 100.3,-17.87 110.63,-16.49"/>
+<polygon fill="black" stroke="black" points="111.02,-18.2 115.65,-15.62 110.42,-14.75 111.02,-18.2"/>
+</g>
+</g>
+</svg>
+'/><p>Our rewrite rule will look for parallel arrows</p><pre><code class="language-julia hljs">L = @acset Graph begin V=2; E=2; src=1; tgt=2 end # matched pattern</code></pre><img src='data:image/svg+xml;utf-8,<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN"
+ "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+<!-- Generated by graphviz version 2.43.0 (0)
+ -->
+<!-- Title: G Pages: 1 -->
+<svg width="86pt" height="29pt"
+ viewBox="0.00 0.00 86.43 29.21" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+<g id="graph0" class="graph" transform="scale(1 1) rotate(0) translate(4 25.21)">
+<title>G</title>
+<polygon fill="white" stroke="transparent" points="-4,4 -4,-25.21 82.43,-25.21 82.43,4 -4,4"/>
+<!-- n1 -->
+<g id="node1" class="node">
+<title>n1</title>
+<ellipse fill="none" stroke="black" cx="10.61" cy="-10.61" rx="10.71" ry="10.71"/>
+<text text-anchor="middle" x="10.61" y="-6.91" font-family="Times,serif" font-size="14.00">1</text>
+</g>
+<!-- n2 -->
+<g id="node2" class="node">
+<title>n2</title>
+<ellipse fill="none" stroke="black" cx="67.82" cy="-10.61" rx="10.71" ry="10.71"/>
+<text text-anchor="middle" x="67.82" y="-6.91" font-family="Times,serif" font-size="14.00">2</text>
+</g>
+<!-- n1&%2345;&gt;n2 -->
+<g id="edge1" class="edge">
+<title>n1&%2345;&gt;n2</title>
+<path fill="none" stroke="black" d="M20.23,-5.54C29.12,-3.61 43.09,-3.34 53.41,-4.72"/>
+<polygon fill="black" stroke="black" points="53.21,-6.46 58.43,-5.6 53.81,-3.02 53.21,-6.46"/>
+</g>
+<!-- n1&%2345;&gt;n2 -->
+<g id="edge2" class="edge">
+<title>n1&%2345;&gt;n2</title>
+<path fill="none" stroke="black" d="M20.23,-15.67C29.12,-17.6 43.09,-17.87 53.41,-16.49"/>
+<polygon fill="black" stroke="black" points="53.81,-18.2 58.43,-15.62 53.21,-14.75 53.81,-18.2"/>
+</g>
+</g>
+</svg>
+'/><p>Then remove one of the edges (by defining the <em>non-deleted</em> subpart of the pattern as the following graph)</p><pre><code class="language-julia hljs">I = @acset Graph begin V=2; E=1; src=1; tgt=2 end # interface: non-deleted subset of L</code></pre><img src='data:image/svg+xml;utf-8,<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN"
+ "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+<!-- Generated by graphviz version 2.43.0 (0)
+ -->
+<!-- Title: G Pages: 1 -->
+<svg width="86pt" height="29pt"
+ viewBox="0.00 0.00 86.43 29.21" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+<g id="graph0" class="graph" transform="scale(1 1) rotate(0) translate(4 25.21)">
+<title>G</title>
+<polygon fill="white" stroke="transparent" points="-4,4 -4,-25.21 82.43,-25.21 82.43,4 -4,4"/>
+<!-- n1 -->
+<g id="node1" class="node">
+<title>n1</title>
+<ellipse fill="none" stroke="black" cx="10.61" cy="-10.61" rx="10.71" ry="10.71"/>
+<text text-anchor="middle" x="10.61" y="-6.91" font-family="Times,serif" font-size="14.00">1</text>
+</g>
+<!-- n2 -->
+<g id="node2" class="node">
+<title>n2</title>
+<ellipse fill="none" stroke="black" cx="67.82" cy="-10.61" rx="10.71" ry="10.71"/>
+<text text-anchor="middle" x="67.82" y="-6.91" font-family="Times,serif" font-size="14.00">2</text>
+</g>
+<!-- n1&%2345;&gt;n2 -->
+<g id="edge1" class="edge">
+<title>n1&%2345;&gt;n2</title>
+<path fill="none" stroke="black" d="M21.22,-10.61C29.67,-10.61 42.1,-10.61 51.84,-10.61"/>
+<polygon fill="black" stroke="black" points="51.94,-12.36 56.94,-10.61 51.94,-8.86 51.94,-12.36"/>
+</g>
+</g>
+</svg>
+'/><p>And lastly replacing the pattern with one that collapses the two matched vertices to form a loop.</p><pre><code class="language-julia hljs">R = @acset Graph begin V=1; E=1; src=1; tgt=1 end # Replacement pattern</code></pre><img src='data:image/svg+xml;utf-8,<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN"
+ "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+<!-- Generated by graphviz version 2.43.0 (0)
+ -->
+<!-- Title: G Pages: 1 -->
+<svg width="29pt" height="47pt"
+ viewBox="0.00 0.00 29.21 47.21" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+<g id="graph0" class="graph" transform="scale(1 1) rotate(0) translate(4 43.21)">
+<title>G</title>
+<polygon fill="white" stroke="transparent" points="-4,4 -4,-43.21 25.21,-43.21 25.21,4 -4,4"/>
+<!-- n1 -->
+<g id="node1" class="node">
+<title>n1</title>
+<ellipse fill="none" stroke="black" cx="10.61" cy="-10.61" rx="10.71" ry="10.71"/>
+<text text-anchor="middle" x="10.61" y="-6.91" font-family="Times,serif" font-size="14.00">1</text>
+</g>
+<!-- n1&%2345;&gt;n1 -->
+<g id="edge1" class="edge">
+<title>n1&%2345;&gt;n1</title>
+<path fill="none" stroke="black" d="M7.48,-20.87C6.05,-29.78 7.09,-39.21 10.61,-39.21 13.46,-39.21 14.69,-32.99 14.28,-25.87"/>
+<polygon fill="black" stroke="black" points="16.02,-25.65 13.74,-20.87 12.54,-26.03 16.02,-25.65"/>
+</g>
+</g>
+</svg>
+'/><p>We assemble this information into a rewrite rule by forming a span <code>L ↩ I → R</code></p><pre><code class="language-julia hljs">using AlgebraicRewriting
 using AlgebraicRewriting: rewrite
 const hom = AlgebraicRewriting.homomorphism
 rule = Rule(hom(I,L), hom(I,R))
-H = rewrite(rule, G)
-to_graphviz(H; node_labels=true) # hide</code></pre><p>Something to note here is that the result is only defined up to isomorphism, e.g. the vertex which corresponded to vertex #1 in the original graph may not be #1 in the result.</p><p>As the example <code>mesh.jl</code>, shows, we are not limited to rewriting (directed multi-) graphs - we can rewrite triangle meshes with the same methodology: we provide an instance of the datatype to serve as our pattern for replacement (such as the quadrangle above) and then need an instance to serve as our non-deleted subset of that pattern.</p><p><img src="assets/meshres.png" alt="Alt Text"/></p><h2 id="Applied-example:-Lotka-Volterra-agent-based-model"><a class="docs-heading-anchor" href="#Applied-example:-Lotka-Volterra-agent-based-model">Applied example: Lotka-Volterra agent-based model</a><a id="Applied-example:-Lotka-Volterra-agent-based-model-1"></a><a class="docs-heading-anchor-permalink" href="#Applied-example:-Lotka-Volterra-agent-based-model" title="Permalink"></a></h2><h3 id="Overview"><a class="docs-heading-anchor" href="#Overview">Overview</a><a id="Overview-1"></a><a class="docs-heading-anchor-permalink" href="#Overview" title="Permalink"></a></h3><p>The aim to recapture the dynamics of NetLogo&#39;s <a href="https://ccl.northwestern.edu/netlogo/models/WolfSheepPredation">Wolf Sheep predation</a> model in terms of declarative rewrite rules, rather than standard code-based interfaced. This models wolves in sheeps living in a periodic 2D space, which is also covered by grass. Wolves eat sheep to gain energy, sheep eat grass to gain energy, and grass takes time to grow back after it has been eaten. Each wolf/sheep has a direction and is moving in that direction (veering left or right randomly with some probability). At some rate, wolves/sheep undergo mitosis and their energy is split in half. As the wolves/sheep move, they lose energy, and they die if they are eaten or run out of energy. The simulation could go on indefinitely, or it could be ended when one of the two species completely dies out.</p><p>The main difference with our reconstruction of the NetLogo model is that we model the 2D space as a discrete grid. This is more amenable to the style of pattern matching characteristic of AlgebraicRewriting, in contrast to floating point coordinates and collision checking to see when two entities occupy the same space.</p><h3 id="Defining-the-datatype-we-are-rewriting"><a class="docs-heading-anchor" href="#Defining-the-datatype-we-are-rewriting">Defining the datatype we are rewriting</a><a id="Defining-the-datatype-we-are-rewriting-1"></a><a class="docs-heading-anchor-permalink" href="#Defining-the-datatype-we-are-rewriting" title="Permalink"></a></h3><pre><code class="language- hljs">using Catlab.Graphs.BasicGraphs: HasGraph # hide
-@present TheoryLV &lt;: SchGraph begin # inherit Graph schema
+H = rewrite(rule, G)</code></pre><img src='data:image/svg+xml;utf-8,<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN"
+ "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+<!-- Generated by graphviz version 2.43.0 (0)
+ -->
+<!-- Title: G Pages: 1 -->
+<svg width="87pt" height="47pt"
+ viewBox="0.00 0.00 86.76 47.21" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+<g id="graph0" class="graph" transform="scale(1 1) rotate(0) translate(4 43.21)">
+<title>G</title>
+<polygon fill="white" stroke="transparent" points="-4,4 -4,-43.21 82.76,-43.21 82.76,4 -4,4"/>
+<!-- n1 -->
+<g id="node1" class="node">
+<title>n1</title>
+<ellipse fill="none" stroke="black" cx="67.82" cy="-10.61" rx="10.71" ry="10.71"/>
+<text text-anchor="middle" x="67.82" y="-6.91" font-family="Times,serif" font-size="14.00">1</text>
+</g>
+<!-- n1&%2345;&gt;n1 -->
+<g id="edge1" class="edge">
+<title>n1&%2345;&gt;n1</title>
+<path fill="none" stroke="black" d="M60.28,-18.51C54.59,-28.03 57.1,-39.21 67.82,-39.21 76.7,-39.21 79.94,-31.55 77.57,-23.5"/>
+<polygon fill="black" stroke="black" points="78.98,-22.38 75.36,-18.51 75.78,-23.79 78.98,-22.38"/>
+</g>
+<!-- n2 -->
+<g id="node2" class="node">
+<title>n2</title>
+<ellipse fill="none" stroke="black" cx="10.61" cy="-10.61" rx="10.71" ry="10.71"/>
+<text text-anchor="middle" x="10.61" y="-6.91" font-family="Times,serif" font-size="14.00">2</text>
+</g>
+<!-- n2&%2345;&gt;n1 -->
+<g id="edge2" class="edge">
+<title>n2&%2345;&gt;n1</title>
+<path fill="none" stroke="black" d="M21.22,-10.61C29.67,-10.61 42.1,-10.61 51.84,-10.61"/>
+<polygon fill="black" stroke="black" points="51.94,-12.36 56.94,-10.61 51.94,-8.86 51.94,-12.36"/>
+</g>
+</g>
+</svg>
+'/><p>Something to note here is that the result is only defined up to isomorphism, e.g. the vertex which corresponded to vertex #1 in the original graph may not be #1 in the result.</p><p>As the example <code>mesh.jl</code>, shows, we are not limited to rewriting (directed multi-) graphs - we can rewrite triangle meshes with the same methodology: we provide an instance of the datatype to serve as our pattern for replacement (such as the quadrangle above) and then need an instance to serve as our non-deleted subset of that pattern.</p><p><img src="assets/meshres.png" alt="Alt Text"/></p><h2 id="Applied-example:-Lotka-Volterra-agent-based-model"><a class="docs-heading-anchor" href="#Applied-example:-Lotka-Volterra-agent-based-model">Applied example: Lotka-Volterra agent-based model</a><a id="Applied-example:-Lotka-Volterra-agent-based-model-1"></a><a class="docs-heading-anchor-permalink" href="#Applied-example:-Lotka-Volterra-agent-based-model" title="Permalink"></a></h2><h3 id="Overview"><a class="docs-heading-anchor" href="#Overview">Overview</a><a id="Overview-1"></a><a class="docs-heading-anchor-permalink" href="#Overview" title="Permalink"></a></h3><p>The aim to recapture the dynamics of NetLogo&#39;s <a href="https://ccl.northwestern.edu/netlogo/models/WolfSheepPredation">Wolf Sheep predation</a> model in terms of declarative rewrite rules, rather than standard code-based interfaced. This models wolves in sheeps living in a periodic 2D space, which is also covered by grass. Wolves eat sheep to gain energy, sheep eat grass to gain energy, and grass takes time to grow back after it has been eaten. Each wolf/sheep has a direction and is moving in that direction (veering left or right randomly with some probability). At some rate, wolves/sheep undergo mitosis and their energy is split in half. As the wolves/sheep move, they lose energy, and they die if they are eaten or run out of energy. The simulation could go on indefinitely, or it could be ended when one of the two species completely dies out.</p><p>The main difference with our reconstruction of the NetLogo model is that we model the 2D space as a discrete grid. This is more amenable to the style of pattern matching characteristic of AlgebraicRewriting, in contrast to floating point coordinates and collision checking to see when two entities occupy the same space.</p><h3 id="Defining-the-datatype-we-are-rewriting"><a class="docs-heading-anchor" href="#Defining-the-datatype-we-are-rewriting">Defining the datatype we are rewriting</a><a id="Defining-the-datatype-we-are-rewriting-1"></a><a class="docs-heading-anchor-permalink" href="#Defining-the-datatype-we-are-rewriting" title="Permalink"></a></h3><pre><code class="language-julia hljs">@present TheoryLV &lt;: SchGraph begin # inherit Graph schema
   (Sheep,Wolf,Grass)::Ob               # three more types of entities
   (Dir, GrassVal, Eng)::AttrType       # three more types of attributes
   sheep_loc::Hom(Sheep, E)             # sheep live on edges
@@ -30,7 +203,7 @@ end
 @acset_type LV_Generic(TheoryLV) &lt;: HasGraph  # inherit Graph API
 const LV = LV_Generic{Union{Var,Expr,Symbol}, # Dir
                       Union{Var,Expr,Int},    # GrassVal
-                      Union{Var,Expr,Int}};   # Eng</code></pre><ul><li><code>grassval == 0</code> means alive grass; <code>grassval &gt; 0</code> represents the time</li></ul><p>until the grass is alive.</p><ul><li>Sheeps and wolves have position and direction, so we assign each an <em>edge</em>.<ul><li>We assume a convention where the vertex of a sheep/wolf is the edge <em>source</em>.</li></ul></li><li><code>Dir</code> is an attribute which can take values <code>N</code>, <code>E</code>, <code>W</code>, and <code>S</code>.</li></ul><p>There is a certain symmetry between wolves and sheep in the schema, which we can make explicit with the following endofunctor:</p><pre><code class="language- hljs">F = FinFunctor(
+                      Union{Var,Expr,Int}};   # Eng</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">Main.LV_Generic{Union{Expr, Symbol, Var}, Union{Int64, Expr, Var}, Union{Int64, Expr, Var}}</code></pre><ul><li><code>grassval == 0</code> means alive grass; <code>grassval &gt; 0</code> represents the time</li></ul><p>until the grass is alive.</p><ul><li>Sheeps and wolves have position and direction, so we assign each an <em>edge</em>.<ul><li>We assume a convention where the vertex of a sheep/wolf is the edge <em>source</em>.</li></ul></li><li><code>Dir</code> is an attribute which can take values <code>N</code>, <code>E</code>, <code>W</code>, and <code>S</code>.</li></ul><p>There is a certain symmetry between wolves and sheep in the schema, which we can make explicit with the following endofunctor:</p><pre><code class="language-julia hljs">F = FinFunctor(
   Dict([:Sheep =&gt; :Wolf, :Wolf =&gt; :Sheep, :Grass =&gt; :Grass, :V=&gt;:V, :E=&gt;:E,
         :Dir=&gt;:Dir, :GrassVal=&gt;:GrassVal, :Eng=&gt;:Eng]),
   Dict([:sheep_loc=&gt;:wolf_loc, :wolf_loc=&gt;:sheep_loc,
@@ -38,116 +211,486 @@ const LV = LV_Generic{Union{Var,Expr,Symbol}, # Dir
         :src=&gt;:src,:tgt=&gt;:tgt,:dir=&gt;:dir,
         :grassval=&gt;:grassval,:grass=&gt;:grass]),
   TheoryLV, TheoryLV
-);</code></pre><p>We can apply <code>F</code> to a rewrite rule defined for sheep (e.g. that one dies when it has zero energy) and obtain the analogous rule for wolves without any effort.</p><h3 id="Rules-and-Schedules"><a class="docs-heading-anchor" href="#Rules-and-Schedules">Rules and Schedules</a><a id="Rules-and-Schedules-1"></a><a class="docs-heading-anchor-permalink" href="#Rules-and-Schedules" title="Permalink"></a></h3><p>We can declare a <code>Rule</code> and how we wish to schedule that rule. The &#39;outer loop&#39; is a <code>WhileSchedule</code> that executes all the rules in some order (i.e. a <code>LinearSchedule</code> wrapped around a list called <code>seq</code> made up of individual <code>RuleSchedule</code>s).</p><pre><code class="language-julia hljs">extinct(prev, curr) = nparts(curr, :Wolf) == 0 || nparts(curr, :Sheep) == 0
-overall = WhileSchedule(ListSchedule(seq), :main, extinct, 10);</code></pre><p>Let&#39;s show some of the things that went into <code>seq</code>. Below we define sheep reproduction to occur with probability 0.04 and wolf reproduction to occur with probability 0.05.</p><pre><code class="language- hljs">using Catlab.Graphics.Graphviz: Attributes, Statement, Node # hide
-using Catlab.Graphics.Graphviz # hide
-
-
-supscript_d = Dict([&#39;1&#39;=&gt;&#39;¹&#39;, &#39;2&#39;=&gt;&#39;²&#39;, &#39;3&#39;=&gt;&#39;³&#39;, &#39;4&#39;=&gt;&#39;⁴&#39;, &#39;5&#39;=&gt;&#39;⁵&#39;, # hide
-                    &#39;6&#39;=&gt;&#39;⁶&#39;, &#39;7&#39;=&gt;&#39;⁷&#39;, &#39;8&#39;=&gt;&#39;⁸&#39;, &#39;9&#39;=&gt;&#39;⁹&#39;, &#39;0&#39;=&gt;&#39;⁰&#39;]) # hide
-supscript(x::String) = join([get(supscript_d, c, c) for c in x]) # hide
-function Graph(p::LV,positions; name=&quot;G&quot;, prog=&quot;neato&quot;, title=&quot;&quot;) # hide
-  pstr = [&quot;$(i),$(j)!&quot; for (i,j) in positions] # hide
-  stmts = Statement[] # hide
-    for s in 1:nv(p) # hide
-        vx, vy = positions[s] # hide
-        if !isempty(incident(p, s, :grass)) # hide
-          gv = p[only(incident(p, s, :grass)), :grassval] # hide
-        else # hide
-          gv = 0 # hide
-        end # hide
-        col = gv  == 0 ? &quot;lightgreen&quot; : &quot;tan&quot; # hide
-        push!(stmts,Node(&quot;v$s&quot;, Attributes( # hide
-                    :label=&gt;gv == 0 ? &quot;&quot; : string(gv),  # hide
-                    :shape=&gt;&quot;circle&quot;, # hide
-                    :color=&gt; col, :pos=&gt;pstr[s]))) # hide
-    end # hide
-  d = Dict([:E=&gt;(1,0),:N=&gt;(0,1), :S=&gt;(0,1),:W=&gt;(-1,0),]) # hide
-  for e in edges(p) # hide
-    s, t = src(p,e),tgt(p,e) # hide
-    dx, dy = get(d, p[e, :dir], (1,0)) # hide
-    (sx,sy), (tx,ty) = positions[s], positions[t] # hide
-
-    for (is_wolf, loc, eng) in [(:true,:wolf_loc,:wolf_eng), (false, :sheep_loc, :sheep_eng)] # hide
-        for w in incident(p, e, loc) # hide
-            L, R = 0.25, 0.2 # hide
-            wx = sx+L*dx+R*rand() # hide
-            wy = sy+L*dy+R*rand() # hide
-            ID = &quot;$(is_wolf ? :w : :s)$w&quot; # hide
-            append!(stmts,[Node(ID, Attributes( # hide
-                            :label=&gt;&quot;$w&quot;*supscript(&quot;$(p[w,eng])&quot;), # hide
-                            :shape=&gt;&quot;square&quot;, :width=&gt;&quot;0.3px&quot;, :height=&gt;&quot;0.3px&quot;, :fixedsize=&gt;&quot;true&quot;, # hide
-                            :pos=&gt;&quot;$(wx),$(wy)!&quot;,:color=&gt; is_wolf ? &quot;red&quot; : &quot;lightblue&quot;)), # hide
-                           ]) # hide
-        end # hide
-    end # hide
-  end # hide
-  g = Graphviz.Digraph(name, Statement[stmts...]; prog=prog, # hide
-        graph_attrs=Attributes(:label=&gt;title, :labelloc=&gt;&quot;t&quot;), # hide
-        node_attrs=Attributes(:shape=&gt;&quot;plain&quot;, :style=&gt;&quot;filled&quot;)) # hide
-  return g # hide
-end # hide
-
-s_reprod_l =  @acset LV begin
+);</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">FinFunctor(Dict{Symbol, Catlab.Syntax.GATExpr{:generator}}(:GrassVal =&gt; GrassVal, :Eng =&gt; Eng, :Wolf =&gt; Sheep, :Dir =&gt; Dir, :V =&gt; V, :Sheep =&gt; Wolf, :Grass =&gt; Grass, :E =&gt; E), Dict{Symbol, Catlab.Syntax.GATExpr{:generator}}(:wolf_loc =&gt; sheep_loc, :src =&gt; src, :grassval =&gt; grassval, :sheep_eng =&gt; wolf_eng, :tgt =&gt; tgt, :sheep_loc =&gt; wolf_loc, :wolf_eng =&gt; sheep_eng, :grass =&gt; grass, :dir =&gt; dir), FinCat(Presentation{ThSchema, Symbol}(Catlab.Theories.FreeSchema, (Ob = Catlab.Theories.FreeSchema.Ob{:generator}[V, E, Sheep, Wolf, Grass], Hom = Catlab.Theories.FreeSchema.Hom{:generator}[src, tgt, sheep_loc, wolf_loc, grass], AttrType = Catlab.Theories.FreeSchema.AttrType{:generator}[Dir, GrassVal, Eng], Attr = Catlab.Theories.FreeSchema.Attr{:generator}[grassval, dir, sheep_eng, wolf_eng]), Dict(:wolf_loc=&gt;(:Hom=&gt;4), :GrassVal=&gt;(:AttrType=&gt;2), :grassval=&gt;(:Attr=&gt;1), :dir=&gt;(:Attr=&gt;2), :V=&gt;(:Ob=&gt;1), :Grass=&gt;(:Ob=&gt;5), :Eng=&gt;(:AttrType=&gt;3), :wolf_eng=&gt;(:Attr=&gt;4), :Sheep=&gt;(:Ob=&gt;3), :E=&gt;(:Ob=&gt;2)…), Pair[])), FinCat(Presentation{ThSchema, Symbol}(Catlab.Theories.FreeSchema, (Ob = Catlab.Theories.FreeSchema.Ob{:generator}[V, E, Sheep, Wolf, Grass], Hom = Catlab.Theories.FreeSchema.Hom{:generator}[src, tgt, sheep_loc, wolf_loc, grass], AttrType = Catlab.Theories.FreeSchema.AttrType{:generator}[Dir, GrassVal, Eng], Attr = Catlab.Theories.FreeSchema.Attr{:generator}[grassval, dir, sheep_eng, wolf_eng]), Dict(:wolf_loc=&gt;(:Hom=&gt;4), :GrassVal=&gt;(:AttrType=&gt;2), :grassval=&gt;(:Attr=&gt;1), :dir=&gt;(:Attr=&gt;2), :V=&gt;(:Ob=&gt;1), :Grass=&gt;(:Ob=&gt;5), :Eng=&gt;(:AttrType=&gt;3), :wolf_eng=&gt;(:Attr=&gt;4), :Sheep=&gt;(:Ob=&gt;3), :E=&gt;(:Ob=&gt;2)…), Pair[])))</code></pre><p>We can apply <code>F</code> to a rewrite rule defined for sheep (e.g. that one dies when it has zero energy) and obtain the analogous rule for wolves without any effort.</p><h3 id="Rules-and-Schedules"><a class="docs-heading-anchor" href="#Rules-and-Schedules">Rules and Schedules</a><a id="Rules-and-Schedules-1"></a><a class="docs-heading-anchor-permalink" href="#Rules-and-Schedules" title="Permalink"></a></h3><p>We can declare a <code>Rule</code> and how we wish to schedule that rule. The &#39;outer loop&#39; is a <code>WhileSchedule</code> that executes all the rules in some order (i.e. a <code>LinearSchedule</code> wrapped around a list called <code>seq</code> made up of individual <code>RuleSchedule</code>s).</p><pre><code class="language-julia hljs">extinct(prev, curr) = nparts(curr, :Wolf) == 0 || nparts(curr, :Sheep) == 0
+overall = WhileSchedule(ListSchedule(seq), :main, extinct, 10);</code></pre><p>Let&#39;s show some of the things that went into <code>seq</code>. Below we define sheep reproduction to occur with probability 0.04 and wolf reproduction to occur with probability 0.05.</p><pre><code class="language-julia hljs">s_reprod_l =  @acset LV begin
   Sheep=1; V=2; E=1; src=1;tgt=2; dir=[Var(:d)];
   sheep_eng=[Var(:a)]; sheep_loc=1
-end
-
-Graph(s_reprod_l, [0=&gt;0,1=&gt;0]) # hide</code></pre><p>This defines a <em>pattern</em> which we wish to match. The suffix <code>_l</code> indicates that this is the <code>L</code> of a rewrite rule, which is a partial map <code>L → R</code>, i.e. <code>L ↩ I → R</code>.</p><p>We need to define the interface <code>I</code>, which contains the subobject of <code>L</code> which is <em>not deleted</em>.</p><pre><code class="language- hljs">s_reprod_i = deepcopy(s_reprod_l); rem_part!(s_reprod_i, :Sheep, 1)</code></pre><p>And the right object, <code>R</code>, includes things that are added. So we&#39;ve removed a sheep with energy <code>a</code> at a certain position and replace it with two sheep with <code>a/2</code> energy.</p><pre><code class="language- hljs">s_reprod_r = deepcopy(s_reprod_i)
+end</code></pre><img src='data:image/svg+xml;utf-8,<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN"
+ "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+<!-- Generated by graphviz version 2.43.0 (0)
+ -->
+<!-- Title: G Pages: 1 -->
+<svg width="116pt" height="51pt"
+ viewBox="0.00 0.00 116.00 50.99" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+<g id="graph0" class="graph" transform="scale(1 1) rotate(0) translate(4 46.99)">
+<title>G</title>
+<polygon fill="white" stroke="transparent" points="-4,4 -4,-46.99 112,-46.99 112,4 -4,4"/>
+<!-- v1 -->
+<g id="node1" class="node">
+<title>v1</title>
+<ellipse fill="lightgreen" stroke="lightgreen" cx="18" cy="-18" rx="18" ry="18"/>
+</g>
+<!-- v2 -->
+<g id="node2" class="node">
+<title>v2</title>
+<ellipse fill="lightgreen" stroke="lightgreen" cx="90" cy="-18" rx="18" ry="18"/>
+</g>
+<!-- s1 -->
+<g id="node3" class="node">
+<title>s1</title>
+<polygon fill="lightblue" stroke="lightblue" points="60.45,-42.99 38.45,-42.99 38.45,-20.99 60.45,-20.99 60.45,-42.99"/>
+<text text-anchor="middle" x="49.45" y="-28.29" font-family="Times,serif" font-size="14.00">1a</text>
+</g>
+</g>
+</svg>
+'/><p>This defines a <em>pattern</em> which we wish to match. The suffix <code>_l</code> indicates that this is the <code>L</code> of a rewrite rule, which is a partial map <code>L → R</code>, i.e. <code>L ↩ I → R</code>.</p><p>We need to define the interface <code>I</code>, which contains the subobject of <code>L</code> which is <em>not deleted</em>.</p><pre><code class="language-julia hljs">s_reprod_i = deepcopy(s_reprod_l); rem_part!(s_reprod_i, :Sheep, 1)</code></pre><p>And the right object, <code>R</code>, includes things that are added. So we&#39;ve removed a sheep with energy <code>a</code> at a certain position and replace it with two sheep with <code>a/2</code> energy.</p><pre><code class="language-julia hljs">s_reprod_r = deepcopy(s_reprod_i)
 add_parts!(s_reprod_r, :Sheep, 2; sheep_loc=[1,1],
-           sheep_eng=[:(round(Int, a/2, RoundDown))])
-Graph(s_reprod_r, [0=&gt;0,1=&gt;0]) # hide</code></pre><p>We assemble this data into a rewrite rule.</p><pre><code class="language- hljs">sheep_reprod = Rule(hom(s_reprod_i,s_reprod_l),
-                    hom(s_reprod_i,s_reprod_r));</code></pre><p>As mentioned before, we can turn this into a wolf reproduction rule by applying our functor. Then we add the two rules along with their probabilities. The <code>false</code> here refers to whether or not we apply the rule only once or whether we apply it for every match we find (which is what we want to do, to give each sheep a 4% chance of reproducing).</p><pre><code class="language-julia hljs">wolf_reprod = F(sheep_reprod)</code></pre><pre><code class="language-julia hljs">append!(seq, [RuleSchedule(sheep_reprod,:sheep_reprod, false,0.04),
-              RuleSchedule(wolf_reprod, :wolf_reprod, false,0.05)]);</code></pre><p>Note that our pattern <code>L</code> can have <code>Var</code> variables, and our right hand side <code>R</code> can have Julia expressions involving those variables.</p><p>Another illustrative example is the &#39;move forward&#39; rule. We simultaneously advance the sheep forward one space and decrement its energy by 1.</p><pre><code class="language- hljs">s_move_forward_l = @acset LV begin
+           sheep_eng=[:(round(Int, a/2, RoundDown))])</code></pre><img src='data:image/svg+xml;utf-8,<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN"
+ "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+<!-- Generated by graphviz version 2.43.0 (0)
+ -->
+<!-- Title: G Pages: 1 -->
+<svg width="116pt" height="47pt"
+ viewBox="0.00 0.00 116.00 46.85" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+<g id="graph0" class="graph" transform="scale(1 1) rotate(0) translate(4 42.85)">
+<title>G</title>
+<polygon fill="white" stroke="transparent" points="-4,4 -4,-42.85 112,-42.85 112,4 -4,4"/>
+<!-- v1 -->
+<g id="node1" class="node">
+<title>v1</title>
+<ellipse fill="lightgreen" stroke="lightgreen" cx="18" cy="-18" rx="18" ry="18"/>
+</g>
+<!-- v2 -->
+<g id="node2" class="node">
+<title>v2</title>
+<ellipse fill="lightgreen" stroke="lightgreen" cx="90" cy="-18" rx="18" ry="18"/>
+</g>
+<!-- s1 -->
+<g id="node3" class="node">
+<title>s1</title>
+<polygon fill="lightblue" stroke="lightblue" points="47.85,-38.85 25.85,-38.85 25.85,-16.85 47.85,-16.85 47.85,-38.85"/>
+<text text-anchor="middle" x="36.85" y="-24.15" font-family="Times,serif" font-size="14.00">1round(Int, a / ², RoundDown)</text>
+</g>
+<!-- s2 -->
+<g id="node4" class="node">
+<title>s2</title>
+<polygon fill="lightblue" stroke="lightblue" points="50.13,-32 28.13,-32 28.13,-10 50.13,-10 50.13,-32"/>
+<text text-anchor="middle" x="39.13" y="-17.3" font-family="Times,serif" font-size="14.00">2round(Int, a / ², RoundDown)</text>
+</g>
+</g>
+</svg>
+'/><p>We assemble this data into a rewrite rule.</p><pre><code class="language-julia hljs">sheep_reprod = Rule(hom(s_reprod_i,s_reprod_l),
+                    hom(s_reprod_i,s_reprod_r));</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">Rule{:DPO}(ACSetTransformation((V = FinFunction([1, 2], 2, 2), E = FinFunction([1], 1, 1), Sheep = FinFunction(Int64[], 0, 1), Wolf = FinFunction(Int64[], 0, 0), Grass = FinFunction(Int64[], 0, 0)), LV_Generic {V = 2, E = 1, Sheep = 0, Wolf = 0, Grass = 0}, LV_Generic {V = 2, E = 1, Sheep = 1, Wolf = 0, Grass = 0}), ACSetTransformation((V = FinFunction([1, 2], 2, 2), E = FinFunction([1], 1, 1), Sheep = FinFunction(Int64[], 0, 2), Wolf = FinFunction(Int64[], 0, 0), Grass = FinFunction(Int64[], 0, 0)), LV_Generic {V = 2, E = 1, Sheep = 0, Wolf = 0, Grass = 0}, LV_Generic {V = 2, E = 1, Sheep = 2, Wolf = 0, Grass = 0}), NAC[], false)</code></pre><p>As mentioned before, we can turn this into a wolf reproduction rule by applying our functor. Then we add the two rules along with their probabilities. The <code>false</code> here refers to whether or not we apply the rule only once or whether we apply it for every match we find (which is what we want to do, to give each sheep a 4% chance of reproducing).</p><pre><code class="language-julia hljs">wolf_reprod = F(sheep_reprod)</code></pre><pre><code class="language-julia hljs">append!(seq, [RuleSchedule(sheep_reprod,:sheep_reprod, false,0.04),
+              RuleSchedule(wolf_reprod, :wolf_reprod, false,0.05)]);</code></pre><p>Note that our pattern <code>L</code> can have <code>Var</code> variables, and our right hand side <code>R</code> can have Julia expressions involving those variables.</p><p>Another illustrative example is the &#39;move forward&#39; rule. We simultaneously advance the sheep forward one space and decrement its energy by 1.</p><pre><code class="language-julia hljs">s_move_forward_l = @acset LV begin
   Sheep=1; V=3; E=2;
   src=[1,2]; tgt=[2,3]; dir=[Var(:a), Var(:a)]
   sheep_eng=[Var(:x)]; sheep_loc=1
-end
-Graph(s_move_forward_l, [0=&gt;0,1=&gt;0,2=&gt;0]) # hide</code></pre><p>This pattern has two contiguous edges that are in the same direction (implicitly constrained by using <code>Var(:a)</code> twice) and the sheep in the first position.</p><pre><code class="language- hljs">
-s_move_forward_i = deepcopy(s_move_forward_l)
+end</code></pre><img src='data:image/svg+xml;utf-8,<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN"
+ "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+<!-- Generated by graphviz version 2.43.0 (0)
+ -->
+<!-- Title: G Pages: 1 -->
+<svg width="188pt" height="44pt"
+ viewBox="0.00 0.00 188.00 44.40" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+<g id="graph0" class="graph" transform="scale(1 1) rotate(0) translate(4 40.4)">
+<title>G</title>
+<polygon fill="white" stroke="transparent" points="-4,4 -4,-40.4 184,-40.4 184,4 -4,4"/>
+<!-- v1 -->
+<g id="node1" class="node">
+<title>v1</title>
+<ellipse fill="lightgreen" stroke="lightgreen" cx="18" cy="-18" rx="18" ry="18"/>
+</g>
+<!-- v2 -->
+<g id="node2" class="node">
+<title>v2</title>
+<ellipse fill="lightgreen" stroke="lightgreen" cx="90" cy="-18" rx="18" ry="18"/>
+</g>
+<!-- v3 -->
+<g id="node3" class="node">
+<title>v3</title>
+<ellipse fill="lightgreen" stroke="lightgreen" cx="162" cy="-18" rx="18" ry="18"/>
+</g>
+<!-- s1 -->
+<g id="node4" class="node">
+<title>s1</title>
+<polygon fill="lightblue" stroke="lightblue" points="54.15,-36.4 32.15,-36.4 32.15,-14.4 54.15,-14.4 54.15,-36.4"/>
+<text text-anchor="middle" x="43.15" y="-21.7" font-family="Times,serif" font-size="14.00">1x</text>
+</g>
+</g>
+</svg>
+'/><p>This pattern has two contiguous edges that are in the same direction (implicitly constrained by using <code>Var(:a)</code> twice) and the sheep in the first position.</p><pre><code class="language-julia hljs">s_move_forward_i = deepcopy(s_move_forward_l)
 rem_part!(s_move_forward_i, :Sheep, 1)
 
 s_move_forward_r = deepcopy(s_move_forward_i)
-add_part!(s_move_forward_r, :Sheep; sheep_loc=2, sheep_eng=:(x-1))
-
-Graph(s_move_forward_r, [0=&gt;0,1=&gt;0,2=&gt;0]) # hide</code></pre><p>We delete the sheep and recreate one in position #2, with one fewer energy. This is only valid though if the sheep has any energy. To prevent this rule from firing, we need a <em>negative application condition</em>. This embeds the pattern <code>L</code> in a larger context <code>N</code> that has the semantics of: if <code>L</code> <em>and</em> <code>N</code> are matched, then actually don&#39;t fire the rule. The pattern we want to avoid is one where the sheep has zero energy.</p><pre><code class="language- hljs">zero_s = deepcopy(s_move_forward_l)
-set_subpart!(zero_s, :sheep_eng, 0)
-Graph(zero_s, [0=&gt;0,1=&gt;0,2=&gt;0]) # hide</code></pre><pre><code class="language-julia hljs">sheep_move_forward = Rule(hom(s_move_forward_i, s_move_forward_l),
+add_part!(s_move_forward_r, :Sheep; sheep_loc=2, sheep_eng=:(x-1))</code></pre><img src='data:image/svg+xml;utf-8,<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN"
+ "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+<!-- Generated by graphviz version 2.43.0 (0)
+ -->
+<!-- Title: G Pages: 1 -->
+<svg width="188pt" height="44pt"
+ viewBox="0.00 0.00 188.00 44.00" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+<g id="graph0" class="graph" transform="scale(1 1) rotate(0) translate(4 40)">
+<title>G</title>
+<polygon fill="white" stroke="transparent" points="-4,4 -4,-40 184,-40 184,4 -4,4"/>
+<!-- v1 -->
+<g id="node1" class="node">
+<title>v1</title>
+<ellipse fill="lightgreen" stroke="lightgreen" cx="18" cy="-18" rx="18" ry="18"/>
+</g>
+<!-- v2 -->
+<g id="node2" class="node">
+<title>v2</title>
+<ellipse fill="lightgreen" stroke="lightgreen" cx="90" cy="-18" rx="18" ry="18"/>
+</g>
+<!-- v3 -->
+<g id="node3" class="node">
+<title>v3</title>
+<ellipse fill="lightgreen" stroke="lightgreen" cx="162" cy="-18" rx="18" ry="18"/>
+</g>
+<!-- s1 -->
+<g id="node4" class="node">
+<title>s1</title>
+<polygon fill="lightblue" stroke="lightblue" points="129.76,-32.79 107.76,-32.79 107.76,-10.79 129.76,-10.79 129.76,-32.79"/>
+<text text-anchor="middle" x="118.76" y="-18.09" font-family="Times,serif" font-size="14.00">1x &%2345; ¹</text>
+</g>
+</g>
+</svg>
+'/><p>We delete the sheep and recreate one in position #2, with one fewer energy. This is only valid though if the sheep has any energy. To prevent this rule from firing, we need a <em>negative application condition</em>. This embeds the pattern <code>L</code> in a larger context <code>N</code> that has the semantics of: if <code>L</code> <em>and</em> <code>N</code> are matched, then actually don&#39;t fire the rule. The pattern we want to avoid is one where the sheep has zero energy.</p><pre><code class="language-julia hljs">zero_s = deepcopy(s_move_forward_l)
+set_subpart!(zero_s, :sheep_eng, 0)</code></pre><img src='data:image/svg+xml;utf-8,<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN"
+ "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+<!-- Generated by graphviz version 2.43.0 (0)
+ -->
+<!-- Title: G Pages: 1 -->
+<svg width="188pt" height="44pt"
+ viewBox="0.00 0.00 188.00 44.00" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+<g id="graph0" class="graph" transform="scale(1 1) rotate(0) translate(4 40)">
+<title>G</title>
+<polygon fill="white" stroke="transparent" points="-4,4 -4,-40 184,-40 184,4 -4,4"/>
+<!-- v1 -->
+<g id="node1" class="node">
+<title>v1</title>
+<ellipse fill="lightgreen" stroke="lightgreen" cx="18" cy="-18" rx="18" ry="18"/>
+</g>
+<!-- v2 -->
+<g id="node2" class="node">
+<title>v2</title>
+<ellipse fill="lightgreen" stroke="lightgreen" cx="90" cy="-18" rx="18" ry="18"/>
+</g>
+<!-- v3 -->
+<g id="node3" class="node">
+<title>v3</title>
+<ellipse fill="lightgreen" stroke="lightgreen" cx="162" cy="-18" rx="18" ry="18"/>
+</g>
+<!-- s1 -->
+<g id="node4" class="node">
+<title>s1</title>
+<polygon fill="lightblue" stroke="lightblue" points="59.69,-31.05 37.69,-31.05 37.69,-9.05 59.69,-9.05 59.69,-31.05"/>
+<text text-anchor="middle" x="48.69" y="-16.35" font-family="Times,serif" font-size="14.00">1⁰</text>
+</g>
+</g>
+</svg>
+'/><pre><code class="language-julia hljs">sheep_move_forward = Rule(hom(s_move_forward_i, s_move_forward_l),
                           hom(s_move_forward_i, s_move_forward_r),
                           [NAC(hom(s_move_forward_l,zero_s; bindvars=true))])
 
-wolf_move_forward = F(sheep_move_forward)</code></pre><p>In all these cases, automatic homomorphism finding is sufficient for obtaining the morphism data of <code>L ↩ I → R</code>.</p><h3 id="Other-functions"><a class="docs-heading-anchor" href="#Other-functions">Other functions</a><a id="Other-functions-1"></a><a class="docs-heading-anchor-permalink" href="#Other-functions" title="Permalink"></a></h3><p>Functions to initialize and visualize the world-states are defined in the file <code>lotka_volterra.jl</code>. Important functionality only possible in the notebook is the ability to move a slider and view the progression of a simulation.</p><p><img src="assets/slider2.gif" alt="Alt Text"/></p><h2 id="Alternative-rewriting-semantics"><a class="docs-heading-anchor" href="#Alternative-rewriting-semantics">Alternative rewriting semantics</a><a id="Alternative-rewriting-semantics-1"></a><a class="docs-heading-anchor-permalink" href="#Alternative-rewriting-semantics" title="Permalink"></a></h2><p>A nice property of DPO is that you can analyze the relationship between <code>I</code> and <code>L</code> to see exactly what will be deleted (likewise for <code>I</code> and <code>R</code> to see what will be added). However, this is sometimes not what we want: we wish to delete <em>outside the context</em> <code>L</code>, or to implicitly create things. The former is possible in single pushout rewriting, and both are possible in sesqui pushout rewriting.</p><h3 id="Single-pushout-rewriting"><a class="docs-heading-anchor" href="#Single-pushout-rewriting">Single pushout rewriting</a><a id="Single-pushout-rewriting-1"></a><a class="docs-heading-anchor-permalink" href="#Single-pushout-rewriting" title="Permalink"></a></h3><p>Implicit deletion works like a cascading delete: if you delete a vertex (for example), then you implicitly delete an edge which refers to that vertex.</p><pre><code class="language- hljs">L = ACSetTransformation(Graph(), Graph(1)) # a vertex is deleted
+wolf_move_forward = F(sheep_move_forward)</code></pre><p>In all these cases, automatic homomorphism finding is sufficient for obtaining the morphism data of <code>L ↩ I → R</code>.</p><h3 id="Other-functions"><a class="docs-heading-anchor" href="#Other-functions">Other functions</a><a id="Other-functions-1"></a><a class="docs-heading-anchor-permalink" href="#Other-functions" title="Permalink"></a></h3><p>Functions to initialize and visualize the world-states are defined in the file <code>lotka_volterra.jl</code>. Important functionality only possible in the notebook is the ability to move a slider and view the progression of a simulation.</p><p><img src="assets/slider2.gif" alt="Alt Text"/></p><h2 id="Alternative-rewriting-semantics"><a class="docs-heading-anchor" href="#Alternative-rewriting-semantics">Alternative rewriting semantics</a><a id="Alternative-rewriting-semantics-1"></a><a class="docs-heading-anchor-permalink" href="#Alternative-rewriting-semantics" title="Permalink"></a></h2><p>A nice property of DPO is that you can analyze the relationship between <code>I</code> and <code>L</code> to see exactly what will be deleted (likewise for <code>I</code> and <code>R</code> to see what will be added). However, this is sometimes not what we want: we wish to delete <em>outside the context</em> <code>L</code>, or to implicitly create things. The former is possible in single pushout rewriting, and both are possible in sesqui pushout rewriting.</p><h3 id="Single-pushout-rewriting"><a class="docs-heading-anchor" href="#Single-pushout-rewriting">Single pushout rewriting</a><a id="Single-pushout-rewriting-1"></a><a class="docs-heading-anchor-permalink" href="#Single-pushout-rewriting" title="Permalink"></a></h3><p>Implicit deletion works like a cascading delete: if you delete a vertex (for example), then you implicitly delete an edge which refers to that vertex.</p><pre><code class="language-julia hljs">L = ACSetTransformation(Graph(), Graph(1)) # a vertex is deleted
 R = id(Graph()) # nothing is added
 r = Rule{:SPO}(L,R)
 m = hom(Graph(1), path_graph(Graph, 3)) # rewriting • → • → •
-res = rewrite_match(r,m)
-to_graphviz(res; node_labels=true) # hide</code></pre><h3 id="Sesqui-pushout-rewriting"><a class="docs-heading-anchor" href="#Sesqui-pushout-rewriting">Sesqui pushout rewriting</a><a id="Sesqui-pushout-rewriting-1"></a><a class="docs-heading-anchor-permalink" href="#Sesqui-pushout-rewriting" title="Permalink"></a></h3><p>Here our rewrite rule takes a vertex and duplicates it. Sesqui pushout rewriting allows &quot;implicit copying&quot;, so copying a vertex that is connected to another via an edge will create a new connected vertex, rather than an isolated vertex.</p><pre><code class="language- hljs">L = hom(Graph(2), Graph(1))
+res = rewrite_match(r,m)</code></pre><img src='data:image/svg+xml;utf-8,<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN"
+ "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+<!-- Generated by graphviz version 2.43.0 (0)
+ -->
+<!-- Title: G Pages: 1 -->
+<svg width="86pt" height="29pt"
+ viewBox="0.00 0.00 86.43 29.21" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+<g id="graph0" class="graph" transform="scale(1 1) rotate(0) translate(4 25.21)">
+<title>G</title>
+<polygon fill="white" stroke="transparent" points="-4,4 -4,-25.21 82.43,-25.21 82.43,4 -4,4"/>
+<!-- n1 -->
+<g id="node1" class="node">
+<title>n1</title>
+<ellipse fill="none" stroke="black" cx="10.61" cy="-10.61" rx="10.71" ry="10.71"/>
+<text text-anchor="middle" x="10.61" y="-6.91" font-family="Times,serif" font-size="14.00">1</text>
+</g>
+<!-- n2 -->
+<g id="node2" class="node">
+<title>n2</title>
+<ellipse fill="none" stroke="black" cx="67.82" cy="-10.61" rx="10.71" ry="10.71"/>
+<text text-anchor="middle" x="67.82" y="-6.91" font-family="Times,serif" font-size="14.00">2</text>
+</g>
+<!-- n1&%2345;&gt;n2 -->
+<g id="edge1" class="edge">
+<title>n1&%2345;&gt;n2</title>
+<path fill="none" stroke="black" d="M21.22,-10.61C29.67,-10.61 42.1,-10.61 51.84,-10.61"/>
+<polygon fill="black" stroke="black" points="51.94,-12.36 56.94,-10.61 51.94,-8.86 51.94,-12.36"/>
+</g>
+</g>
+</svg>
+'/><h3 id="Sesqui-pushout-rewriting"><a class="docs-heading-anchor" href="#Sesqui-pushout-rewriting">Sesqui pushout rewriting</a><a id="Sesqui-pushout-rewriting-1"></a><a class="docs-heading-anchor-permalink" href="#Sesqui-pushout-rewriting" title="Permalink"></a></h3><p>Here our rewrite rule takes a vertex and duplicates it. Sesqui pushout rewriting allows &quot;implicit copying&quot;, so copying a vertex that is connected to another via an edge will create a new connected vertex, rather than an isolated vertex.</p><pre><code class="language-julia hljs">L = hom(Graph(2), Graph(1))
 R = id(Graph(2))
 r = Rule{:SqPO}(L,R)
 m = hom(Graph(1), path_graph(Graph, 2)) # rewriting • → •
-res = rewrite_match(r,m)
-to_graphviz(res; node_labels=true) # hide</code></pre><h2 id="Rewriting-things-that-aren&#39;t-C-Sets"><a class="docs-heading-anchor" href="#Rewriting-things-that-aren&#39;t-C-Sets">Rewriting things that aren&#39;t C-Sets</a><a id="Rewriting-things-that-aren&#39;t-C-Sets-1"></a><a class="docs-heading-anchor-permalink" href="#Rewriting-things-that-aren&#39;t-C-Sets" title="Permalink"></a></h2><p>Anything that implements some basic features (e.g. <code>pushout</code>, <code>pushout_complement</code>) can be used with this rewriting infrastructure. Generally, these are constructions that are built on top of C-Sets.</p><h3 id="Slices"><a class="docs-heading-anchor" href="#Slices">Slices</a><a id="Slices-1"></a><a class="docs-heading-anchor-permalink" href="#Slices" title="Permalink"></a></h3><p>The category-theoretic notion of a <em>slice</em> allows us to consider a mapping between objects as an object itself. AlgebraicRewriting then allows us to implement rewriting these slice objects.</p><p>In general it is difficult to visualize examples of slice rewriting . Luckily, it turns out <em>Petri nets</em> (which are visualized in <a href="https://github.com/AlgebraicJulia/AlgebraicPetri.jl">AlgebraicPetri</a>, where they are used to model chemical reaction networks) are equivalent to a certain kind of slice in graph. Therefore we will use AlgebraicPetri&#39;s visualization code to represent graph homomorphisms into this following graph:</p><pre><code class="language- hljs">two = @acset Graph begin V=2; E=2; src=[1,2]; tgt=[2,1] end
-to_graphviz(two; node_labels=true) # hide</code></pre><p>Vertices that are sent to vertex #1 will be thought of as &quot;species&quot;, whereas vertices that are sent to vertex #2 will be thought of as &quot;transitions&quot;. Whether or not the edge is from a transition or to a transition determines whether it will correspond to an &quot;input&quot; or an &quot;output&quot;, and the fact there exists a homomorphism into <code>two</code> at all guarantees there are no species-species or transition-transition edges.</p><p>To rewrite a slice, we first need a pattern slice. We start with the graph that will be made into a slice by giving a homomorphism into <code>two</code>:</p><pre><code class="language- hljs">L_ = path_graph(Graph, 2)
-to_graphviz(L_; node_labels=true) # hide</code></pre><p>Then we turn this into a slice</p><pre><code class="language- hljs">using AlgebraicPetri
-function graph_slice(s::Slice)  # hide
-    h = s.slice  # hide
-    V, E = collect.([h[:V], h[:E]])  # hide
-    g = dom(h)  # hide
-    (S,T), (I,O) = [[findall(==(i),X) for i in 1:2] for X in [V,E]]  # hide
-    nS,nT,nI,nO = length.([S,T,I,O])  # hide
-    findS, findT = [x-&gt;findfirst(==(x), X) for X in [S,T]]  # hide
-    AlgebraicPetri.Graph(@acset AlgebraicPetri.PetriNet begin  # hide
-        S=nS; T=nT; I=nI; O=nO  # hide
-        is=findS.(g[I,:src]); it=findT.(g[I, :tgt])  # hide
-        ot=findT.(g[O,:src]); os=findS.(g[O, :tgt]) end)  # hide
-end; # hide
+res = rewrite_match(r,m)</code></pre><img src='data:image/svg+xml;utf-8,<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN"
+ "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+<!-- Generated by graphviz version 2.43.0 (0)
+ -->
+<!-- Title: G Pages: 1 -->
+<svg width="86pt" height="68pt"
+ viewBox="0.00 0.00 86.43 68.21" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+<g id="graph0" class="graph" transform="scale(1 1) rotate(0) translate(4 64.21)">
+<title>G</title>
+<polygon fill="white" stroke="transparent" points="-4,4 -4,-64.21 82.43,-64.21 82.43,4 -4,4"/>
+<!-- n1 -->
+<g id="node1" class="node">
+<title>n1</title>
+<ellipse fill="none" stroke="black" cx="10.61" cy="-49.61" rx="10.71" ry="10.71"/>
+<text text-anchor="middle" x="10.61" y="-45.91" font-family="Times,serif" font-size="14.00">1</text>
+</g>
+<!-- n3 -->
+<g id="node3" class="node">
+<title>n3</title>
+<ellipse fill="none" stroke="black" cx="67.82" cy="-29.61" rx="10.71" ry="10.71"/>
+<text text-anchor="middle" x="67.82" y="-25.91" font-family="Times,serif" font-size="14.00">3</text>
+</g>
+<!-- n1&%2345;&gt;n3 -->
+<g id="edge1" class="edge">
+<title>n1&%2345;&gt;n3</title>
+<path fill="none" stroke="black" d="M20.72,-46.3C29.38,-43.17 42.53,-38.4 52.58,-34.77"/>
+<polygon fill="black" stroke="black" points="53.4,-36.33 57.5,-32.98 52.21,-33.04 53.4,-36.33"/>
+</g>
+<!-- n2 -->
+<g id="node2" class="node">
+<title>n2</title>
+<ellipse fill="none" stroke="black" cx="10.61" cy="-10.61" rx="10.71" ry="10.71"/>
+<text text-anchor="middle" x="10.61" y="-6.91" font-family="Times,serif" font-size="14.00">2</text>
+</g>
+<!-- n2&%2345;&gt;n3 -->
+<g id="edge2" class="edge">
+<title>n2&%2345;&gt;n3</title>
+<path fill="none" stroke="black" d="M20.97,-13.83C29.67,-16.82 42.74,-21.32 52.71,-24.75"/>
+<polygon fill="black" stroke="black" points="52.29,-26.46 57.59,-26.43 53.43,-23.15 52.29,-26.46"/>
+</g>
+</g>
+</svg>
+'/><h2 id="Rewriting-things-that-aren&#39;t-C-Sets"><a class="docs-heading-anchor" href="#Rewriting-things-that-aren&#39;t-C-Sets">Rewriting things that aren&#39;t C-Sets</a><a id="Rewriting-things-that-aren&#39;t-C-Sets-1"></a><a class="docs-heading-anchor-permalink" href="#Rewriting-things-that-aren&#39;t-C-Sets" title="Permalink"></a></h2><p>Anything that implements some basic features (e.g. <code>pushout</code>, <code>pushout_complement</code>) can be used with this rewriting infrastructure. Generally, these are constructions that are built on top of C-Sets.</p><h3 id="Slices"><a class="docs-heading-anchor" href="#Slices">Slices</a><a id="Slices-1"></a><a class="docs-heading-anchor-permalink" href="#Slices" title="Permalink"></a></h3><p>The category-theoretic notion of a <em>slice</em> allows us to consider a mapping between objects as an object itself. AlgebraicRewriting then allows us to implement rewriting these slice objects.</p><p>In general it is difficult to visualize examples of slice rewriting . Luckily, it turns out <em>Petri nets</em> (which are visualized in <a href="https://github.com/AlgebraicJulia/AlgebraicPetri.jl">AlgebraicPetri</a>, where they are used to model chemical reaction networks) are equivalent to a certain kind of slice in graph. Therefore we will use AlgebraicPetri&#39;s visualization code to represent graph homomorphisms into this following graph:</p><pre><code class="language-julia hljs">two = @acset Graph begin V=2; E=2; src=[1,2]; tgt=[2,1] end</code></pre><img src='data:image/svg+xml;utf-8,<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN"
+ "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+<!-- Generated by graphviz version 2.43.0 (0)
+ -->
+<!-- Title: G Pages: 1 -->
+<svg width="86pt" height="29pt"
+ viewBox="0.00 0.00 86.43 29.21" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+<g id="graph0" class="graph" transform="scale(1 1) rotate(0) translate(4 25.21)">
+<title>G</title>
+<polygon fill="white" stroke="transparent" points="-4,4 -4,-25.21 82.43,-25.21 82.43,4 -4,4"/>
+<!-- n1 -->
+<g id="node1" class="node">
+<title>n1</title>
+<ellipse fill="none" stroke="black" cx="10.61" cy="-10.61" rx="10.71" ry="10.71"/>
+<text text-anchor="middle" x="10.61" y="-6.91" font-family="Times,serif" font-size="14.00">1</text>
+</g>
+<!-- n2 -->
+<g id="node2" class="node">
+<title>n2</title>
+<ellipse fill="none" stroke="black" cx="67.82" cy="-10.61" rx="10.71" ry="10.71"/>
+<text text-anchor="middle" x="67.82" y="-6.91" font-family="Times,serif" font-size="14.00">2</text>
+</g>
+<!-- n1&%2345;&gt;n2 -->
+<g id="edge1" class="edge">
+<title>n1&%2345;&gt;n2</title>
+<path fill="none" stroke="black" d="M20.23,-5.54C29.12,-3.61 43.09,-3.34 53.41,-4.72"/>
+<polygon fill="black" stroke="black" points="53.21,-6.46 58.43,-5.6 53.81,-3.02 53.21,-6.46"/>
+</g>
+<!-- n2&%2345;&gt;n1 -->
+<g id="edge2" class="edge">
+<title>n2&%2345;&gt;n1</title>
+<path fill="none" stroke="black" d="M58.43,-15.62C49.64,-17.58 35.69,-17.88 25.3,-16.53"/>
+<polygon fill="black" stroke="black" points="25.46,-14.78 20.23,-15.67 24.87,-18.23 25.46,-14.78"/>
+</g>
+</g>
+</svg>
+'/><p>Vertices that are sent to vertex #1 will be thought of as &quot;species&quot;, whereas vertices that are sent to vertex #2 will be thought of as &quot;transitions&quot;. Whether or not the edge is from a transition or to a transition determines whether it will correspond to an &quot;input&quot; or an &quot;output&quot;, and the fact there exists a homomorphism into <code>two</code> at all guarantees there are no species-species or transition-transition edges.</p><p>To rewrite a slice, we first need a pattern slice. We start with the graph that will be made into a slice by giving a homomorphism into <code>two</code>:</p><pre><code class="language-julia hljs">L_ = path_graph(Graph, 2)</code></pre><img src='data:image/svg+xml;utf-8,<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN"
+ "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+<!-- Generated by graphviz version 2.43.0 (0)
+ -->
+<!-- Title: G Pages: 1 -->
+<svg width="86pt" height="29pt"
+ viewBox="0.00 0.00 86.43 29.21" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+<g id="graph0" class="graph" transform="scale(1 1) rotate(0) translate(4 25.21)">
+<title>G</title>
+<polygon fill="white" stroke="transparent" points="-4,4 -4,-25.21 82.43,-25.21 82.43,4 -4,4"/>
+<!-- n1 -->
+<g id="node1" class="node">
+<title>n1</title>
+<ellipse fill="none" stroke="black" cx="10.61" cy="-10.61" rx="10.71" ry="10.71"/>
+<text text-anchor="middle" x="10.61" y="-6.91" font-family="Times,serif" font-size="14.00">1</text>
+</g>
+<!-- n2 -->
+<g id="node2" class="node">
+<title>n2</title>
+<ellipse fill="none" stroke="black" cx="67.82" cy="-10.61" rx="10.71" ry="10.71"/>
+<text text-anchor="middle" x="67.82" y="-6.91" font-family="Times,serif" font-size="14.00">2</text>
+</g>
+<!-- n1&%2345;&gt;n2 -->
+<g id="edge1" class="edge">
+<title>n1&%2345;&gt;n2</title>
+<path fill="none" stroke="black" d="M21.22,-10.61C29.67,-10.61 42.1,-10.61 51.84,-10.61"/>
+<polygon fill="black" stroke="black" points="51.94,-12.36 56.94,-10.61 51.94,-8.86 51.94,-12.36"/>
+</g>
+</g>
+</svg>
+'/><p>Then we turn this into a slice</p><pre><code class="language-julia hljs">using AlgebraicPetri
 
-L = Slice(ACSetTransformation(L_, two, V=[2,1], E=[2]))
-graph_slice(L) # hide</code></pre><pre><code class="language- hljs">I = Slice(ACSetTransformation(Graph(1), two, V=[2]))
+L = Slice(ACSetTransformation(L_, two, V=[2,1], E=[2]))</code></pre><img src='data:image/svg+xml;utf-8,<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN"
+ "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+<!-- Generated by graphviz version 2.43.0 (0)
+ -->
+<!-- Title: G Pages: 1 -->
+<svg width="126pt" height="44pt"
+ viewBox="0.00 0.00 126.00 44.00" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+<g id="graph0" class="graph" transform="scale(1 1) rotate(0) translate(4 40)">
+<title>G</title>
+<polygon fill="white" stroke="transparent" points="-4,4 -4,-40 122,-40 122,4 -4,4"/>
+<!-- s1 -->
+<g id="node1" class="node">
+<title>s1</title>
+<ellipse fill="%236c9ac3" stroke="%236c9ac3" cx="100" cy="-18" rx="18" ry="18"/>
+<text text-anchor="middle" x="100" y="-14.3" font-family="Times,serif" font-size="14.00">1</text>
+</g>
+<!-- t1 -->
+<g id="node2" class="node">
+<title>t1</title>
+<polygon fill="%23e28f41" stroke="%23e28f41" points="36,-36 0,-36 0,0 36,0 36,-36"/>
+<text text-anchor="middle" x="18" y="-14.3" font-family="Times,serif" font-size="14.00">1</text>
+</g>
+<!-- t1&%2345;&gt;s1 -->
+<g id="edge1" class="edge">
+<title>t1&%2345;&gt;s1</title>
+<path fill="none" stroke="black" d="M36.36,-18C46.7,-18 60.06,-18 71.78,-18"/>
+<polygon fill="black" stroke="black" points="71.95,-21.5 81.95,-18 71.95,-14.5 71.95,-21.5"/>
+<text text-anchor="middle" x="59" y="-21.8" font-family="Times,serif" font-size="14.00">1</text>
+</g>
+</g>
+</svg>
+'/><pre><code class="language-julia hljs">I = Slice(ACSetTransformation(Graph(1), two, V=[2]))
 
-R = Slice(ACSetTransformation(Graph(2), two, V=[2, 1]))
-graph_slice(R) # hide</code></pre><p>Thus our rewrite rule will delete an <em>output</em> edge.</p><pre><code class="language- hljs">rule = Rule(hom(I, L), hom(I, R));</code></pre><p>The instance of a slice we are rewriting:</p><pre><code class="language- hljs">G_ = path_graph(Graph, 3)
-G = Slice(ACSetTransformation(G_, two, V=[1,2,1], E=[1,2]))
-graph_slice(G) # hide</code></pre><pre><code class="language- hljs">using AlgebraicRewriting: rewrite # hide
-H = rewrite(rule, G)
-graph_slice(H) # hide</code></pre><h3 id="Coming:-Structured-cospans-and-Diagrams"><a class="docs-heading-anchor" href="#Coming:-Structured-cospans-and-Diagrams">Coming: Structured cospans and Diagrams</a><a id="Coming:-Structured-cospans-and-Diagrams-1"></a><a class="docs-heading-anchor-permalink" href="#Coming:-Structured-cospans-and-Diagrams" title="Permalink"></a></h3></article><nav class="docs-footer"><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 0.27.23 on <span class="colophon-date" title="Wednesday 14 September 2022 11:42">Wednesday 14 September 2022</span>. Using Julia version 1.7.3.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
+R = Slice(ACSetTransformation(Graph(2), two, V=[2, 1]))</code></pre><img src='data:image/svg+xml;utf-8,<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN"
+ "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+<!-- Generated by graphviz version 2.43.0 (0)
+ -->
+<!-- Title: G Pages: 1 -->
+<svg width="44pt" height="98pt"
+ viewBox="0.00 0.00 44.00 98.00" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+<g id="graph0" class="graph" transform="scale(1 1) rotate(0) translate(4 94)">
+<title>G</title>
+<polygon fill="white" stroke="transparent" points="-4,4 -4,-94 40,-94 40,4 -4,4"/>
+<!-- s1 -->
+<g id="node1" class="node">
+<title>s1</title>
+<ellipse fill="%236c9ac3" stroke="%236c9ac3" cx="18" cy="-18" rx="18" ry="18"/>
+<text text-anchor="middle" x="18" y="-14.3" font-family="Times,serif" font-size="14.00">1</text>
+</g>
+<!-- t1 -->
+<g id="node2" class="node">
+<title>t1</title>
+<polygon fill="%23e28f41" stroke="%23e28f41" points="36,-90 0,-90 0,-54 36,-54 36,-90"/>
+<text text-anchor="middle" x="18" y="-68.3" font-family="Times,serif" font-size="14.00">1</text>
+</g>
+</g>
+</svg>
+'/><p>Thus our rewrite rule will delete an <em>output</em> edge.</p><pre><code class="language-julia hljs">rule = Rule(hom(I, L), hom(I, R));</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">Rule{:DPO}(Catlab.CategoricalAlgebra.Slices.SliceHom{Catlab.CategoricalAlgebra.CSets.TightACSetTransformation{Catlab.Theories.SchemaDescType{(:V, :E), (:src, :tgt), (), (), (src = 2, tgt = 2), (src = 1, tgt = 1)}, NamedTuple{(:V, :E), Tuple{Catlab.CategoricalAlgebra.FinSets.FinDomFunctionVector{Int64, Vector{Int64}, Catlab.CategoricalAlgebra.FinSets.FinSetInt}, Catlab.CategoricalAlgebra.FinSets.FinDomFunctionVector{Int64, Vector{Int64}, Catlab.CategoricalAlgebra.FinSets.FinSetInt}}}, Catlab.Graphs.BasicGraphs.Graph, Catlab.Graphs.BasicGraphs.Graph}, Catlab.CategoricalAlgebra.Slices.Slice{Catlab.CategoricalAlgebra.CSets.TightACSetTransformation{Catlab.Theories.SchemaDescType{(:V, :E), (:src, :tgt), (), (), (src = 2, tgt = 2), (src = 1, tgt = 1)}, NamedTuple{(:V, :E), Tuple{Catlab.CategoricalAlgebra.FinSets.FinDomFunctionVector{Int64, Vector{Int64}, Catlab.CategoricalAlgebra.FinSets.FinSetInt}, Catlab.CategoricalAlgebra.FinSets.FinDomFunctionVector{Int64, UnitRange{Int64}, Catlab.CategoricalAlgebra.FinSets.FinSetInt}}}, Catlab.Graphs.BasicGraphs.Graph, Catlab.Graphs.BasicGraphs.Graph}}, Catlab.CategoricalAlgebra.Slices.Slice{Catlab.CategoricalAlgebra.CSets.TightACSetTransformation{Catlab.Theories.SchemaDescType{(:V, :E), (:src, :tgt), (), (), (src = 2, tgt = 2), (src = 1, tgt = 1)}, NamedTuple{(:V, :E), Tuple{Catlab.CategoricalAlgebra.FinSets.FinDomFunctionVector{Int64, Vector{Int64}, Catlab.CategoricalAlgebra.FinSets.FinSetInt}, Catlab.CategoricalAlgebra.FinSets.FinDomFunctionVector{Int64, Vector{Int64}, Catlab.CategoricalAlgebra.FinSets.FinSetInt}}}, Catlab.Graphs.BasicGraphs.Graph, Catlab.Graphs.BasicGraphs.Graph}}}(Catlab.CategoricalAlgebra.Slices.Slice{Catlab.CategoricalAlgebra.CSets.TightACSetTransformation{Catlab.Theories.SchemaDescType{(:V, :E), (:src, :tgt), (), (), (src = 2, tgt = 2), (src = 1, tgt = 1)}, NamedTuple{(:V, :E), Tuple{Catlab.CategoricalAlgebra.FinSets.FinDomFunctionVector{Int64, Vector{Int64}, Catlab.CategoricalAlgebra.FinSets.FinSetInt}, Catlab.CategoricalAlgebra.FinSets.FinDomFunctionVector{Int64, UnitRange{Int64}, Catlab.CategoricalAlgebra.FinSets.FinSetInt}}}, Catlab.Graphs.BasicGraphs.Graph, Catlab.Graphs.BasicGraphs.Graph}}(ACSetTransformation((V = FinFunction([2], 1, 2), E = FinFunction(1:0, 0, 2)), Graph {V = 1, E = 0}, Graph {V = 2, E = 2})), Catlab.CategoricalAlgebra.Slices.Slice{Catlab.CategoricalAlgebra.CSets.TightACSetTransformation{Catlab.Theories.SchemaDescType{(:V, :E), (:src, :tgt), (), (), (src = 2, tgt = 2), (src = 1, tgt = 1)}, NamedTuple{(:V, :E), Tuple{Catlab.CategoricalAlgebra.FinSets.FinDomFunctionVector{Int64, Vector{Int64}, Catlab.CategoricalAlgebra.FinSets.FinSetInt}, Catlab.CategoricalAlgebra.FinSets.FinDomFunctionVector{Int64, Vector{Int64}, Catlab.CategoricalAlgebra.FinSets.FinSetInt}}}, Catlab.Graphs.BasicGraphs.Graph, Catlab.Graphs.BasicGraphs.Graph}}(ACSetTransformation((V = FinFunction([2, 1], 2, 2), E = FinFunction([2], 1, 2)), Graph {V = 2, E = 1}, Graph {V = 2, E = 2})), ACSetTransformation((V = FinFunction([1], 1, 2), E = FinFunction(Int64[], 0, 1)), Graph {V = 1, E = 0}, Graph {V = 2, E = 1})), Catlab.CategoricalAlgebra.Slices.SliceHom{Catlab.CategoricalAlgebra.CSets.TightACSetTransformation{Catlab.Theories.SchemaDescType{(:V, :E), (:src, :tgt), (), (), (src = 2, tgt = 2), (src = 1, tgt = 1)}, NamedTuple{(:V, :E), Tuple{Catlab.CategoricalAlgebra.FinSets.FinDomFunctionVector{Int64, Vector{Int64}, Catlab.CategoricalAlgebra.FinSets.FinSetInt}, Catlab.CategoricalAlgebra.FinSets.FinDomFunctionVector{Int64, Vector{Int64}, Catlab.CategoricalAlgebra.FinSets.FinSetInt}}}, Catlab.Graphs.BasicGraphs.Graph, Catlab.Graphs.BasicGraphs.Graph}, Catlab.CategoricalAlgebra.Slices.Slice{Catlab.CategoricalAlgebra.CSets.TightACSetTransformation{Catlab.Theories.SchemaDescType{(:V, :E), (:src, :tgt), (), (), (src = 2, tgt = 2), (src = 1, tgt = 1)}, NamedTuple{(:V, :E), Tuple{Catlab.CategoricalAlgebra.FinSets.FinDomFunctionVector{Int64, Vector{Int64}, Catlab.CategoricalAlgebra.FinSets.FinSetInt}, Catlab.CategoricalAlgebra.FinSets.FinDomFunctionVector{Int64, UnitRange{Int64}, Catlab.CategoricalAlgebra.FinSets.FinSetInt}}}, Catlab.Graphs.BasicGraphs.Graph, Catlab.Graphs.BasicGraphs.Graph}}, Catlab.CategoricalAlgebra.Slices.Slice{Catlab.CategoricalAlgebra.CSets.TightACSetTransformation{Catlab.Theories.SchemaDescType{(:V, :E), (:src, :tgt), (), (), (src = 2, tgt = 2), (src = 1, tgt = 1)}, NamedTuple{(:V, :E), Tuple{Catlab.CategoricalAlgebra.FinSets.FinDomFunctionVector{Int64, Vector{Int64}, Catlab.CategoricalAlgebra.FinSets.FinSetInt}, Catlab.CategoricalAlgebra.FinSets.FinDomFunctionVector{Int64, UnitRange{Int64}, Catlab.CategoricalAlgebra.FinSets.FinSetInt}}}, Catlab.Graphs.BasicGraphs.Graph, Catlab.Graphs.BasicGraphs.Graph}}}(Catlab.CategoricalAlgebra.Slices.Slice{Catlab.CategoricalAlgebra.CSets.TightACSetTransformation{Catlab.Theories.SchemaDescType{(:V, :E), (:src, :tgt), (), (), (src = 2, tgt = 2), (src = 1, tgt = 1)}, NamedTuple{(:V, :E), Tuple{Catlab.CategoricalAlgebra.FinSets.FinDomFunctionVector{Int64, Vector{Int64}, Catlab.CategoricalAlgebra.FinSets.FinSetInt}, Catlab.CategoricalAlgebra.FinSets.FinDomFunctionVector{Int64, UnitRange{Int64}, Catlab.CategoricalAlgebra.FinSets.FinSetInt}}}, Catlab.Graphs.BasicGraphs.Graph, Catlab.Graphs.BasicGraphs.Graph}}(ACSetTransformation((V = FinFunction([2], 1, 2), E = FinFunction(1:0, 0, 2)), Graph {V = 1, E = 0}, Graph {V = 2, E = 2})), Catlab.CategoricalAlgebra.Slices.Slice{Catlab.CategoricalAlgebra.CSets.TightACSetTransformation{Catlab.Theories.SchemaDescType{(:V, :E), (:src, :tgt), (), (), (src = 2, tgt = 2), (src = 1, tgt = 1)}, NamedTuple{(:V, :E), Tuple{Catlab.CategoricalAlgebra.FinSets.FinDomFunctionVector{Int64, Vector{Int64}, Catlab.CategoricalAlgebra.FinSets.FinSetInt}, Catlab.CategoricalAlgebra.FinSets.FinDomFunctionVector{Int64, UnitRange{Int64}, Catlab.CategoricalAlgebra.FinSets.FinSetInt}}}, Catlab.Graphs.BasicGraphs.Graph, Catlab.Graphs.BasicGraphs.Graph}}(ACSetTransformation((V = FinFunction([2, 1], 2, 2), E = FinFunction(1:0, 0, 2)), Graph {V = 2, E = 0}, Graph {V = 2, E = 2})), ACSetTransformation((V = FinFunction([1], 1, 2), E = FinFunction(Int64[], 0, 0)), Graph {V = 1, E = 0}, Graph {V = 2, E = 0})), NAC[], false)</code></pre><p>The instance of a slice we are rewriting:</p><pre><code class="language-julia hljs">G_ = path_graph(Graph, 3)
+G = Slice(ACSetTransformation(G_, two, V=[1,2,1], E=[1,2]))</code></pre><img src='data:image/svg+xml;utf-8,<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN"
+ "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+<!-- Generated by graphviz version 2.43.0 (0)
+ -->
+<!-- Title: G Pages: 1 -->
+<svg width="208pt" height="44pt"
+ viewBox="0.00 0.00 208.00 44.00" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+<g id="graph0" class="graph" transform="scale(1 1) rotate(0) translate(4 40)">
+<title>G</title>
+<polygon fill="white" stroke="transparent" points="-4,4 -4,-40 204,-40 204,4 -4,4"/>
+<!-- s1 -->
+<g id="node1" class="node">
+<title>s1</title>
+<ellipse fill="%236c9ac3" stroke="%236c9ac3" cx="18" cy="-18" rx="18" ry="18"/>
+<text text-anchor="middle" x="18" y="-14.3" font-family="Times,serif" font-size="14.00">1</text>
+</g>
+<!-- t1 -->
+<g id="node3" class="node">
+<title>t1</title>
+<polygon fill="%23e28f41" stroke="%23e28f41" points="118,-36 82,-36 82,0 118,0 118,-36"/>
+<text text-anchor="middle" x="100" y="-14.3" font-family="Times,serif" font-size="14.00">1</text>
+</g>
+<!-- s1&%2345;&gt;t1 -->
+<g id="edge1" class="edge">
+<title>s1&%2345;&gt;t1</title>
+<path fill="none" stroke="black" d="M36.36,-18C46.7,-18 60.06,-18 71.78,-18"/>
+<polygon fill="black" stroke="black" points="71.95,-21.5 81.95,-18 71.95,-14.5 71.95,-21.5"/>
+<text text-anchor="middle" x="59" y="-21.8" font-family="Times,serif" font-size="14.00">1</text>
+</g>
+<!-- s2 -->
+<g id="node2" class="node">
+<title>s2</title>
+<ellipse fill="%236c9ac3" stroke="%236c9ac3" cx="182" cy="-18" rx="18" ry="18"/>
+<text text-anchor="middle" x="182" y="-14.3" font-family="Times,serif" font-size="14.00">2</text>
+</g>
+<!-- t1&%2345;&gt;s2 -->
+<g id="edge2" class="edge">
+<title>t1&%2345;&gt;s2</title>
+<path fill="none" stroke="black" d="M118.36,-18C128.7,-18 142.06,-18 153.78,-18"/>
+<polygon fill="black" stroke="black" points="153.95,-21.5 163.95,-18 153.95,-14.5 153.95,-21.5"/>
+<text text-anchor="middle" x="141" y="-21.8" font-family="Times,serif" font-size="14.00">1</text>
+</g>
+</g>
+</svg>
+'/><pre><code class="language-julia hljs">H = rewrite(rule, G)</code></pre><img src='data:image/svg+xml;utf-8,<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN"
+ "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+<!-- Generated by graphviz version 2.43.0 (0)
+ -->
+<!-- Title: G Pages: 1 -->
+<svg width="126pt" height="98pt"
+ viewBox="0.00 0.00 126.00 98.00" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+<g id="graph0" class="graph" transform="scale(1 1) rotate(0) translate(4 94)">
+<title>G</title>
+<polygon fill="white" stroke="transparent" points="-4,4 -4,-94 122,-94 122,4 -4,4"/>
+<!-- s1 -->
+<g id="node1" class="node">
+<title>s1</title>
+<ellipse fill="%236c9ac3" stroke="%236c9ac3" cx="18" cy="-18" rx="18" ry="18"/>
+<text text-anchor="middle" x="18" y="-14.3" font-family="Times,serif" font-size="14.00">1</text>
+</g>
+<!-- s2 -->
+<g id="node2" class="node">
+<title>s2</title>
+<ellipse fill="%236c9ac3" stroke="%236c9ac3" cx="18" cy="-72" rx="18" ry="18"/>
+<text text-anchor="middle" x="18" y="-68.3" font-family="Times,serif" font-size="14.00">2</text>
+</g>
+<!-- t1 -->
+<g id="node3" class="node">
+<title>t1</title>
+<polygon fill="%23e28f41" stroke="%23e28f41" points="118,-90 82,-90 82,-54 118,-54 118,-90"/>
+<text text-anchor="middle" x="100" y="-68.3" font-family="Times,serif" font-size="14.00">1</text>
+</g>
+<!-- s2&%2345;&gt;t1 -->
+<g id="edge1" class="edge">
+<title>s2&%2345;&gt;t1</title>
+<path fill="none" stroke="black" d="M36.36,-72C46.7,-72 60.06,-72 71.78,-72"/>
+<polygon fill="black" stroke="black" points="71.95,-75.5 81.95,-72 71.95,-68.5 71.95,-75.5"/>
+<text text-anchor="middle" x="59" y="-75.8" font-family="Times,serif" font-size="14.00">1</text>
+</g>
+</g>
+</svg>
+'/><h3 id="Coming:-Structured-cospans-and-Diagrams"><a class="docs-heading-anchor" href="#Coming:-Structured-cospans-and-Diagrams">Coming: Structured cospans and Diagrams</a><a id="Coming:-Structured-cospans-and-Diagrams-1"></a><a class="docs-heading-anchor-permalink" href="#Coming:-Structured-cospans-and-Diagrams" title="Permalink"></a></h3></article><nav class="docs-footer"><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 0.27.23 on <span class="colophon-date" title="Wednesday 14 September 2022 12:31">Wednesday 14 September 2022</span>. Using Julia version 1.7.3.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
