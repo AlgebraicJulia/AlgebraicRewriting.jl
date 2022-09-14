@@ -1,12 +1,16 @@
 # AlgebraicRewriting.jl
 
-Here we walk through basic examples of double-pushout (DPO), single-pushout (SPO), and sesqui-pushout (SqPO) rewriting. We also consider the rewriting of graphs, Petri nets, and 2D semisimplicial sets (which are all instances of rewriting in C-set categories) in addition to rewriting C-set slice categories and structured cospans of C-sets. Future work will allow us to perform rewriting of diagrams in C-set categories.
-
-
+Here we walk through basic examples of double-pushout (DPO), single-pushout
+(SPO), and sesqui-pushout (SqPO) rewriting. We also consider the rewriting of
+graphs, Petri nets, and 2D semisimplicial sets (which are all instances of
+rewriting in C-set categories) in addition to rewriting C-set slice categories
+and structured cospans of C-sets. Future work will allow us to perform rewriting
+of diagrams in C-set categories.
 
 ## Double pushout rewriting of graphs
 
-This is the classic setting of graph transformation. Suppose we wish to rewrite this graph:
+This is the classic setting of graph transformation. Suppose we wish to rewrite
+this graph:
 
 ```@example X
 using Catlab, Catlab.Graphs, Catlab.Graphics, Catlab.CategoricalAlgebra
@@ -34,7 +38,6 @@ I = @acset Graph begin V=2; E=1; src=1; tgt=2 end # interface: non-deleted subse
 to_graphviz(I; node_labels=true) # hide
 ```
 
-
 And lastly replacing the pattern with one that collapses the two matched
 vertices to form a loop.
 
@@ -57,171 +60,42 @@ Something to note here is that the result is only defined up to isomorphism,
 e.g. the vertex which corresponded to vertex #1 in the original graph may not
 be #1 in the result.
 
-As the following example shows, we are not limited to rewriting
-(directed multi-) graphs.
-
-## Double pushout rewriting of triangle mesh
-
-Suppose we want to perform rewriting on a mesh with triangles defined over certain triples of edges.
-
-```@example X
-using Catlab.Graphs.BasicGraphs: TheoryGraph
-using CairoMakie, GeometryBasics # hide
-using Base.Iterators # hide
-using CombinatorialSpaces # hide
-import AlgebraicPetri # hide
-using CombinatorialSpaces.SimplicialSets: get_edge! # hide
-
-@present ThSemisimplicialSet  <: TheoryGraph begin
-  T :: Ob
-  (d1,d2,d3)::Hom(T,E)
-  compose(d1, src) == compose(d2, src)
-  compose(d1, tgt) == compose(d3, tgt)
-  compose(d2, tgt) == compose(d3, src)
-end
-@acset_type SSet(ThSemisimplicialSet)
-
-quadrangle = @acset SSet begin
-    T=2; E=5; V=4
-    d1=[1,1]; d2=[2,3]; d3=[4,5]
-    src=[1,1,1,2,3]
-    tgt=[4,2,3,4,4]
-end
-
-function plot_sset(ss::SSet, points::Vector, # hide
-                   tri_colors::Union{Nothing,Vector}=nothing) # hide
-    dflt = collect(take(cycle([:blue,:red,:green, :purple, :pink, :yellow, :grey, :orange, :brown, :cyan]), nparts(ss, :T))) # hide
-    tri_colors = isnothing(tri_colors) ? dflt : tri_colors # hide
-    # Validate inputs # hide
-    lengthscale=0.8 # hide
-    dim = length(points[1]) # hide
-    length(points) == nparts(ss,:V) || error("# of points") # hide
-    if dim == 2 # hide
-        points = [(p1,p2,0.) for (p1,p2) in points] # hide
-    elseif dim != 3 # hide
-        error("dim $dim") # hide
-    end # hide
-    tri_colors = tri_colors[1:nparts(ss, :T)] # hide
-
-    # Convert SSet to EmbeddedDeltaSet2D # hide
-    s = EmbeddedDeltaSet2D{Bool, Point{3, Float64}}() # hide
-
-    edge_colors = [:black for _ in nparts(ss, :E)] # hide
-    add_vertices!(s, length(points), point=points) # hide
-    for (src, tgt) in zip(ss[:src], ss[:tgt]) # hide
-        get_edge!(s, src, tgt) # hide
-    end # hide
-
-    for t in parts(ss,:T) # hide
-    glue_sorted_triangle!(s, ss[t,[:d1,:src]], # hide
-                             ss[t,[:d3,:src]], # hide
-                             ss[t, [:d1,:tgt]]) # hide
-    end # hide
-
-    # Split mesh into component triangles # hide
-  m = GeometryBasics.Mesh(s) # hide
-  x = faces(m) # hide
-  m_points = m.position[vcat([[t[1],t[2],t[3]] for t in x]...)] # hide
-  m_faces = TriangleFace{Int}[[((t-1) * 3) .+ (1,2,3) for t in  1:length(x)]...]  # hide
-  new_m = GeometryBasics.Mesh(Point{3, Float64}[m_points...], m_faces) # hide
-  if ntriangles(s) == 0  # hide
-     fig, ax, ob = arrows((s[s[:∂v0], :point] * (0.5 + lengthscale / 2)  # hide
-                            .+ s[s[:∂v1], :point] * (0.5 - lengthscale / 2)) ,  # hide
-                          (s[s[:∂v1], :point] .- s[s[:∂v0], :point]),  # hide
-            lengthscale=lengthscale, arrowsize=0.05, shininess=0.0,  # hide
-           color=edge_colors, diffuse=[0.0,0.0,0.0])  # hide
-  else  # hide
-    fig, ax, ob = mesh(new_m, color=vcat([[v,v,v] for v in tri_colors]...))  # hide
-     arrows!((s[s[:∂v0], :point] * (0.5 + lengthscale / 2)  # hide
-                    .+ s[s[:∂v1], :point] * (0.5 - lengthscale / 2)) ,  # hide
-             (s[s[:∂v1], :point] .- s[s[:∂v0], :point]),  # hide
-            lengthscale=lengthscale, arrowsize=0.05, shininess=0.0,  # hide
-           color=edge_colors, diffuse=[0.0,0.0,0.0])  # hide
-  end  # hide
-  if dim == 2  # hide
-      # hidespines!(ax); hidedecorations!(ax)  # hide
-      ax.aspect = AxisAspect(1.0) # Remove this line if 3D embedding  # hide
-  end  # hide
-  fig  # hide
-end # hide
-
-
-quad_coords = [(0,1,0), (1,1,0), (0,0,0),(1,0,0)] # hide
-plot_sset(quadrangle, quad_coords) # hide
-```
-
-There is no difference in methodology from the case of graphs, despite the
-different schema: we provide an instance of the datatype to serve as our pattern
+As the example `mesh.jl`, shows, we are not limited to rewriting
+(directed multi-) graphs - we can rewrite triangle meshes with the same
+methodology: we provide an instance of the datatype to serve as our pattern
 for replacement (such as the quadrangle above) and then need an instance to
 serve as our non-deleted subset of that pattern.
 
-```@example X
-L = quadrangle
-I = @acset SSet begin
-  E=4; V=4
-  src=[1,1,2,3]
-  tgt=[2,3,4,4]
-end
-quad_coords = [(0,1,0), (1,1,0), (0,0,0),(1,0,0)] # hide
-plot_sset(I, quad_coords) # hide
-```
-
-Our replacement pattern will add two triangles and an edge, but now the edge
-is perpendicular to where it was before.
-
-```@example X
-R = @acset SSet begin
-  T=2; E=5; V=4
-  d1=[2,3]; d2=[1,5]; d3=[5,4]
-  src=[1,1,2,3,2]
-  tgt=[2,3,4,4,3]
-end
-quad_coords = [(0,1,0), (1,1,0), (0,0,0),(1,0,0)] # hide
-plot_sset(R, quad_coords) # hide
-```
-
-Again we create a rewrite rule by relating the `I` to `L` and `R`.
-
-```@example X
-r = Rule(hom(I, R; monic=true),
-         hom(I, L; monic=true);
-         monic=true)
-nothing # hide
-```
-
-We can construct a mesh to test this rewrite on by gluing together two
-quadrilaterals (via a *pushout* along a common edge).
-
-```@example X
-edge = @acset SSet begin E=1; V=2; src=[1]; tgt=[2] end
-edge_left = hom(edge, L; initial=Dict([:V=>[1,3]]))
-edge_right = hom(edge, L; initial=Dict([:V=>[2,4]]))
-G = pushout(edge_left, edge_right) |> apex
-six_coords = vcat(quad_coords,[(-1.,1.,0.),(-1.,0.,0.),]) # hide
-plot_sset(G, six_coords) # hide
-
-```
-We then can perform the rewrite in larger contexts than just the pattern, such
-as a mesh with two quadrilaterals.
-
-```julia
-res = rewrite(r, G)
-```
 ![Alt Text](assets/meshres.png)
 
 
 ## Applied example: Lotka-Volterra agent-based model
 
 ### Overview
-The aim to recapture the dynamics of NetLogo's [Wolf Sheep predation](https://ccl.northwestern.edu/netlogo/models/WolfSheepPredation) model in terms of declarative rewrite rules, rather than standard code-based interfaced. This models wolves in sheeps living in a periodic 2D space, which is also covered by grass. Wolves eat sheep to gain energy, sheep eat grass to gain energy, and grass takes time to grow back after it has been eaten. Each wolf/sheep has a direction and is moving in that direction (veering left or right randomly with some probability). At some rate, wolves/sheep undergo mitosis and their energy is split in half. As the wolves/sheep move, they lose energy, and they die if they are eaten or run out of energy. The simulation could go on indefinitely, or it could be ended when one of the two species completely dies out.
+The aim to recapture the dynamics of NetLogo's
+[Wolf Sheep predation](https://ccl.northwestern.edu/netlogo/models/WolfSheepPredation)
+model in terms of declarative rewrite rules, rather than standard code-based
+interfaced. This models wolves in sheeps living in a periodic 2D space, which is
+also covered by grass. Wolves eat sheep to gain energy, sheep eat grass to gain
+energy, and grass takes time to grow back after it has been eaten. Each
+wolf/sheep has a direction and is moving in that direction (veering left or
+right randomly with some probability). At some rate, wolves/sheep undergo
+mitosis and their energy is split in half. As the wolves/sheep move, they lose
+energy, and they die if they are eaten or run out of energy. The simulation
+could go on indefinitely, or it could be ended when one of the two species
+completely dies out.
 
-The main difference with our reconstruction of the NetLogo model is that we model the 2D space as a discrete grid. This is more amenable to the style of pattern matching characteristic of AlgebraicRewriting, in contrast to floating point coordinates and collision checking to see when two entities occupy the same space.
+The main difference with our reconstruction of the NetLogo model is that we
+model the 2D space as a discrete grid. This is more amenable to the style of
+pattern matching characteristic of AlgebraicRewriting, in contrast to floating
+point coordinates and collision checking to see when two entities occupy the
+same space.
 
 ### Defining the datatype we are rewriting
 
 ```@example X
 using Catlab.Graphs.BasicGraphs: HasGraph # hide
-@present TheoryLV <: TheoryGraph begin # inherit Graph schema
+@present TheoryLV <: SchGraph begin # inherit Graph schema
   (Sheep,Wolf,Grass)::Ob               # three more types of entities
   (Dir, GrassVal, Eng)::AttrType       # three more types of attributes
   sheep_loc::Hom(Sheep, E)             # sheep live on edges
@@ -245,7 +119,8 @@ until the grass is alive.
     - We assume a convention where the vertex of a sheep/wolf is the edge *source*.
 - `Dir` is an attribute which can take values `N`, `E`, `W`, and `S`.
 
-There is a certain symmetry between wolves and sheep in the schema, which we can make explicit with the following endofunctor:
+There is a certain symmetry between wolves and sheep in the schema, which we can
+make explicit with the following endofunctor:
 
 ```@example X
 F = FinFunctor(
@@ -259,19 +134,24 @@ F = FinFunctor(
 );
 ```
 
-We can apply `F` to a rewrite rule defined for sheep (e.g. that one dies when it has zero energy) and obtain the analogous rule for wolves without any effort.
+We can apply `F` to a rewrite rule defined for sheep (e.g. that one dies when it
+has zero energy) and obtain the analogous rule for wolves without any effort.
 
 ### Rules and Schedules
 
 We can declare a `Rule` and how we wish to schedule that rule.
-The 'outer loop' is a `WhileSchedule` that executes all the rules in some order (i.e. a `LinearSchedule` wrapped around a list called `seq` made up of individual `RuleSchedule`s).
+The 'outer loop' is a `WhileSchedule` that executes all the rules in some order
+(i.e. a `LinearSchedule` wrapped around a list called `seq` made up of
+individual `RuleSchedule`s).
 
 ```julia
 extinct(prev, curr) = nparts(curr, :Wolf) == 0 || nparts(curr, :Sheep) == 0
 overall = WhileSchedule(ListSchedule(seq), :main, extinct, 10);
 ```
 
-Let's show some of the things that went into `seq`. Below we define sheep reproduction to occur with probability 0.04 and wolf reproduction to occur with probability 0.05.
+Let's show some of the things that went into `seq`. Below we define sheep
+reproduction to occur with probability 0.04 and wolf reproduction to occur with
+probability 0.05.
 
 ```@example X
 using Catlab.Graphics.Graphviz: Attributes, Statement, Node # hide
@@ -330,14 +210,19 @@ end
 
 Graph(s_reprod_l, [0=>0,1=>0]) # hide
 ```
-This defines a *pattern* which we wish to match. The suffix `_l` indicates that this is the `L` of a rewrite rule, which is a partial map `L → R`, i.e. `L ↩ I → R`.
+This defines a *pattern* which we wish to match. The suffix `_l` indicates that
+this is the `L` of a rewrite rule, which is a partial map `L → R`, i.e.
+`L ↩ I → R`.
 
-We need to define the interface `I`, which contains the subobject of `L` which is *not deleted*.
+We need to define the interface `I`, which contains the subobject of `L` which
+is *not deleted*.
 
 ```@example X
 s_reprod_i = deepcopy(s_reprod_l); rem_part!(s_reprod_i, :Sheep, 1)
 ```
-And the right object, `R`, includes things that are added. So we've removed a sheep with energy `a` at a certain position and replace it with two sheep with `a/2` energy.
+And the right object, `R`, includes things that are added. So we've removed a
+sheep with energy `a` at a certain position and replace it with two sheep with
+`a/2` energy.
 
 ```@example X
 s_reprod_r = deepcopy(s_reprod_i)
@@ -353,7 +238,11 @@ sheep_reprod = Rule(hom(s_reprod_i,s_reprod_l),
                     hom(s_reprod_i,s_reprod_r));
 ```
 
-As mentioned before, we can turn this into a wolf reproduction rule by applying our functor. Then we add the two rules along with their probabilities. The `false` here refers to whether or not we apply the rule only once or whether we apply it for every match we find (which is what we want to do, to give each sheep a 4% chance of reproducing).
+As mentioned before, we can turn this into a wolf reproduction rule by applying
+our functor. Then we add the two rules along with their probabilities. The
+`false` here refers to whether or not we apply the rule only once or whether we
+apply it for every match we find (which is what we want to do, to give each
+sheep a 4% chance of reproducing).
 
 ```julia
 wolf_reprod = F(sheep_reprod)
@@ -365,9 +254,11 @@ append!(seq, [RuleSchedule(sheep_reprod,:sheep_reprod, false,0.04),
               RuleSchedule(wolf_reprod, :wolf_reprod, false,0.05)]);
 ```
 
-Note that our pattern `L` can have `Var` variables, and our right hand side `R` can have Julia expressions involving those variables.
+Note that our pattern `L` can have `Var` variables, and our right hand side `R`
+can have Julia expressions involving those variables.
 
-Another illustrative example is the 'move forward' rule. We simultaneously advance the sheep forward one space and decrement its energy by 1.
+Another illustrative example is the 'move forward' rule. We simultaneously
+advance the sheep forward one space and decrement its energy by 1.
 
 ```@example X
 s_move_forward_l = @acset LV begin
@@ -378,7 +269,8 @@ end
 Graph(s_move_forward_l, [0=>0,1=>0,2=>0]) # hide
 ```
 
-This pattern has two contiguous edges that are in the same direction (implicitly constrainted by using `Var(:a)` twice) and the sheep in the first position.
+This pattern has two contiguous edges that are in the same direction (implicitly
+constrained by using `Var(:a)` twice) and the sheep in the first position.
 
 ```@example X
 
@@ -416,60 +308,64 @@ In all these cases, automatic homomorphism finding is sufficient for obtaining
 the morphism data of `L ↩ I → R`.
 
 ### Other functions
-Functions to initialize and visualize the world-states are defined in the Jupyter notebook. Important functionality only possible in the notebook is the ability to move a slider and view the progression of a simulation.
+Functions to initialize and visualize the world-states are defined in the file
+`lotka_volterra.jl`. Important functionality only possible in the notebook is the
+ability to move a slider and view the progression of a simulation.
 
 ![Alt Text](assets/slider2.gif)
 
-
-
 ## Alternative rewriting semantics
-A nice property of DPO is that you can analyze the relationship between `I` and `L` to see exactly what will be deleted (likewise for `I` and `R` to see what will be added). However, this is sometimes not what we want: we wish to delete *outside the context* `L`, or to implicitly create things. The former is possible in single pushout rewriting, and both are possible in sesqui pushout rewriting.
+A nice property of DPO is that you can analyze the relationship between `I` and
+`L` to see exactly what will be deleted (likewise for `I` and `R` to see what
+will be added). However, this is sometimes not what we want: we wish to delete
+*outside the context* `L`, or to implicitly create things. The former is
+possible in single pushout rewriting, and both are possible in sesqui pushout
+rewriting.
 
 ### Single pushout rewriting
-Implicit deletion works like a cascading delete: if you delete a vertex (for example), then you implicitly delete an edge which refers to that vertex (and a triangle that refers to that edge, and so on). Here we delete a triangle and a vertex explicitly, but implicitly the deleted vertex
+Implicit deletion works like a cascading delete: if you delete a vertex
+(for example), then you implicitly delete an edge which refers to that vertex.
 
-```julia
-Tri = @acset SSet begin
-    T=1; E=3; V=3;
-    d1=[1]; d2=[2]; d3=[3];
-    src=[1,1,2]; tgt=[3,2,3]
-end
-L = Tri
-r = Rule{:SPO}(homomorphisms(edge, L)[2],id(edge))
-m = homomorphism(L, quadrangle)
-# can_pushout_complement(r.L, m) == false
-rewrite_match(r,m)
+```@example X
+L = ACSetTransformation(Graph(), Graph(1)) # a vertex is deleted
+R = id(Graph()) # nothing is added
+r = Rule{:SPO}(L,R)
+m = hom(Graph(1), path_graph(Graph, 3)) # rewriting • → • → •
+res = rewrite_match(r,m)
+to_graphviz(res; node_labels=true) # hide
 ```
 
 ### Sesqui pushout rewriting
 
-Here our rewrite rule takes a vertex and duplicates it.
-```julia
-L = @acset SSet begin V=1 end
-I = @acset SSet begin V=2 end
-r=Rule{:SqPO}(homomorphism(I,L),id(I))
-```
-With sesqui-pushout semantics, when we apply this to the vertex of a triangle,
-this will create two triangles.
+Here our rewrite rule takes a vertex and duplicates it. Sesqui pushout rewriting
+allows "implicit copying", so copying a vertex that is connected to another via
+an edge will create a new connected vertex, rather than an isolated vertex.
 
-```julia
-G = Tri
-m = CSetTransformation(L, G, V=[1]);
-nparts(sesqui_pushout_rewrite(l, r, m), :T) == 4 || error("We get 4 'triangles' when we ignore equations")
-rewrite_match(r, m; pres=ThSemisimplicialSet) # pass in the equations
+```@example X
+L = hom(Graph(2), Graph(1))
+R = id(Graph(2))
+r = Rule{:SqPO}(L,R)
+m = hom(Graph(1), path_graph(Graph, 2)) # rewriting • → •
+res = rewrite_match(r,m)
+to_graphviz(res; node_labels=true) # hide
 ```
 
 ## Rewriting things that aren't C-Sets
 
-Anything that implements some basic features (e.g. `pushout`, `pushout_complement`)
-can be used with this rewriting infrastructure. Generally, constructions that
-are built on top of C-Sets
+Anything that implements some basic features (e.g. `pushout`,
+`pushout_complement`) can be used with this rewriting infrastructure. Generally,
+these are constructions that are built on top of C-Sets.
 
 ### Slices
 
-Rewriting on interesting data types is easy - our real limitation for showing
-examples of slice rewriting is the visualization of examples. Luckily, it turns
-Petri nets (which are visualized in AlgebraicPetri, where they are used to model
+The category-theoretic notion of a *slice* allows us to consider a mapping
+between objects as an object itself. AlgebraicRewriting then allows us to
+implement rewriting these slice objects.
+
+In general it is difficult to visualize examples of slice rewriting .
+Luckily, it turns out *Petri nets* (which are visualized in
+[AlgebraicPetri](https://github.com/AlgebraicJulia/AlgebraicPetri.jl),
+where they are used to model
 chemical reaction networks) are equivalent to a certain kind of slice in graph.
 Therefore we will use AlgebraicPetri's visualization code to represent graph
 homomorphisms into this following graph:
@@ -495,7 +391,7 @@ to_graphviz(L_; node_labels=true) # hide
 Then we turn this into a slice
 
 ```@example X
-
+using AlgebraicPetri
 function graph_slice(s::Slice)  # hide
     h = s.slice  # hide
     V, E = collect.([h[:V], h[:E]])  # hide
@@ -514,16 +410,15 @@ graph_slice(L) # hide
 ```
 
 ```@example X
-I_ = Graph(1)
-I = Slice(ACSetTransformation(I_, two, V=[2]))
+I = Slice(ACSetTransformation(Graph(1), two, V=[2]))
 
-R_ = Graph(2)
-R = Slice(ACSetTransformation(R_, two, V=[2, 1]))
+R = Slice(ACSetTransformation(Graph(2), two, V=[2, 1]))
 graph_slice(R) # hide
 ```
+Thus our rewrite rule will delete an *output* edge.
 
 ```@example X
-rule = Rule(hom(I, L), hom(I, R))
+rule = Rule(hom(I, L), hom(I, R));
 ```
 
 The instance of a slice we are rewriting:
@@ -538,6 +433,5 @@ using AlgebraicRewriting: rewrite # hide
 H = rewrite(rule, G)
 graph_slice(H) # hide
 ```
-### Structured cospans
 
-### Diagrams
+### Coming: Structured cospans and Diagrams
