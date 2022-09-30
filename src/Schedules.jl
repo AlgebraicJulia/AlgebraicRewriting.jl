@@ -139,8 +139,9 @@ function apply_schedule(s::WhileSchedule;
   for i in 1:s.n
     if verbose println("applying rule $(s.name) iter $i") end
     l = length(sr)
+    prev = deepcopy(sr[end].G)
     apply_schedule(s.sch; sr=sr, kw...)
-    if length(sr)>1 && s.cond(sr[end-1].G, sr[end].G)
+    if s.cond(prev, sr[end].G)
       return sr
     end
 

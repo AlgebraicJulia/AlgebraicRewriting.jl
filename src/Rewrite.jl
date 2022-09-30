@@ -78,6 +78,7 @@ struct Rule{T}
 end
 Rule(L,R,N=nothing;monic=false) = Rule{:DPO}(L,R,N; monic=monic)
 
+# THIS SHOULD BE UPSTREAMED TO CATLAB
 (F::DeltaMigration{T})(f::TightACSetTransformation{S}) where {T,S} = begin
   F isa DeltaMigration || error("Only Δ migrations supported on morphisms")
   d = Dict(map(collect(pairs(components(f)))) do (k,v)
@@ -435,16 +436,16 @@ Define D to be Im(g) to make it the largest possible subset of C such that we
 can get a pullback.
 """
 function pullback_complement(f, g)
-    is_injective(f) || error("can only take pullback complement if f is mono")
-    A = dom(f)
-    d_to_c = hom(¬g(¬f(A))) # why isn't this just g(B)?
-    # force square to commute by looking for the index in D making it commute
-    ad = Dict(map(collect(pairs(components(compose(f,g))))) do (cmp, fg_as)
-      cmp => Vector{Int}(map(collect(fg_as)) do fg_a
-        findfirst(==(fg_a), collect(d_to_c[cmp]))
-      end)
+  is_injective(f) || error("can only take pullback complement if f is mono")
+  A = dom(f)
+  d_to_c = hom(¬g(¬f(A))) # why isn't this just g(B)?
+  # force square to commute by looking for the index in D making it commute
+  ad = Dict(map(collect(pairs(components(compose(f,g))))) do (cmp, fg_as)
+    cmp => Vector{Int}(map(collect(fg_as)) do fg_a
+      findfirst(==(fg_a), collect(d_to_c[cmp]))
     end)
-    return CSetTransformation(A, dom(d_to_c); ad...) => d_to_c
+  end)
+  return CSetTransformation(A, dom(d_to_c); ad...) => d_to_c
 end
 
 """    rewrite_match_maps(r::Rule{:SPO}, ac)
