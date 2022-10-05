@@ -1,5 +1,5 @@
 module Schedules
-export Schedule, ListSchedule, RuleSchedule, WhileSchedule, rewrite_schedule, RandomSchedule, apply_schedule, traj_res, ScheduleResult, rename_schedule
+export Schedule, ListSchedule, RuleSchedule, WhileSchedule, rewrite_schedule, RandomSchedule, apply_schedule, traj_res, ScheduleResult, rename_schedule, find_deps
 
 using DataStructures, Random
 
@@ -151,5 +151,38 @@ function apply_schedule(s::WhileSchedule;
 end
 
 rewrite_schedule(s::Schedule, G; kw...) = res(apply_schedule(s, G; kw...))
+
+
+# Dependency analysis
+#####################
+struct RWStep{S}
+  rule
+  g
+  match
+  comatch
+  function RWStep(r,g,m,c::T) where {T<:ACSetTransformation}
+    codom(left(r)) == dom(m) || error("")
+    codom(right(r)) == dom(c) || error("")
+    codom(m) == codom(left(g)) || error("")
+    codom(c) == codom(right(g)) || error("")
+    new(r,g,m,c)
+  end
+end
+
+"""
+For a concrete sequence of rewrites applications [a₁,a₂...aₙ], compute a poset
+on the set of applications which reflects their casual connections, where a < b
+mean that a must occur temporaly before b.
+"""
+function find_deps(seq::Vector{RWStep{S}}) where S
+  n = length(seq)
+  diag = @acset BipartiteFreeDiagram begin V₁=n+1; V₂=n; E=2*n;
+    src=vcat([fill(i,2) for i in 1:n]...); tgt=[1,[fill(i,2) for i in 2:n]...,n+1]
+    ob₂=[apex(s.rule) for s in seq];
+    ob₁=codom.([left(first(seq).g), right.(seq[2:end])])
+    hom=vcat([[left(s.rule)⋅s.match, right(s.rule)⋅s.comatch] for s in seq]...)
+  end
+
+end
 
 end # module

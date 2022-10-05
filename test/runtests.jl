@@ -12,8 +12,8 @@ include("../docs/src/lotka_volterra.jl") # this shouldn't crash
   include("Variables.jl")
 end
 
-@testset "Schedule" begin
-  include("Schedule.jl")
+@testset "Schedules" begin
+  include("Schedules.jl")
 end
 
 @testset "StructuredCospans" begin
