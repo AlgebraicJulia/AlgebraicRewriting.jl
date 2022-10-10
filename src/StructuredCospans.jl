@@ -3,7 +3,6 @@ module StructuredCospans
 export StructuredMultiCospanHom, StructuredMulticospan, openrule, can_open_pushout_complement, open_rewrite, open_rewrite_match, idH_, idV_, composeV_, composeH_, id2_, id2V_, id2H_
 
 using Catlab, Catlab.CategoricalAlgebra, Catlab.Theories
-using Catlab.CategoricalAlgebra.CSetDataStructures: struct_acset
 import Catlab.Theories: dom, codom, compose, ⋅, id
 using ..CSets: invert_hom, can_pushout_complement, pushout_complement
 import ..Search: homomorphisms
@@ -67,16 +66,11 @@ function homomorphisms(pat::StructuredMulticospan{L},
     add_generator!(p, Ob(FreeSchema, Leg))
     add_generator!(p, Hom(leg, p[Leg], p[V]))
   end
-  name = Symbol("open_$(L.parameters[2].name.name)")
-  t = struct_acset(name, StructACSet, p, index=ls)
-  try
-    eval(t)
-  catch e
-    e isa ErrorException && e.msg[1:20] == "invalid redefinition" || throw(e)
-  end
+
+  t = AnonACSet(p, index=ls)
   # Copy old ACSet info from homomorphism source and target
   #--------------------------------------------------------
-  tpat, ttgt = [Base.invokelatest(eval(name)) for _ in 1:2]
+  tpat, ttgt = [deepcopy(t) for _ in 1:2]
   copy_parts!(tpat, apex(pat))
   copy_parts!(ttgt, apex(tgt))
 
@@ -142,7 +136,7 @@ function composeH_(f::StructuredCospan{L}, g::StructuredCospan{L})::StructuredCo
 end
 
 """Finset span composition given by pullback"""
-function composeV_(f::Span, g::Span)::Span where {T}
+function composeV_(f::Span, g::Span)::Span
   pbf, pbg = pullback(right(f), left(g))
   return Span(compose(pbf, left(f)), compose(pbg,right(g)))
 end

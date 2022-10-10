@@ -2,7 +2,7 @@ module PartialMap
 export partial_map_classifier_universal_property, partial_map_functor_hom,
       partial_map_classifier_eta
 using DataStructures
-using Catlab, Catlab.CategoricalAlgebra
+using Catlab, Catlab.CategoricalAlgebra, Catlab.Schemas
 using ..CSets
 
 """
@@ -47,7 +47,7 @@ function partial_map_functor_ob(x::StructCSet{S};
   # foreign keys
   d = DefaultDict{Symbol,Dict{Vector{Int},Int}}(()->Dict{Vector{Int},Int}())
 
-  hdata = collect(zip(hom(S), dom(S), codom(S)))
+  hdata = collect(homs(S))
   for o in topo_obs(S)
     homs_cds = [(h,cd) for (h,d,cd) in hdata if d==o] # outgoing morphism data
     if isempty(homs_cds)
@@ -82,7 +82,7 @@ function partial_map_functor_hom(f::CSetTransformation{S};
   X, Y = dom(f), codom(f)
   (d, _), (cd, cddict) = [partial_map_functor_ob(x; pres=pres) for x in [X,Y]]
   comps, mapping = Dict{Symbol,Vector{Int}}(), Dict()
-  hdata = collect(zip(hom(S),dom(S),codom(S)))
+  hdata = collect(homs(S))
 
   for (k,v) in pairs(f.components)
     mapping[k] = vcat(collect(v), [nparts(Y, k)+1]) # map extra val to extra
@@ -133,7 +133,7 @@ function partial_map_classifier_universal_property(
     m::CSetTransformation{S}, f::CSetTransformation{S};
     pres::Union{Nothing, Presentation}=nothing, check=false
     )::CSetTransformation where {S}
-  hdata   = collect(zip(hom(S),dom(S),codom(S)))
+  hdata   = collect(homs(S))
   A, B    = codom(m), codom(f)
   ηB      = partial_map_classifier_eta(B;pres=pres)
   Bdict   = partial_map_functor_ob(B; pres=pres)[2]

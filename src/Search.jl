@@ -3,11 +3,9 @@ export homomorphism, homomorphisms, is_homomorphic, is_isomorphic
 
 using Base.Meta: quot
 
-using Catlab, Catlab.Theories
-using Catlab.Theories: SchemaDescType, attr, adom, acodom
+using Catlab, Catlab.Theories, Catlab.Schemas
 using Catlab.CategoricalAlgebra: ACSet, StructACSet, ACSetTransformation,LooseACSetTransformation, nparts, parts, subpart
 using Catlab.CategoricalAlgebra.CSets: map_components
-using Catlab.CategoricalAlgebra.CSetDataStructures: SchemaDescType
 using ..Variables
 
 # Backtracking search
@@ -136,7 +134,7 @@ is_isomorphic(X::ACSet, Y::ACSet, alg::BacktrackingSearch; kw...) =
 
 """ Internal state for backtracking search for ACSet homomorphisms.
 """
-struct BacktrackingState{S <: SchemaDescType,
+struct BacktrackingState{S <: TypeLevelSchema,
     Assign <: NamedTuple, PartialAssign <: NamedTuple, LooseFun <: NamedTuple,
     InvParts <: NamedTuple,
     Dom <: StructACSet{S}, Codom <: StructACSet{S}, VAssign <: NamedTuple}
@@ -159,7 +157,10 @@ end
 
 function backtracking_search(f, X::StructACSet{S}, Y::StructACSet{S};
   monic=false, iso=false, type_components=(;), initial=(;),
-  bindvars=false, init_check=true) where {Ob, Hom, Attr, S<:SchemaDescType{Ob,Hom,Attr}}
+  bindvars=false, init_check=true) where {S<:TypeLevelSchema}
+  Ob = Tuple(objects(S))
+  Attr = Tuple(attrtypes(S))
+
   # Fail early if no monic/isos exist on cardinality grounds.
   if iso isa Bool
     iso = iso ? Ob : ()
@@ -220,7 +221,7 @@ function backtracking_search(f, X::StructACSet{S}, Y::StructACSet{S};
 
   # Get variables
   d = Dict{Symbol, Union{Nothing, Dict}}([x=>Dict() for x in Attr])
-  map(zip(attr(S), acodom(S))) do (f, D)
+  map(attrs(S)) do (f, _, D)
     if !bindvars || !(haskey(d,D)  || any(v->v isa Var, X[f]))
         d[D] = nothing
     end
@@ -326,7 +327,7 @@ be mutated even when the assignment fails.
 
   # Check attributes first to fail as quickly as possible.
   X, Y = state.dom, state.codom
-  $(map(zip(attr(S), adom(S), acodom(S))) do (f, c_, d)
+  $(map(attrs(S)) do (f, c_, d)
     :($(quot(c_))!=c
       ||(subpart(X,x,$(quot(f))) isa Var && !isnothing(state.var_assign[$(quot(d))])
       && (state.var_assign[$(quot(d))][subpart(X,x,$(quot(f)))][1] == 0
@@ -341,7 +342,7 @@ be mutated even when the assignment fails.
   if !isnothing(state.inv_assignment.$c)
     state.inv_assignment.$c[y, state.inv_parts[c][x]] = x
   end
-  $(map(zip(attr(S), adom(S), acodom(S))) do (f, c_, d)
+  $(map(attrs(S)) do (f, c_, d)
   :(if ($(quot(c_))==c
     && subpart(X,x,$(quot(f))) isa Var
     && !isnothing(state.var_assign[$(quot(d))]))
@@ -374,7 +375,7 @@ quote
       y = state.assignment.$c[x]
       state.inv_assignment.$c[y, state.inv_parts[c][x]] = 0
     end
-    $(map(zip(attr(S), adom(S), acodom(S))) do (f, c_, d)
+    $(map(attrs(S)) do (f, c_, d)
     :(if ($(quot(c_))==c && !isnothing(state.var_assign[$(quot(d))])
       && subpart(X,x,$(quot(f))) isa Var)
       state.var_assign[$(quot(d))][subpart(X,x,$(quot(f)))]=(

@@ -41,7 +41,7 @@ function sub_vars(X::StructACSet, m::LooseACSetTransformation)
   X = deepcopy(X)
   as = acset_schema(dom(m))
   d = merge([v.func.d for v in values(m.type_components) if v isa SetFunctionCallable]...)
-  for aname in as.attrs
+  for aname in first.(as.attrs)
     set_subpart!(X, aname, [sub_vars(x, d) for x in X[aname]])
   end
   X

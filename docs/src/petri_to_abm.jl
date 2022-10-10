@@ -7,7 +7,6 @@ semantics, by converting each transition into a rewrite rule.
 using AlgebraicPetri
 using AlgebraicRewriting
 using Catlab.Present, Catlab.Theories, Catlab.CategoricalAlgebra
-using Catlab.CategoricalAlgebra.CSetDataStructures: struct_acset
 const hom = AlgebraicRewriting.homomorphism
 
 sir_petri = LabelledPetriNet([:S,:I,:R],
@@ -20,9 +19,7 @@ The states of a Petri net induce a discrete schema for a C-Set
 function petri_to_cset_type(p::LabelledPetriNet, name::Symbol=:Discrete)::Type
   pres = Presentation(FreeSchema)
   [add_generator!(pres, Ob(FreeSchema, l)) for l in p[:sname]]
-  expr = struct_acset(name, StructACSet, pres)
-  eval(expr)
-  return eval(name)
+  return AnonACSet(pres)
 end
 
 SIR = petri_to_cset_type(sir_petri)
@@ -61,9 +58,7 @@ function petri_to_cset_type_gr(p::LabelledPetriNet, name::Symbol=:PGraph)::Type
                               add_generator!(pres, Ob(FreeSchema, l)),
                               pres.generators[:Ob][1]))
   end
-  expr = struct_acset(name, StructACSet, pres)
-  eval(expr)
-  return eval(name)
+  return AnonACSet(pres)
 end
 
 SIR_gr = petri_to_cset_type_gr(sir_petri)
@@ -74,7 +69,7 @@ function transition_to_rw_rule_gr(p::LabelledPetriNet, t::Int)
   Rule(map([(:it,:is), (:ot,:os)]) do (getIO, getState)
     cset = deepcopy(V)
     [add_part!(cset, x; Dict(loc(x)=>1)...)
-     for x in p[incident(p, 1, getIO), [getState,:sname]]]
+     for x in p[incident(p, t, getIO), [getState,:sname]]]
     return hom(V,cset) # interface I is an empty C-Set
   end...)
 end
