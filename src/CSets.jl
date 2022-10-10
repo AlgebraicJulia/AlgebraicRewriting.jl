@@ -3,7 +3,7 @@ export topo_obs, check_eqs, eval_path, extend_morphism, pushout_complement,
        can_pushout_complement, dangling_condition, is_injective, invert_hom,
        homomorphisms, gluing_conditions
 
-using Catlab, Catlab.Theories, Catlab.Graphs
+using Catlab, Catlab.Theories, Catlab.Graphs, Catlab.Schemas
 using Catlab.CategoricalAlgebra: ACSet, StructACSet, ACSetTransformation, ComposablePair, preimage, components, Subobject, parts, SubACSet, SliceHom, force, nparts, legs, apex, pushout, Cospan
 using Catlab.CategoricalAlgebra.CSets: unpack_diagram
 import ..FinSets: pushout_complement, can_pushout_complement, is_injective, is_surjective, id_condition
@@ -16,8 +16,8 @@ import Base: getindex
 """Get topological sort of objects of a schema. Fail if cyclic"""
 function topo_obs(S::Type)::Vector{Symbol}
   G = Graph(length(ob(S)))
-  for (s, t) in zip(S.parameters[5], S.parameters[6])
-    add_edge!(G, s, t)
+  for (_, s, t) in homs(S)
+    add_edge!(G, findfirst(==(s),ob(S)), findfirst(==(t),ob(S)))
   end
   return [ob(S)[i] for i in reverse(topological_sort(G))]
 end
@@ -177,7 +177,7 @@ function dangling_condition(pair::ComposablePair{<:StructACSet{S}}) where S
   end
   # check that for all morphisms in C, we do not map to an orphan
   results = Tuple{Symbol,Int,Int}[]
-  for (morph, src_obj, tgt_obj) in zip(hom(S), dom(S), codom(S))
+  for (morph, src_obj, tgt_obj) in homs(S)
     n_src = parts(codom(m), src_obj)
     unmatched_vals = setdiff(n_src, collect(m[src_obj]))
     unmatched_tgt = map(x -> codom(m)[x,morph], collect(unmatched_vals))
