@@ -4,8 +4,12 @@ export topo_obs, check_eqs, eval_path, extend_morphism, pushout_complement,
        homomorphisms, gluing_conditions
 
 using Catlab, Catlab.Theories, Catlab.Graphs, Catlab.Schemas
-using Catlab.CategoricalAlgebra: ACSet, StructACSet, ACSetTransformation, ComposablePair, preimage, components, Subobject, parts, SubACSet, SliceHom, force, nparts, legs, apex, pushout, Cospan
-using Catlab.CategoricalAlgebra.CSets: unpack_diagram
+using Catlab.CategoricalAlgebra: ACSet, StructACSet, ACSetTransformation, TightACSetTransformation, 
+  LooseACSetTransformation,ComposablePair, preimage, components, Subobject, parts, SubACSet, 
+  SliceHom, force, nparts, legs, apex, pushout, Cospan, acset_schema, set_subpart!,
+  TypeSet
+using Catlab.CategoricalAlgebra.FinSets: IdentityFunction
+using Catlab.CategoricalAlgebra.CSets: unpack_diagram, type_components
 import ..FinSets: pushout_complement, can_pushout_complement, is_injective, is_surjective, id_condition
 import Catlab.CategoricalAlgebra: is_natural, Slice, SliceHom, components
 using ..Search
@@ -91,7 +95,7 @@ this method will raise an error. If the dangling condition fails, the resulting
 C-set will be only partially defined. To check all these conditions in advance,
 use the function [`can_pushout_complement`](@ref).
 """
-function pushout_complement(pair::ComposablePair{<:ACSet})
+function pushout_complement(pair::ComposablePair{<:ACSet, <:TightACSetTransformation})
   # Compute pushout complements pointwise in FinSet.
   components = map(pushout_complement, unpack_diagram(pair))
   k_components, g_components = map(first, components), map(last, components)
@@ -101,6 +105,37 @@ function pushout_complement(pair::ComposablePair{<:ACSet})
   k = ACSetTransformation(k_components, dom(pair), dom(g))
   return ComposablePair(k, g)
 end
+
+"""
+If either of the morphisms is Loose, then the composable pair type will just 
+be ACSetTransformation (or LooseACSetTransformation if both are Loose)
+
+This is the same code as above but with an extra line to compute the type 
+components.
+"""
+function pushout_complement(pair::ComposablePair{<:ACSet, <:ACSetTransformation})
+  S = acset_schema(dom(pair))
+  Attr = Tuple(attrtypes(S))
+
+  # Compute pushout complements pointwise in FinSet.
+  components = map(pushout_complement, unpack_diagram(pair))
+  k_components, g_components = map(first, components), map(last, components)
+
+  # Reassemble components into natural transformations.
+  K = dom(hom(Subobject(codom(pair), g_components)))
+  tc = Dict(map(Attr) do at 
+    at => compose([x[at] for x in type_components.(pair)])
+  end)
+  for (a, d, _) in attrs(S)
+    set_subpart!(K, k_components[d]|>collect, a, dom(pair)[a])
+  end
+  ps = typeof(dom(pair)).parameters
+  icomp = Dict(at=>IdentityFunction(TypeSet(p)) for (at, p) in zip(Attr, ps))
+  k = LooseACSetTransformation(k_components, icomp, dom(pair), K)
+  g = LooseACSetTransformation(g_components, tc, K, codom(pair))
+  return ComposablePair(k, g)
+end
+
 
 function can_pushout_complement(pair::ComposablePair{<:ACSet})
   all(can_pushout_complement, unpack_diagram(pair)) &&

@@ -22,7 +22,7 @@ function view_traj(rG::ScheduleResult, viewer; positions=nothing)
         name, c = "end", ""
       else
         name = rG[n+1].title
-        c = join([string(k=>c) for (k,c) in pairs(components(rG[n+1].m))
+        c = join([string(k=>c|>collect) for (k,c) in pairs(components(rG[n+1].m))
                   if !isempty(collect(c.func))], '\n')
       end
       viewer(step.G, get_positions(n); title="$name \n $c")
