@@ -5,13 +5,17 @@ export Rule, NAC, rewrite, rewrite_match, rewrite_parallel,
        rewrite_sqpo, final_pullback_complement, pullback_complement, get_result,
        get_pmap, rewrite_sequential_maps
 
-using Catlab, Catlab.Theories
-using Catlab.CategoricalAlgebra: DeltaMigration, CSetTransformation, TightACSetTransformation, ACSetTransformation, LooseACSetTransformation, pullback, pushout,  StructACSet, ComposablePair, copair, Span, universal, ¬, ob_map
+using Catlab, Catlab.Theories, Catlab.Schemas
+using Catlab.CategoricalAlgebra: DeltaMigration, CSetTransformation, 
+  TightACSetTransformation, ACSetTransformation, LooseACSetTransformation, 
+  pullback, pushout,  StructACSet, ComposablePair, copair, Span, 
+  universal, ¬, ob_map, acset_schema, TypeSet
+using Catlab.CategoricalAlgebra.FinSets: IdentityFunction
 using Catlab.CategoricalAlgebra.CSets: type_components
 using Catlab.CategoricalAlgebra.DataMigrations: MigrationFunctor
 import Catlab.Theories: dom, codom
 import Catlab.CategoricalAlgebra: is_natural,components
-using AutoHashEquals
+using StructEquality
 using Random
 
 using ..Variables, ..CSets, ..PartialMap, ..Search
@@ -65,11 +69,12 @@ struct Rule{T}
   function Rule{T}(L, R, N=nothing; monic=false) where {T}
     dom(L) == dom(R) || error("L<->R not a span")
     Ns = isnothing(N) ? NAC[] : (N isa AbstractVector ? NAC.(N) : [NAC(N)])
-    all(N-> dom(N) == codom(L), Ns) || error("NAC does not compose with L")
+    all(N-> dom(N) == codom(L), Ns) || error("NAC does not compose with L $(codom(L))")
     map(enumerate([L,R,Ns...])) do (i, f)
       if !is_natural(f)
-        println(stdout, "text/plain",dom(f))
-        println(stdout, "text/plain",codom(f))
+        show(stdout, "text/plain",dom(f))
+        show(stdout, "text/plain",codom(f))
+        println("cs(f) $(components(f)) \ntype_cs $(type_components(f))")
         error("unnatural map #$i: $f")
       end
     end
@@ -113,7 +118,18 @@ When a nonzero edge is matched, this NAC becomes unnatural.
 """
 function sub_vars(R::Rule, m::LooseACSetTransformation)
   Ns = filter(is_natural, [sub_vars(N, m) for N in R.N])
-  Rule(sub_vars(R.L, m), sub_vars(R.R, m), Ns, monic=R.monic)
+  new_L = sub_vars(R.L, m)
+  for N in Ns 
+    if codom(new_L) != dom(N)
+      println("dom(N) ")
+      show(stdout,"text/plain", dom(N))
+      println("codom(new_L) ")
+      show(stdout,"text/plain", codom(new_L))
+      println("type_components(m) "); println.(values(type_components(m)))
+      error("here")
+    end
+  end
+  Rule(new_L, sub_vars(R.R, m), Ns, monic=R.monic)
 end
 
 
@@ -179,6 +195,7 @@ rule, otherwise returns the reason why it should be rejected
 """
 function can_match(r::Rule{T}, m; initial=Dict(),
                    seen=Set()) where T
+
   for (k,v) in pairs(components(m))
     if has_comp(r.monic,k) && !is_injective(v)
       return ("Match is not injective", k, v)
@@ -190,6 +207,8 @@ function can_match(r::Rule{T}, m; initial=Dict(),
       return ("Initial condition violated",k, errs)
     end
   end
+
+  is_natural(m) || return ("Match is not natural", m)
 
   r′ ,m′ = instantiate(r, m)
 
@@ -369,7 +388,17 @@ function rewrite_match_maps(r::Rule{:DPO}, m; check::Bool=false)
     can_pushout_complement(ComposablePair(r.L, m)) || error("Cannot pushout complement $r\n$m")
   end
   (ik, kg) = pushout_complement(ComposablePair(r.L, m))
-  rh, kh = pushout(r.R, ik)
+  
+  if kg isa LooseACSetTransformation
+    Attr = Tuple(attrtypes(acset_schema(dom(m))))
+    ps = typeof(dom(m)).parameters
+    icomp = Dict(at=>IdentityFunction(TypeSet(p)) for (at, p) in zip(Attr, ps))
+    tcs = Dict(:type_components=>[icomp,type_components(r.R)])
+  else 
+    tcs =  Dict()
+  end
+  
+  rh, kh = pushout(r.R, ik; tcs...) # rh, kh = pushout(r.R, ik)
   return ik, kg, rh, kh
 end
 

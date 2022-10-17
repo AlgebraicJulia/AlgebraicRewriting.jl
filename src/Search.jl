@@ -6,6 +6,7 @@ using Base.Meta: quot
 using Catlab, Catlab.Theories, Catlab.Schemas
 using Catlab.CategoricalAlgebra: ACSet, StructACSet, ACSetTransformation,LooseACSetTransformation, nparts, parts, subpart
 using Catlab.CategoricalAlgebra.CSets: map_components
+using Catlab.CategoricalAlgebra.FinSets: IdentityFunction, TypeSet
 using ..Variables
 
 # Backtracking search
@@ -155,12 +156,13 @@ struct BacktrackingState{S <: TypeLevelSchema,
 end
 
 
-function backtracking_search(f, X::StructACSet{S}, Y::StructACSet{S};
+function backtracking_search(f, X::T1, Y::T2;
   monic=false, iso=false, type_components=(;), initial=(;),
-  bindvars=false, init_check=true) where {S<:TypeLevelSchema}
+  bindvars=false, init_check=true) where {
+    S<:TypeLevelSchema, T1<:StructACSet{S}, T2<:StructACSet{S}}
   Ob = Tuple(objects(S))
   Attr = Tuple(attrtypes(S))
-
+  
   # Fail early if no monic/isos exist on cardinality grounds.
   if iso isa Bool
     iso = iso ? Ob : ()
@@ -215,9 +217,14 @@ function backtracking_search(f, X::StructACSet{S}, Y::StructACSet{S};
   inv_assignment = NamedTuple{Ob}(
   ((haskey(monic,c) && !isempty(monic[c]) ? zeros(
       Int, (nparts(Y, c), maximum(monic[c]))) : nothing) for c in Ob))
-  loosefuns = NamedTuple{Attr}(
-    isnothing(type_components) ? identity : get(
-      type_components, c, identity) for c in Attr)
+  att = zip(Attr, T1.parameters, T2.parameters)
+  loosefuns = NamedTuple{Attr}(map(att) do (at, atype,a2type)
+    if isnothing(type_components) || !haskey(type_components, at)
+      return FinDomDefaultDict(Dict{atype,a2type}())
+    else 
+      return type_components[at]
+    end
+  end)
 
   # Get variables
   d = Dict{Symbol, Union{Nothing, Dict}}([x=>Dict() for x in Attr])
@@ -252,9 +259,20 @@ function backtracking_search(f, state::BacktrackingState{S}, depth::Int) where {
   mrv, mrv_elem = find_mrv_elem(state, depth)
   if isnothing(mrv_elem)
     # No unassigned elements remain, so we have a complete assignment.
-    if any(!=(identity), state.type_components)
+    Attr, T1 = Tuple(attrtypes(S)), typeof(state.dom)
+    attrmap = Dict(zip(Attr, T1.parameters))
+    tcs = Dict(map(collect(pairs(state.type_components))) do (k,v)
+      if k == identity || all(xy->xy[1]==xy[2],collect(v.func))
+        v_ = IdentityFunction(TypeSet(attrmap[k]))
+      else 
+        filter!(ab -> ab[1] != ab[2], v.func)
+        v_ = v 
+      end
+      k => v_
+    end)
+    if any(v->!(v isa IdentityFunction), values(tcs))
       return f(LooseACSetTransformation{S}(
-      state.assignment, state.type_components, state.dom, state.codom))
+      state.assignment, tcs, state.dom, state.codom))
     elseif any(x->!isnothing(x) && !isempty(x), state.var_assign)
       va = Dict([k=> CallDict(Dict([k_=>v_ for (k_, (_,v_)) in collect(v)]))
       for (k, v) in pairs(state.var_assign) if !isnothing(v)])
@@ -271,8 +289,8 @@ function backtracking_search(f, state::BacktrackingState{S}, depth::Int) where {
   # Attempt all assignments of the chosen element.
   Y = state.codom
   for y in parts(Y, c)
-  assign_elem!(state, depth, Val{c}, x, y) &&
-  backtracking_search(f, state, depth + 1) &&
+    assign_elem!(state, depth, Val{c}, x, y) &&
+    backtracking_search(f, state, depth + 1) &&
   return true
   unassign_elem!(state, depth, Val{c}, x)
   end
@@ -348,6 +366,7 @@ be mutated even when the assignment fails.
     && !isnothing(state.var_assign[$(quot(d))]))
       state.var_assign[$(quot(d))][subpart(X,x,$(quot(f)))]=(
       state.var_assign[$(quot(d))][subpart(X,x,$(quot(f)))][1]+1,subpart(Y,y,$(quot(f))))
+      state.type_components[$(quot(d))].func[subpart(X,x,$(quot(f)))] = subpart(Y,y,$(quot(f)))
   end)
   end...)
 

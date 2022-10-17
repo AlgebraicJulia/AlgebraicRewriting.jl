@@ -2,19 +2,18 @@ name = "AlgebraicRewriting"
 uuid = "725a01d3-f174-5bbd-84e1-b9417bad95d9"
 license = "MIT"
 authors = ["Kris Brown <kristopher.brown@ufl.edu>"]
-version = "0.0.6"
+version = "0.0.7"
 
 [deps]
-AutoHashEquals = "15f4f7f2-30c1-5605-9d31-71845cf9641f"
 Catlab = "134e5e36-593f-5add-ad60-77f754baafbe"
 DataStructures = "864edb3b-99cc-5e75-8d2d-829cb0a9cfe8"
 Random = "9a3f8284-a2c9-5f02-9a11-845980a1fd5c"
 Reexport = "189a3867-3050-52da-a836-e630ba90ab69"
 Requires = "ae029012-a4dd-5104-9daa-d747884805df"
+StructEquality = "6ec83bb0-ed9f-11e9-3b4c-2b04cb4e219c"
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 
 [compat]
-AutoHashEquals = "0.2.0"
 Catlab = "0.14"
 DataStructures = "0.17, 0.18"
 Reexport = "^1"
