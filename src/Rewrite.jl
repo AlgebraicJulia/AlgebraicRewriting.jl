@@ -1,6 +1,6 @@
 module Rewrite
 
-export Rule, NAC, rewrite, rewrite_match, rewrite_parallel,
+export Rule, PAC, NAC, rewrite, rewrite_match, rewrite_parallel,
        rewrite_match_maps, rewrite_parallel_maps, rewrite_dpo, rewrite_spo,
        rewrite_sqpo, final_pullback_complement, pullback_complement, get_result,
        get_pmap, rewrite_sequential_maps
@@ -23,19 +23,44 @@ import ..Variables: sub_vars
 
 # Generic rewriting tooling
 ###########################
-struct NAC
+"""
+Application conditions, either positive or negative.
+
+This can be attached to a rule as a morphism f: L->AC. When a match morphism is 
+found, we are concerned with triangles:
+ AC <-- L <-- I --> R
+    ↘  ↓
+      G
+  
+If the condition is positive, we demand that the triangle commutes for the match 
+to be considered valid. If it is negative, we forbid such a triangle.
+
+An important subtlety is that monicity is only checked during AC evaluation
+for the elements that are *not* assigned in virtue of the match morphism. Here
+is an example:
+
+L is a single vertex but we want to match vertices with at most one inneighbor.
+AC has (a cospan shape), since the two inneighbors might be
+different (therefore, the match constraint is not monic).
+"""
+struct AppCond
   f::ACSetTransformation
+  positive::Bool
   monic::Union{Bool, Vector{Symbol}}
   init_check::Bool
+  AppCond(f::ACSetTransformation, p=false, m=false, init_check=true) = 
+    new(f, p, m, init_check)
 end
 
-NAC(f::ACSetTransformation, m=false, init_check=true) = NAC(f, m, init_check)
-NAC(nac::NAC) = nac
-codom(n::NAC) = codom(n.f)
-dom(n::NAC) = dom(n.f)
-is_natural(n::NAC) = is_natural(n.f)
-sub_vars(nac::NAC, m) = NAC(sub_vars(nac.f, m), nac.monic)
-components(n::NAC) = components(n.f)
+AppCond(nac::AppCond) = nac
+pos(nac::AppCond) = nac.positive ? "Positive" : "Negative"
+NAC(f::ACSetTransformation, m=false, init_check=true) = AppCond(f,false,m,init_check)
+PAC(f::ACSetTransformation, m=false, init_check=true) = AppCond(f,true,m,init_check)
+codom(n::AppCond) = codom(n.f)
+dom(n::AppCond) = dom(n.f)
+is_natural(n::AppCond) = is_natural(n.f)
+sub_vars(nac::AppCond, m) = AppCond(sub_vars(nac.f, m), nac.monic)
+components(n::AppCond) = components(n.f)
 
 has_comp(monic::Bool, c::Symbol) = monic
 has_comp(monic::Vector{Symbol}, c::Symbol) = c ∈ monic
@@ -47,29 +72,21 @@ matched. The R morphism encodes a replacement pattern to be substituted in.
 A semantics (DPO, SPO, or SqPO) must be chosen.
 
 Control the match-finding process by specifying whether the match is
-intended to be monic or not, as well as an optional negative application
-condition(s) (i.e. forbid any match m: L->G for which there exists a commuting
-triangle L->Nᵢ->G, for each Nᵢ). Monic constraints can be independently given
+intended to be monic or not, as well as an optional application
+condition(s) 
+
+Monic constraints can be independently given
 to the match morphism and to the morphisms searched for when checking NAC.
-
-An important subtlety is that monicity is only checked during NAC evaluation
-for the elements that are not assigned in virtue of the match morphism. Here
-is an example:
-
-We want to rewrite vertices with exactly two inneighbors.
-L has three vertices (a cospan shape), since the two inneighbors might be
-different (therefore, the match constraint is not monic).
-
 """
 struct Rule{T}
   L::Any
   R::Any
-  N::Vector{NAC}
+  conditions::Vector{AppCond}
   monic::Union{Bool, Vector{Symbol}}
   function Rule{T}(L, R, N=nothing; monic=false) where {T}
     dom(L) == dom(R) || error("L<->R not a span")
-    Ns = isnothing(N) ? NAC[] : (N isa AbstractVector ? NAC.(N) : [NAC(N)])
-    all(N-> dom(N) == codom(L), Ns) || error("NAC does not compose with L $(codom(L))")
+    Ns = Vector{AppCond}(isnothing(N) ? [] : (N isa AbstractVector ? N : [NAC(N)]))
+    all(N-> dom(N) == codom(L), Ns) || error("AppCond does not compose with L $(codom(L))")
     map(enumerate([L,R,Ns...])) do (i, f)
       if !is_natural(f)
         show(stdout, "text/plain",dom(f))
@@ -106,10 +123,10 @@ end
 end
 
 
-(F::DeltaMigration)(n::NAC) = NAC(F(n.f), n.monic, n.init_check)
+(F::DeltaMigration)(n::AppCond) = AppCond(F(n.f), n.positive, n.monic, n.init_check)
 
 (F::DeltaMigration)(r::Rule{T}) where {T} =
-  Rule{T}(F(r.L), F(r.R), F.(r.N); monic=r.monic)
+  Rule{T}(F(r.L), F(r.R), F.(r.conditions); monic=r.monic)
 
 """
 Negative application conditions that are rendered unnatural by substitution
@@ -117,7 +134,7 @@ are inactive. E.g. an edge weight is a variable in L but set to 0 in the NAC.
 When a nonzero edge is matched, this NAC becomes unnatural.
 """
 function sub_vars(R::Rule, m::LooseACSetTransformation)
-  Ns = filter(is_natural, [sub_vars(N, m) for N in R.N])
+  Ns = filter(is_natural, [sub_vars(N, m) for N in R.conditions])
   new_L = sub_vars(R.L, m)
   for N in Ns 
     if codom(new_L) != dom(N)
@@ -219,10 +236,10 @@ function can_match(r::Rule{T}, m; initial=Dict(),
     end
   end
 
-  for (nᵢ, N) in enumerate(r′.N)
+  for (nᵢ, N) in enumerate(r′.conditions)
     tri = extend_morphism(m′, N.f;  monic=N.monic, init_check=N.init_check)
-    if !isnothing(tri)
-      return ("NAC failed", nᵢ, components(tri))
+    if isnothing(tri) == N.positive
+      return ("$(pos(N))AC failed", nᵢ, isnothing(tri) ? () : components(tri))
     end
   end
 

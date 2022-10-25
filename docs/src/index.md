@@ -75,7 +75,7 @@ serve as our non-deleted subset of that pattern.
 The aim to recapture the dynamics of NetLogo's
 [Wolf Sheep predation](https://ccl.northwestern.edu/netlogo/models/WolfSheepPredation)
 model in terms of declarative rewrite rules, rather than standard code-based
-interfaced. This models wolves in sheeps living in a periodic 2D space, which is
+interface. This models wolves in sheeps living in a periodic 2-D space, which is
 also covered by grass. Wolves eat sheep to gain energy, sheep eat grass to gain
 energy, and grass takes time to grow back after it has been eaten. Each
 wolf/sheep has a direction and is moving in that direction (veering left or
@@ -91,47 +91,42 @@ pattern matching characteristic of AlgebraicRewriting, in contrast to floating
 point coordinates and collision checking to see when two entities occupy the
 same space.
 
+The following code snippets come from [this file](https://github.com/AlgebraicJulia/AlgebraicRewriting.jl/blob/main/docs/src/lotka_volterra.jl).
+
 ### Defining the datatype we are rewriting
 
-```@example X
-using Catlab.Graphs.BasicGraphs: HasGraph # hide
-@present TheoryLV <: SchGraph begin # inherit Graph schema
-  (Sheep,Wolf,Grass)::Ob               # three more types of entities
-  (Dir, GrassVal, Eng)::AttrType       # three more types of attributes
-  sheep_loc::Hom(Sheep, E)             # sheep live on edges
-  wolf_loc::Hom(Wolf, E)               # wolves live on edges
-  grass::Hom(Grass, V)                 # grass lives on vertices
-  grassval::Attr(Grass,GrassVal)       # grass has an attribute
-  dir::Attr(E, Dir)                    # edges have an attributes
-  sheep_eng::Attr(Sheep, Eng)          # sheep have an attributes
-  wolf_eng::Attr(Wolf, Eng)            # wolves have an attribute
-end
+```julia
+@present TheoryLV <: SchGraph begin
+  (Sheep,Wolf)::Ob
+  sheep_loc::Hom(Sheep, V)
+  wolf_loc::Hom(Wolf, V)
 
-@acset_type LV_Generic(TheoryLV) <: HasGraph  # inherit Graph API
-const LV = LV_Generic{Union{Var,Expr,Symbol}, # Dir
-                      Union{Var,Expr,Int},    # GrassVal
-                      Union{Var,Expr,Int}};   # Eng
+  (Dir,Eng)::AttrType
+  grass_eng::Attr(V, Eng)
+  sheep_eng::Attr(Sheep, Eng)
+  wolf_eng::Attr(Wolf, Eng)
+  sheep_dir::Attr(Sheep, Dir)
+  wolf_dir::Attr(Wolf, Dir)
+  dir::Attr(E, Dir)
+end
 ```
 
-- `grassval == 0` means alive grass; `grassval > 0` represents the time
-until the grass is alive.
-- Sheeps and wolves have position and direction, so we assign each an *edge*.
-    - We assume a convention where the vertex of a sheep/wolf is the edge *source*.
-- `Dir` is an attribute which can take values `N`, `E`, `W`, and `S`.
+- `grassval == 0` means alive grass; `grassval > 0` represents the time 
+  until the grass is alive.
+- Sheeps and wolves have position and direction.
 
 There is a certain symmetry between wolves and sheep in the schema, which we can
 make explicit with the following endofunctor:
 
-```@example X
+```julia
 F = FinFunctor(
-  Dict([:Sheep => :Wolf, :Wolf => :Sheep, :Grass => :Grass, :V=>:V, :E=>:E,
-        :Dir=>:Dir, :GrassVal=>:GrassVal, :Eng=>:Eng]),
+  Dict([:Sheep => :Wolf, :Wolf => :Sheep, :V=>:V, :E=>:E,:Dir=>:Dir, :Eng=>:Eng]),
   Dict([:sheep_loc=>:wolf_loc, :wolf_loc=>:sheep_loc,
-        :sheep_eng=>:wolf_eng, :wolf_eng=>:sheep_eng,
-        :src=>:src,:tgt=>:tgt,:dir=>:dir,
-        :grassval=>:grassval,:grass=>:grass]),
+        :sheep_eng=>:wolf_eng, :wolf_eng=>:sheep_eng,:grass_eng =>:grass_eng,
+        :sheep_dir=>:wolf_dir, :wolf_dir=>:sheep_dir,
+        :src=>:src,:tgt=>:tgt,:dir=>:dir]),
   TheoryLV, TheoryLV
-);
+)
 ```
 
 We can apply `F` to a rewrite rule defined for sheep (e.g. that one dies when it
@@ -153,63 +148,13 @@ Let's show some of the things that went into `seq`. Below we define sheep
 reproduction to occur with probability 0.04 and wolf reproduction to occur with
 probability 0.05.
 
-```@example X
-using Catlab.Graphics.Graphviz: Attributes, Statement, Node # hide
-using Catlab.Graphics.Graphviz # hide
-
-
-supscript_d = Dict(['1'=>'¹', '2'=>'²', '3'=>'³', '4'=>'⁴', '5'=>'⁵', # hide
-                    '6'=>'⁶', '7'=>'⁷', '8'=>'⁸', '9'=>'⁹', '0'=>'⁰']) # hide
-supscript(x::String) = join([get(supscript_d, c, c) for c in x]) # hide
-function Graph(p::LV,positions; name="G", prog="neato", title="") # hide
-  pstr = ["$(i),$(j)!" for (i,j) in positions] # hide
-  stmts = Statement[] # hide
-    for s in 1:nv(p) # hide
-        vx, vy = positions[s] # hide
-        if !isempty(incident(p, s, :grass)) # hide
-          gv = p[only(incident(p, s, :grass)), :grassval] # hide
-        else # hide
-          gv = 0 # hide
-        end # hide
-        col = gv  == 0 ? "lightgreen" : "tan" # hide
-        push!(stmts,Node("v$s", Attributes( # hide
-                    :label=>gv == 0 ? "" : string(gv),  # hide
-                    :shape=>"circle", # hide
-                    :color=> col, :pos=>pstr[s]))) # hide
-    end # hide
-  d = Dict([:E=>(1,0),:N=>(0,1), :S=>(0,1),:W=>(-1,0),]) # hide
-  for e in edges(p) # hide
-    s, t = src(p,e),tgt(p,e) # hide
-    dx, dy = get(d, p[e, :dir], (1,0)) # hide
-    (sx,sy), (tx,ty) = positions[s], positions[t] # hide
-
-    for (is_wolf, loc, eng) in [(:true,:wolf_loc,:wolf_eng), (false, :sheep_loc, :sheep_eng)] # hide
-        for w in incident(p, e, loc) # hide
-            L, R = 0.25, 0.2 # hide
-            wx = sx+L*dx+R*rand() # hide
-            wy = sy+L*dy+R*rand() # hide
-            ID = "$(is_wolf ? :w : :s)$w" # hide
-            append!(stmts,[Node(ID, Attributes( # hide
-                            :label=>"$w"*supscript("$(p[w,eng])"), # hide
-                            :shape=>"square", :width=>"0.3px", :height=>"0.3px", :fixedsize=>"true", # hide
-                            :pos=>"$(wx),$(wy)!",:color=> is_wolf ? "red" : "lightblue")), # hide
-                           ]) # hide
-        end # hide
-    end # hide
-  end # hide
-  g = Graphviz.Digraph(name, Statement[stmts...]; prog=prog, # hide
-        graph_attrs=Attributes(:label=>title, :labelloc=>"t"), # hide
-        node_attrs=Attributes(:shape=>"plain", :style=>"filled")) # hide
-  return g # hide
-end # hide
-
+```julia
 s_reprod_l =  @acset LV begin
-  Sheep=1; V=2; E=1; src=1;tgt=2; dir=[Var(:d)];
-  sheep_eng=[Var(:a)]; sheep_loc=1
+  Sheep=1; V=1; sheep_loc=1; grass_eng=[Var(:_1)]
+  sheep_dir=[Var(:_2)]; sheep_eng=[Var(:a)]; 
 end
-
-Graph(s_reprod_l, [0=>0,1=>0]) # hide
 ```
+
 This defines a *pattern* which we wish to match. The suffix `_l` indicates that
 this is the `L` of a rewrite rule, which is a partial map `L → R`, i.e.
 `L ↩ I → R`.
@@ -217,23 +162,25 @@ this is the `L` of a rewrite rule, which is a partial map `L → R`, i.e.
 We need to define the interface `I`, which contains the subobject of `L` which
 is *not deleted*.
 
-```@example X
-s_reprod_i = deepcopy(s_reprod_l); rem_part!(s_reprod_i, :Sheep, 1)
+```julia
+s_reprod_i = @acset LV begin V=1; grass_eng=[Var(:_1)] end
 ```
-And the right object, `R`, includes things that are added. So we've removed a
+
+and the right object, `R`, includes things that are added. We're removing a
 sheep with energy `a` at a certain position and replace it with two sheep with
 `a/2` energy.
 
-```@example X
-s_reprod_r = deepcopy(s_reprod_i)
-add_parts!(s_reprod_r, :Sheep, 2; sheep_loc=[1,1],
-           sheep_eng=[:(round(Int, a/2, RoundDown))])
-Graph(s_reprod_r, [0=>0,1=>0]) # hide
+```julia
+s_reprod_r =  @acset LV begin
+  Sheep=2; V=1; sheep_loc=1; grass_eng=[Var(:_1)]
+  sheep_dir=[Var(:_2),Var(:_2)]; 
+  sheep_eng=fill(:(round(Int, a/2, RoundUp)), 2); 
+end
 ```
 
 We assemble this data into a rewrite rule.
 
-```@example X
+```julia
 sheep_reprod = Rule(hom(s_reprod_i,s_reprod_l),
                     hom(s_reprod_i,s_reprod_r));
 ```
@@ -241,7 +188,7 @@ sheep_reprod = Rule(hom(s_reprod_i,s_reprod_l),
 As mentioned before, we can turn this into a wolf reproduction rule by applying
 our functor. Then we add the two rules along with their probabilities. The
 `false` here refers to whether or not we apply the rule only once or whether we
-apply it for every match we find (which is what we want to do, to give each
+apply it for every match we find (which is what we want to do, to give *each*
 sheep a 4% chance of reproducing).
 
 ```julia
@@ -260,46 +207,42 @@ can have Julia expressions involving those variables.
 Another illustrative example is the 'move forward' rule. We simultaneously
 advance the sheep forward one space and decrement its energy by 1.
 
-```@example X
+```julia
 s_move_forward_l = @acset LV begin
-  Sheep=1; V=3; E=2;
-  src=[1,2]; tgt=[2,3]; dir=[Var(:a), Var(:a)]
-  sheep_eng=[Var(:x)]; sheep_loc=1
+  Sheep=1; V=2; E=1; sheep_loc=1;
+  src=1; tgt=2; dir=[Var(:z)]; 
+  grass_eng=Var.([:_1,:_2])
+  sheep_dir=[Var(:z)]; sheep_eng=[Var(:x)]
 end
-Graph(s_move_forward_l, [0=>0,1=>0,2=>0]) # hide
 ```
 
 This pattern has two contiguous edges that are in the same direction (implicitly
 constrained by using `Var(:a)` twice) and the sheep in the first position.
 
-```@example X
-
+```julia
 s_move_forward_i = deepcopy(s_move_forward_l)
 rem_part!(s_move_forward_i, :Sheep, 1)
 
 s_move_forward_r = deepcopy(s_move_forward_i)
-add_part!(s_move_forward_r, :Sheep; sheep_loc=2, sheep_eng=:(x-1))
-
-Graph(s_move_forward_r, [0=>0,1=>0,2=>0]) # hide
+add_part!(s_move_forward_r, :Sheep; sheep_loc=2, sheep_eng=:(x-1), sheep_dir=Var(:z))
 ```
 
-We delete the sheep and recreate one in position #2, with one fewer energy.
-This is only valid though if the sheep has any energy. To prevent this rule
+We delete the sheep and recreate one in position #2, with one fewer energy unit.
+However, this is only valid if the sheep has any energy. To prevent this rule
 from firing, we need a *negative application condition*. This embeds the
 pattern `L` in a larger context `N` that has the semantics of: if `L` *and* `N`
-are matched, then actually don't fire the rule. The pattern we want to avoid
+are matched, then, actually, don't fire the rule. The pattern we want to avoid
 is one where the sheep has zero energy.
 
-```@example X
-zero_s = deepcopy(s_move_forward_l)
-set_subpart!(zero_s, :sheep_eng, 0)
-Graph(zero_s, [0=>0,1=>0,2=>0]) # hide
-```
-
 ```julia
-sheep_move_forward = Rule(hom(s_move_forward_i, s_move_forward_l),
-                          hom(s_move_forward_i, s_move_forward_r),
-                          [NAC(hom(s_move_forward_l,zero_s; bindvars=true))])
+s_move_n = deepcopy(s_move_forward_l)
+set_subpart!(s_move_n, 1, :sheep_eng, 0)
+
+sheep_move_forward = Rule(
+  hom(s_move_forward_i, s_move_forward_l; monic=true),
+  hom(s_move_forward_i, s_move_forward_r; monic=true),
+  [NAC(hom(s_move_forward_l, s_move_n; monic=true,bindvars=true))]
+)
 
 wolf_move_forward = F(sheep_move_forward)
 ```
@@ -309,7 +252,8 @@ the morphism data of `L ↩ I → R`.
 
 ### Other functions
 Functions to initialize and visualize the world-states are defined in the file
-`lotka_volterra.jl`. Important functionality only possible in the notebook is the
+[lotka_volterra.jl](https://github.com/AlgebraicJulia/AlgebraicRewriting.jl/blob/main/docs/src/lotka_volterra.jl). 
+Important functionality only possible in the notebook is the
 ability to move a slider and view the progression of a simulation.
 
 ![Alt Text](assets/slider2.gif)

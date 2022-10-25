@@ -491,8 +491,17 @@ N = @acset Graph begin V=3; E=4; src=[1,1,2,3]; tgt=[2,3,2,3] end
 n = homomorphism(L,N; monic=true)
 G = @acset Graph begin V=4; E=6; src=[1,1,1,2,3,4]; tgt=[2,3,4,2,3,4] end
 @test rewrite_parallel(Rule(l,r,n; monic=true), G) === nothing
-@test rewrite_parallel(Rule(l,r,[n]; monic=true), G) === nothing
+@test rewrite_parallel(Rule(l,r,[NAC(n)]; monic=true), G) === nothing
 
 
+# Positive application conditions
+#################################
+g1, t = Graph(1), apex(terminal(Graph))
+g1_t = homomorphism(g1, t)
+r = Rule(id(g1), g1_t)
+@test rewrite(r, g1) == t
+r = Rule(id(g1), g1_t, [PAC(g1_t)])
+@test isnothing(rewrite(r, g1))
+@test rewrite(r, t) == @acset Graph begin V=1; E=2; src=1; tgt=1 end
 
 end # module
