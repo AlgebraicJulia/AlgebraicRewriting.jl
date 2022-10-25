@@ -188,217 +188,54 @@ H = rewrite(rule, G)</code></pre><img src='data:image/svg+xml;utf-8,<?xml versio
 </g>
 </g>
 </svg>
-'/><p>Something to note here is that the result is only defined up to isomorphism, e.g. the vertex which corresponded to vertex #1 in the original graph may not be #1 in the result.</p><p>As the example <code>mesh.jl</code>, shows, we are not limited to rewriting (directed multi-) graphs - we can rewrite triangle meshes with the same methodology: we provide an instance of the datatype to serve as our pattern for replacement (such as the quadrangle above) and then need an instance to serve as our non-deleted subset of that pattern.</p><p><img src="assets/meshres.png" alt="Alt Text"/></p><h2 id="Applied-example:-Lotka-Volterra-agent-based-model"><a class="docs-heading-anchor" href="#Applied-example:-Lotka-Volterra-agent-based-model">Applied example: Lotka-Volterra agent-based model</a><a id="Applied-example:-Lotka-Volterra-agent-based-model-1"></a><a class="docs-heading-anchor-permalink" href="#Applied-example:-Lotka-Volterra-agent-based-model" title="Permalink"></a></h2><h3 id="Overview"><a class="docs-heading-anchor" href="#Overview">Overview</a><a id="Overview-1"></a><a class="docs-heading-anchor-permalink" href="#Overview" title="Permalink"></a></h3><p>The aim to recapture the dynamics of NetLogo&#39;s <a href="https://ccl.northwestern.edu/netlogo/models/WolfSheepPredation">Wolf Sheep predation</a> model in terms of declarative rewrite rules, rather than standard code-based interfaced. This models wolves in sheeps living in a periodic 2D space, which is also covered by grass. Wolves eat sheep to gain energy, sheep eat grass to gain energy, and grass takes time to grow back after it has been eaten. Each wolf/sheep has a direction and is moving in that direction (veering left or right randomly with some probability). At some rate, wolves/sheep undergo mitosis and their energy is split in half. As the wolves/sheep move, they lose energy, and they die if they are eaten or run out of energy. The simulation could go on indefinitely, or it could be ended when one of the two species completely dies out.</p><p>The main difference with our reconstruction of the NetLogo model is that we model the 2D space as a discrete grid. This is more amenable to the style of pattern matching characteristic of AlgebraicRewriting, in contrast to floating point coordinates and collision checking to see when two entities occupy the same space.</p><h3 id="Defining-the-datatype-we-are-rewriting"><a class="docs-heading-anchor" href="#Defining-the-datatype-we-are-rewriting">Defining the datatype we are rewriting</a><a id="Defining-the-datatype-we-are-rewriting-1"></a><a class="docs-heading-anchor-permalink" href="#Defining-the-datatype-we-are-rewriting" title="Permalink"></a></h3><pre><code class="language-julia hljs">@present TheoryLV &lt;: SchGraph begin # inherit Graph schema
-  (Sheep,Wolf,Grass)::Ob               # three more types of entities
-  (Dir, GrassVal, Eng)::AttrType       # three more types of attributes
-  sheep_loc::Hom(Sheep, E)             # sheep live on edges
-  wolf_loc::Hom(Wolf, E)               # wolves live on edges
-  grass::Hom(Grass, V)                 # grass lives on vertices
-  grassval::Attr(Grass,GrassVal)       # grass has an attribute
-  dir::Attr(E, Dir)                    # edges have an attributes
-  sheep_eng::Attr(Sheep, Eng)          # sheep have an attributes
-  wolf_eng::Attr(Wolf, Eng)            # wolves have an attribute
-end
+'/><p>Something to note here is that the result is only defined up to isomorphism, e.g. the vertex which corresponded to vertex #1 in the original graph may not be #1 in the result.</p><p>As the example <code>mesh.jl</code>, shows, we are not limited to rewriting (directed multi-) graphs - we can rewrite triangle meshes with the same methodology: we provide an instance of the datatype to serve as our pattern for replacement (such as the quadrangle above) and then need an instance to serve as our non-deleted subset of that pattern.</p><p><img src="assets/meshres.png" alt="Alt Text"/></p><h2 id="Applied-example:-Lotka-Volterra-agent-based-model"><a class="docs-heading-anchor" href="#Applied-example:-Lotka-Volterra-agent-based-model">Applied example: Lotka-Volterra agent-based model</a><a id="Applied-example:-Lotka-Volterra-agent-based-model-1"></a><a class="docs-heading-anchor-permalink" href="#Applied-example:-Lotka-Volterra-agent-based-model" title="Permalink"></a></h2><h3 id="Overview"><a class="docs-heading-anchor" href="#Overview">Overview</a><a id="Overview-1"></a><a class="docs-heading-anchor-permalink" href="#Overview" title="Permalink"></a></h3><p>The aim to recapture the dynamics of NetLogo&#39;s <a href="https://ccl.northwestern.edu/netlogo/models/WolfSheepPredation">Wolf Sheep predation</a> model in terms of declarative rewrite rules, rather than standard code-based interface. This models wolves in sheeps living in a periodic 2-D space, which is also covered by grass. Wolves eat sheep to gain energy, sheep eat grass to gain energy, and grass takes time to grow back after it has been eaten. Each wolf/sheep has a direction and is moving in that direction (veering left or right randomly with some probability). At some rate, wolves/sheep undergo mitosis and their energy is split in half. As the wolves/sheep move, they lose energy, and they die if they are eaten or run out of energy. The simulation could go on indefinitely, or it could be ended when one of the two species completely dies out.</p><p>The main difference with our reconstruction of the NetLogo model is that we model the 2D space as a discrete grid. This is more amenable to the style of pattern matching characteristic of AlgebraicRewriting, in contrast to floating point coordinates and collision checking to see when two entities occupy the same space.</p><p>The following code snippets come from <a href="https://github.com/AlgebraicJulia/AlgebraicRewriting.jl/blob/main/docs/src/lotka_volterra.jl">this file</a>.</p><h3 id="Defining-the-datatype-we-are-rewriting"><a class="docs-heading-anchor" href="#Defining-the-datatype-we-are-rewriting">Defining the datatype we are rewriting</a><a id="Defining-the-datatype-we-are-rewriting-1"></a><a class="docs-heading-anchor-permalink" href="#Defining-the-datatype-we-are-rewriting" title="Permalink"></a></h3><pre><code class="language-julia hljs">@present TheoryLV &lt;: SchGraph begin
+  (Sheep,Wolf)::Ob
+  sheep_loc::Hom(Sheep, V)
+  wolf_loc::Hom(Wolf, V)
 
-@acset_type LV_Generic(TheoryLV) &lt;: HasGraph  # inherit Graph API
-const LV = LV_Generic{Union{Var,Expr,Symbol}, # Dir
-                      Union{Var,Expr,Int},    # GrassVal
-                      Union{Var,Expr,Int}};   # Eng</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">Main.LV_Generic{Union{Expr, Symbol, Var}, Union{Int64, Expr, Var}, Union{Int64, Expr, Var}}</code></pre><ul><li><code>grassval == 0</code> means alive grass; <code>grassval &gt; 0</code> represents the time</li></ul><p>until the grass is alive.</p><ul><li>Sheeps and wolves have position and direction, so we assign each an <em>edge</em>.<ul><li>We assume a convention where the vertex of a sheep/wolf is the edge <em>source</em>.</li></ul></li><li><code>Dir</code> is an attribute which can take values <code>N</code>, <code>E</code>, <code>W</code>, and <code>S</code>.</li></ul><p>There is a certain symmetry between wolves and sheep in the schema, which we can make explicit with the following endofunctor:</p><pre><code class="language-julia hljs">F = FinFunctor(
-  Dict([:Sheep =&gt; :Wolf, :Wolf =&gt; :Sheep, :Grass =&gt; :Grass, :V=&gt;:V, :E=&gt;:E,
-        :Dir=&gt;:Dir, :GrassVal=&gt;:GrassVal, :Eng=&gt;:Eng]),
+  (Dir,Eng)::AttrType
+  grass_eng::Attr(V, Eng)
+  sheep_eng::Attr(Sheep, Eng)
+  wolf_eng::Attr(Wolf, Eng)
+  sheep_dir::Attr(Sheep, Dir)
+  wolf_dir::Attr(Wolf, Dir)
+  dir::Attr(E, Dir)
+end</code></pre><ul><li><code>grassval == 0</code> means alive grass; <code>grassval &gt; 0</code> represents the time  until the grass is alive.</li><li>Sheeps and wolves have position and direction.</li></ul><p>There is a certain symmetry between wolves and sheep in the schema, which we can make explicit with the following endofunctor:</p><pre><code class="language-julia hljs">F = FinFunctor(
+  Dict([:Sheep =&gt; :Wolf, :Wolf =&gt; :Sheep, :V=&gt;:V, :E=&gt;:E,:Dir=&gt;:Dir, :Eng=&gt;:Eng]),
   Dict([:sheep_loc=&gt;:wolf_loc, :wolf_loc=&gt;:sheep_loc,
-        :sheep_eng=&gt;:wolf_eng, :wolf_eng=&gt;:sheep_eng,
-        :src=&gt;:src,:tgt=&gt;:tgt,:dir=&gt;:dir,
-        :grassval=&gt;:grassval,:grass=&gt;:grass]),
+        :sheep_eng=&gt;:wolf_eng, :wolf_eng=&gt;:sheep_eng,:grass_eng =&gt;:grass_eng,
+        :sheep_dir=&gt;:wolf_dir, :wolf_dir=&gt;:sheep_dir,
+        :src=&gt;:src,:tgt=&gt;:tgt,:dir=&gt;:dir]),
   TheoryLV, TheoryLV
-);</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">FinFunctor(Dict{Symbol, Catlab.Syntax.GATExpr{:generator}}(:GrassVal =&gt; GrassVal, :Eng =&gt; Eng, :Wolf =&gt; Sheep, :Dir =&gt; Dir, :V =&gt; V, :Sheep =&gt; Wolf, :Grass =&gt; Grass, :E =&gt; E), Dict{Symbol, Catlab.Syntax.GATExpr{:generator}}(:wolf_loc =&gt; sheep_loc, :src =&gt; src, :grassval =&gt; grassval, :sheep_eng =&gt; wolf_eng, :tgt =&gt; tgt, :sheep_loc =&gt; wolf_loc, :wolf_eng =&gt; sheep_eng, :grass =&gt; grass, :dir =&gt; dir), FinCat(Presentation{ThSchema, Symbol}(Catlab.Theories.FreeSchema, (Ob = Catlab.Theories.FreeSchema.Ob{:generator}[V, E, Sheep, Wolf, Grass], Hom = Catlab.Theories.FreeSchema.Hom{:generator}[src, tgt, sheep_loc, wolf_loc, grass], AttrType = Catlab.Theories.FreeSchema.AttrType{:generator}[Dir, GrassVal, Eng], Attr = Catlab.Theories.FreeSchema.Attr{:generator}[grassval, dir, sheep_eng, wolf_eng]), Dict(:wolf_loc=&gt;(:Hom=&gt;4), :GrassVal=&gt;(:AttrType=&gt;2), :grassval=&gt;(:Attr=&gt;1), :dir=&gt;(:Attr=&gt;2), :V=&gt;(:Ob=&gt;1), :Grass=&gt;(:Ob=&gt;5), :Eng=&gt;(:AttrType=&gt;3), :wolf_eng=&gt;(:Attr=&gt;4), :Sheep=&gt;(:Ob=&gt;3), :E=&gt;(:Ob=&gt;2)…), Pair[])), FinCat(Presentation{ThSchema, Symbol}(Catlab.Theories.FreeSchema, (Ob = Catlab.Theories.FreeSchema.Ob{:generator}[V, E, Sheep, Wolf, Grass], Hom = Catlab.Theories.FreeSchema.Hom{:generator}[src, tgt, sheep_loc, wolf_loc, grass], AttrType = Catlab.Theories.FreeSchema.AttrType{:generator}[Dir, GrassVal, Eng], Attr = Catlab.Theories.FreeSchema.Attr{:generator}[grassval, dir, sheep_eng, wolf_eng]), Dict(:wolf_loc=&gt;(:Hom=&gt;4), :GrassVal=&gt;(:AttrType=&gt;2), :grassval=&gt;(:Attr=&gt;1), :dir=&gt;(:Attr=&gt;2), :V=&gt;(:Ob=&gt;1), :Grass=&gt;(:Ob=&gt;5), :Eng=&gt;(:AttrType=&gt;3), :wolf_eng=&gt;(:Attr=&gt;4), :Sheep=&gt;(:Ob=&gt;3), :E=&gt;(:Ob=&gt;2)…), Pair[])))</code></pre><p>We can apply <code>F</code> to a rewrite rule defined for sheep (e.g. that one dies when it has zero energy) and obtain the analogous rule for wolves without any effort.</p><h3 id="Rules-and-Schedules"><a class="docs-heading-anchor" href="#Rules-and-Schedules">Rules and Schedules</a><a id="Rules-and-Schedules-1"></a><a class="docs-heading-anchor-permalink" href="#Rules-and-Schedules" title="Permalink"></a></h3><p>We can declare a <code>Rule</code> and how we wish to schedule that rule. The &#39;outer loop&#39; is a <code>WhileSchedule</code> that executes all the rules in some order (i.e. a <code>LinearSchedule</code> wrapped around a list called <code>seq</code> made up of individual <code>RuleSchedule</code>s).</p><pre><code class="language-julia hljs">extinct(prev, curr) = nparts(curr, :Wolf) == 0 || nparts(curr, :Sheep) == 0
+)</code></pre><p>We can apply <code>F</code> to a rewrite rule defined for sheep (e.g. that one dies when it has zero energy) and obtain the analogous rule for wolves without any effort.</p><h3 id="Rules-and-Schedules"><a class="docs-heading-anchor" href="#Rules-and-Schedules">Rules and Schedules</a><a id="Rules-and-Schedules-1"></a><a class="docs-heading-anchor-permalink" href="#Rules-and-Schedules" title="Permalink"></a></h3><p>We can declare a <code>Rule</code> and how we wish to schedule that rule. The &#39;outer loop&#39; is a <code>WhileSchedule</code> that executes all the rules in some order (i.e. a <code>LinearSchedule</code> wrapped around a list called <code>seq</code> made up of individual <code>RuleSchedule</code>s).</p><pre><code class="language-julia hljs">extinct(prev, curr) = nparts(curr, :Wolf) == 0 || nparts(curr, :Sheep) == 0
 overall = WhileSchedule(ListSchedule(seq), :main, extinct, 10);</code></pre><p>Let&#39;s show some of the things that went into <code>seq</code>. Below we define sheep reproduction to occur with probability 0.04 and wolf reproduction to occur with probability 0.05.</p><pre><code class="language-julia hljs">s_reprod_l =  @acset LV begin
-  Sheep=1; V=2; E=1; src=1;tgt=2; dir=[Var(:d)];
-  sheep_eng=[Var(:a)]; sheep_loc=1
-end</code></pre><img src='data:image/svg+xml;utf-8,<?xml version="1.0" encoding="UTF-8" standalone="no"?>
-<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN"
- "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
-<!-- Generated by graphviz version 2.43.0 (0)
- -->
-<!-- Title: G Pages: 1 -->
-<svg width="116pt" height="44pt"
- viewBox="0.00 0.00 116.00 44.00" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
-<g id="graph0" class="graph" transform="scale(1 1) rotate(0) translate(4 40)">
-<title>G</title>
-<polygon fill="white" stroke="transparent" points="-4,4 -4,-40 112,-40 112,4 -4,4"/>
-<!-- v1 -->
-<g id="node1" class="node">
-<title>v1</title>
-<ellipse fill="lightgreen" stroke="lightgreen" cx="18" cy="-18" rx="18" ry="18"/>
-</g>
-<!-- v2 -->
-<g id="node2" class="node">
-<title>v2</title>
-<ellipse fill="lightgreen" stroke="lightgreen" cx="90" cy="-18" rx="18" ry="18"/>
-</g>
-<!-- s1 -->
-<g id="node3" class="node">
-<title>s1</title>
-<polygon fill="lightblue" stroke="lightblue" points="57.7,-34.08 35.7,-34.08 35.7,-12.08 57.7,-12.08 57.7,-34.08"/>
-<text text-anchor="middle" x="46.7" y="-19.38" font-family="Times,serif" font-size="14.00">1a</text>
-</g>
-</g>
-</svg>
-'/><p>This defines a <em>pattern</em> which we wish to match. The suffix <code>_l</code> indicates that this is the <code>L</code> of a rewrite rule, which is a partial map <code>L → R</code>, i.e. <code>L ↩ I → R</code>.</p><p>We need to define the interface <code>I</code>, which contains the subobject of <code>L</code> which is <em>not deleted</em>.</p><pre><code class="language-julia hljs">s_reprod_i = deepcopy(s_reprod_l); rem_part!(s_reprod_i, :Sheep, 1)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">0</code></pre><p>And the right object, <code>R</code>, includes things that are added. So we&#39;ve removed a sheep with energy <code>a</code> at a certain position and replace it with two sheep with <code>a/2</code> energy.</p><pre><code class="language-julia hljs">s_reprod_r = deepcopy(s_reprod_i)
-add_parts!(s_reprod_r, :Sheep, 2; sheep_loc=[1,1],
-           sheep_eng=[:(round(Int, a/2, RoundDown))])</code></pre><img src='data:image/svg+xml;utf-8,<?xml version="1.0" encoding="UTF-8" standalone="no"?>
-<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN"
- "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
-<!-- Generated by graphviz version 2.43.0 (0)
- -->
-<!-- Title: G Pages: 1 -->
-<svg width="116pt" height="50pt"
- viewBox="0.00 0.00 116.00 50.13" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
-<g id="graph0" class="graph" transform="scale(1 1) rotate(0) translate(4 46.13)">
-<title>G</title>
-<polygon fill="white" stroke="transparent" points="-4,4 -4,-46.13 112,-46.13 112,4 -4,4"/>
-<!-- v1 -->
-<g id="node1" class="node">
-<title>v1</title>
-<ellipse fill="lightgreen" stroke="lightgreen" cx="18" cy="-18" rx="18" ry="18"/>
-</g>
-<!-- v2 -->
-<g id="node2" class="node">
-<title>v2</title>
-<ellipse fill="lightgreen" stroke="lightgreen" cx="90" cy="-18" rx="18" ry="18"/>
-</g>
-<!-- s1 -->
-<g id="node3" class="node">
-<title>s1</title>
-<polygon fill="lightblue" stroke="lightblue" points="55.21,-36.31 33.21,-36.31 33.21,-14.31 55.21,-14.31 55.21,-36.31"/>
-<text text-anchor="middle" x="44.21" y="-21.61" font-family="Times,serif" font-size="14.00">1round(Int, a / ², RoundDown)</text>
-</g>
-<!-- s2 -->
-<g id="node4" class="node">
-<title>s2</title>
-<polygon fill="lightblue" stroke="lightblue" points="57.02,-42.13 35.02,-42.13 35.02,-20.13 57.02,-20.13 57.02,-42.13"/>
-<text text-anchor="middle" x="46.02" y="-27.43" font-family="Times,serif" font-size="14.00">2round(Int, a / ², RoundDown)</text>
-</g>
-</g>
-</svg>
-'/><p>We assemble this data into a rewrite rule.</p><pre><code class="language-julia hljs">sheep_reprod = Rule(hom(s_reprod_i,s_reprod_l),
-                    hom(s_reprod_i,s_reprod_r));</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">Rule{:DPO}(ACSetTransformation((V = FinFunction([1, 2], 2, 2), E = FinFunction([1], 1, 1), Sheep = FinFunction(Int64[], 0, 1), Wolf = FinFunction(Int64[], 0, 0), Grass = FinFunction(Int64[], 0, 0)), Main.LV_Generic{Union{Expr, Symbol, Var}, Union{Int64, Expr, Var}, Union{Int64, Expr, Var}} {V = 2, E = 1, Sheep = 0, Wolf = 0, Grass = 0}, Main.LV_Generic{Union{Expr, Symbol, Var}, Union{Int64, Expr, Var}, Union{Int64, Expr, Var}} {V = 2, E = 1, Sheep = 1, Wolf = 0, Grass = 0}), ACSetTransformation((V = FinFunction([1, 2], 2, 2), E = FinFunction([1], 1, 1), Sheep = FinFunction(Int64[], 0, 2), Wolf = FinFunction(Int64[], 0, 0), Grass = FinFunction(Int64[], 0, 0)), Main.LV_Generic{Union{Expr, Symbol, Var}, Union{Int64, Expr, Var}, Union{Int64, Expr, Var}} {V = 2, E = 1, Sheep = 0, Wolf = 0, Grass = 0}, Main.LV_Generic{Union{Expr, Symbol, Var}, Union{Int64, Expr, Var}, Union{Int64, Expr, Var}} {V = 2, E = 1, Sheep = 2, Wolf = 0, Grass = 0}), NAC[], false)</code></pre><p>As mentioned before, we can turn this into a wolf reproduction rule by applying our functor. Then we add the two rules along with their probabilities. The <code>false</code> here refers to whether or not we apply the rule only once or whether we apply it for every match we find (which is what we want to do, to give each sheep a 4% chance of reproducing).</p><pre><code class="language-julia hljs">wolf_reprod = F(sheep_reprod)</code></pre><pre><code class="language-julia hljs">append!(seq, [RuleSchedule(sheep_reprod,:sheep_reprod, false,0.04),
+  Sheep=1; V=1; sheep_loc=1; grass_eng=[Var(:_1)]
+  sheep_dir=[Var(:_2)]; sheep_eng=[Var(:a)]; 
+end</code></pre><p>This defines a <em>pattern</em> which we wish to match. The suffix <code>_l</code> indicates that this is the <code>L</code> of a rewrite rule, which is a partial map <code>L → R</code>, i.e. <code>L ↩ I → R</code>.</p><p>We need to define the interface <code>I</code>, which contains the subobject of <code>L</code> which is <em>not deleted</em>.</p><pre><code class="language-julia hljs">s_reprod_i = @acset LV begin V=1; grass_eng=[Var(:_1)] end</code></pre><p>and the right object, <code>R</code>, includes things that are added. We&#39;re removing a sheep with energy <code>a</code> at a certain position and replace it with two sheep with <code>a/2</code> energy.</p><pre><code class="language-julia hljs">s_reprod_r =  @acset LV begin
+  Sheep=2; V=1; sheep_loc=1; grass_eng=[Var(:_1)]
+  sheep_dir=[Var(:_2),Var(:_2)]; 
+  sheep_eng=fill(:(round(Int, a/2, RoundUp)), 2); 
+end</code></pre><p>We assemble this data into a rewrite rule.</p><pre><code class="language-julia hljs">sheep_reprod = Rule(hom(s_reprod_i,s_reprod_l),
+                    hom(s_reprod_i,s_reprod_r));</code></pre><p>As mentioned before, we can turn this into a wolf reproduction rule by applying our functor. Then we add the two rules along with their probabilities. The <code>false</code> here refers to whether or not we apply the rule only once or whether we apply it for every match we find (which is what we want to do, to give <em>each</em> sheep a 4% chance of reproducing).</p><pre><code class="language-julia hljs">wolf_reprod = F(sheep_reprod)</code></pre><pre><code class="language-julia hljs">append!(seq, [RuleSchedule(sheep_reprod,:sheep_reprod, false,0.04),
               RuleSchedule(wolf_reprod, :wolf_reprod, false,0.05)]);</code></pre><p>Note that our pattern <code>L</code> can have <code>Var</code> variables, and our right hand side <code>R</code> can have Julia expressions involving those variables.</p><p>Another illustrative example is the &#39;move forward&#39; rule. We simultaneously advance the sheep forward one space and decrement its energy by 1.</p><pre><code class="language-julia hljs">s_move_forward_l = @acset LV begin
-  Sheep=1; V=3; E=2;
-  src=[1,2]; tgt=[2,3]; dir=[Var(:a), Var(:a)]
-  sheep_eng=[Var(:x)]; sheep_loc=1
-end</code></pre><img src='data:image/svg+xml;utf-8,<?xml version="1.0" encoding="UTF-8" standalone="no"?>
-<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN"
- "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
-<!-- Generated by graphviz version 2.43.0 (0)
- -->
-<!-- Title: G Pages: 1 -->
-<svg width="188pt" height="44pt"
- viewBox="0.00 0.00 188.00 44.00" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
-<g id="graph0" class="graph" transform="scale(1 1) rotate(0) translate(4 40)">
-<title>G</title>
-<polygon fill="white" stroke="transparent" points="-4,4 -4,-40 184,-40 184,4 -4,4"/>
-<!-- v1 -->
-<g id="node1" class="node">
-<title>v1</title>
-<ellipse fill="lightgreen" stroke="lightgreen" cx="18" cy="-18" rx="18" ry="18"/>
-</g>
-<!-- v2 -->
-<g id="node2" class="node">
-<title>v2</title>
-<ellipse fill="lightgreen" stroke="lightgreen" cx="90" cy="-18" rx="18" ry="18"/>
-</g>
-<!-- v3 -->
-<g id="node3" class="node">
-<title>v3</title>
-<ellipse fill="lightgreen" stroke="lightgreen" cx="162" cy="-18" rx="18" ry="18"/>
-</g>
-<!-- s1 -->
-<g id="node4" class="node">
-<title>s1</title>
-<polygon fill="lightblue" stroke="lightblue" points="55.95,-35.56 33.95,-35.56 33.95,-13.56 55.95,-13.56 55.95,-35.56"/>
-<text text-anchor="middle" x="44.95" y="-20.86" font-family="Times,serif" font-size="14.00">1x</text>
-</g>
-</g>
-</svg>
-'/><p>This pattern has two contiguous edges that are in the same direction (implicitly constrained by using <code>Var(:a)</code> twice) and the sheep in the first position.</p><pre><code class="language-julia hljs">s_move_forward_i = deepcopy(s_move_forward_l)
+  Sheep=1; V=2; E=1; sheep_loc=1;
+  src=1; tgt=2; dir=[Var(:z)]; 
+  grass_eng=Var.([:_1,:_2])
+  sheep_dir=[Var(:z)]; sheep_eng=[Var(:x)]
+end</code></pre><p>This pattern has two contiguous edges that are in the same direction (implicitly constrained by using <code>Var(:a)</code> twice) and the sheep in the first position.</p><pre><code class="language-julia hljs">s_move_forward_i = deepcopy(s_move_forward_l)
 rem_part!(s_move_forward_i, :Sheep, 1)
 
 s_move_forward_r = deepcopy(s_move_forward_i)
-add_part!(s_move_forward_r, :Sheep; sheep_loc=2, sheep_eng=:(x-1))</code></pre><img src='data:image/svg+xml;utf-8,<?xml version="1.0" encoding="UTF-8" standalone="no"?>
-<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN"
- "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
-<!-- Generated by graphviz version 2.43.0 (0)
- -->
-<!-- Title: G Pages: 1 -->
-<svg width="188pt" height="47pt"
- viewBox="0.00 0.00 188.00 47.39" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
-<g id="graph0" class="graph" transform="scale(1 1) rotate(0) translate(4 43.39)">
-<title>G</title>
-<polygon fill="white" stroke="transparent" points="-4,4 -4,-43.39 184,-43.39 184,4 -4,4"/>
-<!-- v1 -->
-<g id="node1" class="node">
-<title>v1</title>
-<ellipse fill="lightgreen" stroke="lightgreen" cx="18" cy="-18" rx="18" ry="18"/>
-</g>
-<!-- v2 -->
-<g id="node2" class="node">
-<title>v2</title>
-<ellipse fill="lightgreen" stroke="lightgreen" cx="90" cy="-18" rx="18" ry="18"/>
-</g>
-<!-- v3 -->
-<g id="node3" class="node">
-<title>v3</title>
-<ellipse fill="lightgreen" stroke="lightgreen" cx="162" cy="-18" rx="18" ry="18"/>
-</g>
-<!-- s1 -->
-<g id="node4" class="node">
-<title>s1</title>
-<polygon fill="lightblue" stroke="lightblue" points="133.26,-39.39 111.26,-39.39 111.26,-17.39 133.26,-17.39 133.26,-39.39"/>
-<text text-anchor="middle" x="122.26" y="-24.69" font-family="Times,serif" font-size="14.00">1x &%2345; ¹</text>
-</g>
-</g>
-</svg>
-'/><p>We delete the sheep and recreate one in position #2, with one fewer energy. This is only valid though if the sheep has any energy. To prevent this rule from firing, we need a <em>negative application condition</em>. This embeds the pattern <code>L</code> in a larger context <code>N</code> that has the semantics of: if <code>L</code> <em>and</em> <code>N</code> are matched, then actually don&#39;t fire the rule. The pattern we want to avoid is one where the sheep has zero energy.</p><pre><code class="language-julia hljs">zero_s = deepcopy(s_move_forward_l)
-set_subpart!(zero_s, :sheep_eng, 0)</code></pre><img src='data:image/svg+xml;utf-8,<?xml version="1.0" encoding="UTF-8" standalone="no"?>
-<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN"
- "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
-<!-- Generated by graphviz version 2.43.0 (0)
- -->
-<!-- Title: G Pages: 1 -->
-<svg width="188pt" height="44pt"
- viewBox="0.00 0.00 188.00 44.00" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
-<g id="graph0" class="graph" transform="scale(1 1) rotate(0) translate(4 40)">
-<title>G</title>
-<polygon fill="white" stroke="transparent" points="-4,4 -4,-40 184,-40 184,4 -4,4"/>
-<!-- v1 -->
-<g id="node1" class="node">
-<title>v1</title>
-<ellipse fill="lightgreen" stroke="lightgreen" cx="18" cy="-18" rx="18" ry="18"/>
-</g>
-<!-- v2 -->
-<g id="node2" class="node">
-<title>v2</title>
-<ellipse fill="lightgreen" stroke="lightgreen" cx="90" cy="-18" rx="18" ry="18"/>
-</g>
-<!-- v3 -->
-<g id="node3" class="node">
-<title>v3</title>
-<ellipse fill="lightgreen" stroke="lightgreen" cx="162" cy="-18" rx="18" ry="18"/>
-</g>
-<!-- s1 -->
-<g id="node4" class="node">
-<title>s1</title>
-<polygon fill="lightblue" stroke="lightblue" points="52.68,-30.26 30.68,-30.26 30.68,-8.26 52.68,-8.26 52.68,-30.26"/>
-<text text-anchor="middle" x="41.68" y="-15.56" font-family="Times,serif" font-size="14.00">1⁰</text>
-</g>
-</g>
-</svg>
-'/><pre><code class="language-julia hljs">sheep_move_forward = Rule(hom(s_move_forward_i, s_move_forward_l),
-                          hom(s_move_forward_i, s_move_forward_r),
-                          [NAC(hom(s_move_forward_l,zero_s; bindvars=true))])
+add_part!(s_move_forward_r, :Sheep; sheep_loc=2, sheep_eng=:(x-1), sheep_dir=Var(:z))</code></pre><p>We delete the sheep and recreate one in position #2, with one fewer energy unit. However, this is only valid if the sheep has any energy. To prevent this rule from firing, we need a <em>negative application condition</em>. This embeds the pattern <code>L</code> in a larger context <code>N</code> that has the semantics of: if <code>L</code> <em>and</em> <code>N</code> are matched, then, actually, don&#39;t fire the rule. The pattern we want to avoid is one where the sheep has zero energy.</p><pre><code class="language-julia hljs">s_move_n = deepcopy(s_move_forward_l)
+set_subpart!(s_move_n, 1, :sheep_eng, 0)
 
-wolf_move_forward = F(sheep_move_forward)</code></pre><p>In all these cases, automatic homomorphism finding is sufficient for obtaining the morphism data of <code>L ↩ I → R</code>.</p><h3 id="Other-functions"><a class="docs-heading-anchor" href="#Other-functions">Other functions</a><a id="Other-functions-1"></a><a class="docs-heading-anchor-permalink" href="#Other-functions" title="Permalink"></a></h3><p>Functions to initialize and visualize the world-states are defined in the file <code>lotka_volterra.jl</code>. Important functionality only possible in the notebook is the ability to move a slider and view the progression of a simulation.</p><p><img src="assets/slider2.gif" alt="Alt Text"/></p><h2 id="Alternative-rewriting-semantics"><a class="docs-heading-anchor" href="#Alternative-rewriting-semantics">Alternative rewriting semantics</a><a id="Alternative-rewriting-semantics-1"></a><a class="docs-heading-anchor-permalink" href="#Alternative-rewriting-semantics" title="Permalink"></a></h2><p>A nice property of DPO is that you can analyze the relationship between <code>I</code> and <code>L</code> to see exactly what will be deleted (likewise for <code>I</code> and <code>R</code> to see what will be added). However, this is sometimes not what we want: we wish to delete <em>outside the context</em> <code>L</code>, or to implicitly create things. The former is possible in single pushout rewriting, and both are possible in sesqui pushout rewriting.</p><h3 id="Single-pushout-rewriting"><a class="docs-heading-anchor" href="#Single-pushout-rewriting">Single pushout rewriting</a><a id="Single-pushout-rewriting-1"></a><a class="docs-heading-anchor-permalink" href="#Single-pushout-rewriting" title="Permalink"></a></h3><p>Implicit deletion works like a cascading delete: if you delete a vertex (for example), then you implicitly delete an edge which refers to that vertex.</p><pre><code class="language-julia hljs">L = ACSetTransformation(Graph(), Graph(1)) # a vertex is deleted
+sheep_move_forward = Rule(
+  hom(s_move_forward_i, s_move_forward_l; monic=true),
+  hom(s_move_forward_i, s_move_forward_r; monic=true),
+  [NAC(hom(s_move_forward_l, s_move_n; monic=true,bindvars=true))]
+)
+
+wolf_move_forward = F(sheep_move_forward)</code></pre><p>In all these cases, automatic homomorphism finding is sufficient for obtaining the morphism data of <code>L ↩ I → R</code>.</p><h3 id="Other-functions"><a class="docs-heading-anchor" href="#Other-functions">Other functions</a><a id="Other-functions-1"></a><a class="docs-heading-anchor-permalink" href="#Other-functions" title="Permalink"></a></h3><p>Functions to initialize and visualize the world-states are defined in the file <a href="https://github.com/AlgebraicJulia/AlgebraicRewriting.jl/blob/main/docs/src/lotka_volterra.jl">lotka_volterra.jl</a>.  Important functionality only possible in the notebook is the ability to move a slider and view the progression of a simulation.</p><p><img src="assets/slider2.gif" alt="Alt Text"/></p><h2 id="Alternative-rewriting-semantics"><a class="docs-heading-anchor" href="#Alternative-rewriting-semantics">Alternative rewriting semantics</a><a id="Alternative-rewriting-semantics-1"></a><a class="docs-heading-anchor-permalink" href="#Alternative-rewriting-semantics" title="Permalink"></a></h2><p>A nice property of DPO is that you can analyze the relationship between <code>I</code> and <code>L</code> to see exactly what will be deleted (likewise for <code>I</code> and <code>R</code> to see what will be added). However, this is sometimes not what we want: we wish to delete <em>outside the context</em> <code>L</code>, or to implicitly create things. The former is possible in single pushout rewriting, and both are possible in sesqui pushout rewriting.</p><h3 id="Single-pushout-rewriting"><a class="docs-heading-anchor" href="#Single-pushout-rewriting">Single pushout rewriting</a><a id="Single-pushout-rewriting-1"></a><a class="docs-heading-anchor-permalink" href="#Single-pushout-rewriting" title="Permalink"></a></h3><p>Implicit deletion works like a cascading delete: if you delete a vertex (for example), then you implicitly delete an edge which refers to that vertex.</p><pre><code class="language-julia hljs">L = ACSetTransformation(Graph(), Graph(1)) # a vertex is deleted
 R = id(Graph()) # nothing is added
 r = Rule{:SPO}(L,R)
 m = hom(Graph(1), path_graph(Graph, 3)) # rewriting • → • → •
@@ -609,7 +446,7 @@ R = Slice(ACSetTransformation(Graph(2), two, V=[2, 1]))</code></pre><img src='da
 </g>
 </g>
 </svg>
-'/><p>Thus our rewrite rule will delete an <em>output</em> edge.</p><pre><code class="language-julia hljs">rule = Rule(hom(I, L), hom(I, R));</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">Rule{:DPO}(Catlab.CategoricalAlgebra.Slices.SliceHom{Catlab.CategoricalAlgebra.CSets.TightACSetTransformation{Catlab.Schemas.TypeLevelBasicSchema{Symbol, Tuple{:V, :E}, Tuple{(:src, :E, :V), (:tgt, :E, :V)}, Tuple{}, Tuple{}}, NamedTuple{(:V, :E), Tuple{Catlab.CategoricalAlgebra.FinSets.FinDomFunctionVector{Int64, Vector{Int64}, Catlab.CategoricalAlgebra.FinSets.FinSetInt}, Catlab.CategoricalAlgebra.FinSets.FinDomFunctionVector{Int64, Vector{Int64}, Catlab.CategoricalAlgebra.FinSets.FinSetInt}}}, Catlab.Graphs.BasicGraphs.Graph, Catlab.Graphs.BasicGraphs.Graph}, Catlab.CategoricalAlgebra.Slices.Slice{Catlab.CategoricalAlgebra.CSets.TightACSetTransformation{Catlab.Schemas.TypeLevelBasicSchema{Symbol, Tuple{:V, :E}, Tuple{(:src, :E, :V), (:tgt, :E, :V)}, Tuple{}, Tuple{}}, NamedTuple{(:V, :E), Tuple{Catlab.CategoricalAlgebra.FinSets.FinDomFunctionVector{Int64, Vector{Int64}, Catlab.CategoricalAlgebra.FinSets.FinSetInt}, Catlab.CategoricalAlgebra.FinSets.FinDomFunctionVector{Int64, UnitRange{Int64}, Catlab.CategoricalAlgebra.FinSets.FinSetInt}}}, Catlab.Graphs.BasicGraphs.Graph, Catlab.Graphs.BasicGraphs.Graph}}, Catlab.CategoricalAlgebra.Slices.Slice{Catlab.CategoricalAlgebra.CSets.TightACSetTransformation{Catlab.Schemas.TypeLevelBasicSchema{Symbol, Tuple{:V, :E}, Tuple{(:src, :E, :V), (:tgt, :E, :V)}, Tuple{}, Tuple{}}, NamedTuple{(:V, :E), Tuple{Catlab.CategoricalAlgebra.FinSets.FinDomFunctionVector{Int64, Vector{Int64}, Catlab.CategoricalAlgebra.FinSets.FinSetInt}, Catlab.CategoricalAlgebra.FinSets.FinDomFunctionVector{Int64, Vector{Int64}, Catlab.CategoricalAlgebra.FinSets.FinSetInt}}}, Catlab.Graphs.BasicGraphs.Graph, Catlab.Graphs.BasicGraphs.Graph}}}(Catlab.CategoricalAlgebra.Slices.Slice{Catlab.CategoricalAlgebra.CSets.TightACSetTransformation{Catlab.Schemas.TypeLevelBasicSchema{Symbol, Tuple{:V, :E}, Tuple{(:src, :E, :V), (:tgt, :E, :V)}, Tuple{}, Tuple{}}, NamedTuple{(:V, :E), Tuple{Catlab.CategoricalAlgebra.FinSets.FinDomFunctionVector{Int64, Vector{Int64}, Catlab.CategoricalAlgebra.FinSets.FinSetInt}, Catlab.CategoricalAlgebra.FinSets.FinDomFunctionVector{Int64, UnitRange{Int64}, Catlab.CategoricalAlgebra.FinSets.FinSetInt}}}, Catlab.Graphs.BasicGraphs.Graph, Catlab.Graphs.BasicGraphs.Graph}}(ACSetTransformation((V = FinFunction([2], 1, 2), E = FinFunction(1:0, 0, 2)), Catlab.Graphs.BasicGraphs.Graph {V = 1, E = 0}, Catlab.Graphs.BasicGraphs.Graph {V = 2, E = 2})), Catlab.CategoricalAlgebra.Slices.Slice{Catlab.CategoricalAlgebra.CSets.TightACSetTransformation{Catlab.Schemas.TypeLevelBasicSchema{Symbol, Tuple{:V, :E}, Tuple{(:src, :E, :V), (:tgt, :E, :V)}, Tuple{}, Tuple{}}, NamedTuple{(:V, :E), Tuple{Catlab.CategoricalAlgebra.FinSets.FinDomFunctionVector{Int64, Vector{Int64}, Catlab.CategoricalAlgebra.FinSets.FinSetInt}, Catlab.CategoricalAlgebra.FinSets.FinDomFunctionVector{Int64, Vector{Int64}, Catlab.CategoricalAlgebra.FinSets.FinSetInt}}}, Catlab.Graphs.BasicGraphs.Graph, Catlab.Graphs.BasicGraphs.Graph}}(ACSetTransformation((V = FinFunction([2, 1], 2, 2), E = FinFunction([2], 1, 2)), Catlab.Graphs.BasicGraphs.Graph {V = 2, E = 1}, Catlab.Graphs.BasicGraphs.Graph {V = 2, E = 2})), ACSetTransformation((V = FinFunction([1], 1, 2), E = FinFunction(Int64[], 0, 1)), Catlab.Graphs.BasicGraphs.Graph {V = 1, E = 0}, Catlab.Graphs.BasicGraphs.Graph {V = 2, E = 1})), Catlab.CategoricalAlgebra.Slices.SliceHom{Catlab.CategoricalAlgebra.CSets.TightACSetTransformation{Catlab.Schemas.TypeLevelBasicSchema{Symbol, Tuple{:V, :E}, Tuple{(:src, :E, :V), (:tgt, :E, :V)}, Tuple{}, Tuple{}}, NamedTuple{(:V, :E), Tuple{Catlab.CategoricalAlgebra.FinSets.FinDomFunctionVector{Int64, Vector{Int64}, Catlab.CategoricalAlgebra.FinSets.FinSetInt}, Catlab.CategoricalAlgebra.FinSets.FinDomFunctionVector{Int64, Vector{Int64}, Catlab.CategoricalAlgebra.FinSets.FinSetInt}}}, Catlab.Graphs.BasicGraphs.Graph, Catlab.Graphs.BasicGraphs.Graph}, Catlab.CategoricalAlgebra.Slices.Slice{Catlab.CategoricalAlgebra.CSets.TightACSetTransformation{Catlab.Schemas.TypeLevelBasicSchema{Symbol, Tuple{:V, :E}, Tuple{(:src, :E, :V), (:tgt, :E, :V)}, Tuple{}, Tuple{}}, NamedTuple{(:V, :E), Tuple{Catlab.CategoricalAlgebra.FinSets.FinDomFunctionVector{Int64, Vector{Int64}, Catlab.CategoricalAlgebra.FinSets.FinSetInt}, Catlab.CategoricalAlgebra.FinSets.FinDomFunctionVector{Int64, UnitRange{Int64}, Catlab.CategoricalAlgebra.FinSets.FinSetInt}}}, Catlab.Graphs.BasicGraphs.Graph, Catlab.Graphs.BasicGraphs.Graph}}, Catlab.CategoricalAlgebra.Slices.Slice{Catlab.CategoricalAlgebra.CSets.TightACSetTransformation{Catlab.Schemas.TypeLevelBasicSchema{Symbol, Tuple{:V, :E}, Tuple{(:src, :E, :V), (:tgt, :E, :V)}, Tuple{}, Tuple{}}, NamedTuple{(:V, :E), Tuple{Catlab.CategoricalAlgebra.FinSets.FinDomFunctionVector{Int64, Vector{Int64}, Catlab.CategoricalAlgebra.FinSets.FinSetInt}, Catlab.CategoricalAlgebra.FinSets.FinDomFunctionVector{Int64, UnitRange{Int64}, Catlab.CategoricalAlgebra.FinSets.FinSetInt}}}, Catlab.Graphs.BasicGraphs.Graph, Catlab.Graphs.BasicGraphs.Graph}}}(Catlab.CategoricalAlgebra.Slices.Slice{Catlab.CategoricalAlgebra.CSets.TightACSetTransformation{Catlab.Schemas.TypeLevelBasicSchema{Symbol, Tuple{:V, :E}, Tuple{(:src, :E, :V), (:tgt, :E, :V)}, Tuple{}, Tuple{}}, NamedTuple{(:V, :E), Tuple{Catlab.CategoricalAlgebra.FinSets.FinDomFunctionVector{Int64, Vector{Int64}, Catlab.CategoricalAlgebra.FinSets.FinSetInt}, Catlab.CategoricalAlgebra.FinSets.FinDomFunctionVector{Int64, UnitRange{Int64}, Catlab.CategoricalAlgebra.FinSets.FinSetInt}}}, Catlab.Graphs.BasicGraphs.Graph, Catlab.Graphs.BasicGraphs.Graph}}(ACSetTransformation((V = FinFunction([2], 1, 2), E = FinFunction(1:0, 0, 2)), Catlab.Graphs.BasicGraphs.Graph {V = 1, E = 0}, Catlab.Graphs.BasicGraphs.Graph {V = 2, E = 2})), Catlab.CategoricalAlgebra.Slices.Slice{Catlab.CategoricalAlgebra.CSets.TightACSetTransformation{Catlab.Schemas.TypeLevelBasicSchema{Symbol, Tuple{:V, :E}, Tuple{(:src, :E, :V), (:tgt, :E, :V)}, Tuple{}, Tuple{}}, NamedTuple{(:V, :E), Tuple{Catlab.CategoricalAlgebra.FinSets.FinDomFunctionVector{Int64, Vector{Int64}, Catlab.CategoricalAlgebra.FinSets.FinSetInt}, Catlab.CategoricalAlgebra.FinSets.FinDomFunctionVector{Int64, UnitRange{Int64}, Catlab.CategoricalAlgebra.FinSets.FinSetInt}}}, Catlab.Graphs.BasicGraphs.Graph, Catlab.Graphs.BasicGraphs.Graph}}(ACSetTransformation((V = FinFunction([2, 1], 2, 2), E = FinFunction(1:0, 0, 2)), Catlab.Graphs.BasicGraphs.Graph {V = 2, E = 0}, Catlab.Graphs.BasicGraphs.Graph {V = 2, E = 2})), ACSetTransformation((V = FinFunction([1], 1, 2), E = FinFunction(Int64[], 0, 0)), Catlab.Graphs.BasicGraphs.Graph {V = 1, E = 0}, Catlab.Graphs.BasicGraphs.Graph {V = 2, E = 0})), NAC[], false)</code></pre><p>The instance of a slice we are rewriting:</p><pre><code class="language-julia hljs">G_ = path_graph(Graph, 3)
+'/><p>Thus our rewrite rule will delete an <em>output</em> edge.</p><pre><code class="language-julia hljs">rule = Rule(hom(I, L), hom(I, R));</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">Rule{:DPO}(Catlab.CategoricalAlgebra.Slices.SliceHom{Catlab.CategoricalAlgebra.CSets.TightACSetTransformation{Catlab.Schemas.TypeLevelBasicSchema{Symbol, Tuple{:V, :E}, Tuple{(:src, :E, :V), (:tgt, :E, :V)}, Tuple{}, Tuple{}}, NamedTuple{(:V, :E), Tuple{Catlab.CategoricalAlgebra.FinSets.FinDomFunctionVector{Int64, Vector{Int64}, Catlab.CategoricalAlgebra.FinSets.FinSetInt}, Catlab.CategoricalAlgebra.FinSets.FinDomFunctionVector{Int64, Vector{Int64}, Catlab.CategoricalAlgebra.FinSets.FinSetInt}}}, Catlab.Graphs.BasicGraphs.Graph, Catlab.Graphs.BasicGraphs.Graph}, Catlab.CategoricalAlgebra.Slices.Slice{Catlab.CategoricalAlgebra.CSets.TightACSetTransformation{Catlab.Schemas.TypeLevelBasicSchema{Symbol, Tuple{:V, :E}, Tuple{(:src, :E, :V), (:tgt, :E, :V)}, Tuple{}, Tuple{}}, NamedTuple{(:V, :E), Tuple{Catlab.CategoricalAlgebra.FinSets.FinDomFunctionVector{Int64, Vector{Int64}, Catlab.CategoricalAlgebra.FinSets.FinSetInt}, Catlab.CategoricalAlgebra.FinSets.FinDomFunctionVector{Int64, UnitRange{Int64}, Catlab.CategoricalAlgebra.FinSets.FinSetInt}}}, Catlab.Graphs.BasicGraphs.Graph, Catlab.Graphs.BasicGraphs.Graph}}, Catlab.CategoricalAlgebra.Slices.Slice{Catlab.CategoricalAlgebra.CSets.TightACSetTransformation{Catlab.Schemas.TypeLevelBasicSchema{Symbol, Tuple{:V, :E}, Tuple{(:src, :E, :V), (:tgt, :E, :V)}, Tuple{}, Tuple{}}, NamedTuple{(:V, :E), Tuple{Catlab.CategoricalAlgebra.FinSets.FinDomFunctionVector{Int64, Vector{Int64}, Catlab.CategoricalAlgebra.FinSets.FinSetInt}, Catlab.CategoricalAlgebra.FinSets.FinDomFunctionVector{Int64, Vector{Int64}, Catlab.CategoricalAlgebra.FinSets.FinSetInt}}}, Catlab.Graphs.BasicGraphs.Graph, Catlab.Graphs.BasicGraphs.Graph}}}(Catlab.CategoricalAlgebra.Slices.Slice{Catlab.CategoricalAlgebra.CSets.TightACSetTransformation{Catlab.Schemas.TypeLevelBasicSchema{Symbol, Tuple{:V, :E}, Tuple{(:src, :E, :V), (:tgt, :E, :V)}, Tuple{}, Tuple{}}, NamedTuple{(:V, :E), Tuple{Catlab.CategoricalAlgebra.FinSets.FinDomFunctionVector{Int64, Vector{Int64}, Catlab.CategoricalAlgebra.FinSets.FinSetInt}, Catlab.CategoricalAlgebra.FinSets.FinDomFunctionVector{Int64, UnitRange{Int64}, Catlab.CategoricalAlgebra.FinSets.FinSetInt}}}, Catlab.Graphs.BasicGraphs.Graph, Catlab.Graphs.BasicGraphs.Graph}}(ACSetTransformation((V = FinFunction([2], 1, 2), E = FinFunction(1:0, 0, 2)), Catlab.Graphs.BasicGraphs.Graph {V = 1, E = 0}, Catlab.Graphs.BasicGraphs.Graph {V = 2, E = 2})), Catlab.CategoricalAlgebra.Slices.Slice{Catlab.CategoricalAlgebra.CSets.TightACSetTransformation{Catlab.Schemas.TypeLevelBasicSchema{Symbol, Tuple{:V, :E}, Tuple{(:src, :E, :V), (:tgt, :E, :V)}, Tuple{}, Tuple{}}, NamedTuple{(:V, :E), Tuple{Catlab.CategoricalAlgebra.FinSets.FinDomFunctionVector{Int64, Vector{Int64}, Catlab.CategoricalAlgebra.FinSets.FinSetInt}, Catlab.CategoricalAlgebra.FinSets.FinDomFunctionVector{Int64, Vector{Int64}, Catlab.CategoricalAlgebra.FinSets.FinSetInt}}}, Catlab.Graphs.BasicGraphs.Graph, Catlab.Graphs.BasicGraphs.Graph}}(ACSetTransformation((V = FinFunction([2, 1], 2, 2), E = FinFunction([2], 1, 2)), Catlab.Graphs.BasicGraphs.Graph {V = 2, E = 1}, Catlab.Graphs.BasicGraphs.Graph {V = 2, E = 2})), ACSetTransformation((V = FinFunction([1], 1, 2), E = FinFunction(Int64[], 0, 1)), Catlab.Graphs.BasicGraphs.Graph {V = 1, E = 0}, Catlab.Graphs.BasicGraphs.Graph {V = 2, E = 1})), Catlab.CategoricalAlgebra.Slices.SliceHom{Catlab.CategoricalAlgebra.CSets.TightACSetTransformation{Catlab.Schemas.TypeLevelBasicSchema{Symbol, Tuple{:V, :E}, Tuple{(:src, :E, :V), (:tgt, :E, :V)}, Tuple{}, Tuple{}}, NamedTuple{(:V, :E), Tuple{Catlab.CategoricalAlgebra.FinSets.FinDomFunctionVector{Int64, Vector{Int64}, Catlab.CategoricalAlgebra.FinSets.FinSetInt}, Catlab.CategoricalAlgebra.FinSets.FinDomFunctionVector{Int64, Vector{Int64}, Catlab.CategoricalAlgebra.FinSets.FinSetInt}}}, Catlab.Graphs.BasicGraphs.Graph, Catlab.Graphs.BasicGraphs.Graph}, Catlab.CategoricalAlgebra.Slices.Slice{Catlab.CategoricalAlgebra.CSets.TightACSetTransformation{Catlab.Schemas.TypeLevelBasicSchema{Symbol, Tuple{:V, :E}, Tuple{(:src, :E, :V), (:tgt, :E, :V)}, Tuple{}, Tuple{}}, NamedTuple{(:V, :E), Tuple{Catlab.CategoricalAlgebra.FinSets.FinDomFunctionVector{Int64, Vector{Int64}, Catlab.CategoricalAlgebra.FinSets.FinSetInt}, Catlab.CategoricalAlgebra.FinSets.FinDomFunctionVector{Int64, UnitRange{Int64}, Catlab.CategoricalAlgebra.FinSets.FinSetInt}}}, Catlab.Graphs.BasicGraphs.Graph, Catlab.Graphs.BasicGraphs.Graph}}, Catlab.CategoricalAlgebra.Slices.Slice{Catlab.CategoricalAlgebra.CSets.TightACSetTransformation{Catlab.Schemas.TypeLevelBasicSchema{Symbol, Tuple{:V, :E}, Tuple{(:src, :E, :V), (:tgt, :E, :V)}, Tuple{}, Tuple{}}, NamedTuple{(:V, :E), Tuple{Catlab.CategoricalAlgebra.FinSets.FinDomFunctionVector{Int64, Vector{Int64}, Catlab.CategoricalAlgebra.FinSets.FinSetInt}, Catlab.CategoricalAlgebra.FinSets.FinDomFunctionVector{Int64, UnitRange{Int64}, Catlab.CategoricalAlgebra.FinSets.FinSetInt}}}, Catlab.Graphs.BasicGraphs.Graph, Catlab.Graphs.BasicGraphs.Graph}}}(Catlab.CategoricalAlgebra.Slices.Slice{Catlab.CategoricalAlgebra.CSets.TightACSetTransformation{Catlab.Schemas.TypeLevelBasicSchema{Symbol, Tuple{:V, :E}, Tuple{(:src, :E, :V), (:tgt, :E, :V)}, Tuple{}, Tuple{}}, NamedTuple{(:V, :E), Tuple{Catlab.CategoricalAlgebra.FinSets.FinDomFunctionVector{Int64, Vector{Int64}, Catlab.CategoricalAlgebra.FinSets.FinSetInt}, Catlab.CategoricalAlgebra.FinSets.FinDomFunctionVector{Int64, UnitRange{Int64}, Catlab.CategoricalAlgebra.FinSets.FinSetInt}}}, Catlab.Graphs.BasicGraphs.Graph, Catlab.Graphs.BasicGraphs.Graph}}(ACSetTransformation((V = FinFunction([2], 1, 2), E = FinFunction(1:0, 0, 2)), Catlab.Graphs.BasicGraphs.Graph {V = 1, E = 0}, Catlab.Graphs.BasicGraphs.Graph {V = 2, E = 2})), Catlab.CategoricalAlgebra.Slices.Slice{Catlab.CategoricalAlgebra.CSets.TightACSetTransformation{Catlab.Schemas.TypeLevelBasicSchema{Symbol, Tuple{:V, :E}, Tuple{(:src, :E, :V), (:tgt, :E, :V)}, Tuple{}, Tuple{}}, NamedTuple{(:V, :E), Tuple{Catlab.CategoricalAlgebra.FinSets.FinDomFunctionVector{Int64, Vector{Int64}, Catlab.CategoricalAlgebra.FinSets.FinSetInt}, Catlab.CategoricalAlgebra.FinSets.FinDomFunctionVector{Int64, UnitRange{Int64}, Catlab.CategoricalAlgebra.FinSets.FinSetInt}}}, Catlab.Graphs.BasicGraphs.Graph, Catlab.Graphs.BasicGraphs.Graph}}(ACSetTransformation((V = FinFunction([2, 1], 2, 2), E = FinFunction(1:0, 0, 2)), Catlab.Graphs.BasicGraphs.Graph {V = 2, E = 0}, Catlab.Graphs.BasicGraphs.Graph {V = 2, E = 2})), ACSetTransformation((V = FinFunction([1], 1, 2), E = FinFunction(Int64[], 0, 0)), Catlab.Graphs.BasicGraphs.Graph {V = 1, E = 0}, Catlab.Graphs.BasicGraphs.Graph {V = 2, E = 0})), AlgebraicRewriting.Rewrite.AppCond[], false)</code></pre><p>The instance of a slice we are rewriting:</p><pre><code class="language-julia hljs">G_ = path_graph(Graph, 3)
 G = Slice(ACSetTransformation(G_, two, V=[1,2,1], E=[1,2]))</code></pre><img src='data:image/svg+xml;utf-8,<?xml version="1.0" encoding="UTF-8" standalone="no"?>
 <!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN"
  "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
@@ -693,4 +530,4 @@ G = Slice(ACSetTransformation(G_, two, V=[1,2,1], E=[1,2]))</code></pre><img src
 </g>
 </g>
 </svg>
-'/><h3 id="Coming:-Structured-cospans-and-Diagrams"><a class="docs-heading-anchor" href="#Coming:-Structured-cospans-and-Diagrams">Coming: Structured cospans and Diagrams</a><a id="Coming:-Structured-cospans-and-Diagrams-1"></a><a class="docs-heading-anchor-permalink" href="#Coming:-Structured-cospans-and-Diagrams" title="Permalink"></a></h3></article><nav class="docs-footer"><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 0.27.23 on <span class="colophon-date" title="Monday 17 October 2022 22:32">Monday 17 October 2022</span>. Using Julia version 1.7.3.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
+'/><h3 id="Coming:-Structured-cospans-and-Diagrams"><a class="docs-heading-anchor" href="#Coming:-Structured-cospans-and-Diagrams">Coming: Structured cospans and Diagrams</a><a id="Coming:-Structured-cospans-and-Diagrams-1"></a><a class="docs-heading-anchor-permalink" href="#Coming:-Structured-cospans-and-Diagrams" title="Permalink"></a></h3></article><nav class="docs-footer"><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 0.27.23 on <span class="colophon-date" title="Tuesday 25 October 2022 17:28">Tuesday 25 October 2022</span>. Using Julia version 1.7.3.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
