@@ -4,7 +4,9 @@ export homomorphism, homomorphisms, is_homomorphic, is_isomorphic
 using Base.Meta: quot
 
 using Catlab, Catlab.Theories, Catlab.Schemas
-using Catlab.CategoricalAlgebra: ACSet, StructACSet, ACSetTransformation,LooseACSetTransformation, nparts, parts, subpart
+using Catlab.CategoricalAlgebra: ACSet, StructACSet, ACSetTransformation,
+                                 LooseACSetTransformation, nparts, parts, 
+                                 subpart
 using Catlab.CategoricalAlgebra.CSets: map_components
 using Catlab.CategoricalAlgebra.FinSets: IdentityFunction, TypeSet
 using ..Variables
@@ -261,6 +263,7 @@ function backtracking_search(f, state::BacktrackingState{S}, depth::Int) where {
     # No unassigned elements remain, so we have a complete assignment.
     Attr, T1 = Tuple(attrtypes(S)), typeof(state.dom)
     attrmap = Dict(zip(Attr, T1.parameters))
+    attrmap2 = Dict(zip(Attr, typeof(state.codom).parameters))
     tcs = Dict(map(collect(pairs(state.type_components))) do (k,v)
       if k == identity || all(xy->xy[1]==xy[2],collect(v.func))
         v_ = IdentityFunction(TypeSet(attrmap[k]))
@@ -272,11 +275,12 @@ function backtracking_search(f, state::BacktrackingState{S}, depth::Int) where {
     end)
     if any(v->!(v isa IdentityFunction), values(tcs))
       return f(LooseACSetTransformation{S}(
-      state.assignment, tcs, state.dom, state.codom))
+      state.assignment, deepcopy(tcs), state.dom, state.codom))
     elseif any(x->!isnothing(x) && !isempty(x), state.var_assign)
-      va = Dict([k=> CallDict(Dict([k_=>v_ for (k_, (_,v_)) in collect(v)]))
-      for (k, v) in pairs(state.var_assign) if !isnothing(v)])
-      return f(LooseACSetTransformation(state.assignment, va, state.dom, state.codom))
+      va = Dict([k=> FinDomDefaultDict(Dict{attrmap[k],attrmap2[k]}(
+                                       [k_=>v_ for (k_, (_,v_)) in collect(v)]))
+                 for (k, v) in pairs(state.var_assign) if !isnothing(v)])
+        return f(LooseACSetTransformation(state.assignment, va, state.dom, state.codom))
       else
       return f(ACSetTransformation(state.assignment, state.dom, state.codom))
       end

@@ -1,5 +1,5 @@
 module Variables
-export Var, CallDict, sub_vars, hasvar, FinDomDefaultDict
+export Var, sub_vars, hasvar, FinDomDefaultDict
 
 using Catlab, Catlab.CategoricalAlgebra, Catlab.Schemas
 using Catlab.CategoricalAlgebra.Sets:  SetFunctionCallable, IdentityFunction
@@ -51,6 +51,7 @@ end
 
 """Substitute the dom and codom of an ACSetTransformation f """
 function sub_vars(f::ACSetTransformation, d::AbstractDict)
+  f = deepcopy(f)
   old_comps = collect(pairs(type_components(f)))
   new_comps = Dict(map(old_comps) do (k,v)
     new_v = sub_vars(v, d)

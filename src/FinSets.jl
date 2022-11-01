@@ -1,5 +1,5 @@
 module FinSets
-export pushout_complement,can_pushout_complement,id_condition, is_injective, is_surjective
+export pushout_complement,can_pushout_complement,id_condition
 # once rewriting is removed from Catlab, we can import full namespace
 using Catlab.Theories
 using Catlab.CategoricalAlgebra: ComposablePair, FinSet, FinFunction
@@ -69,11 +69,5 @@ function id_condition(pair::ComposablePair{<:FinSet{Int}})
            for j in i+1:length(l_imageᶜ)
            if m(l_imageᶜ[i]) == m(l_imageᶜ[j])))
 end
-
-# These could be made to fail early if ever used in performance-critical areas
-is_surjective(f::FinFunction) =
-  length(codom(f)) == length(Set(values(collect(f))))
-is_injective(f::FinFunction)  =
-  length(dom(f)) == length(Set(values(collect(f))))
 
 end

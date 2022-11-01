@@ -9,7 +9,7 @@ using Catlab, Catlab.Theories, Catlab.Schemas
 using Catlab.CategoricalAlgebra: DeltaMigration, CSetTransformation, 
   TightACSetTransformation, ACSetTransformation, LooseACSetTransformation, 
   pullback, pushout,  StructACSet, ComposablePair, copair, Span, 
-  universal, ¬, ob_map, acset_schema, TypeSet
+  universal, ¬, ob_map, acset_schema, TypeSet, colimit, Multispan, is_monic
 using Catlab.CategoricalAlgebra.FinSets: IdentityFunction
 using Catlab.CategoricalAlgebra.CSets: type_components
 using Catlab.CategoricalAlgebra.DataMigrations: MigrationFunctor
@@ -59,7 +59,8 @@ PAC(f::ACSetTransformation, m=false, init_check=true) = AppCond(f,true,m,init_ch
 codom(n::AppCond) = codom(n.f)
 dom(n::AppCond) = dom(n.f)
 is_natural(n::AppCond) = is_natural(n.f)
-sub_vars(nac::AppCond, m) = AppCond(sub_vars(nac.f, m), nac.monic)
+sub_vars(ac::AppCond, m) = 
+  AppCond(sub_vars(ac.f, m), ac.positive, ac.monic, ac.init_check)
 components(n::AppCond) = components(n.f)
 
 has_comp(monic::Bool, c::Symbol) = monic
@@ -214,7 +215,7 @@ function can_match(r::Rule{T}, m; initial=Dict(),
                    seen=Set()) where T
 
   for (k,v) in pairs(components(m))
-    if has_comp(r.monic,k) && !is_injective(v)
+    if has_comp(r.monic,k) && !is_monic(v)
       return ("Match is not injective", k, v)
     end
   end
@@ -411,11 +412,10 @@ function rewrite_match_maps(r::Rule{:DPO}, m; check::Bool=false)
     ps = typeof(dom(m)).parameters
     icomp = Dict(at=>IdentityFunction(TypeSet(p)) for (at, p) in zip(Attr, ps))
     tcs = Dict(:type_components=>[icomp,type_components(r.R)])
+    rh, kh = pushout(LooseACSetTransformation.([r.R, ik]); tcs...)
   else 
-    tcs =  Dict()
+    rh, kh = pushout(r.R, ik) 
   end
-  
-  rh, kh = pushout(r.R, ik; tcs...) # rh, kh = pushout(r.R, ik)
   return ik, kg, rh, kh
 end
 
@@ -482,7 +482,7 @@ Define D to be Im(g) to make it the largest possible subset of C such that we
 can get a pullback.
 """
 function pullback_complement(f, g)
-  is_injective(f) || error("can only take pullback complement if f is mono")
+  is_monic(f) || error("can only take pullback complement if f is mono")
   A = dom(f)
   d_to_c = hom(¬g(¬f(A))) # why isn't this just g(B)?
   # force square to commute by looking for the index in D making it commute
@@ -516,7 +516,7 @@ Specified in Fig 6 of:
 function rewrite_match_maps(r::Rule{:SPO}, ac)
   ka, kb = r.L, r.R
   e = "SPO rule is not a partial morphism. Left leg not monic."
-  is_injective(ka) || error(e)
+  is_monic(ka) || error(e)
 
   lc, la = ac, id(dom(ac))
   ml, mk = pullback(la, ka)

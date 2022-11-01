@@ -141,7 +141,7 @@ function partial_map_classifier_universal_property(
   fdata   = DefaultDict{Symbol, Dict{Int,Int}}(()->Dict{Int,Int}())
   res     = Dict{Symbol, Vector{Int}}()
   unknown = Dict{Symbol, Int}()
-  is_injective(m) || error("partial map classifier called w/ non monic m $m")
+  is_monic(m) || error("partial map classifier called w/ non monic m $m")
   # Get mapping of the known values
   for (o, fcomp) in pairs(components(f))
     unknown[o] = nparts(TB, o)

@@ -1,21 +1,31 @@
 module CSets
 export topo_obs, check_eqs, eval_path, extend_morphism, pushout_complement,
-       can_pushout_complement, dangling_condition, is_injective, invert_hom,
+       can_pushout_complement, dangling_condition, invert_hom,
        homomorphisms, gluing_conditions
 
 using Catlab, Catlab.Theories, Catlab.Graphs, Catlab.Schemas
 using Catlab.CategoricalAlgebra: ACSet, StructACSet, ACSetTransformation, TightACSetTransformation, 
-  LooseACSetTransformation,ComposablePair, preimage, components, Subobject, parts, SubACSet, 
-  SliceHom, force, nparts, legs, apex, pushout, Cospan, acset_schema, set_subpart!,
-  TypeSet
+      ComposablePair, preimage, components, Subobject, parts, SubACSet, 
+      SliceHom, force, nparts, legs, apex, pushout, Cospan, acset_schema, set_subpart!,
+      TypeSet
 using Catlab.CategoricalAlgebra.FinSets: IdentityFunction
 using Catlab.CategoricalAlgebra.CSets: unpack_diagram, type_components
-import ..FinSets: pushout_complement, can_pushout_complement, is_injective, is_surjective, id_condition
-import Catlab.CategoricalAlgebra: is_natural, Slice, SliceHom, components
+import ..FinSets: pushout_complement, can_pushout_complement, 
+                  id_condition
+import Catlab.CategoricalAlgebra: is_natural, Slice, SliceHom, components,
+                                  LooseACSetTransformation
 using ..Search
 import ..Search: homomorphism, homomorphisms
 import Base: getindex
 
+"""Explicit cast of ACSetTransformation to LooseACSetTransformation"""
+function LooseACSetTransformation(x::TightACSetTransformation{S}) where S 
+  tcs = Dict(map(zip(attrtype(S), typeof(dom(x)).parameters)) do (at, ty)
+    return at => IdentityFunction(TypeSet(ty))
+  end)
+  LooseACSetTransformation(components(x), tcs, dom(x), codom(x))
+end
+LooseACSetTransformation(x::LooseACSetTransformation) = x
 
 """Get topological sort of objects of a schema. Fail if cyclic"""
 function topo_obs(S::Type)::Vector{Symbol}
@@ -224,20 +234,6 @@ function dangling_condition(pair::ComposablePair{<:StructACSet{S}}) where S
     end
   end
   results
-end
-
-function is_injective(α::ACSetTransformation{S}) where {S}
-    for c in components(α)
-      if !is_injective(c) return false end
-    end
-    return true
-  end
-
-function is_surjective(α::ACSetTransformation{S}) where {S}
-    for c in components(α)
-      if !is_surjective(c) return false end
-    end
-    return true
 end
 
 # The following can be deleted when Catlab pull 605 is merged
