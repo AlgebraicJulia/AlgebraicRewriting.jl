@@ -1,6 +1,4 @@
 using Catlab, Catlab.Theories, Catlab.CategoricalAlgebra, Catlab.Graphs, Catlab.Graphics
-using Interact
-using Blink: Window, body!
 using AlgebraicRewriting
 using Random, Test, StructEquality
 
@@ -145,7 +143,7 @@ function Graph(p::LV,positions; name="G", title="")
                     :shape=>"circle",
                     :color=> col, :pos=>pstr[s])))
     end
-  d = Dict([East()=>(1,0),North()=>(0,1), South()=>(0,1),West()=>(-1,0),])
+  d = Dict([East()=>(1,0),North()=>(0,1), South()=>(0,-1),West()=>(-1,0),])
 
   args = [(:true,:Wolf,:wolf_loc,:wolf_eng,:wolf_dir),
           (false, :Sheep, :sheep_loc, :sheep_eng,:sheep_dir)]
@@ -276,8 +274,10 @@ w_eat_l = @acset LV begin
   sheep_loc=1; wolf_loc=1
 end
 
-w_eat_i = deepcopy(w_eat_l)
-set_subpart!(w_eat_i, 1, :wolf_eng, Var(:we))
+w_eat_i = @acset LV begin
+  Wolf=1; V=1; grass_eng=[Var(:_0)]
+  wolf_dir=[Var(:_2)]; wolf_eng=[Var(:e)]; wolf_loc=1
+end
 
 w_eat_r = deepcopy(w_eat_i)
 set_subpart!(w_eat_r, 1, :wolf_eng, :(e+20))
@@ -350,5 +350,9 @@ G, coords = initialize(2, .25, .25)
 res = apply_schedule(step, G=G, verbose=false)
 
 # Run these lines to view the trajectory
-# w = Window()
-# body!(w, view_traj(res, Graph; positions=coords))
+if false 
+  using Interact
+  using Blink: Window, body!
+  w = Window()
+  body!(w, view_traj(res, Graph; positions=coords))
+end
