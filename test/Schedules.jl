@@ -1,7 +1,6 @@
 module TestSchedules
 
 using Test
-using Revise
 using Catlab, Catlab.Graphs, Catlab.CategoricalAlgebra
 using AlgebraicRewriting
 using AlgebraicRewriting.Schedules: RWStep
@@ -10,18 +9,37 @@ const hom = Catlab.CategoricalAlgebra.homomorphism
 
 G0,G1,G2,G3 = Graph.([0,1,2,3])
 # Delete a node
-R1 = Span(create(G1), id(G0));
+Rule1 = Span(create(G1), id(G0));
 # Merge two nodes
-R2 = Span(id(G2), hom(G2, G1));
+Rule2 = Span(id(G2), hom(G2, G1));
 # Add a node
-R3 = Span(id(G0), create(G1))
+Rule3 = Span(id(G0), create(G1))
 
 ### Trajectory
-G13 = ACSetTransformation(G1,G3;V=[3])
-S1 = Span(id(G2), hom(G2,G3;monic=true))
-TS1 = RWStep(R3, S1, create(G2), G13); # add #3
-S2 = Span(hom(G2,G3;monic=true), id(G2))
-TS2 = RWStep(R1, S1, G13, id(G2)); # remove #3
 
+# step 1: add node #3 to G2
+M1 = create(G2)
+CM1 = ACSetTransformation(G1, G3; V=[3])
+Pmap1 = Span(id(G2), ACSetTransformation(G2, G3; V=[1,2]))
+RS1 = RWStep(Rule3, Pmap1, M1, CM1)
+
+# Step 2: merge node 2 and 3 to yield a G2
+M2 = ACSetTransformation(G2, G3; V=[2,3])
+CM2 = ACSetTransformation(G1, G2; V=[2])
+Pmap2 = Span(id(G3), ACSetTransformation(G3, G2; V=[1,2,2]))
+RS2 = RWStep(Rule2, Pmap2, M2, CM2)
+
+# Step 3: delete vertex 1 
+M3 = ACSetTransformation(G1, G2; V=[1])
+CM3 = create(G1)
+Pmap3 = Span(ACSetTransformation(G1,G2; V=[2]), id(G1))
+RS3 = RWStep(Rule1, Pmap3, M3, CM3)
+
+
+steps = [RS1, RS2, RS3]
+
+g = find_deps(steps)
+expected = @acset Graph begin V=3; E=1; src=1; tgt=2 end
+@test expected == g
 
 end # module

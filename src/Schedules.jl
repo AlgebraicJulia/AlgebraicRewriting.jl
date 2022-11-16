@@ -3,7 +3,7 @@ export Schedule, ListSchedule, RuleSchedule, WhileSchedule, rewrite_schedule, Ra
 
 using DataStructures, Random
 
-using Catlab, Catlab.CategoricalAlgebra
+using Catlab, Catlab.CategoricalAlgebra, Catlab.Graphs
 using ..Rewrite
 using ..Rewrite: rewrite_with_match
 using Catlab.CategoricalAlgebra.DataMigrations: MigrationFunctor
@@ -155,16 +155,19 @@ rewrite_schedule(s::Schedule, G; kw...) = res(apply_schedule(s, G; kw...))
 
 # Dependency analysis
 #####################
-struct RWStep{S}
+"""
+The relevant maps of an application of a single DPO rewrite.
+"""
+struct RWStep
   rule
   g
   match
   comatch
   function RWStep(r,g,m,c::T) where {T<:ACSetTransformation}
-    codom(left(r)) == dom(m) || error("")
-    codom(right(r)) == dom(c) || error("")
-    codom(m) == codom(left(g)) || error("")
-    codom(c) == codom(right(g)) || error("")
+    codom(left(r)) == dom(m) || error("left(r)!=dom(m)")
+    codom(right(r)) == dom(c) || error("right(r)!=dom(c)")
+    codom(m) == codom(left(g)) || error("codom(m)!=codom(l)")
+    codom(c) == codom(right(g)) || error("codom(c)!=codom(r)")
     new(r,g,m,c)
   end
 end
@@ -174,15 +177,88 @@ For a concrete sequence of rewrites applications [a₁,a₂...aₙ], compute a p
 on the set of applications which reflects their casual connections, where a < b
 mean that a must occur temporaly before b.
 """
-function find_deps(seq::Vector{RWStep{S}}) where S
+function find_deps(seq::Vector{RWStep})
+  # Construct a diagram which identifies parts across different rewrite steps
   n = length(seq)
-  diag = @acset BipartiteFreeDiagram begin V₁=n+1; V₂=n; E=2*n;
-    src=vcat([fill(i,2) for i in 1:n]...); tgt=[1,[fill(i,2) for i in 2:n]...,n+1]
-    ob₂=[apex(s.rule) for s in seq];
-    ob₁=codom.([left(first(seq).g), right.(seq[2:end])])
-    hom=vcat([[left(s.rule)⋅s.match, right(s.rule)⋅s.comatch] for s in seq]...)
+  ob₁ = [apex(s.g) for s in seq];
+  ob₂ = codom.([left(first(seq).g), right.([x.g for x in seq])...])
+  hom = vcat([[left(s.g), right(s.g)] for s in seq]...)
+  src = vcat([fill(i,2) for i in 1:n]...); 
+  tgt = [1,vcat([fill(i,2) for i in 2:n]...)...,n+1]
+  hs  = collect(zip(hom, src, tgt))
+  clim = colimit(BipartiteFreeDiagram(ob₁, ob₂, hs))
+
+  # Forget about the C-Set structure
+  elm = elements(apex(clim))
+  dic = Dict(map(enumerate(elm[:nameo])) do (i,o)
+    o=>FinFunction(incident(elm, i, :πₑ), nparts(elm, :El))
+  end)
+  dep_grph = Graph(nparts(elm,:El))
+  add_edges!(dep_grph, elm[:src], elm[:tgt])
+
+  # Add "rule" vertices and add dependencies from (co)matches 
+  for ruleapp in 1:n
+    rule_v = add_vertex!(dep_grph)
+    hom_in = seq[ruleapp].match ⋅ legs(clim)[ruleapp]
+    in_verts = vcat(map(collect(pairs(components(hom_in)))) do (k,v) 
+      dic[k](collect(v))
+    end...)
+    add_edges!(dep_grph, in_verts, fill(rule_v, length(in_verts)))
+    hom_out = seq[ruleapp].comatch ⋅ legs(clim)[ruleapp+1]
+    out_verts = vcat(map(collect(pairs(components(hom_out)))) do (k,v) 
+      dic[k](collect(v))
+    end...)
+    add_edges!(dep_grph, fill(rule_v, length(out_verts)), out_verts)
   end
 
+  # Get presentation of preorder by looking at which paths exist
+  ps = enumerate_paths_cyclic(dep_grph; n_max=1)
+  real_dep_grph = Graph(n)
+  for i in 1:n
+    for j in 2:n
+      if i!=j && !isempty(ps[i+nparts(elm,:El),j+nparts(elm,:El)]) 
+        add_edge!(real_dep_grph, i, j) 
+      end
+    end
+  end
+
+  real_dep_grph
+end
+
+"""
+[Copied from diagram morphism search PR to Catlab]
+Because cyclic graphs have an infinite number of paths, a cap on the the 
+number of loops is required.
+"""
+function enumerate_paths_cyclic(G::Graph; n_max=2)
+  ijs = collect(Iterators.product(vertices(G),vertices(G)))
+  es = Dict([(i,j)=>i==j ? [Int[]] : Vector{Int}[] for (i,j) in ijs])
+  n,done = 0,false
+
+  """False iff any vertex is visited more than n_max times"""
+  function count_cycles(p::Vector{Int})
+    cnt = zeros(Int, nv(G))
+    for e in p
+      cnt[src(G,e)] += 1
+      if cnt[src(G,e)] > n_max return false end
+    end
+    return true
+  end
+
+  while !done
+    done = true
+    n += 1 # we now add paths of length n
+    for e in edges(G) # try to postcompose this edge w/ len n-1 paths
+      s, t = src(G,e), tgt(G,e)
+      for src_v in vertices(G)
+        for u in filter(u->length(u)==n-1 && count_cycles(u),es[(src_v, s)])
+          push!(es[(src_v, t)], [u; [e]])
+          done = false
+        end
+      end
+    end
+  end
+  return es
 end
 
 end # module

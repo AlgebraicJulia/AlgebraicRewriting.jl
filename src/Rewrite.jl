@@ -407,7 +407,7 @@ function rewrite_match_maps(r::Rule{:DPO}, m; check::Bool=false)
   end
   (ik, kg) = pushout_complement(ComposablePair(r.L, m))
   
-  if kg isa LooseACSetTransformation
+  if r.R isa LooseACSetTransformation || ik isa LooseACSetTransformation
     Attr = Tuple(attrtypes(acset_schema(dom(m))))
     ps = typeof(dom(m)).parameters
     icomp = Dict(at=>IdentityFunction(TypeSet(p)) for (at, p) in zip(Attr, ps))
