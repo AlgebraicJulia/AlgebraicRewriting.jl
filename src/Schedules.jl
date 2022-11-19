@@ -179,7 +179,7 @@ mean that a must occur temporaly before b.
 """
 function find_deps(seq::Vector{RWStep})
   # Construct a diagram which identifies parts across different rewrite steps
-  n = length(seq)
+  n   = length(seq)
   ob₁ = [apex(s.g) for s in seq];
   ob₂ = codom.([left(first(seq).g), right.([x.g for x in seq])...])
   hom = vcat([[left(s.g), right(s.g)] for s in seq]...)
@@ -188,77 +188,19 @@ function find_deps(seq::Vector{RWStep})
   hs  = collect(zip(hom, src, tgt))
   clim = colimit(BipartiteFreeDiagram(ob₁, ob₂, hs))
 
-  # Forget about the C-Set structure
-  elm = elements(apex(clim))
-  dic = Dict(map(enumerate(elm[:nameo])) do (i,o)
-    o=>FinFunction(incident(elm, i, :πₑ), nparts(elm, :El))
-  end)
-  dep_grph = Graph(nparts(elm,:El))
-  add_edges!(dep_grph, elm[:src], elm[:tgt])
-
-  # Add "rule" vertices and add dependencies from (co)matches 
-  for ruleapp in 1:n
-    rule_v = add_vertex!(dep_grph)
-    hom_in = seq[ruleapp].match ⋅ legs(clim)[ruleapp]
-    in_verts = vcat(map(collect(pairs(components(hom_in)))) do (k,v) 
-      dic[k](collect(v))
-    end...)
-    add_edges!(dep_grph, in_verts, fill(rule_v, length(in_verts)))
-    hom_out = seq[ruleapp].comatch ⋅ legs(clim)[ruleapp+1]
-    out_verts = vcat(map(collect(pairs(components(hom_out)))) do (k,v) 
-      dic[k](collect(v))
-    end...)
-    add_edges!(dep_grph, fill(rule_v, length(out_verts)), out_verts)
-  end
-
-  # Get presentation of preorder by looking at which paths exist
-  ps = enumerate_paths_cyclic(dep_grph; n_max=1)
-  real_dep_grph = Graph(n)
+  deps = Graph(length(seq)) # presentation of a poset
+  Ob = objects(acset_schema(first(ob₁))) # objects in the schema 
+  img(f) = Dict(o=>Set(collect(f[o])) for o in Ob) # the image of a map
   for i in 1:n
-    for j in 2:n
-      if i!=j && !isempty(ps[i+nparts(elm,:El),j+nparts(elm,:El)]) 
-        add_edge!(real_dep_grph, i, j) 
+    mtch = img(seq[i].match ⋅ legs(clim)[i])
+    for j in 1:n
+      cmtch = img(seq[j].comatch ⋅ legs(clim)[j+1])
+      if i!=j && any(o->!isempty(mtch[o] ∩ cmtch[o]), Ob)
+        add_edge!(deps, j, i) # j outputs something that i consumes
       end
     end
   end
-
-  real_dep_grph
-end
-
-"""
-[Copied from diagram morphism search PR to Catlab]
-Because cyclic graphs have an infinite number of paths, a cap on the the 
-number of loops is required.
-"""
-function enumerate_paths_cyclic(G::Graph; n_max=2)
-  ijs = collect(Iterators.product(vertices(G),vertices(G)))
-  es = Dict([(i,j)=>i==j ? [Int[]] : Vector{Int}[] for (i,j) in ijs])
-  n,done = 0,false
-
-  """False iff any vertex is visited more than n_max times"""
-  function count_cycles(p::Vector{Int})
-    cnt = zeros(Int, nv(G))
-    for e in p
-      cnt[src(G,e)] += 1
-      if cnt[src(G,e)] > n_max return false end
-    end
-    return true
-  end
-
-  while !done
-    done = true
-    n += 1 # we now add paths of length n
-    for e in edges(G) # try to postcompose this edge w/ len n-1 paths
-      s, t = src(G,e), tgt(G,e)
-      for src_v in vertices(G)
-        for u in filter(u->length(u)==n-1 && count_cycles(u),es[(src_v, s)])
-          push!(es[(src_v, t)], [u; [e]])
-          done = false
-        end
-      end
-    end
-  end
-  return es
+  return deps 
 end
 
 end # module
