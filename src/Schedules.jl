@@ -183,8 +183,8 @@ function find_deps(seq::Vector{RWStep})
   ob₁ = [apex(s.g) for s in seq];
   ob₂ = codom.([left(first(seq).g), right.([x.g for x in seq])...])
   hom = vcat([[left(s.g), right(s.g)] for s in seq]...)
-  src = vcat([fill(i,2) for i in 1:n]...); 
-  tgt = [1,vcat([fill(i,2) for i in 2:n]...)...,n+1]
+  src = vcat([fill(i,2) for i in 1:n]...); # [1, 1, 2, 2, 3, 3, ..., n, n]
+  tgt = [1,vcat([fill(i,2) for i in 2:n]...)...,n+1] # [1, 2, 2, ..., n, n, n+1]
   hs  = collect(zip(hom, src, tgt))
   clim = colimit(BipartiteFreeDiagram(ob₁, ob₂, hs))
 
