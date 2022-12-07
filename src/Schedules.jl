@@ -172,6 +172,13 @@ struct RWStep
   end
 end
 
+function rw_steps(steps::AbstractVector)
+  map(steps) do (r, m)
+    _, kg, rh, kh = rewrite_match_maps(r, m)
+    RWStep(Span(r.L, r.R), Span(kg, kh), m, rh)
+  end
+end
+
 """
 For a concrete sequence of rewrites applications [a₁,a₂...aₙ], compute a poset
 on the set of applications which reflects their casual connections, where a < b
@@ -202,5 +209,8 @@ function find_deps(seq::Vector{RWStep})
   end
   return deps 
 end
+
+find_deps(s::AbstractVector) = s |> rw_steps |> find_deps
+
 
 end # module
