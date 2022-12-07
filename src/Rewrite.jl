@@ -3,7 +3,7 @@ module Rewrite
 export Rule, PAC, NAC, rewrite, rewrite_match, rewrite_parallel,
        rewrite_match_maps, rewrite_parallel_maps, rewrite_dpo, rewrite_spo,
        rewrite_sqpo, final_pullback_complement, pullback_complement, get_result,
-       get_pmap, rewrite_sequential_maps
+       get_pmap, rewrite_sequential_maps, ruletype
 
 using Catlab, Catlab.Theories, Catlab.Schemas
 using Catlab.CategoricalAlgebra: DeltaMigration, CSetTransformation, 
@@ -100,6 +100,7 @@ struct Rule{T}
   end
 end
 Rule(L,R,N=nothing;monic=false) = Rule{:DPO}(L,R,N; monic=monic)
+ruletype(::Rule{T}) where T = T
 
 # THIS SHOULD BE UPSTREAMED TO CATLAB
 (F::DeltaMigration{T})(f::TightACSetTransformation{S}) where {T,S} = begin
