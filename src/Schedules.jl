@@ -2,7 +2,7 @@ module Schedules
 export NestedDWD, inner, outer, NPorts, 
        NamedRule, Condition, RuleSchedule, const_cond, if_cond, has_match,
        no_match, apply_schedule, uniform, merge_wires,
-       ScheduleResult, rewrite_schedule, traj_res
+       ScheduleResult, rewrite_schedule, traj_res, WhileSchedule
       # rename_schedule
 
 using DataStructures, Random
@@ -16,6 +16,7 @@ import Base: map
 import Catlab.WiringDiagrams: ocompose
 import Catlab.Graphics: to_graphviz, LeftToRight
 import Catlab.Theories: dom, codom, id, compose, ⋅, ∘, otimes, ⊗, munit, braid, σ
+import Catlab.WiringDiagrams.DirectedWiringDiagrams: input_ports,output_ports
 
 # Schedule data structure
 #########################
@@ -29,6 +30,8 @@ struct NestedDWD
 end 
 outer(d::NestedDWD) = d.outer 
 inner(d::NestedDWD) = d.inner
+input_ports(d::NestedDWD) = d |> outer |> input_ports
+output_ports(d::NestedDWD) = d |> outer |> output_ports
 
 function NestedDWD(b::Box) 
   wd = WiringDiagram(b.input_ports, b.output_ports)
@@ -146,6 +149,16 @@ function RuleSchedule(n::String, r::Rule; loop::Bool=false)
   NestedDWD(wd)
 end
 
+function WhileSchedule(s::NestedDWD, cond::Function; name::String="while")
+  err = "Can only wrap a 1-in/1-out schedule with a while condition"
+  length.([input_ports(s),output_ports(s)]) == [1,1] || error(err)
+  wd = WiringDiagram([:X],[:X])
+  add_boxes!(wd, [Box([:X],[:X]), Box([:X],[:X,:X])])
+  add_wires!(wd, Pair[(input_id(wd),1)=>(1,1), (1,1)=>(2,1),(2,1)=>(1,1),
+                      (2,2)=>(output_id(wd),1)])
+  NestedDWD(wd, [s, NestedDWD(if_cond(name, cond))])
+end
+
 # Executing schedules 
 #####################
 
@@ -185,7 +198,10 @@ end
 """
 Execute an entire schedule.
 """
-function apply_schedule(s::WiringDiagram,g::StructACSet, b::Int=0,p::Int=0; 
+apply_schedule(s::NestedDWD,g::StructACSet; kw...) = 
+  apply_schedule(ocompose(s).outer, g; kw...)
+
+function apply_schedule(s::WiringDiagram,g::StructACSet; b::Int=0,p::Int=0, 
                         steps::Int=-1)::ScheduleResult
   b,p = (b,p) == (0,0) ? (input_id(s), 1) : (b, p)
   res = [TrajStep("start", b=>p, g, nothing, Span(id(g),id(g)))]

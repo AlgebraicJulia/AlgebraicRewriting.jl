@@ -1,6 +1,9 @@
-using Catlab, Catlab.Theories, Catlab.CategoricalAlgebra, Catlab.Graphs, Catlab.Graphics
+using Catlab, Catlab.Theories, Catlab.CategoricalAlgebra, Catlab.Graphs, 
+      Catlab.Graphics, Catlab.WiringDiagrams
 using AlgebraicRewriting
 using Random, Test, StructEquality
+
+Random.seed!(1234);
 
 const hom = AlgebraicRewriting.homomorphism
 const R = AlgebraicRewriting.RuleSchedule
@@ -132,7 +135,7 @@ supscript_d = Dict(['1'=>'¹', '2'=>'²', '3'=>'³', '4'=>'⁴', '5'=>'⁵',
 supscript(x::String) = join([get(supscript_d, c, c) for c in x])
 
 """Visualize a LV"""
-function Graph(p::LV,positions; name="G", title="")
+function Graph(p::LV; positions=positions, name="G", title="")
   pstr = ["$(i),$(j)!" for (i,j) in positions]
   stmts = Statement[]
     for s in 1:nv(p)
@@ -177,11 +180,9 @@ i1,i2 = initialize(2,0.5,0.5)
 
 # RULES
 #######
-seq = Schedule[]
 
 # Rotating
 #---------
-
 
 shift_l = @acset LV begin
   Sheep=1; V=1; sheep_loc=1; 
@@ -196,6 +197,7 @@ shift_i = @acset LV begin
 end
 
 shift_il = hom(shift_i, shift_l; bindvars=true)
+
 """Generate a rule that rotates a sheep to the left or the right"""
 function shift(lft::Bool=true)
   lr = lft ? :(left(d)) : :(right(d))
@@ -205,15 +207,14 @@ function shift(lft::Bool=true)
   Rule(shift_il, ir)
 end
 
-sheep_rotate_l = R(shift(),         :sheep_left,  false, 0.5)
-sheep_rotate_r = R(shift(false),    :sheep_right, false, 0.5)
-wolf_rotate_l  = R(F(shift()),      :wolf_left,   false, 0.5)
-wolf_rotate_r  = R(F(shift(false)), :wolf_right,  false, 0.5)
+sheep_rotate_l = RuleSchedule("sheep_left", shift())
+sheep_rotate_r = RuleSchedule("sheep_right", shift(false))
+wolf_rotate_l = RuleSchedule("wolf_left", F(shift()))
+wolf_rotate_r = RuleSchedule("wolf_right", F(shift(false)))
 
-rewrite(wolf_rotate_l.rule, i1)[:wolf_dir]
+# we can imagine executing these rules in sequence or in parallel
+(sheep_rotate_l⋅sheep_rotate_r) ⊗ (wolf_rotate_l⋅wolf_rotate_r) |> to_graphviz
 
-append!(seq, [sheep_rotate_l, sheep_rotate_r,
-              wolf_rotate_l,  wolf_rotate_r]);
 
 # Moving forward
 #---------------
@@ -224,7 +225,6 @@ s_move_forward_l = @acset LV begin
   sheep_dir=[Var(:z)]; sheep_eng=[Var(:x)]
 end
 
-
 s_move_forward_i = deepcopy(s_move_forward_l)
 rem_part!(s_move_forward_i, :Sheep, 1)
 
@@ -234,16 +234,14 @@ add_part!(s_move_forward_r, :Sheep; sheep_loc=2, sheep_eng=:(x-1), sheep_dir=Var
 s_move_n = deepcopy(s_move_forward_l)
 set_subpart!(s_move_n, 1, :sheep_eng, 0)
 
-sheep_move_forward = Rule(
+sheep_move_forward_rule = Rule(
   hom(s_move_forward_i, s_move_forward_l; monic=true),
   hom(s_move_forward_i, s_move_forward_r; monic=true),
   [NAC(hom(s_move_forward_l, s_move_n; monic=true,bindvars=true))]
 )
 
-wolf_move_forward = F(sheep_move_forward)
-
-append!(seq, [R(sheep_move_forward,:sheep_move_forward),
-              R(wolf_move_forward, :wolf_move_forward)]);
+sheep_move_forward = RuleSchedule("sheep move forward", sheep_move_forward_rule)
+wolf_move_forward = RuleSchedule("wolf move forward", F(sheep_move_forward_rule))
 
 # Eat grass + 4eng
 #-----------------
@@ -260,10 +258,9 @@ s_eat_r = deepcopy(s_eat_i)
 set_subpart!(s_eat_r, 1, :grass_eng, 30)
 set_subpart!(s_eat_r, 1, :sheep_eng, :(e+4))
 
-sheep_eat = Rule(hom(s_eat_i, s_eat_l; bindvars=true), 
-                 hom(s_eat_i, s_eat_r; bindvars=true))
-rewrite(sheep_eat, i1)
-push!(seq, R(sheep_eat,:sheep_eat));
+sheep_eat = RuleSchedule("Sheep eat", 
+  Rule(hom(s_eat_i, s_eat_l; bindvars=true), 
+       hom(s_eat_i, s_eat_r; bindvars=true)))
 
 # Eat sheep + 20 eng
 #-------------------
@@ -282,10 +279,9 @@ end
 w_eat_r = deepcopy(w_eat_i)
 set_subpart!(w_eat_r, 1, :wolf_eng, :(e+20))
 
-wolf_eat = Rule(hom(w_eat_i, w_eat_l; bindvars=true), 
-                hom(w_eat_i, w_eat_r; bindvars=true))
-
-push!(seq, R(wolf_eat,:wolf_eat));
+wolf_eat = RuleSchedule("Wolf eat", 
+  Rule(hom(w_eat_i, w_eat_l; bindvars=true), 
+       hom(w_eat_i, w_eat_r; bindvars=true)))
 
 # Die if 0 eng
 #-------------
@@ -294,12 +290,12 @@ s_die_l = @acset LV begin
   sheep_eng=[0]; sheep_loc=1; sheep_dir=[Var(:_0)]
 end
 s_die_r = @acset LV begin V=1; grass_eng=[Var(:_1)] end
-sheep_die = Rule(hom(s_die_r, s_die_l), id(s_die_r))
-wolf_die = F(sheep_die)
-append!(seq, [R(sheep_die,:sheep_die),R(wolf_die,:wolf_die)]);
+sheep_die_rule = Rule(hom(s_die_r, s_die_l), id(s_die_r))
+sheep_starve = RuleSchedule("Sheep starve", sheep_die_rule)
+wolf_starve = RuleSchedule("Wolf starve", F(sheep_die_rule))
 
-# reproduce (4% sheep, 5% wolf)
-#------------------------------
+# reproduction
+#-------------
 s_reprod_l =  @acset LV begin
   Sheep=1; V=1; sheep_loc=1; grass_eng=[Var(:_1)]
   sheep_dir=[Var(:_2)]; sheep_eng=[Var(:a)]; 
@@ -313,12 +309,9 @@ s_reprod_r =  @acset LV begin
   sheep_eng=fill(:(round(Int, a/2, RoundUp)), 2); 
 end
 
-sheep_reprod = Rule(hom(s_reprod_i,s_reprod_l),hom(s_reprod_i,s_reprod_r))
-
-wolf_reprod = F(sheep_reprod)
-
-append!(seq, [R(sheep_reprod,:sheep_reprod, false, 0.04),
-              R(wolf_reprod, :wolf_reprod, false, 0.05)]);
+sheep_reprod_rule = Rule(hom(s_reprod_i,s_reprod_l),hom(s_reprod_i,s_reprod_r))
+sheep_reprod = RuleSchedule("Sheep reproduce", sheep_reprod_rule)
+wolf_reprod = RuleSchedule("Wolf reproduce", F(sheep_reprod_rule))
 
 # Grass increment
 #----------------
@@ -335,24 +328,47 @@ set_subpart!(g_inc_r, 1, :grass_eng, :(a-1))
 g_inc_n = deepcopy(g_inc_l)
 set_subpart!(g_inc_n,1, :grass_eng, 0)
 
-g_inc = Rule(hom(g_inc_i, g_inc_l;bindvars=true), hom(g_inc_i, g_inc_r;bindvars=true),
-             [NAC(hom(g_inc_l, g_inc_n; bindvars=true))])
+g_inc = RuleSchedule("Grass increments",
+  Rule(hom(g_inc_i, g_inc_l;bindvars=true), hom(g_inc_i, g_inc_r;bindvars=true),
+      [NAC(hom(g_inc_l, g_inc_n; bindvars=true))]))
 
-push!(seq, R(g_inc,:g_inc));
-# overall
-#--------
-step = ListSchedule(seq)
-only_sheep(prev, curr) = nparts(curr,:Wolf) == 0
-overall = WhileSchedule(step, :main, only_sheep);
 
+# Scheduling Rules
+##################
+
+# 25% chance of left turn, 25% chance of right turn, 50% stay in same direction
+sheep_rotate = (NestedDWD(const_cond([1.,2.,1.]; name="sheep turn?")) 
+                ⋅ (sheep_rotate_l ⊗ id(NPorts(1)) ⊗ sheep_rotate_r) 
+                ⋅ merge_wires(3))
+# likewise for wolves
+wolf_rotate = (NestedDWD(const_cond([1.,2.,1.]; name="wolf turn?")) 
+                ⋅ (wolf_rotate_l ⊗ id(NPorts(1)) ⊗ wolf_rotate_r) 
+                ⋅ merge_wires(3))
+# Sheep have 4% chance of reproducing, wolves have 5%
+sheep_repro = (NestedDWD(const_cond([0.4, .96]; name="sheep reprod?")) 
+              ⋅ (sheep_reprod ⊗ id(NPorts(1))) 
+              ⋅ merge_wires(2))
+wolf_repro = (NestedDWD(const_cond([0.5, .95]; name="wolf reprod?")) 
+              ⋅ (wolf_reprod ⊗ id(NPorts(1))) 
+              ⋅ merge_wires(2))
+# Do all rules in a sequence
+cycle = compose(sheep_rotate, wolf_rotate,
+                sheep_move_forward, wolf_move_forward,
+                sheep_eat, wolf_eat,
+                sheep_starve, wolf_starve,
+                sheep_repro,wolf_repro, g_inc) 
+
+# wrap in a while loop
+overall = WhileSchedule(cycle, curr -> nparts(curr,:Wolf) == 0) |> ocompose |> outer
 
 G, coords = initialize(2, .25, .25)
-res = apply_schedule(step, G=G, verbose=false)
+pprint(Graph(G; positions=coords))
+res = apply_schedule(overall, G; steps=20) # run 20 steps max
 
 # Run these lines to view the trajectory
 if false 
   using Interact
   using Blink: Window, body!
   w = Window()
-  body!(w, view_traj(res, Graph; positions=coords))
+  body!(w, view_traj(overall, res, Graph; positions=coords))
 end

@@ -65,9 +65,12 @@ function view_traj(sched::WiringDiagram, rG::ScheduleResult, viewer;
             if !isempty(collect(c.func))], '\n')
     end
 
+    rhs_graph = nothing 
+    println("HERE")
     try # feed in positions, if function expects this
       rhs_graph = viewer(step.G, positions=get_positions(n)) 
     catch e 
+      println("error $e")
       rhs_graph = viewer(step.G)
     end 
      
@@ -81,10 +84,11 @@ function view_traj(sched::WiringDiagram, rG::ScheduleResult, viewer;
         sched.diagram[out_port_id(sched, step.port...), :out_port_type] = "*"
       end 
     end
-    lhs_graph = to_graphviz(sched; labels=true; 
+    lhs_graph = to_graphviz(sched; labels=true, 
       graph_attrs=Dict(:label=>"$name \n $c", :labelloc=>"t"))
 
     merged_graph = mrg(lhs_graph,rhs_graph)
+    pprint(merged_graph)
     return merged_graph
   end
 end
