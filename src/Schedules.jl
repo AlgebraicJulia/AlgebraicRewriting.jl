@@ -1,11 +1,9 @@
 module Schedules
-export NestedDWD, inner, outer, 
-       NPorts, ListSchedule, RuleSchedule, const_cond, if_cond,
+export NestedDWD, inner, outer, NPorts, 
+       NamedRule, Condition, RuleSchedule, const_cond, if_cond, has_match,
        no_match, apply_schedule, uniform, merge_wires,
-       ScheduleResult
-      #  Schedule, WhileSchedule, 
-      #  rewrite_schedule, RandomSchedule, traj_res, 
-      #  , rename_schedule
+       ScheduleResult, rewrite_schedule, traj_res
+      # rename_schedule
 
 using DataStructures, Random
 
@@ -13,13 +11,17 @@ using Catlab, Catlab.CategoricalAlgebra, Catlab.WiringDiagrams, Catlab.Theories
 using ..Rewrite
 using ..Rewrite: rewrite_with_match, get_matches
 using Catlab.CategoricalAlgebra.DataMigrations: MigrationFunctor
-using Catlab.WiringDiagrams.DirectedWiringDiagrams: tgt_box, in_tgt_box
 
 import Base: map
 import Catlab.WiringDiagrams: ocompose
 import Catlab.Graphics: to_graphviz, LeftToRight
 import Catlab.Theories: dom, codom, id, compose, ⋅, ∘, otimes, ⊗, munit, braid, σ
 
+# Schedule data structure
+#########################
+"""
+These nested DWDs have as primitive boxes either 
+"""
 struct NestedDWD 
   outer::WiringDiagram
   inner::Vector{NestedDWD}
@@ -41,6 +43,10 @@ struct NPorts
   NPorts(p::Ports) = new(p)
 end 
 
+"""
+This category instance allows NestedDWDs to be composed in series (⋅) and in 
+parallel (⊗).
+"""
 @instance ThSymmetricMonoidalCategory{NPorts, NestedDWD} begin
   @import dom, codom
 
@@ -58,6 +64,23 @@ end
   braid(A::NPorts, B::NPorts) = NPorts(braid(A.p,B.p))
 end
 
+"""
+Flatten a nested DWD into one that has no inner DWDs.
+"""
+function ocompose(d::NestedDWD)
+  if isempty(d.inner) return d end 
+  NestedDWD(ocompose(d.outer, [ocompose(i).outer for i in d.inner]))
+end 
+
+"""View a nested DWD as a flattened one"""
+to_graphviz(d::NestedDWD; orientation=LeftToRight, kw...) = 
+  to_graphviz(ocompose(d).outer; orientation=orientation, kw...)
+
+"""
+A primitive box in a NestedDWD which has the semantics of applying the rule to 
+*some* match that is found (no guarantees on which one, which should be 
+controlled by application conditions).
+"""
 struct NamedRule
   name::String 
   rule::Rule 
@@ -65,8 +88,8 @@ end
 Base.string(c::NamedRule) = c.name
 
 """
-A function ACSet -> ℝⁿ which weights probability for n outports, conditional on 
-the status of an ACSet.
+A primitive box in a NestedDWD which contains a function ACSet -> ℝⁿ.
+This weights probability for n outports, conditional on the status of an ACSet.
 """
 struct Condition 
   name::String 
@@ -76,44 +99,57 @@ end
 
 Base.string(c::Condition) = c.name
 
+# Helpful ways of constructing schedules 
+########################################
+
+"""Create a branching point with fixed probabilities for each branch"""
 const_cond(v::Vector{Float64};name=nothing) = 
   Box(Condition(isnothing(name) ? "const $v" : name, _->v,length(v)), 
       [:X],fill(:X,length(v)))
+
+"""A uniform chance of leaving each of n branches"""
 uniform(n::Int) = const_cond(fill(1/n,n); name="uniform")
 
+"""Enter the 1st branch iff the world state evaluates to true""" 
 if_cond(name::String, boolfun::Function) = 
   Box(Condition(name, x->boolfun(x) ? [1,0] : [0,1], 2),[:X],[:X,:X])
+
+"""
+A box that takes the first output iff there is a match from a rule into the 
+current state"""
 has_match(rulename::String, r::Rule) = 
   if_cond("Can match $rulename", x->!isempty(get_matches(r,x)))
 
+"""
+The comonoid structure - merging multiple wires into one. This is unproblematic
+because the world state only ever exists on one wire at a given time.
+"""
 function merge_wires(n::Int)
   wd = WiringDiagram(fill(:X,n),[:X])
   add_wires!(wd, Pair[(input_id(wd),i)=>(output_id(wd),1) for i in 1:n])
   return NestedDWD(wd)
 end
 
-function ocompose(d::NestedDWD)
-  if isempty(d.inner) return d end 
-  NestedDWD(ocompose(d.outer, [ocompose(i).outer for i in d.inner]))
-end 
-
-to_graphviz(d::NestedDWD; orientation=LeftToRight, kw...) = to_graphviz(ocompose(d).outer; orientation=orientation, kw...)
-
-apply_schedule_step(s::NestedDWD, g::StructACSet, w::Int) = 
-  apply_schedule_step(ocompose(s).outer, g, w)
-
-function apply_schedule_step(s::WiringDiagram, g::StructACSet, box::Int)
-  btype = s.diagram[box, :value]
-  if btype isa Condition 
-    dist = btype.fun(g)
-    return findfirst(q -> q > rand(), cumsum(dist) ./ sum(dist))
-  elseif btype isa NamedRule 
-    return rewrite_with_match(btype.rule, g)
-  else 
-    error("Unknown semantics for $btype")
+"""
+Convert a rewrite rule into a small schedule, potentially looping until it 
+can no longer match
+"""
+function RuleSchedule(n::String, r::Rule; loop::Bool=false)
+  wd = WiringDiagram([:X],[:X])
+  add_box!(wd,Box(NamedRule(n,r), [:X],[:X]))
+  add_wires!(wd, Pair[(input_id(wd),1)=>(1,1),(1,1)=>(output_id(wd),1)])
+  if loop
+    rem_wire!(wd,only(in_wires(wd, output_id(wd))))
+    add_box!(wd, has_match(n,r))
+    add_wires!(wd, Pair[(1,1)=>(2,1), (2,1)=>(1,1), (2,2)=>(output_id(wd),1)])
   end
+  NestedDWD(wd)
 end
 
+# Executing schedules 
+#####################
+
+"""The result of executing a schedule: a sequence of TrajSteps"""
 struct TrajStep
   title::String # rule that got applied
   port::Pair{Int,Int}
@@ -131,6 +167,24 @@ end
 const ScheduleResult = Vector{TrajStep}
 traj_res(s::ScheduleResult) = last(s).G
 
+"""
+Execute a single primitive box (either a Condition or a NamedRule)
+"""
+function apply_schedule_step(s::WiringDiagram, g::StructACSet, box::Int)
+  btype = s.diagram[box, :value]
+  if btype isa Condition 
+    dist = btype.fun(g)
+    return findfirst(q -> q > rand(), cumsum(dist) ./ sum(dist))
+  elseif btype isa NamedRule 
+    return rewrite_with_match(btype.rule, g)
+  else 
+    error("Unknown semantics for $btype")
+  end
+end
+
+"""
+Execute an entire schedule.
+"""
 function apply_schedule(s::WiringDiagram,g::StructACSet, b::Int=0,p::Int=0; 
                         steps::Int=-1)::ScheduleResult
   b,p = (b,p) == (0,0) ? (input_id(s), 1) : (b, p)
@@ -144,7 +198,7 @@ function apply_schedule(s::WiringDiagram,g::StructACSet, b::Int=0,p::Int=0;
 
     stepres = apply_schedule_step(s, g, box)
     if isnothing(stepres) # we failed to match a rule box 
-      (b,p) = (box, 1)
+      (b,p) = (box, 1) # nothing worth recording in the trajectory
     elseif stepres isa Int # we applied the condition and got an outport
       (b,p) = (box, stepres)
       push!(res, TrajStep(boxval.name, b=>p, g, nothing, Span(id(g), id(g))))
@@ -158,148 +212,33 @@ function apply_schedule(s::WiringDiagram,g::StructACSet, b::Int=0,p::Int=0;
   return res
 end
 
-function RuleSchedule(n::String, r::Rule; loop::Bool=false)
-  wd = WiringDiagram([:X],[:X])
-  add_box!(wd,Box(NamedRule(n,r), [:X],[:X]))
-  add_wires!(wd, Pair[(input_id(wd),1)=>(1,1),(1,1)=>(output_id(wd),1)])
-  if loop
-    rem_wire!(wd,only(in_wires(wd, output_id(wd))))
-    add_box!(wd, has_match(n,r))
-    add_wires!(wd, Pair[(1,1)=>(2,1), (2,1)=>(1,1), (2,2)=>(output_id(wd),1)])
-  end
-  NestedDWD(wd)
-end
+"""Just get the result from applying the schedule"""
+rewrite_schedule(s::WiringDiagram, G; kw...) = traj_res(apply_schedule(s, G; kw...))
 
 
-if false 
-  # abstract type Schedule end
-
-  # (F::MigrationFunctor)(s::Schedule) = map(F, s)
-
-  # struct ListSchedule <: Schedule
-  #   rules::Vector{Schedule}
-  #   name::Symbol
-  #   ListSchedule(l::Vector{Schedule}, name=:list) =  new(l, name)
-  # end
-
-  # struct RuleSchedule{T} <: Schedule
-  #   rule::Rule
-  #   name::Symbol
-  #   single::Bool # fire once vs for all matches in a random order
-  #   match_prob::Float64 # probability for each match considered
-  #   RuleSchedule(rule::Rule{T}, name=:_, single=false, prob=1.0) where T =
-  #     new{T}(rule, name, single, 1.)
-  # end
-
-  # RuleSchedule{T}(pn::Pair{Symbol, Rule{T}}) where T  = RuleSchedule(pn[2], pn[1])
-
-  # ListSchedule(rs::Vector{Rule}, name=:list) = ListSchedule(Schedule[
-  #   RuleSchedule(r,Symbol("r$i")) for (i,r) in enumerate(rs)], name)
-
-  # struct RandomSchedule <: Schedule
-  #   rules::Vector{Rule}
-  #   name::Symbol
-  # end
-
-  # struct WhileSchedule <: Schedule
-  #   sch::Schedule
-  #   name::Symbol
-  #   cond::Function
-  #   n::Int
-  #   WhileSchedule(s::Schedule, name=:loop, cond=is_isomorphic, n=10) = new(s, name, cond, n)
-  # end
-
-  # WhileSchedule(r::Rule, name=:loop,cond=is_isomorphic,n=10) = WhileSchedule(RuleSchedule([r]), name, cond, n)
-
-  # # Renaming schedules
-  # function sub_symb(sym::Symbol, d::Dict{String, String})
-  #   s = string(sym)
-  #   for (k,v) in collect(d)
-  #     s = replace(s, k=>v)
-  #   end
-  #   return Symbol(s)
-  # end
-  # rename_schedule(s::RuleSchedule{T}, n::Symbol) where T =
-  #   RuleSchedule(s.rule, n, s.match_prob)
-  # rename_schedule(s::ListSchedule, n::Symbol) = ListSchedule(s.rules, n)
-  # rename_schedule(s::WhileSchedule, n::Symbol) = WhileSchedule(s.sch, n, s.cond)
-  # rename_schedule(s::RuleSchedule{T}, n::Dict{String,String}) where T =
-  #   RuleSchedule(s.rule, sub_symb(s.name, n), s.match_prob)
-  # rename_schedule(s::ListSchedule, n::Dict{String,String}) =
-  #   ListSchedule(Schedule[rename_schedule(r,n) for r in s.rules], sub_symb(s.name, n))
-  # rename_schedule(s::WhileSchedule, n::Dict{String,String}) =
-  #   WhileSchedule(rename_schedule(s.sch,n), sub_symb(s.name, n), s.cond)
-
-  # # Mapping over schedules
-  # map(F, s::RuleSchedule{T}) where T =  RuleSchedule(F(s.rule), s.name, s.match_prob)
-
-  # map(F, s::ListSchedule) = ListSchedule(Schedule[map(F,s.rules)...], s.name)
-  # map(F, s::RandomSchedule) =
-  #   RandomSchedule(OrderedDict(s.name, [k=>F(v) for (k,v) in collect(s.rules)]))
-  # map(F, s::WhileSchedule) = WhileSchedule(s.name, F(s.sch), s.cond, s.n)
+"""Map a functor over the Rules in a schedule"""
+(F::MigrationFunctor)(s::NestedDWD) = 
+  NestedDWD(migrate(F, s.outer), [migrate(F,i) for i in s.inner])
+migrate(F::MigrationFunctor, wd::WiringDiagram) = error("TODO")
 
 
-  # """apply schedule and return whether or not the input changed"""
-  # function apply_schedule(s::ListSchedule; G=nothing, sr = nothing, random=false, verbose=false,kw...)::ScheduleResult
-  #   sr = isnothing(sr) ? [TrajStep(G)] : sr
-  #   f = random ? shuffle : identity
-  #   if verbose println("applying sequence $(s.name)") end
-  #   for r in f(s.rules)
-  #     apply_schedule(r; sr=sr, random=random, verbose=verbose, kw...)
-  #   end
-  #   sr
-  # end
-
-  # function apply_schedule(r::RuleSchedule{T}; G=nothing, sr=nothing, random=false,
-  #                         verbose=false, kw...)::ScheduleResult where T
-  #   sr = isnothing(sr) ? [TrajStep(G)] : sr
-  #   if verbose println("applying rule $(r.name)") end
-  #   if r.single
-  #     r_ = rewrite_with_match(r.rule, traj_res(sr); random=random, kw...);
-  #     if !isnothing(r_)
-  #       push!(sr, TrajStep(r.name, get_result(T, r_[2]), r_[1],
-  #                               get_pmap(T, r_[2])))
-  #     end
-  #   else
-  #     r_ = rewrite_sequential_maps(r.rule, traj_res(sr); random=random,
-  #                                 prob=r.match_prob, verbose=verbose, kw...)
-  #     for (m, s, g) in r_
-  #       push!(sr, TrajStep(r.name, g, m, s))
-  #     end
-  #   end
-  #   return sr
-  # end
-
-  # function apply_schedule(s::RandomSchedule; G=nothing, sr=nothing, kw...)::ScheduleResult
-  #   sr = isnothing(sr) ? [TrajStep(G)] : sr
-
-  #   for (n,r) in shuffle(s.rules)
-  #     rewrite_schedule(r; sr=sr, kw...)
-  #   end
-  #   sr
-  # end
-
-  # function apply_schedule(s::WhileSchedule;
-  #                         sr = nothing, G = nothing,
-  #                         no_repeat::Bool=false, verbose::Bool=false, kw...)::ScheduleResult
-
-  #   sr = isnothing(sr) ? [TrajStep(G)] : sr
-  #   seen = Set(no_repeat ? [G] : [])
-  #   for i in 1:s.n
-  #     if verbose println("applying rule $(s.name) iter $i") end
-  #     l = length(sr)
-  #     prev = deepcopy(sr[end].G)
-  #     apply_schedule(s.sch; sr=sr, verbose=verbose, kw...)
-  #     if s.cond(prev, sr[end].G)
-  #       return sr
-  #     end
-
-  #   end
-  #   println("WARNING: hit nmax $(s.n) for WhileSchedule")
-  #   return sr
-  # end
-
-  # rewrite_schedule(s::Schedule, G; kw...) = res(apply_schedule(s, G; kw...))
-end 
+# # Renaming schedules
+# function sub_symb(sym::Symbol, d::Dict{String, String})
+#   s = string(sym)
+#   for (k,v) in collect(d)
+#     s = replace(s, k=>v)
+#   end
+#   return Symbol(s)
+# end
+# rename_schedule(s::RuleSchedule{T}, n::Symbol) where T =
+#   RuleSchedule(s.rule, n, s.match_prob)
+# rename_schedule(s::ListSchedule, n::Symbol) = ListSchedule(s.rules, n)
+# rename_schedule(s::WhileSchedule, n::Symbol) = WhileSchedule(s.sch, n, s.cond)
+# rename_schedule(s::RuleSchedule{T}, n::Dict{String,String}) where T =
+#   RuleSchedule(s.rule, sub_symb(s.name, n), s.match_prob)
+# rename_schedule(s::ListSchedule, n::Dict{String,String}) =
+#   ListSchedule(Schedule[rename_schedule(r,n) for r in s.rules], sub_symb(s.name, n))
+# rename_schedule(s::WhileSchedule, n::Dict{String,String}) =
+#   WhileSchedule(rename_schedule(s.sch,n), sub_symb(s.name, n), s.cond)
 
 end # module
