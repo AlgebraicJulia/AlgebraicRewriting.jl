@@ -133,8 +133,8 @@ traj_res(s::ScheduleResult) = last(s).G
 
 function apply_schedule(s::WiringDiagram,g::StructACSet, b::Int=0,p::Int=0; 
                         steps::Int=-1)::ScheduleResult
-  res = TrajStep[]
   b,p = (b,p) == (0,0) ? (input_id(s), 1) : (b, p)
+  res = [TrajStep("start", b=>p, g, nothing, Span(id(g),id(g)))]
     
   while steps!=0 
     steps -= 1
