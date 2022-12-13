@@ -1,7 +1,7 @@
 module CSets
 export topo_obs, check_eqs, eval_path, extend_morphism, pushout_complement,
        can_pushout_complement, dangling_condition, invert_hom,
-       homomorphisms, gluing_conditions
+       homomorphisms, gluing_conditions, extend_morphisms
 
 using Catlab, Catlab.Theories, Catlab.Graphs, Catlab.Schemas
 using Catlab.CategoricalAlgebra: ACSet, StructACSet, ACSetTransformation, TightACSetTransformation, 
@@ -60,7 +60,7 @@ function extend_morphism_constraints(f::ACSetTransformation,
                                      g::ACSetTransformation
                                      )::Union{Nothing,
                                               Dict{Symbol, Dict{Int,Int}}}
-  dom(f) == dom(g) || error("f and g are not a span: $jf \n$jg")
+  dom(f) == dom(g) || error("f and g are not a span: $f \n$g")
 
   init = Dict{Symbol, Dict{Int,Int}}()
   for (ob, mapping) in pairs(components(f))
@@ -96,6 +96,17 @@ function extend_morphism(f::ACSetTransformation, g::ACSetTransformation;
   homomorphism(codom(g), codom(f); initial=NamedTuple(init), monic=monic, iso=iso,
                bindvars=true, init_check=init_check)
 end
+
+"""Same as `extend_morphism` but returning all such morphisms"""
+function extend_morphisms(f::ACSetTransformation, g::ACSetTransformation;
+                          monic=false, iso=false, init_check=true
+                          )::Vector{ACSetTransformation}
+  init = extend_morphism_constraints(f,g)
+  if isnothing(init) return [] end
+  homomorphisms(codom(g), codom(f); initial=NamedTuple(init), monic=monic, 
+                iso=iso, bindvars=true, init_check=init_check)
+end
+
 
 """ Compute pushout complement of attributed C-sets, if possible.
 

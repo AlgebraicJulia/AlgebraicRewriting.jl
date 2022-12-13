@@ -3,13 +3,14 @@ module Rewrite
 export Rule, PAC, NAC, rewrite, rewrite_match, rewrite_parallel,
        rewrite_match_maps, rewrite_parallel_maps, rewrite_dpo, rewrite_spo,
        rewrite_sqpo, final_pullback_complement, pullback_complement, get_result,
-       get_pmap, rewrite_sequential_maps, ruletype
+       get_pmap, get_rmap, rewrite_sequential_maps, ruletype
 
 using Catlab, Catlab.Theories, Catlab.Schemas
 using Catlab.CategoricalAlgebra: DeltaMigration, CSetTransformation, 
   TightACSetTransformation, ACSetTransformation, LooseACSetTransformation, 
-  pullback, pushout,  StructACSet, ComposablePair, copair, Span, 
-  universal, ¬, ob_map, acset_schema, TypeSet, colimit, Multispan, is_monic
+  pullback, pushout,  StructACSet, ComposablePair, copair, Span, Cospan,
+  universal, ¬, ob_map, acset_schema, TypeSet, colimit, Multispan, is_monic,
+  Multicospan, apex
 using Catlab.CategoricalAlgebra.FinSets: IdentityFunction
 using Catlab.CategoricalAlgebra.CSets: type_components
 using Catlab.CategoricalAlgebra.DataMigrations: MigrationFunctor
@@ -124,6 +125,9 @@ end
   LooseACSetTransformation(NamedTuple(d),NamedTuple(td),F(dom(f)), F(codom(f)))
 end
 
+(F::DeltaMigration)(s::Multispan) = Multispan(apex(s), F.(collect(s)))
+(F::DeltaMigration)(s::Multicospan) = Multicospan(apex(s), F.(collect(s)))
+
 
 (F::DeltaMigration)(n::AppCond) = AppCond(F(n.f), n.positive, n.monic, n.init_check)
 
@@ -148,7 +152,8 @@ function sub_vars(R::Rule, m::LooseACSetTransformation)
       error("here")
     end
   end
-  Rule(new_L, sub_vars(R.R, m), Ns, monic=R.monic)
+  new_R = sub_vars(R.R, m)
+  Rule(new_L, new_R, Ns, monic=R.monic)
 end
 
 
@@ -178,7 +183,16 @@ rewrite_parallel(rs::Vector{Rule{T}}, G; kw...) where {T} =
 rewrite_parallel(r::Rule, G; kw...) = rewrite_parallel([r], G; kw...)
 
 
-"""Extract the rewrite result from the full output data"""
+"""Extract the map from the R to the result from the full output data"""
+function get_rmap(sem::Symbol, maps)
+  if isnothing(maps)  nothing
+  elseif sem == :DPO  maps[3]
+  elseif sem == :SPO  Span(maps[7], maps[8]) # UNSTABLE: a partial map 
+  elseif sem == :SqPO maps[1]
+  else   error("Rewriting semantics $sem not supported")
+  end
+end
+
 function get_result(sem::Symbol, maps)
   if isnothing(maps)  nothing
   elseif sem == :DPO  codom(maps[4])
@@ -205,7 +219,7 @@ check_initial(vs::Vector{Int}, f::Vector{Int}) =
 check_initial(vs::Vector{Pair{Int,Int}}, f::Vector{Int}) =
   [(i,f[i],v) for (i,v) in vs if f[i]!=v]
 
-instantiate(r,m) = hasvar(codom(r.L)) ? (sub_vars(r,m), sub_vars(m,m)) : (r,m)
+instantiate(r,m) = m isa LooseACSetTransformation ? (sub_vars(r,m), sub_vars(m,m)) : (r,m)
 
 
 """
@@ -229,7 +243,7 @@ function can_match(r::Rule{T}, m; initial=Dict(),
 
   is_natural(m) || return ("Match is not natural", m)
 
-  r′ ,m′ = instantiate(r, m)
+  r′ ,m′ = m isa LooseACSetTransformation ? instantiate(r, m) : (r,m)
 
   if T == :DPO
     gc = gluing_conditions(ComposablePair(r′.L, m′))
@@ -408,7 +422,7 @@ function rewrite_match_maps(r::Rule{:DPO}, m; check::Bool=false)
   end
   (ik, kg) = pushout_complement(ComposablePair(r.L, m))
   
-  if kg isa LooseACSetTransformation
+  if kg isa LooseACSetTransformation || ik isa LooseACSetTransformation
     Attr = Tuple(attrtypes(acset_schema(dom(m))))
     ps = typeof(dom(m)).parameters
     icomp = Dict(at=>IdentityFunction(TypeSet(p)) for (at, p) in zip(Attr, ps))

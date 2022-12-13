@@ -7,7 +7,7 @@ using Catlab, Catlab.Theories, Catlab.Schemas
 using Catlab.CategoricalAlgebra: ACSet, StructACSet, ACSetTransformation,
                                  LooseACSetTransformation, nparts, parts, 
                                  subpart
-using Catlab.CategoricalAlgebra.CSets: map_components
+using Catlab.CategoricalAlgebra.CSets: map_components, in_hom, out_hom
 using Catlab.CategoricalAlgebra.FinSets: IdentityFunction, TypeSet
 using ..Variables
 
@@ -424,8 +424,8 @@ partial_assignments(x::AbstractVector) =
 ((i,y) for (i,y) in enumerate(x) if !isnothing(y) && y > 0)
 
 # FIXME: Should these accessors go elsewhere?
-in_hom(S, c) = [dom(S,f) => f for f in hom(S) if codom(S,f) == c]
-out_hom(S, c) = [f => codom(S,f) for f in hom(S) if dom(S,f) == c]
+# in_hom(S, c) = [dom(S,f) => f for f in hom(S) if codom(S,f) == c]
+# out_hom(S, c) = [f => codom(S,f) for f in hom(S) if dom(S,f) == c]
 
 
 

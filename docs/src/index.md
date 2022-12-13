@@ -7,6 +7,12 @@ rewriting in C-set categories) in addition to rewriting C-set slice categories
 and structured cospans of C-sets. Future work will allow us to perform rewriting
 of diagrams in C-set categories.
 
+## DISCLAIMER
+
+AlgebraicRewriting is in a period of transition as we better ingrain the notion
+of attribute variables into Catlab.jl. Until then, this documentation should be 
+considered out of date and rewriting with attributed C-sets is not advised.  
+
 ## Double pushout rewriting of graphs
 
 This is the classic setting of graph transformation. Suppose we wish to rewrite
@@ -135,13 +141,13 @@ has zero energy) and obtain the analogous rule for wolves without any effort.
 ### Rules and Schedules
 
 We can declare a `Rule` and how we wish to schedule that rule.
-The 'outer loop' is a `WhileSchedule` that executes all the rules in some order
+The 'outer loop' is a `while_schedule` that executes all the rules in some order
 (i.e. a `LinearSchedule` wrapped around a list called `seq` made up of
 individual `RuleSchedule`s).
 
 ```julia
 extinct(prev, curr) = nparts(curr, :Wolf) == 0 || nparts(curr, :Sheep) == 0
-overall = WhileSchedule(ListSchedule(seq), :main, extinct, 10);
+overall = while_schedule(ListSchedule(seq), :main, extinct, 10);
 ```
 
 Let's show some of the things that went into `seq`. Below we define sheep
