@@ -3,7 +3,7 @@ export Schedule, Traj, nports, mk_sched, traj_res, typecheck,
        Query, RuleApp, Weaken, Strengthen, Condition, 
        loop_rule, const_cond, if_cond, has_match,
        uniform, merge_wires, while_schedule, for_schedule, agent,
-       rewrite_schedule, apply_schedule, migrate_schedule
+       rewrite_schedule, apply_schedule, migrate_schedule, graphviz
        
 
 using DataStructures, Random
@@ -208,38 +208,13 @@ function typecheck(wd::WiringDiagram)::Schedule
   checkfun(:in_src,:in_tgt,:in_wire_value,:outer_in_port_type,:in_port_type)
   checkfun(:out_src,:out_tgt,:out_wire_value,:out_port_type,:outer_out_port_type)
 
-  # for (i, (op, ip)) in enumerate(zip(wd.diagram[:src], wd.diagram[:tgt]))
-  #   d = Dict(:w=>wd.diagram[i,:wire_value], :s=>wd.diagram[op, :out_port_type],
-  #            :t=>wd.diagram[ip, :in_port_type])
-  #   val = Set(filter(x->!isnothing(x), collect(values(d))))
-  #   if length(val) != 1 error("wire $i $op->$ip: $(collect(d))") end 
-  #   set_subpart!(wd.diagram, i,  :wire_value, only(val))
-  #   set_subpart!(wd.diagram, op, :out_port_type, only(val))
-  #   set_subpart!(wd.diagram, ip, :in_port_type, only(val))
-  # end 
-  # for (i, (op, oop)) in enumerate(zip(wd.diagram[:out_src], wd.diagram[:out_tgt]))
-  #   d = Dict(:w=>wd.diagram[i,:out_wire_value], :s=>wd.diagram[op, :out_port_type],
-  #            :t=>wd.diagram[oop, :outer_out_port_type])
-  #   val = Set(filter(x->!isnothing(x), collect(values(d))))
-  #   if length(val) != 1 error("outwire $i $op->$ip: $(collect(d))") end 
-  #   set_subpart!(wd.diagram, i,  :out_wire_value, only(val))
-  #   set_subpart!(wd.diagram, op, :out_port_type, only(val))
-  #   set_subpart!(wd.diagram, oop, :outer_out_port_type, only(val))
-  # end 
-  # for (i, (ip, oip)) in enumerate(zip(wd.diagram[:in_src], wd.diagram[:in_tgt]))
-  #   d = Dict(:w=>wd.diagram[i,:in_wire_value], :t=>wd.diagram[op, :in_port_type],
-  #            :s=>wd.diagram[oip, :outer_in_port_type])
-  #   val = Set(filter(x->!isnothing(x), collect(values(d))))
-  #   if length(val) != 1 error("outwire $i $op->$ip: $(collect(d))") end 
-  #   set_subpart!(wd.diagram, i,  :out_wire_value, only(val))
-  #   set_subpart!(wd.diagram, op, :out_port_type, only(val))
-  #   set_subpart!(wd.diagram, oop, :outer_out_port_type, only(val))
-  # end 
-
   wd2 = Schedule([],[])
   copy_parts!(wd2.diagram, wd.diagram)
   return wd2
 end 
+
+graphviz(wd::WiringDiagram; kw...) = to_graphviz(wd; 
+  node_colors=Dict(i=>color(b.value) for (i,b) in enumerate(boxes(wd))), kw...)
 
 # Primitive AgentBoxes 
 ######################
@@ -402,7 +377,7 @@ function update(q::Query, i::Int, instate::Traj, boxstate::Any)
     println("LENGTH INSTATE $(length(instate)) curr_boxstate.enter_time $(curr_boxstate.enter_time)")
     new_agent = update_agent(instate, curr_boxstate.enter_time, pop!(curr_boxstate))
     
-    msg *= "\nContinuing ($(length(curr_boxstate)) queued) with " * str_hom(new_agent)
+    msg *= "\nContinuing ($(length(curr_boxstate)) queued) with \n" * str_hom(new_agent)
     println("LEAVING W/ BOXSTATE $curr_boxstate")
     return (2, new_agent,idp,curr_boxstate,msg)
   end 

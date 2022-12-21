@@ -58,7 +58,7 @@ wt = Weaken("Switch to tgt", t_hom)
 str = Strengthen("Add outedge", s_hom)
 maybe_add_loop = uniform(2, g1) ⋅ (al ⊗ nports(1,g1))
 
-to_graphviz(maybe_add_loop)
+graphviz(uniform(2, g1) ⋅ (al ⊗ nports(1,g1)) ⋅ merge_wires(2, g1); orientation=LeftToRight)
 
 sched = mk_sched((init=:A, trace_arg=:V,), 1, Dict(
   :loop => maybe_add_loop, :out_edges=>q2, :weaken_src=>ws, 
@@ -70,6 +70,8 @@ quote
   out = add(weaken_src(added_loops))
   return out, [trace1, trace2]
 end);
+
+graphviz(sched ⋅ sched; orientation=LeftToRight)
 
 G = @acset Graph begin V=5; E=4; src=[1,2,2,5];tgt=[2,3,4,2] end 
 arr_start = hom(ar, G; initial=(V=[1,2],))
