@@ -194,16 +194,31 @@ function find_deps(seq::Vector{RWStep})
   tgt = [1,vcat([fill(i,2) for i in 2:n]...)...,n+1] # [1, 2, 2, ..., n, n, n+1]
   hs  = collect(zip(hom, src, tgt))
   clim = colimit(BipartiteFreeDiagram(ob₁, ob₂, hs))
-
-  deps = Graph(length(seq)) # presentation of a poset
+  clegs = legs(clim)
+  
+  # Identify which things are preserved, deleted, and created for each part
   Ob = objects(acset_schema(first(ob₁))) # objects in the schema 
-  img(f) = Dict(o=>Set(collect(f[o])) for o in Ob) # the image of a map
-  for i in 1:n
-    mtch = img(seq[i].match ⋅ legs(clim)[i])
-    for j in 1:n
-      cmtch = img(seq[j].comatch ⋅ legs(clim)[j+1])
-      if i!=j && any(o->!isempty(mtch[o] ∩ cmtch[o]), Ob)
-        add_edge!(deps, j, i) # j outputs something that i consumes
+  pres, del, cre = [Dict() for _ in 1:3]
+  for o in Ob 
+    pres[o], del[o], cre[o] = [[] for _ in 1:3]
+    img(f) = Set(collect(f[o])) # the image of a map
+    for (i,s) in enumerate(seq)
+      push!(pres[o], img(left(s.rule) ⋅ s.match ⋅ clegs[i]))
+      push!(del[o], setdiff(img(s.match ⋅ clegs[i]), pres[o][end]))
+      push!(cre[o], setdiff(img(s.comatch ⋅ clegs[i+1]), pres[o][end]))
+    end
+  end 
+
+  # Use the above to compute a presentation of a poset
+  deps = Graph(length(seq))
+  for o in Ob 
+    for i in 1:n
+      cre_i = cre[o][i]
+      for j in filter(j->j!=i, 1:n)
+        pres_del_j = pres[o][j] ∪ del[o][j]
+        if !isempty(cre_i ∩ pres_del_j) && isempty(edges(deps, i, j))
+          add_edge!(deps, i, j)
+        end
       end
     end
   end
