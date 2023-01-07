@@ -10,12 +10,15 @@ using DataStructures, Random
 
 using Catlab, Catlab.CategoricalAlgebra, Catlab.WiringDiagrams, Catlab.Theories
 using Catlab.Programs
-using ..Rewrite
-using ..Rewrite: rewrite_with_match, get_matches, postcompose_partial
-using ..CSets: extend_morphism_constraints, extend_morphisms, homomorphisms
 using Catlab.CategoricalAlgebra.DataMigrations: MigrationFunctor
 using Catlab.WiringDiagrams.DirectedWiringDiagrams: in_port_id, out_port_id
-using .CSets
+
+using ..Rewrite
+using ..CategoricalAlgebra
+
+using ..Rewrite.RewriteUtils: rewrite_with_match, get_matches
+using ..CategoricalAlgebra.CSets: 
+  postcompose_partial, extend_morphism_constraints, extend_morphisms
 
 const homs = homomorphisms
 
