@@ -8,10 +8,6 @@ using Interact
 include("../docs/src/lotka_volterra.jl") # this shouldn't crash
 
 
-@testset "Variables" begin
-  include("Variables.jl")
-end
-
 @testset "Schedules" begin
   include("Schedules.jl")
 end
@@ -34,8 +30,4 @@ end
 
 @testset "Rewrite" begin
   include("Rewrite.jl")
-end
-
-@testset "Search" begin
-  include("Search.jl")
 end

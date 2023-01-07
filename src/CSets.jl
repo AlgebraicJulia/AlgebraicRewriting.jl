@@ -1,31 +1,19 @@
 module CSets
 export topo_obs, check_eqs, eval_path, extend_morphism, pushout_complement,
        can_pushout_complement, dangling_condition, invert_hom,
-       homomorphisms, gluing_conditions, extend_morphisms
+       gluing_conditions, extend_morphisms, postcompose_partial, sub_vars
 
 using Catlab, Catlab.Theories, Catlab.Graphs, Catlab.Schemas
-using Catlab.CategoricalAlgebra: ACSet, StructACSet, ACSetTransformation, TightACSetTransformation, 
-      ComposablePair, preimage, components, Subobject, parts, SubACSet, 
-      SliceHom, force, nparts, legs, apex, pushout, Cospan, acset_schema, set_subpart!,
-      TypeSet
+using Catlab.CategoricalAlgebra
 using Catlab.CategoricalAlgebra.FinSets: IdentityFunction
 using Catlab.CategoricalAlgebra.CSets: unpack_diagram, type_components
 import ..FinSets: pushout_complement, can_pushout_complement, 
                   id_condition
 import Catlab.CategoricalAlgebra: is_natural, Slice, SliceHom, components,
                                   LooseACSetTransformation
-using ..Search
-import ..Search: homomorphism, homomorphisms
 import Base: getindex
+using Catlab.ColumnImplementations: AttrVar
 
-"""Explicit cast of ACSetTransformation to LooseACSetTransformation"""
-function LooseACSetTransformation(x::TightACSetTransformation{S}) where S 
-  tcs = Dict(map(zip(attrtype(S), typeof(dom(x)).parameters)) do (at, ty)
-    return at => IdentityFunction(TypeSet(ty))
-  end)
-  LooseACSetTransformation(components(x), tcs, dom(x), codom(x))
-end
-LooseACSetTransformation(x::LooseACSetTransformation) = x
 
 """Get topological sort of objects of a schema. Fail if cyclic"""
 function topo_obs(S::Type)::Vector{Symbol}
@@ -94,7 +82,7 @@ function extend_morphism(f::ACSetTransformation, g::ACSetTransformation;
   init = extend_morphism_constraints(f,g)
   if isnothing(init) return nothing end
   homomorphism(codom(g), codom(f); initial=NamedTuple(init), monic=monic, iso=iso,
-               bindvars=true, init_check=init_check)
+               init_check=init_check)
 end
 
 """Same as `extend_morphism` but returning all such morphisms"""
@@ -104,9 +92,36 @@ function extend_morphisms(f::ACSetTransformation, g::ACSetTransformation;
   init = extend_morphism_constraints(f,g)
   if isnothing(init) return [] end
   homomorphisms(codom(g), codom(f); initial=NamedTuple(init), monic=monic, 
-                iso=iso, bindvars=true, init_check=init_check)
+                iso=iso, init_check=init_check)
 end
 
+"""
+Convert a morphism L->G to a morphism L->H using a partial morphism G->H, 
+if possible.
+
+       L ===== L
+     m ↓       ↓ m'
+       G ↩ K → H
+
+"""
+function postcompose_partial(kgh::Span, m::ACSetTransformation)
+  d = Dict()
+  kg, kh = kgh
+  for (k,vs) in pairs(components(m))
+    vs_ = Int[]
+    for v in collect(vs)
+      kv = findfirst(==(v), collect(kg[k]))
+      if isnothing(kv)
+        mc = nothing
+        return nothing
+      else
+        push!(vs_, kh[k](kv))
+      end
+    end
+    d[k] = vs_
+  end
+  ACSetTransformation(dom(m), codom(kh); d...)
+end
 
 """ Compute pushout complement of attributed C-sets, if possible.
 
@@ -264,7 +279,6 @@ A map f (from A to B) as a map from A to a subobject of B
   X == dom(f) ? f(top(X)) : error("Cannot apply $f to $X")
 
 
-
 """
 Invert one (presumed iso) component of an ACSetTransformation (given by s)
 """
@@ -272,6 +286,30 @@ function invert_hom(f::ACSetTransformation,s::Symbol)::ACSetTransformation
   d = Dict([s=>Base.invperm(collect(f[s]))])
   return ACSetTransformation(codom(f), dom(f); d...)
 end
+
+# Variables
+###########
+
+
+"""
+Given a value for each variable, create a morphism X → X′ which applies the 
+substitution.
+"""
+function sub_vars(X::StructACSet{S}, subs::AbstractDict) where S
+  X′ = deepcopy(X)
+  comps = Dict(o=>parts(X, o) for o in objects(S))
+  for (atr, _, at) in attrs(S)
+    for (i, v) in enumerate(X′[atr])
+      if v isa AttrVar
+        set_subpart!(X′, i, atr, subs[at][i])
+      end 
+    end
+  end 
+  for at in attrtypes(S) 
+    rem_parts!(X′, at, nparts(X′, at))
+  end 
+  return TightACSetTransformation(merge(comps, subs), X, X′)
+end 
 
 # This should be upstreamed as a PR to Catlab
 #############################################
@@ -293,5 +331,31 @@ function homomorphism(X::Slice,Y::Slice; kw...)
   hs = homomorphisms(X,Y; kw...)
   return isempty(hs) ? nothing : first(hs)
 end
+
+
+# THIS IS PR 710 TO CATLAB
+(F::DeltaMigration{T})(f::TightACSetTransformation{S}) where {T,S} = begin
+  F isa DeltaMigration || error("Only Δ migrations supported on morphisms")
+  d = Dict(map(collect(pairs(components(f)))) do (k,v)
+    Symbol(ob_map(F.functor,k)) => v
+  end)
+  TightACSetTransformation(NamedTuple(d), F(dom(f)), F(codom(f)))
+end
+
+"""Need to do the swapping of type components too"""
+(F::DeltaMigration{T})(f::LooseACSetTransformation{S}) where {T,S} = begin
+  F isa DeltaMigration || error("Only Δ migrations supported on morphisms")
+  d = Dict(map(collect(pairs(components(f)))) do (k,v)
+    Symbol(ob_map(F.functor,k)) => v
+  end)
+  td = Dict(map(collect(pairs(type_components(f)))) do (k,v)
+    Symbol(ob_map(F.functor,k)) => v
+  end)
+
+  LooseACSetTransformation(NamedTuple(d),NamedTuple(td),F(dom(f)), F(codom(f)))
+end
+
+(F::DeltaMigration)(s::Multispan) = Multispan(apex(s), F.(collect(s)))
+(F::DeltaMigration)(s::Multicospan) = Multicospan(apex(s), F.(collect(s)))
 
 end # module

@@ -11,7 +11,7 @@ using DataStructures, Random
 using Catlab, Catlab.CategoricalAlgebra, Catlab.WiringDiagrams, Catlab.Theories
 using Catlab.Programs
 using ..Rewrite
-using ..Rewrite: rewrite_with_match, get_matches, postcompose_partial, instantiate
+using ..Rewrite: rewrite_with_match, get_matches, postcompose_partial
 using ..CSets: extend_morphism_constraints, extend_morphisms, homomorphisms
 using Catlab.CategoricalAlgebra.DataMigrations: MigrationFunctor
 using Catlab.WiringDiagrams.DirectedWiringDiagrams: in_port_id, out_port_id
@@ -252,8 +252,7 @@ function update(r::RuleApp, ::Int, instate::Traj, ::Nothing)
     return (1, last_step, id_pmap(codom(last_step)), nothing, "(no match)")
   else 
     m = first(ms)
-    r′ ,m′ = m isa LooseACSetTransformation ? instantiate(r.rule, m) : (r.rule, m)
-    res = rewrite_match_maps(r′, m′)
+    res = rewrite_match_maps(r, m)
     new_agent = right(r.agent) ⋅ get_rmap(ruletype(r.rule), res)
     pmap = get_pmap(ruletype(r.rule), res)
     msg = str_hom(m)

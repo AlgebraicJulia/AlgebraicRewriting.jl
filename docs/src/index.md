@@ -56,7 +56,7 @@ We assemble this information into a rewrite rule by forming a span `L ↩ I → 
 ```@example X
 using AlgebraicRewriting
 using AlgebraicRewriting: rewrite
-const hom = AlgebraicRewriting.homomorphism
+const hom = homomorphism
 rule = Rule(hom(I,L), hom(I,R))
 H = rewrite(rule, G)
 to_graphviz(H; node_labels=true) # hide
@@ -247,7 +247,7 @@ set_subpart!(s_move_n, 1, :sheep_eng, 0)
 sheep_move_forward = Rule(
   hom(s_move_forward_i, s_move_forward_l; monic=true),
   hom(s_move_forward_i, s_move_forward_r; monic=true),
-  [NAC(hom(s_move_forward_l, s_move_n; monic=true,bindvars=true))]
+  [NAC(hom(s_move_forward_l, s_move_n; monic=true))]
 )
 
 wolf_move_forward = F(sheep_move_forward)

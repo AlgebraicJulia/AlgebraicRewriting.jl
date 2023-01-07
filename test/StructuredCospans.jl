@@ -4,7 +4,7 @@ using Test
 using Catlab, Catlab.Theories, Catlab.Graphs
 using Catlab.CategoricalAlgebra
 using AlgebraicRewriting
-const homs = AlgebraicRewriting.homomorphisms
+const homs = homomorphisms
 const iso = AlgebraicRewriting.is_isomorphic
 
 # Horizontal composition of epidemiological model rewrites

@@ -7,7 +7,7 @@ semantics, by converting each transition into a rewrite rule.
 using AlgebraicPetri
 using AlgebraicRewriting
 using Catlab.Present, Catlab.Theories, Catlab.CategoricalAlgebra
-const hom = AlgebraicRewriting.homomorphism
+const hom = homomorphism
 
 sir_petri = LabelledPetriNet([:S,:I,:R],
                               :inf=>((:S,:I)=>(:I,:I)),

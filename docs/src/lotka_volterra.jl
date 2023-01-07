@@ -10,7 +10,6 @@ const hom = AlgebraicRewriting.homomorphism
 using Catlab.Graphics.Graphviz: Attributes, Statement, Node
 using Catlab.Graphics.Graphviz
 
-using AlgebraicRewriting.Variables: FinDomDefaultDict 
 import Catlab.CategoricalAlgebra: left, right
 
 abstract type Direction end 
@@ -199,19 +198,19 @@ shift_i = @acset LV begin
   sheep_dir=[Var(:d2)]; 
 end
 
-shift_il = hom(shift_i, shift_l; bindvars=true)
+shift_il = hom(shift_i, shift_l)
 
 """Generate a rule that rotates a sheep to the left or the right"""
 function shift(lft::Bool=true)
   lr = lft ? :(left(d)) : :(right(d))
   r = deepcopy(shift_i)
   set_subpart!(r, 1, :sheep_dir, lr)
-  ir = hom(shift_i,r; bindvars=true)
+  ir = hom(shift_i,r)
   Rule(shift_il, ir)
 end
 
-sheep_rotate_l = RuleApp("turn left", shift(), S; bindvars=true)
-sheep_rotate_r = RuleApp("turn right", shift(false), S; bindvars=true)
+sheep_rotate_l = RuleApp("turn left", shift(), S)
+sheep_rotate_r = RuleApp("turn right", shift(false), S)
 
 # we can imagine executing these rules in sequence or in parallel
 sched = (sheep_rotate_l⋅sheep_rotate_r) 
@@ -243,7 +242,7 @@ sheep_fwd_rule = Rule(
 )
 
 sheep_fwd = RuleApp("move fwd", sheep_fwd_rule, 
-  Span(hom(S,s_fwd_l;bindvars=true), hom(S,s_fwd_r; bindvars=true)))
+  Span(hom(S,s_fwd_l;bindvars=true), hom(S,s_fwd_r)))
 
 # Eat grass + 4eng
 #-----------------
@@ -261,8 +260,8 @@ set_subpart!(s_eat_r, 1, :grass_eng, 30)
 set_subpart!(s_eat_r, 1, :sheep_eng, :(e+4))
 
 sheep_eat = RuleApp("Sheep eat", 
-  Rule(hom(s_eat_i, s_eat_l; bindvars=true), 
-       hom(s_eat_i, s_eat_r; bindvars=true)), S; bindvars=true)
+  Rule(hom(s_eat_i, s_eat_l), 
+       hom(s_eat_i, s_eat_r)), S)
 
 # Eat sheep + 20 eng
 #-------------------
@@ -282,8 +281,8 @@ w_eat_r = deepcopy(w_eat_i)
 set_subpart!(w_eat_r, 1, :wolf_eng, :(e+20))
 
 wolf_eat = RuleApp("Wolf eat", 
-  Rule(hom(w_eat_i, w_eat_l; bindvars=true), 
-       hom(w_eat_i, w_eat_r; bindvars=true)), W; bindvars=true)
+  Rule(hom(w_eat_i, w_eat_l), 
+       hom(w_eat_i, w_eat_r)), W)
 
 # Die if 0 eng
 #-------------
@@ -312,7 +311,7 @@ end
 
 sheep_reprod_rule = Rule(hom(s_reprod_i,s_reprod_l),hom(s_reprod_i,s_reprod_r))
 sheep_reprod = RuleApp("reproduce", sheep_reprod_rule, 
-  Span(hom(S,s_reprod_l; bindvars=true),hom(S,s_reprod_r; bindvars=true)))
+  Span(hom(S,s_reprod_l),hom(S,s_reprod_r)))
 
 # Grass increment
 #----------------
@@ -331,7 +330,7 @@ set_subpart!(g_inc_n,1, :grass_eng, 0)
 
 g_inc = RuleApp("Grass increments",
   Rule(hom(g_inc_i, g_inc_l;bindvars=true), hom(g_inc_i, g_inc_r;bindvars=true),
-      [NAC(hom(g_inc_l, g_inc_n; bindvars=true))]))
+      [NAC(hom(g_inc_l, g_inc_n))]))
 
 
 # Scheduling Rules

@@ -6,11 +6,7 @@ export Rule, PAC, NAC, rewrite, rewrite_match, rewrite_parallel,
        get_pmap, get_rmap, rewrite_sequential_maps, ruletype
 
 using Catlab, Catlab.Theories, Catlab.Schemas
-using Catlab.CategoricalAlgebra: DeltaMigration, CSetTransformation, 
-  TightACSetTransformation, ACSetTransformation, LooseACSetTransformation, 
-  pullback, pushout,  StructACSet, ComposablePair, copair, Span, Cospan,
-  universal, ¬, ob_map, acset_schema, TypeSet, colimit, Multispan, is_monic,
-  Multicospan, apex
+using Catlab.CategoricalAlgebra
 using Catlab.CategoricalAlgebra.FinSets: IdentityFunction
 using Catlab.CategoricalAlgebra.CSets: type_components
 using Catlab.CategoricalAlgebra.DataMigrations: MigrationFunctor
@@ -18,11 +14,11 @@ import Catlab.Theories: dom, codom
 import Catlab.CategoricalAlgebra: is_natural,components
 using StructEquality
 using Random
+using Catlab.ColumnImplementations: AttrVar
 
-using ..Variables, ..CSets, ..PartialMap, ..Search
-import ..Variables: sub_vars
+using ..CSets, ..PartialMap
 
-# Generic rewriting tooling
+# Application conditions
 ###########################
 """
 Application conditions, either positive or negative.
@@ -60,16 +56,21 @@ PAC(f::ACSetTransformation, m=false, init_check=true) = AppCond(f,true,m,init_ch
 codom(n::AppCond) = codom(n.f)
 dom(n::AppCond) = dom(n.f)
 is_natural(n::AppCond) = is_natural(n.f)
-sub_vars(ac::AppCond, m) = 
-  AppCond(sub_vars(ac.f, m), ac.positive, ac.monic, ac.init_check)
 components(n::AppCond) = components(n.f)
+(F::DeltaMigration)(n::AppCond) = AppCond(F(n.f), n.positive, n.monic, n.init_check)
 
+# Check if a component is included in a monic constraint
 has_comp(monic::Bool, c::Symbol) = monic
 has_comp(monic::Vector{Symbol}, c::Symbol) = c ∈ monic
 
+# RULES 
+#######
+
 """
-Rewrite rules are encoded as spans. The L morphism encodes a pattern to be
-matched. The R morphism encodes a replacement pattern to be substituted in.
+Rewrite rules which are encoded as spans. 
+The L structure encodes a pattern to be matched. 
+The R morphism encodes a replacement pattern to be substituted in.
+They are related to each other by an interface I with maps: L ⟵ I ⟶ R 
 
 A semantics (DPO, SPO, or SqPO) must be chosen.
 
@@ -85,11 +86,13 @@ struct Rule{T}
   R::Any
   conditions::Vector{AppCond}
   monic::Union{Bool, Vector{Symbol}}
-  function Rule{T}(L, R, N=nothing; monic=false) where {T}
+  exprs::Dict{Symbol, Vector{Expr}}
+  function Rule{T}(L, R; ac=nothing, monic=false, expr=nothing) where {T}
     dom(L) == dom(R) || error("L<->R not a span")
-    Ns = Vector{AppCond}(isnothing(N) ? [] : (N isa AbstractVector ? N : [NAC(N)]))
-    all(N-> dom(N) == codom(L), Ns) || error("AppCond does not compose with L $(codom(L))")
-    map(enumerate([L,R,Ns...])) do (i, f)
+    ACs = Vector{AppCond}(isnothing(ac) ? [] : (ac isa AbstractVector ? ac : [NAC(ac)]))
+    exprs = isnothing(expr) ? Dict() : expr
+    all(N-> dom(N) == codom(L), ACs) || error("AppCond does not compose with L $(codom(L))")
+    map(enumerate([L,R,ACs...])) do (i, f)
       if !is_natural(f)
         show(stdout, "text/plain",dom(f))
         show(stdout, "text/plain",codom(f))
@@ -97,64 +100,22 @@ struct Rule{T}
         error("unnatural map #$i: $f")
       end
     end
-    new{T}(L, R, Ns, monic)
+    for (o, xs) in collect(exprs)
+      n = nparts(codom(R),o) - nparts(dom(R), o)
+      n == length(xs) || error("$n exprs needed for part $o")
+    end 
+    new{T}(L, R, ACs, monic, exprs)
   end
 end
-Rule(L,R,N=nothing;monic=false) = Rule{:DPO}(L,R,N; monic=monic)
+
+Rule(l,r;kw...) = Rule{:DPO}(l,r; kw...)
+
 ruletype(::Rule{T}) where T = T
 
-# THIS SHOULD BE UPSTREAMED TO CATLAB
-(F::DeltaMigration{T})(f::TightACSetTransformation{S}) where {T,S} = begin
-  F isa DeltaMigration || error("Only Δ migrations supported on morphisms")
-  d = Dict(map(collect(pairs(components(f)))) do (k,v)
-    Symbol(ob_map(F.functor,k)) => v
-  end)
-  TightACSetTransformation(NamedTuple(d), F(dom(f)), F(codom(f)))
-end
-
-"""Need to do the swapping of type components too"""
-(F::DeltaMigration{T})(f::LooseACSetTransformation{S}) where {T,S} = begin
-  F isa DeltaMigration || error("Only Δ migrations supported on morphisms")
-  d = Dict(map(collect(pairs(components(f)))) do (k,v)
-    Symbol(ob_map(F.functor,k)) => v
-  end)
-  td = Dict(map(collect(pairs(type_components(f)))) do (k,v)
-    Symbol(ob_map(F.functor,k)) => v
-  end)
-
-  LooseACSetTransformation(NamedTuple(d),NamedTuple(td),F(dom(f)), F(codom(f)))
-end
-
-(F::DeltaMigration)(s::Multispan) = Multispan(apex(s), F.(collect(s)))
-(F::DeltaMigration)(s::Multicospan) = Multicospan(apex(s), F.(collect(s)))
-
-
-(F::DeltaMigration)(n::AppCond) = AppCond(F(n.f), n.positive, n.monic, n.init_check)
 
 (F::DeltaMigration)(r::Rule{T}) where {T} =
   Rule{T}(F(r.L), F(r.R), F.(r.conditions); monic=r.monic)
 
-"""
-Negative application conditions that are rendered unnatural by substitution
-are inactive. E.g. an edge weight is a variable in L but set to 0 in the NAC.
-When a nonzero edge is matched, this NAC becomes unnatural.
-"""
-function sub_vars(R::Rule, m::LooseACSetTransformation)
-  Ns = filter(is_natural, [sub_vars(N, m) for N in R.conditions])
-  new_L = sub_vars(R.L, m)
-  for N in Ns 
-    if codom(new_L) != dom(N)
-      println("dom(N) ")
-      show(stdout,"text/plain", dom(N))
-      println("codom(new_L) ")
-      show(stdout,"text/plain", codom(new_L))
-      println("type_components(m) "); println.(values(type_components(m)))
-      error("here")
-    end
-  end
-  new_R = sub_vars(R.R, m)
-  Rule(new_L, new_R, Ns, monic=R.monic)
-end
 
 
 # Rewriting functions that just get the final result
@@ -163,8 +124,8 @@ end
 Perform a rewrite (automatically finding an arbitrary match) and return result.
 """
 function rewrite(r::Rule{T}, G; kw...) where {T}
-  match_res = rewrite_with_match(r, G; kw...)
-  isnothing(match_res) ? nothing : get_result(T, match_res[2])
+  ms = get_matches(r, G)
+  return isempty(ms) ? nothing : rewrite_match(r, first(ms); kw...)
 end
 
 
@@ -172,7 +133,7 @@ end
 Perform a rewrite (with a supplied match morphism) and return result.
 """
 rewrite_match(r::Rule{T}, m; kw...) where {T} =
-  get_result(T, rewrite_match_maps(r, m; kw...))
+  codom(get_expr_binding_map(r, m, get_rmap(T, rewrite_match_maps(r,m; kw...))))
 
 """    rewrite_parallel(rs::Vector{Rule}, G; kw...)
 Perform multiple rewrites in parallel (automatically finding arbitrary matches)
@@ -219,8 +180,6 @@ check_initial(vs::Vector{Int}, f::Vector{Int}) =
 check_initial(vs::Vector{Pair{Int,Int}}, f::Vector{Int}) =
   [(i,f[i],v) for (i,v) in vs if f[i]!=v]
 
-instantiate(r,m) = m isa LooseACSetTransformation ? (sub_vars(r,m), sub_vars(m,m)) : (r,m)
-
 
 """
 Returns nothing if the match is acceptable for rewriting according to the
@@ -243,24 +202,22 @@ function can_match(r::Rule{T}, m; initial=Dict(),
 
   is_natural(m) || return ("Match is not natural", m)
 
-  r′ ,m′ = m isa LooseACSetTransformation ? instantiate(r, m) : (r,m)
-
   if T == :DPO
-    gc = gluing_conditions(ComposablePair(r′.L, m′))
+    gc = gluing_conditions(ComposablePair(r.L, m))
     if !isempty(gc)
       return ("Gluing conditions failed", gc)
     end
   end
 
-  for (nᵢ, N) in enumerate(r′.conditions)
-    tri = extend_morphism(m′, N.f;  monic=N.monic, init_check=N.init_check)
+  for (nᵢ, N) in enumerate(r.conditions)
+    tri = extend_morphism(m, N.f;  monic=N.monic, init_check=N.init_check)
     if isnothing(tri) == N.positive
       return ("$(pos(N))AC failed", nᵢ, isnothing(tri) ? () : components(tri))
     end
   end
 
   if !isempty(seen)
-    res = rewrite_match(r′, m′; kw...)
+    res = rewrite_match(r, m; kw...)
     for s in seen
       if is_isomorphic(s,res)
         return ("Result is iso to previously seen result", s)
@@ -274,7 +231,7 @@ end
 """Get list of possible matches based on the constraints of the rule"""
 function get_matches(r::Rule{T}, G; initial=Dict(), seen=Set(),
                      verbose=false) where T
-  hs = homomorphisms(codom(r.L), G; bindvars=true, monic=r.monic,
+  hs = homomorphisms(codom(r.L), G; monic=r.monic,
                      initial=NamedTuple(initial))
   collect(filter(hs) do h
     cm = can_match(r,h)
@@ -283,6 +240,60 @@ function get_matches(r::Rule{T}, G; initial=Dict(), seen=Set(),
     end
     isnothing(cm)
   end)
+end
+
+# Variables
+###########
+
+"""Get a list of AttrVar indices which are NOT bound by the I→R morphism"""
+function freevars(r::Rule{T}, attrvar::Symbol) where T
+  setdiff(parts(codom(r.R), attrvar), 
+          [v.val for v in collect(r.R[attrvar]) if v isa AttrVar])
+end 
+
+"""
+Given the match morphism and the result, construct a map X → X′ which 
+binds any free variables introduced into the result.
+
+  L <- I -> R 
+m ↓    ↓    ↓ res
+  G <- • -> X 
+            ↓  
+            X′
+
+"""
+function get_expr_binding_map(r::Rule{T}, m, result) where T
+  X = codom(result)
+  comps = Dict(map(attrtypes(acset_schema(X))) do at 
+      bound_vars = Vector{Any}(collect(m[at]))
+      binding = Any[nothing for _ in 1:nparts(X, at)]
+      for (v, expr) in zip(freevars(r, at), r.exprs[at])
+        binding[result[at](v)] = subexpr(expr, bound_vars)
+      end
+      at => binding
+  end)
+  return sub_vars(X, comps)
+end
+
+"""Replace AttrVars with values"""
+function subexpr(expr::Expr, bound_vars::Vector{Any})
+  x = deepcopy(expr)
+  for (i, v) in enumerate(bound_vars)
+    rep!(x, Expr(:call, :AttrVar, i), v)
+  end
+  return eval(x)
+end
+
+"""Replace old with new in an expression recursively"""
+function rep!(e, old, new)
+  for (i,a) in enumerate(e.args)
+    if a==old
+      e.args[i] = new
+    elseif a isa Expr
+      rep!(a, old, new)
+    end # otherwise do nothing
+  end
+  e
 end
 
 # Rewriting function which return the maps, too
@@ -299,35 +310,8 @@ function rewrite_with_match(r::Rule{T}, G; initial=Dict(), random=false,
   elseif random
     shuffle!(ms)
   end
-  r′ ,m′ = instantiate(r, first(ms))
-  return m′ => rewrite_match_maps(r′, m′; kw...)
-end
-
-"""
-Convert a match L->G to a match L->H using a partial morphism G->H, if possible.
-       L ========= L
-     m ↓           ↓ m'
-       G <-- K --> H
-
-This ought be written more generically so that it can work with, e.g., slices.
-"""
-function postcompose_partial(kgh::Span, m::ACSetTransformation)
-  d = Dict()
-  kg, kh = kgh
-  for (k,vs) in pairs(components(m))
-    vs_ = Int[]
-    for v in collect(vs)
-      kv = findfirst(==(v), collect(kg[k]))
-      if isnothing(kv)
-        mc = nothing
-        return nothing
-      else
-        push!(vs_, kh[k](kv))
-      end
-    end
-    d[k] = vs_
-  end
-  ACSetTransformation(dom(m), codom(kh); d...)
+  m = first(ms)
+  return m => rewrite_match_maps(r, m; kw...)
 end
 
 """
@@ -346,13 +330,12 @@ function rewrite_sequential_maps(r::Rule{T}, G; random=false, seen=Set(),
 
   for m in ms
     _, prev_span, _ = output[end]
-    r′, m′= instantiate(r, m)
-    m′′ = postcompose_partial(prev_span, m′)
-    if !isnothing(m′′) && is_natural(m′′)
-      if isnothing(can_match(r′, m′′)) && rand() < prob
-        res = rewrite_match_maps(r′, m′′; kw...)
+    m′ = postcompose_partial(prev_span, m)
+    if !isnothing(m′) && is_natural(m′)
+      if isnothing(can_match(r′, m′)) && rand() < prob
+        res = rewrite_match_maps(r′, m′; kw...)
         prev_span = get_pmap(T, res)
-        push!(output, (m′′, get_pmap(T, res), get_result(T, res)))
+        push!(output, (m′, get_pmap(T, res), get_result(T, res)))
       end
     end
   end
@@ -418,19 +401,11 @@ R->H, and K->H (produced by pushout)
 """
 function rewrite_match_maps(r::Rule{:DPO}, m; check::Bool=false)
   if check
-    can_pushout_complement(ComposablePair(r.L, m)) || error("Cannot pushout complement $r\n$m")
+    err = "Cannot pushout complement $r\n$m"
+    can_pushout_complement(ComposablePair(r.L, m)) || error(err)
   end
-  (ik, kg) = pushout_complement(ComposablePair(r.L, m))
-  
-  if kg isa LooseACSetTransformation || ik isa LooseACSetTransformation
-    Attr = Tuple(attrtypes(acset_schema(dom(m))))
-    ps = typeof(dom(m)).parameters
-    icomp = Dict(at=>IdentityFunction(TypeSet(p)) for (at, p) in zip(Attr, ps))
-    tcs = Dict(:type_components=>[icomp,type_components(r.R)])
-    rh, kh = pushout(LooseACSetTransformation.([r.R, ik]); tcs...)
-  else 
-    rh, kh = pushout(r.R, ik) 
-  end
+  ik, kg = pushout_complement(ComposablePair(r.L, m))  
+  rh, kh = pushout(r.R, ik) 
   return ik, kg, rh, kh
 end
 

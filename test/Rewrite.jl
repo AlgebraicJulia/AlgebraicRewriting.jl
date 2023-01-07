@@ -1,13 +1,11 @@
 module TestRewrite
 using Test
 using Catlab, Catlab.Theories
-# once rewriting is removed from catlab, we can import the entire namespace
-using Catlab.CategoricalAlgebra: ACSetTransformation, CSetTransformation, @acset_type, @acset, add_part!, add_parts!,nparts, ComposablePair, is_isomorphic, pushout, pullback, force, apex, rem_part!, Slice
+using Catlab.CategoricalAlgebra
 using Catlab.Graphs, Catlab.WiringDiagrams, Catlab.Programs
 using AlgebraicRewriting.FinSets: id_condition
 using AlgebraicRewriting.CSets: dangling_condition
 using AlgebraicRewriting
-import AlgebraicRewriting: homomorphism, homomorphisms
 
 # Slice
 #######
