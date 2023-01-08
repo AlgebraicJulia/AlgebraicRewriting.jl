@@ -4,8 +4,7 @@ using Test
 using Catlab, Catlab.Theories, Catlab.WiringDiagrams, Catlab.Graphics
 using Catlab.Graphs, Catlab.CategoricalAlgebra
 using AlgebraicRewriting
-const hom = CategoricalAlgebra.homomorphism
-
+const hom = homomorphism
 using Interact
 using Blink: Window, body!
 function viewer(s,r)

@@ -2,6 +2,8 @@ module DPO
 import ..RewriteUtils: rewrite_match_maps
 
 using ..RewriteDataStructures
+using ...CategoricalAlgebra.CSets
+using Catlab.CategoricalAlgebra
 
 """    rewrite_match_maps(r::Rule{:DPO}, m)
 Apply a DPO rewrite rule (given as a span, L<-I->R) to a ACSet

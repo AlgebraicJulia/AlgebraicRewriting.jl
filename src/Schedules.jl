@@ -16,7 +16,8 @@ using Catlab.WiringDiagrams.DirectedWiringDiagrams: in_port_id, out_port_id
 using ..Rewrite
 using ..CategoricalAlgebra
 
-using ..Rewrite.RewriteUtils: rewrite_with_match, get_matches
+using ..Rewrite.RewriteUtils: rewrite_with_match, get_matches, get_rmap, get_pmap
+using ..Rewrite.RewriteDataStructures: ruletype
 using ..CategoricalAlgebra.CSets: 
   postcompose_partial, extend_morphism_constraints, extend_morphisms
 
@@ -255,7 +256,7 @@ function update(r::RuleApp, ::Int, instate::Traj, ::Nothing)
     return (1, last_step, id_pmap(codom(last_step)), nothing, "(no match)")
   else 
     m = first(ms)
-    res = rewrite_match_maps(r, m)
+    res = rewrite_match_maps(r.rule, m)
     new_agent = right(r.agent) ⋅ get_rmap(ruletype(r.rule), res)
     pmap = get_pmap(ruletype(r.rule), res)
     msg = str_hom(m)
@@ -354,7 +355,6 @@ initial_state(::Query) = QueryState(-1, ACSetTransformation[])
 (F::MigrationFunctor)(a::Query) =  Query(a.name,F(a.agent), F(a.return_type))
 
 function update(q::Query, i::Int, instate::Traj, boxstate::Any)
-  println("entering update with i $i and boxstate $boxstate")
   idp = id_pmap(traj_res(instate))
   msg = ""
   curr_boxstate = (i != 1) ? boxstate : begin 
@@ -376,11 +376,8 @@ function update(q::Query, i::Int, instate::Traj, boxstate::Any)
       return (1, new_agent, idp, curr_boxstate,msg)
     end 
   else # CONTINUE 
-    println("LENGTH INSTATE $(length(instate)) curr_boxstate.enter_time $(curr_boxstate.enter_time)")
     new_agent = update_agent(instate, curr_boxstate.enter_time, pop!(curr_boxstate))
-    
     msg *= "\nContinuing ($(length(curr_boxstate)) queued) with \n" * str_hom(new_agent)
-    println("LEAVING W/ BOXSTATE $curr_boxstate")
     return (2, new_agent,idp,curr_boxstate,msg)
   end 
 end
@@ -539,7 +536,6 @@ function apply_schedule_step(s::Schedule, P::Traj, S::AbstractVector,
   O, dP₁, dP₂, S′, msg = update(box.value, I.port, P, S[I.box])
   S[I.box] = S′ # update the box state 
   ow = only(out_wires(s, Port(I.box,OutputPort,O))) # no branching allowed!
-  println("$(box.value.name)\n$msg")
   push!(P, TrajStep("$(box.value.name)\n$msg", dP₁, dP₂, iw, ow))
   return ow
 end
