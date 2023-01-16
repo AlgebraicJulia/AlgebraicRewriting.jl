@@ -39,3 +39,7 @@ end
 @testset "Search" begin
   include("Search.jl")
 end
+
+@testset "Inplace" begin
+  include("Inplace.jl")
+end
