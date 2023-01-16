@@ -108,6 +108,12 @@ struct Constraint
   end 
 end
 
+function Constraint(g::CGraph, v::Vector{Quantifier}, i::Int)
+  n = length(v)
+  cdag = @acset CDag begin V=n; E=n-1; src=1:n-1; tgt=2:n; vlabel=v end 
+  return Constraint(g, cdag, i)
+end 
+
 
 function eval_quantifier(c::Constraint, v::Int, curr::Assgn)
   println("EVALING QUANTIFIER $v")
@@ -193,10 +199,7 @@ function AppCond(f::ACSetTransformation, pos::Bool)
     vlabel=[codom(f), dom(f), nothing]; elabel=[f, nothing, nothing]
   end
   key = pos ? :pos : :neg
-  cd = @acset CDag begin V=1; 
-      vlabel=[Quantifier(:Exists,[2]; Dict(key=>[[1,2]=>[3]])...)]
-  end
-  return Constraint(cg, cd, 3)
+  return Constraint(cg, [Quantifier(:Exists,[2];Dict(key=>[[1,2]=>[3]])...)], 3)
 end
 
 
@@ -218,8 +221,7 @@ function LiftCond(vertical::ACSetTransformation, bottom::ACSetTransformation)
   end
   F = Quantifier(:Forall, [2]; pos=[[2,5]=>[1,4]])
   E = Quantifier(:Exists, [3]; pos=[[1,3]=>[2], [3,5]=>[4]])
-  cd = @acset CDag begin V=2; E=1; src=1; tgt=2; vlabel=[F,E] end
-  return Constraint(cg, cd, 5)
+  return Constraint(cg, [F,E], 5)
 end
 
 end 
