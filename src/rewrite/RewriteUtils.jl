@@ -1,6 +1,6 @@
 module RewriteUtils
 
-export rewrite, rewrite_match, rewrite_parallel, 
+export rewrite, rewrite_match, rewrite_parallel, rewrite_full_output,
        rewrite_match_maps, rewrite_parallel_maps, rewrite_sequential_maps
 
 using Catlab, Catlab.Theories, Catlab.Schemas
@@ -18,28 +18,24 @@ using ...CategoricalAlgebra, ..RewriteDataStructures
 """Extract the map from the R to the result from the full output data"""
 function get_rmap(sem::Symbol, maps)
   if isnothing(maps)  nothing
-  elseif sem == :DPO  maps[3]
-  elseif sem == :SPO  Span(maps[7], maps[8]) # TYPE UNSTABLE: a partial map 
-  elseif sem == :SqPO maps[1]
+  elseif sem == :DPO  maps[:rh]
+  elseif sem == :SPO  invert_hom(maps[:nb]) ⋅ maps[:nd]
+  elseif sem == :SqPO maps[:r]
+  elseif sem == :PBPO maps[:w]
+  elseif sem == :AttrPBPO maps[:w]
   else   error("Rewriting semantics $sem not supported")
   end
 end
 
-function get_result(sem::Symbol, maps)
-  if isnothing(maps)  nothing
-  elseif sem == :DPO  codom(maps[4])
-  elseif sem == :SPO  codom(maps[8])
-  elseif sem == :SqPO codom(maps[1])
-  else   error("Rewriting semantics $sem not supported")
-  end
-end
+get_result(sem::Symbol, maps) = codom(get_rmap(sem, maps))
 
 """Extract the partial map (derived rule) from full output data"""
 function get_pmap(sem::Symbol, maps)
   if isnothing(maps)  nothing
-  elseif sem == :DPO  Span(maps[2], maps[4])
-  elseif sem == :SPO  Span(maps[6], maps[8])
-  elseif sem == :SqPO Span(maps[4], maps[2])
+  elseif sem == :DPO  Span(maps[:kg], maps[:kh])
+  elseif sem == :SPO  Span(maps[:oc], maps[:od])
+  elseif sem == :SqPO Span(maps[:i], maps[:o])
+  elseif sem == :PBPO Span(maps[:gl], maps[:gr])
   else   error("Rewriting semantics $sem not supported")
   end
 end
@@ -103,8 +99,9 @@ function can_match(r::Rule{T}, m; initial=Dict(),
 end
 
 """Get list of possible matches based on the constraints of the rule"""
-function get_matches(r::Rule{T}, G; initial=Dict(), seen=Set(),
+function get_matches(r::Rule{T}, G; initial=nothing, seen=Set(),
                      verbose=false) where T
+  initial = isnothing(initial) ? Dict() : initial
   hs = homomorphisms(codom(r.L), G; monic=r.monic,
                      initial=NamedTuple(initial))
   collect(filter(hs) do h
@@ -148,6 +145,9 @@ function get_expr_binding_map(r::Rule{T}, m, result) where T
   end)
   return sub_vars(X, comps)
 end
+get_expr_binding_map(::PBPORule, _, result) = result
+get_expr_binding_map(::AttrPBPORule, _, result) = result
+
 
 """Replace AttrVars with values"""
 function subexpr(expr::Expr, bound_vars::Vector{Any})
@@ -180,7 +180,7 @@ function rewrite_match_maps end  # to be implemented for each T
 """    rewrite(r::Rule, G; kw...)
 Perform a rewrite (automatically finding an arbitrary match) and return result.
 """
-function rewrite(r::Rule{T}, G; kw...) where {T}
+function rewrite(r::AbsRule, G; kw...)
   ms = get_matches(r, G)
   return isempty(ms) ? nothing : rewrite_match(r, first(ms); kw...)
 end
@@ -189,8 +189,9 @@ end
 """    rewrite_match(r::Rule, m; kw...)
 Perform a rewrite (with a supplied match morphism) and return result.
 """
-rewrite_match(r::Rule{T}, m; kw...) where {T} =
-  codom(get_expr_binding_map(r, m, get_rmap(T, rewrite_match_maps(r,m; kw...))))
+rewrite_match(r::AbsRule, m; kw...) =
+  codom(get_expr_binding_map(r, m, get_rmap(ruletype(r), 
+                                            rewrite_match_maps(r,m; kw...))))
 
   """    rewrite_parallel(rs::Vector{Rule}, G; kw...)
   Perform multiple rewrites in parallel (automatically finding arbitrary matches)
@@ -203,20 +204,21 @@ rewrite_parallel(r::Rule, G; kw...) = rewrite_parallel([r], G; kw...)
 
 # Rewriting function which return the maps, too
 ###############################################
-"""    rewrite_with_match(r::Rule, G; initial=Dict(), kw...)
+"""    rewrite_full_output(r::Rule, G; initial=Dict(), kw...)
 Perform a rewrite (automatically finding an arbitrary match) and return a tuple:
 1.) the match morphism 2.) all computed data 3.) variable binding morphism
 """
-function rewrite_with_match(r::Rule{T}, G; initial=Dict(), random=false,
-                            seen=Set(),kw...) where {T}
-  ms = get_matches(r,G,initial=initial, seen=seen)
+function rewrite_full_output(r::AbsRule, G; initial=nothing, random=false,
+                            seen=Set(), verbose=false, kw...) 
+  T = ruletype(r)
+  ms = get_matches(r,G,initial=initial, seen=seen, verbose=verbose)
   if isempty(ms)
     return nothing
   elseif random
     shuffle!(ms)
   end
   m = first(ms)
-  rdata = rewrite_match_maps(r, m; kw...)
+  rdata = rewrite_match_maps(r, m; verbose=verbose, kw...)
   return (m, rdata, codom(get_expr_binding_map(r, m, get_rmap(T, rdata))))
 end
 

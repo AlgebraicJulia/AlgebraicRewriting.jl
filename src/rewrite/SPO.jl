@@ -60,7 +60,8 @@ function rewrite_match_maps(r::Rule{:SPO}, ac)
   mn, nb = pullback_complement(mk, kb)
   mo, oc = pullback_complement(ml, lc)
   od, nd = pushout(mo, mn)
-  return [ml, mk, mn, mo, nb, oc, nd, od]
+  return Dict(:ml=>ml, :mk=>mk, :mn=>mn, :mo=>mo, :nb=>nb, :oc=>oc, 
+              :nd=>nd, :od=>od)
 end
 
 

@@ -26,7 +26,7 @@ function rewrite_match_maps(r::Rule{:DPO}, m; check::Bool=false)
   end
   ik, kg = pushout_complement(ComposablePair(r.L, m))  
   rh, kh = pushout(r.R, ik) 
-  return ik, kg, rh, kh
+  return Dict(:ik=>ik, :kg=>kg, :rh=>rh, :kh=>kh)
 end
 
 end # module 

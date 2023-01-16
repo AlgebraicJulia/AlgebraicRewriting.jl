@@ -46,11 +46,17 @@ end
 """    rewrite_match_maps(r::Rule{:SqPO},m; pres::Union{Nothing, Presentation}=nothing)
 Sesqui-pushout is just like DPO, except we use a final pullback complement
 instead of a pushout complement.
+
+    r.L  r.R
+  L <-⌞K -> R
+m ↓    ↓k   ↓ r
+  I <- • ->⌜O
+     i   o
 """
 function rewrite_match_maps(r::Rule{:SqPO},m; pres::Union{Nothing, Presentation}=nothing)
-  m_, i_ = final_pullback_complement(ComposablePair(r.L, m); pres=pres)
-  m__, o_ = pushout(r.R, m_)
-  return (m__, o_, m_, i_)
+  k, i = final_pullback_complement(ComposablePair(r.L, m); pres=pres)
+  r, o = pushout(r.R, k)
+  return Dict(:r => r, :o=>o, :k=>k, :i=>i)
 end
 
 

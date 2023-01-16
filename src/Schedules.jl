@@ -16,8 +16,7 @@ using Catlab.WiringDiagrams.DirectedWiringDiagrams: in_port_id, out_port_id
 using ..Rewrite
 using ..CategoricalAlgebra
 
-using ..Rewrite.RewriteUtils: rewrite_with_match, get_matches, get_rmap, get_pmap
-using ..Rewrite.RewriteDataStructures: ruletype
+using ..Rewrite.RewriteUtils: rewrite_full_output, get_matches, get_rmap, get_pmap
 using ..CategoricalAlgebra.CSets: 
   postcompose_partial, extend_morphism_constraints, extend_morphisms
 
