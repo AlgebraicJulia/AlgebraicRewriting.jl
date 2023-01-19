@@ -17,13 +17,13 @@ a typing G → L′.
 We enumerate matches first and then consider, for each of them, if there is a 
 valid typing.
 """
-function get_matches(rule::PBPORule, G; verbose=false, initial=nothing, seen=nothing)
+function get_matches(rule::PBPORule, G; verbose=false, initial=nothing, seen=nothing, kw...)
   res = []
   matchinit, typinit = isnothing(initial) ? (Dict()=>Dict()) : initial 
   L = codom(left(rule))
   for m in homomorphisms(L, G; monic=rule.monic, initial=NamedTuple(matchinit))
     if verbose println("m: ", collect(pairs(components(m)))...) end
-    if all(lc->apply_constraint(lc, m), rule.lcs)
+    if all(ac->apply_constraint(ac, m), rule.acs)
       alpha_candidates = extend_morphisms(rule.tl, m; initial=typinit)
       if verbose println("length(alpha_candidates) $(length(alpha_candidates))") end
       αs = collect(filter(a->check_pb(rule.tl, a, id(L), m; verbose=verbose) 
@@ -62,7 +62,7 @@ function rewrite_match_maps(rule::PBPORule,mα; check=false, kw...)
 end
 
 
-function get_matches(rule::AttrPBPORule, G::StructACSet; verbose=false, initial=nothing, seen=nothing)
+function get_matches(rule::AttrPBPORule, G::StructACSet; verbose=false, initial=nothing, seen=nothing, kw...)
   G_combo, _ = combinatorialize(G)
   get_matches(rule.combo_rule, G_combo; initial=initial, verbose=verbose, seen=seen)
 end

@@ -13,46 +13,9 @@ using AlgebraicRewriting.Rewrite.RewriteUtils: get_matches
 ###########################################################
 """
 The pattern L requires any host graph GL to contain three nodes, and two of
-these nodes have an edge targeting the third node.
-
-The graph L′ describes the permitted shapes of the host graph around the pattern
-L. Due to the strong match condition, any α: G → L′ has to map all nodes and
-edges in the context G/m(L) of the host graph nodes onto L′/tL(L). So, in
-particular, c₁c₂ in L′ captures all the context nodes of GL. Each edge in L′ /
-tL(L) is a placeholder for an arbitrary number (0 or more) of edges in the host
-graph. This example illustrates the following features: 
-
-- **Application conditions:** The graph L′ allows for (an arbitrary number of) 
-edges from x₁x₂ to the
-context, from the context to z, from y₁y₂ to x₁x₂ and from y₁y₂ to z (and edges
-among context nodes). Besides the edges in the pattern, any other edges are
-forbidden. For instance there cannot be edges from z to the context, and no
-additional edges from x₁x₂ to y₁y₂.
-
-- **Duplicating and deleting elements:** The morphism l′: K′ → L′ enables the
-duplication and deletion of nodes and edges. For instance, from L′ to K′ , the
-node x₁x₂ is duplicated along with its edges to the context (indicated in red).
-The edges from c₂ to x (indicated in blue) and the thick edges are deleted,
-because they do not lie in the image of l′ .
-
-- **Identifying and adding elements:** The morphism r : K → R enables the
-identification of elements of K, and the addition of new elements. Here, K is
-the result of restricting the duplication and deletion effects of l′ to tL(L)
-≅ L. In the example, r identifies (or merges) x₁ with z and x₂ with y₂, adds a
-fresh node u and a fresh edge from x₂y₂ to itself. In the middle row, observe
-that the sources and targets of edges are updated accordingly from GK to GR. For
-instance, the edges y₁ → x₁ and y₂ → z in GK are redirected to target the merged
-node x₁z in GR.
-
-- **Edge redirection:** The combination of duplication along l′: K′ → L′ and
-merging along r : K → R enables the arbitrary redirection of all those endpoints
-(source and target) of edges that lie in the pattern m(L). Importantly, the edge
-itself does not need to be part of the pattern, only the endpoint to be
-redirected. For instance, the edges from y₁y₂ to z (indicated in green) are
-redirected to go from x₂ to x₁. This is achieved by first duplicating one
-endpoint of the edge, namely the source y₁y₂, and then merging the fresh source
-y₂ with x₂, and the target z with x₁.
-
+these nodes have an edge targeting the third node. This example illustrates 
+application conditions, duplicating and deleting elements, identifying and 
+adding elements, and edge redirection.
 """
 
 L = @acset Graph begin V=3;E=2;src=[1,3];tgt=[2,2] end 
@@ -131,32 +94,41 @@ l′ = hom(K′,L′; initial=(V=[1,2,3,1,2],))
 # to_graphviz(L′; node_labels=true)
 # to_graphviz(K′; node_labels=true)
 
-arr = path_graph(Graph,2)
-snd = ACSetTransformation(Graph(1), arr; V=[2])
-pac_pat = Slice(ACSetTransformation(Graph(1), L′; V=[2]))
-pac_pat_1 = Slice(hom(arr, L′; initial=(V=[1,2],)))
-pac_pat_2 = Slice(hom(arr, L′;initial=(V=[2,2],)))
-pac_1 = SliceHom(pac_pat, pac_pat_1, snd)
-pac_2 = SliceHom(pac_pat, pac_pat_2, snd)
-lc = LiftCond(Span(pac_1,pac_2), true)
-rule = PBPORule(l,r,tl,tk,l′;ac = [lc])
+"""      ∀₂                  ∀₂
+    [•] ---> G         [•] ---> G
+    ₄↓  ↗∃₃  ↓ λ₁  or  ₄↓  ↗∃₃  ↓ λ₁
+   [•→•] --> L′       [•→•] --> L′
+    1 2  ⁵            2 2    ⁶
+"""
+G1, arr = Graph(1), path_graph(Graph,2)
+vertical = ACSetTransformation(G1, arr; V=[2])
+bottom_5 = hom(arr, L′; initial=(V=[1,2],))
+bottom_6 = hom(arr, L′;initial=(V=[2,2],))
+
+cg = @acset CGraph begin V=4; E=6; src=[2,1,3,1,3,3]; tgt=[3,2,2,3,4,4];
+  vlabel=[G1, nothing, arr, L′]; 
+  elabel=[nothing, nothing,  nothing, vertical, bottom_5, bottom_6]
+end
+
+expr = Quantifier(2, :Forall, 
+        Quantifier(3, :Exists, 
+          BoolAnd(Commutes([4,3],[2]), 
+                  BoolOr(Commutes([3,1],[6]),Commutes([3,1],[5]))));
+        st=Commutes([2,1],[4,5]))
+
+
+lc = Constraint(cg, expr)
+rule = PBPORule(l,r,tl,tk,l′; lcs = [lc])
 
 G = @acset Graph begin V=8; E=8; src=[1,1,2,2,3,4,4,5]; tgt=[2,3,4,5,6,5,7,8] end
 ms = get_matches(rule,G; initial=Dict(:V=>[2])=>Dict()) 
 
-copy_2_rec = only(filter(m->m[2][:V](2)==1, ms))
+G′ = rewrite_match(rule, only(ms))
+G′′ = rewrite(rule, G; initial=Dict(:V=>[2])=>Dict())
 expected = @acset Graph begin V=13;E=14;
   src=[7,7,7,1,1,3,3,4,2,2,10,10,11,8];tgt=[1,2,8,3,4,5,4,6,10,11,12,11,13,9] 
 end
-G′ = rewrite_match(rule, copy_2_rec)
-@test iso(expected,G′)
-# test via rewrite interface, not rewrite_match, because ∃ only 1
-iso(G′, rewrite(rule, G; initial=Dict(:V=>[2])=>Dict()))
-# to_graphviz(G; node_labels=true)
-# to_graphviz(G′; node_labels=true)
-
-# if we deepcopy the root node, that is multiplying by 2
-@test iso(rewrite(rule, G; initial=Dict(:V=>[1])=>Dict()), G⊕G)
+@test iso(expected,G′) && iso(G′,G′′)
 
 # Example 20 from "Graph Rewriting and Relabeling with PBPO+"
 #############################################################
@@ -230,14 +202,15 @@ ac = AppCond(homomorphism(L,loop), false) # cannot bind pattern to loop
 """
 lc = LiftCond(homomorphism(R,L), # vertical
               homomorphism(L,L′;initial=(E=[4],)))
-rule = AttrPBPORule(l,r,tl,tk,l′; k_exprs=Dict(:Weight=>Dict(3=>((x,vs))->x*vs[1])), acs=[ac], lcs=[lc])
+rule = AttrPBPORule(l,r,tl,tk,l′; 
+  k_exprs=Dict(:Weight=>Dict(3=>((x,vs))->x*vs[1])), 
+  acs=[ac], lcs=[lc])
 
 G = @acset WG begin V=5; E=7; src=[1,3,4,3,3,4,5]; tgt=[2,1,1,4,5,2,2]; 
   weight=[2.,3.,4.,5.,6.,7.,9.] 
 end
 
 (m1,α1), = get_matches(rule, G; initial=Dict(:V=>Dict(1=>1))=>Dict())
-
 
 res = rewrite(rule, G; G=G)
 

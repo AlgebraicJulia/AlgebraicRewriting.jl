@@ -4,6 +4,7 @@ export StructuredMultiCospanHom, StructuredMulticospan, openrule, can_open_pusho
 
 using Catlab, Catlab.CategoricalAlgebra, Catlab.Theories
 import Catlab.Theories: dom, codom, compose, ⋅, id
+import Catlab.CategoricalAlgebra: homomorphisms
 using ..CSets
 
 # Maps between structured multicospans

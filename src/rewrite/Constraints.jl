@@ -1,6 +1,9 @@
 module Constraints 
-export apply_constraint, Constraint, CGraph, Quantifier, AppCond, LiftCond
+export apply_constraint, Constraint, CGraph, 
+       Quantifier,BoolOr,BoolAnd,BoolNot,Commutes,
+       AppCond, LiftCond
 using Catlab, Catlab.CategoricalAlgebra, Catlab.Graphs
+using StructEquality
 import ...CategoricalAlgebra.CSets: combinatorialize
 
 # Constraints 
@@ -18,23 +21,6 @@ Some of the arrows are distinguished as "forall" or "exists". Certain squares
 
 ∀f(X->Y) s.t. h⋅g=f, ∃u(A->Y) s.t. u⋅z=x & ∃v(A->Z) s.t. ϕ(v) & ψ(v)
 """
-
-
-struct Quantifier 
-  kind::Symbol                               # Forall, Exists, Exists!
-  edges::Vector{Int}                         # quantified edges
-  pos::Vector{Pair{Vector{Int},Vector{Int}}} # commuting paths
-  neg::Vector{Pair{Vector{Int},Vector{Int}}} # non-commuting paths
-  monic::Union{Bool,Vector{Symbol}}
-  function Quantifier(kind, edges,;pos=[], neg=[], monic=false) 
-    kind ∈ [:Forall, :Exists, :Exists!] || error("Unknown kkind $kind")
-    for (p1,p2) in vcat(pos,neg) 
-      err = "Every commutivity constraint must involve an quantified edge"
-      !isempty(edges ∩ (p1 ∪ p2)) || error(err)
-    end
-    return new(kind, edges,pos,neg, monic)
-  end
-end 
 
 const Assgn = Vector{Union{Nothing, <:ACSetTransformation}} # partial assignment
 
@@ -57,41 +43,84 @@ Things to validate:
 """
 const CGraph = VELabeledGraph{Union{Nothing,StructACSet}, 
                                   Union{Nothing, ACSetTransformation}}
-const CDag = VLabeledGraph{Quantifier}
+# const CDag = VLabeledGraph{Quantifier}
 
-"""
-Get a list, each element containing a map for each edge in quantified edges, 
-that satisfy the constraints
-"""
-function get_candidates(q::Quantifier, g::CGraph, curr::Assgn)
-  # get all possible combinations of maps 
-  all_homs = map(q.edges) do q_e
-    d, cd = [get_ob(g,x,curr) for x in [g[q_e, :src], g[q_e, :tgt]]]
-    homomorphisms(d, cd; monic=q.monic)
-  end
-  all_combos = map(Iterators.product(all_homs...)) do hom
-    new_curr = deepcopy(curr)
-    for (h_ind, h) in zip(q.edges, hom)
-      new_curr[h_ind] = h
-    end
-    return new_curr
-  end
-  # filter by those which satisfy positive
-  return filter(all_combos) do combo 
-    return all([(true,q.pos),(false,q.neg)]) do (bool,pairs) 
-      return all(pairs) do (p1, p2)
-        root = get_ob(g, g[first(p1),:src], curr)
-        return apply_equality(combo, root, p1, p2, bool)
-      end
-    end 
+
+abstract type BoolExpr end 
+@struct_hash_equal struct Commutes <: BoolExpr 
+  pths::Vector{Vector{Int}}
+  commutes::Bool 
+  function Commutes(p...; commutes=true)
+    !(any(isempty, p) || isempty(p)) || error("Paths cannot be empty")
+    return new(collect(p),commutes)
   end
 end
 
-struct Constraint
+@struct_hash_equal struct BoolConst <: BoolExpr 
+  val::Bool
+end 
+
+@struct_hash_equal struct Quantifier <: BoolExpr
+  e::Int 
+  kind::Symbol
+  expr::BoolExpr 
+  st::BoolExpr
+  Quantifier(e,k,x; st=BoolConst(true)) = k ∈ [:Exists,:Forall,:Exists!] ? new(
+    e,k,x,st) : error("$k not supported")
+end 
+@struct_hash_equal struct BoolOr <: BoolExpr 
+  exprs::Vector{BoolExpr}
+  BoolOr(x...) = new(collect(x))
+end 
+@struct_hash_equal struct BoolAnd <: BoolExpr 
+  exprs::Vector{BoolExpr}
+  BoolAnd(x...) = new(collect(x))
+end 
+@struct_hash_equal struct BoolNot <: BoolExpr 
+  expr::BoolExpr
+end 
+
+bound(::BoolConst) = Set{Int}([])
+bound(b::BoolOr) = union(bound.(b.exprs)...)
+bound(b::BoolAnd) = union(bound.(b.exprs)...)
+bound(b::BoolNot) = bound(b.expr)
+bound(b::Quantifier) = Set([b.e]) ∪ bound(b.expr)
+bound(::Commutes) = Set{Int}([])
+
+eval_boolexpr(c::BoolConst, ::CGraph, ::Assgn) = c.val
+eval_boolexpr(c::BoolNot, g::CGraph, m::Assgn) = !eval_boolexpr(c.expr,g,m)
+eval_boolexpr(c::BoolAnd, g::CGraph, m::Assgn) = all(eval_boolexpr(x,g,m) for x in c.exprs)
+eval_boolexpr(c::BoolOr, g::CGraph, m::Assgn) = any(eval_boolexpr(x,g,m) for x in c.exprs)
+function eval_boolexpr(c::Commutes, ::CGraph, ms::Assgn)
+  # for p in c.pths println("p $p ms[p] $(ms[p])") end
+  maps = [force(length(p)==1 ? ms[p[1]] : compose(ms[p]...)) for p in c.pths]
+  return c.commutes == (all(m->m==maps[1],maps))
+end 
+function eval_boolexpr(q::Quantifier, g::CGraph, curr::Assgn)
+  d, cd = [get_ob(g,x,curr) for x in [g[q.e, :src], g[q.e, :tgt]]]
+  cands = []
+  for h in homomorphisms(d, cd)
+    x = deepcopy(curr)
+    x[q.e] = h 
+    if eval_boolexpr(q.st, g, x)
+      push!(cands, x)
+    end
+  end 
+  n = length(cands)
+  suc = [eval_boolexpr(q.expr, g, cand) for cand in cands]
+  n_success = sum([0, suc...])
+  if     q.kind == :Exists  return n_success > 0
+  elseif q.kind == :Exists! return n_success == 1
+  elseif q.kind == :Forall  return n_success == n
+  end
+end 
+
+@struct_hash_equal struct Constraint
   g::CGraph 
-  d::CDag 
+  d::BoolExpr 
   i::Int
-  function Constraint(g,d,i)
+  function Constraint(g,d,i=0)
+    i = i == 0 ? only(setdiff(findall(isnothing, g[:elabel]), bound(d))) : i
     # check CGraph only has nothing vertices adjacent to edge i
     for v in vertices(g)
       if isnothing(g[v, :vlabel]) 
@@ -100,10 +129,6 @@ struct Constraint
          || i ∈ e_in || i ∈ e_out || error("Need to supply CSet for vertex $v"))
       end
     end
-    topological_sort(d)
-    all(filter(v->isempty(outneighbors(d,v)), vertices(d))) do leaf 
-      d[leaf,:vlabel].kind ∈ [:Exists, :Exists!]
-    end 
     return new(g,d,i)
   end 
 end
@@ -113,30 +138,6 @@ function Constraint(g::CGraph, v::Vector{Quantifier}, i::Int)
   cdag = @acset CDag begin V=n; E=n-1; src=1:n-1; tgt=2:n; vlabel=v end 
   return Constraint(g, cdag, i)
 end 
-
-
-function eval_quantifier(c::Constraint, v::Int, curr::Assgn)
-  println("EVALING QUANTIFIER $v")
-  q = c.d[v, :vlabel] # the quantifier
-  cands = get_candidates(q, c.g, curr)
-  n = length(cands)
-  println("$n candidates")
-  out = outneighbors(c.d, v)
-  if isempty(out)
-    if q.kind == :Exists return n > 0
-    elseif q.kind == :Exists! return n == 1
-    else error("Bad terminal quantifier kind for leaf: $(q.kind)")
-    end
-  else 
-    return any(outneighbors(c.d, v)) do next_v 
-      n_success = length(filter(cand -> eval_quantifier(c, next_v, cand), cands))
-      if     q.kind == :Exists  return n_success > 0
-      elseif q.kind == :Exists! return n_success == 1
-      elseif q.kind == :Forall  return n_success == n
-      end
-    end
-  end
-end
 
 """Get the C-Set associated with a vertex in a CGraph"""
 function get_ob(c::CGraph, v_i::Int, curr::Assgn)
@@ -155,20 +156,7 @@ end
 function apply_constraint(c::Constraint, f::ACSetTransformation)
   ms = Assgn([e isa ACSetTransformation ? e : nothing for e in c.g[:elabel]])
   ms[c.i] = f 
-  println("Starting with ms $ms")
-  all(filter(v->isempty(inneighbors(c.d,v)), vertices(c.d))) do root_constr
-    eval_quantifier(c, root_constr, deepcopy(ms))
-  end
-end
-
-
-function apply_equality(choice::Vector{Union{Nothing, ACSetTransformation}}, 
-                        root::StructACSet, p1::Vector{Int}, p2::Vector{Int},
-                        commutes::Bool)
-  lft, rght = map([p1,p2]) do pth 
-    force(compose(id(root),[choice[e] for e in pth]...)) 
-  end  
-  return commutes == (lft == rght)
+  eval_boolexpr(c.d, c.g, ms)
 end
 
 function combinatorialize(c::Constraint)
@@ -198,8 +186,8 @@ function AppCond(f::ACSetTransformation, pos::Bool)
   cg = @acset CGraph begin V=3; E=3; src=[2,1,2]; tgt=[1,3,3];
     vlabel=[codom(f), dom(f), nothing]; elabel=[f, nothing, nothing]
   end
-  key = pos ? :pos : :neg
-  return Constraint(cg, [Quantifier(:Exists,[2];Dict(key=>[[1,2]=>[3]])...)], 3)
+  expr = Quantifier(2, :Exists, Commutes([1,2],[3]))
+  return Constraint(cg, pos ? expr : BoolNot(expr))
 end
 
 
@@ -219,9 +207,10 @@ function LiftCond(vertical::ACSetTransformation, bottom::ACSetTransformation)
   cg = @acset CGraph begin V=4; E=5; src=[1,1,2,2,3]; tgt=[2,3,3,4,4];
     vlabel=[A,B,nothing,Y]; elabel=[vertical, nothing, nothing, bottom, nothing]
   end
-  F = Quantifier(:Forall, [2]; pos=[[2,5]=>[1,4]])
-  E = Quantifier(:Exists, [3]; pos=[[1,3]=>[2], [3,5]=>[4]])
-  return Constraint(cg, [F,E], 5)
+  expr = Quantifier(2, :Forall,
+  Quantifier(3, :Exists, BoolAnd(Commutes([1,3],[2]), Commutes([3,5],[4])));
+    st=Commutes([2,5],[1,4]))
+  return Constraint(cg, expr)
 end
 
 end 

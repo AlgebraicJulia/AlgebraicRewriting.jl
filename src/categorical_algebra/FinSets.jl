@@ -1,6 +1,6 @@
 module FinSets
 export pushout_complement,can_pushout_complement,id_condition
-# once rewriting is removed from Catlab, we can import full namespace
+
 using Catlab.Theories
 using Catlab.CategoricalAlgebra: ComposablePair, FinSet, FinFunction
 
@@ -70,4 +70,4 @@ function id_condition(pair::ComposablePair{<:FinSet{Int}})
            if m(l_imageᶜ[i]) == m(l_imageᶜ[j])))
 end
 
-end
+end # module

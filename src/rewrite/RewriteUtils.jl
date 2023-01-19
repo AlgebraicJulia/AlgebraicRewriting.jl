@@ -10,6 +10,7 @@ using Catlab.ColumnImplementations: AttrVar
 using Random
 
 using ...CategoricalAlgebra, ..RewriteDataStructures
+using ...CategoricalAlgebra.CSets: invert_hom
 
 
 # Extracting specific maps from rewriting output data 
@@ -133,9 +134,10 @@ m ↓    ↓    ↓ res
             X′
 
 """
-function get_expr_binding_map(r::Rule{T}, m, result) where T
+function get_expr_binding_map(r::Rule{T}, m, result::ACSetTransformation) where T
   X = codom(result)
-  comps = Dict(map(attrtypes(acset_schema(X))) do at 
+  ats = filter(x->haskey(r.exprs,x), attrtypes(acset_schema(X)))
+  comps = Dict(map(ats) do at 
       bound_vars = Vector{Any}(collect(m[at]))
       binding = Any[nothing for _ in 1:nparts(X, at)]
       for (v, expr) in zip(freevars(r, at), r.exprs[at])
@@ -147,6 +149,7 @@ function get_expr_binding_map(r::Rule{T}, m, result) where T
 end
 get_expr_binding_map(::PBPORule, _, result) = result
 get_expr_binding_map(::AttrPBPORule, _, result) = result
+get_expr_binding_map(r::Rule{T}, m, result) where T = result # non-ACSet
 
 
 """Replace AttrVars with values"""
@@ -181,7 +184,7 @@ function rewrite_match_maps end  # to be implemented for each T
 Perform a rewrite (automatically finding an arbitrary match) and return result.
 """
 function rewrite(r::AbsRule, G; kw...)
-  ms = get_matches(r, G)
+  ms = get_matches(r, G; kw...)
   return isempty(ms) ? nothing : rewrite_match(r, first(ms); kw...)
 end
 

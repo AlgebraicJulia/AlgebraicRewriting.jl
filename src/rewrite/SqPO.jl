@@ -5,6 +5,7 @@ import ..RewriteUtils: rewrite_match_maps
 using ..RewriteDataStructures
 using Catlab, Catlab.CategoricalAlgebra
 
+using ...CategoricalAlgebra.PartialMap
 
 
 # Sesqui-pushout rewriting

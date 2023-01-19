@@ -168,4 +168,5 @@ function partial_map_classifier_universal_property(
   end
   return ϕ
 end
+
 end # module

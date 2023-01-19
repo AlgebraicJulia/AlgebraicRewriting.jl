@@ -40,7 +40,7 @@ struct Rule{T} <: AbsRule
   exprs::Dict{Symbol, Vector{Expr}}
   function Rule{T}(L, R; ac=nothing, monic=false, expr=nothing) where {T}
     dom(L) == dom(R) || error("L<->R not a span")
-    ACs = Vector{AppCond}(isnothing(ac) ? [] : (ac isa AbstractVector ? ac : [NAC(ac)]))
+    ACs = isnothing(ac) ? [] : ac
     exprs = isnothing(expr) ? Dict() : expr
     map(enumerate([L,R,])) do (i, f)
       if !is_natural(f)

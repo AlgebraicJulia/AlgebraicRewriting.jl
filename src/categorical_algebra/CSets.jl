@@ -16,6 +16,11 @@ using DataStructures: OrderedSet
 using Catlab.ColumnImplementations: AttrVar
 
 
+"""
+This file contains various extensions / features for C-Sets that are 
+particularly helpful for rewriting.
+"""
+
 """Get topological sort of objects of a schema. Fail if cyclic"""
 function topo_obs(S::Type)::Vector{Symbol}
   G = Graph(length(ob(S)))
@@ -303,6 +308,11 @@ function invert_hom(f::ACSetTransformation,s::Symbol)::ACSetTransformation
   d = Dict([s=>Base.invperm(collect(f[s]))])
   return ACSetTransformation(codom(f), dom(f); d...)
 end
+function invert_hom(f::ACSetTransformation{S})::ACSetTransformation where S
+  d = Dict(s=>Base.invperm(collect(f[s])) for s in ob(S))
+  return ACSetTransformation(codom(f), dom(f); d...)
+end
+
 
 
 """
@@ -410,7 +420,6 @@ function combinatorialize(f::ACSetTransformation{S})::Tuple{ACSetTransformation,
     end 
   end) 
   cs = merge(NamedTuple.([od,ad])...)
-  println("CS $cs")
   return (TightACSetTransformation(cs, cX, cY), dX, dY)
 end 
 

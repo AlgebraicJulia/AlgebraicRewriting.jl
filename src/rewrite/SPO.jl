@@ -2,6 +2,7 @@ module SPO
 import ..RewriteUtils: rewrite_match_maps
 
 using ..RewriteDataStructures
+using Catlab.CategoricalAlgebra
 
 
 # Single-pushout rewriting
