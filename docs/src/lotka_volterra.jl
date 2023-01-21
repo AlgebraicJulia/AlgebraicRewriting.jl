@@ -5,8 +5,6 @@ using Random, Test, StructEquality
 
 Random.seed!(123);
 
-const hom = AlgebraicRewriting.homomorphism
-
 using Catlab.Graphics.Graphviz: Attributes, Statement, Node
 using Catlab.Graphics.Graphviz
 
@@ -54,18 +52,23 @@ end
 to_graphviz(TheoryLV; prog="dot")
 
 @acset_type LV_Generic(TheoryLV) <: HasGraph
-VED, VEI = Union{Var,Expr,Direction}, Union{Var,Expr,Int}
-const LV = LV_Generic{VED, VEI}
+const LV = LV_Generic{Direction, Int}
 
-F = FinFunctor(
-  Dict([:Sheep => :Wolf, :Wolf => :Sheep, :V=>:V, :E=>:E,:Dir=>:Dir, :Eng=>:Eng]),
+F = Migrate(
+  Dict(:Sheep=>:Wolf, :Wolf=>:Sheep), 
   Dict([:sheep_loc=>:wolf_loc, :wolf_loc=>:sheep_loc,
         :sheep_eng=>:wolf_eng, :wolf_eng=>:sheep_eng,:grass_eng =>:grass_eng,
-        :sheep_dir=>:wolf_dir, :wolf_dir=>:sheep_dir,
-        :src=>:src,:tgt=>:tgt,:dir=>:dir]),
-  TheoryLV, TheoryLV
-)
-F = DeltaMigration(F, LV, LV)
+        :sheep_dir=>:wolf_dir, :wolf_dir=>:sheep_dir,]), LV)
+
+# F = FinFunctor(
+#   Dict([:Sheep => :Wolf, :Wolf => :Sheep, :V=>:V, :E=>:E,:Dir=>:Dir, :Eng=>:Eng]),
+#   Dict([:sheep_loc=>:wolf_loc, :wolf_loc=>:sheep_loc,
+#         :sheep_eng=>:wolf_eng, :wolf_eng=>:sheep_eng,:grass_eng =>:grass_eng,
+#         :sheep_dir=>:wolf_dir, :wolf_dir=>:sheep_dir,
+#         :src=>:src,:tgt=>:tgt,:dir=>:dir]),
+#   TheoryLV, TheoryLV
+# )
+# F = DeltaMigration(F, LV, LV)
 
 """
 Create a nxn grid with periodic boundary conditions. Edges in each cardinal
@@ -121,10 +124,10 @@ function initialize(n::Int, sheep::Float64, wolves::Float64)
 end
 
 
-supscript_d = Dict(['1'=>'¹', '2'=>'²', '3'=>'³', '4'=>'⁴', '5'=>'⁵',
-                    '6'=>'⁶', '7'=>'⁷', '8'=>'⁸', '9'=>'⁹', '0'=>'⁰',
-                    'x'=>'ˣ', 'y'=>'ʸ','z'=>'ᶻ','a'=>'ᵃ','b'=>'ᵇ','c'=>'ᶜ',
-                    'd'=>'ᵈ'])
+supscript_d = Dict([
+  '1'=>'¹', '2'=>'²', '3'=>'³', '4'=>'⁴', '5'=>'⁵','6'=>'⁶', '7'=>'⁷', '8'=>'⁸', 
+  '9'=>'⁹', '0'=>'⁰', 'x'=>'ˣ', 'y'=>'ʸ','z'=>'ᶻ','a'=>'ᵃ','b'=>'ᵇ','c'=>'ᶜ',
+  'd'=>'ᵈ'])
 supscript(x::String) = join([get(supscript_d, c, c) for c in x])
 
 """Visualize a LV with dot (cannot fix positions)"""
@@ -171,167 +174,180 @@ function Graph(p::LV)
   return g
 end
 
-i1,i2 = initialize(2,0.5,0.5)
-
+i1,i2 = initialize(1,1.,1.)
+Graph(i1)
 
 # RULES
 #######
 I = LV()
+# Generic sheep
 S = @acset LV begin
-  Sheep=1; V=1; sheep_loc=1; grass_eng=[Var(:_1)]
-  sheep_dir=[Var(:_2)]; sheep_eng=[Var(:_3)]; 
+  Sheep=1; V=1; Dir=1; Eng=2; sheep_loc=1; grass_eng=[AttrVar(1)]
+  sheep_dir=[AttrVar(1)]; sheep_eng=[AttrVar(2)]; 
 end
+# Generic wolf
 W = F(S)
+# Generic grass
+G = @acset LV begin V=1; Eng=1; grass_eng=[AttrVar(1)] end
 
 # Rotating
 #---------
 
-shift_l = @acset LV begin
-  Sheep=1; V=1; sheep_loc=1; 
-  sheep_eng=[Var(:_0)]; grass_eng=[Var(:_1)]
-  sheep_dir=[Var(:d)]; 
-end
+rl = Rule(id(S),id(S); expr=(Dir=[xs->left(only(xs))],))
+rr = Rule(id(S),id(S); expr=(Dir=[xs->right(only(xs))],))
 
-shift_i = @acset LV begin
-  Sheep=1; V=1; sheep_loc=1; 
-  sheep_eng=[Var(:_0)]; grass_eng=[Var(:_1)]
-  sheep_dir=[Var(:d2)]; 
-end
-
-shift_il = hom(shift_i, shift_l)
-
-"""Generate a rule that rotates a sheep to the left or the right"""
-function shift(lft::Bool=true)
-  lr = lft ? :(left(d)) : :(right(d))
-  r = deepcopy(shift_i)
-  set_subpart!(r, 1, :sheep_dir, lr)
-  ir = hom(shift_i,r)
-  Rule(shift_il, ir)
-end
-
-sheep_rotate_l = RuleApp("turn left", shift(), S)
-sheep_rotate_r = RuleApp("turn right", shift(false), S)
+sheep_rotate_l = RuleApp("turn left", rl, S)
+sheep_rotate_r = RuleApp("turn right", rr, S)
 
 # we can imagine executing these rules in sequence or in parallel
 sched = (sheep_rotate_l⋅sheep_rotate_r) 
-
+to_graphviz(sched)
 
 
 # Moving forward
 #---------------
 s_fwd_l = @acset LV begin
-  Sheep=1; V=2; E=1; sheep_loc=1;
-  src=1; tgt=2; dir=[Var(:z)]; 
-  grass_eng=Var.([:_1,:_2])
-  sheep_dir=[Var(:z)]; sheep_eng=[Var(:x)]
+  Sheep=1; V=2; E=1; sheep_loc=1; Dir=1; Eng=3
+  src=1; tgt=2; dir=[AttrVar(1)]; 
+  grass_eng=AttrVar.(1:2)
+  sheep_dir=[AttrVar(1)]; sheep_eng=[AttrVar(3)]
 end
 
 s_fwd_i = deepcopy(s_fwd_l)
-rem_part!(s_fwd_i, :Sheep, 1)
+rem_part!(s_fwd_i, :Sheep, 1); rem_part!(s_fwd_i, :Eng, 3)
 
-s_fwd_r = deepcopy(s_fwd_i)
-add_part!(s_fwd_r, :Sheep; sheep_loc=2, sheep_eng=:(x-1), sheep_dir=Var(:z))
+s_fwd_r = deepcopy(s_fwd_l)
+s_fwd_r[1, :sheep_loc] = 2
 
 s_n = deepcopy(s_fwd_l)
-set_subpart!(s_n, 1, :sheep_eng, 0)
+set_subpart!(s_n, 1, :sheep_eng, 0); rem_part!(s_n, :Eng, 3)
 
 sheep_fwd_rule = Rule(
-  hom(s_fwd_i, s_fwd_l; monic=true),
-  hom(s_fwd_i, s_fwd_r; monic=true),
-  [NAC(hom(s_fwd_l, s_n; monic=true,bindvars=true))]
+  homomorphism(s_fwd_i, s_fwd_l; monic=true),
+  homomorphism(s_fwd_i, s_fwd_r; monic=true),
+  ac=[AppCond(homomorphism(s_fwd_l, s_n), false)],
+  expr=(Eng=[vs->vs[1], vs->vs[2], vs->vs[3]-1],)
 )
 
 sheep_fwd = RuleApp("move fwd", sheep_fwd_rule, 
-  Span(hom(S,s_fwd_l;bindvars=true), hom(S,s_fwd_r)))
+  Span(homomorphism(S,s_fwd_l), homomorphism(S,s_fwd_r)))
+
+begin # test 
+  ex = @acset LV begin Sheep=1; V=3; E=2; src=[1,2]; tgt=[2,3]; sheep_loc=2
+    sheep_eng=[3]; grass_eng=[9,10,11]; dir=fill(North(),2); sheep_dir=[North()]
+  end
+  expected = deepcopy(ex); 
+  expected[1,:sheep_loc] = 3; expected[1,:sheep_eng] = 2
+  @test is_isomorphic(expected, rewrite(sheep_fwd_rule,ex))
+end
 
 # Eat grass + 4eng
 #-----------------
+# Grass is at 0 - meaning it's ready to be eaten
 s_eat_l = @acset LV begin
-  Sheep=1; Eng=2; V=1; sheep_loc=1;  grass_loc=[Var(:d)]; 
-  grass_eng=[0]; sheep_eng=[Var(:e)]; sheep_dir=[Var(:_1)]
+  Sheep=1; Eng=1; Dir=1; V=1; sheep_loc=1;  grass_loc=1; 
+  grass_eng=[0]; sheep_eng=[AttrVar(1)]; sheep_dir=[AttrVar(1)]
 end
 
-s_eat_i = deepcopy(s_eat_l)
-set_subpart!(s_eat_i, 1, :grass_eng, Var(:ge))
-set_subpart!(s_eat_i, 1, :sheep_eng, Var(:se))
+se_rule = Rule(homomorphism(S,s_eat_l), id(S); expr=(Eng=[vs->30,vs->only(vs)+4],))
+sheep_eat = RuleApp("Sheep eat", se_rule, S)
 
-s_eat_r = deepcopy(s_eat_i)
-set_subpart!(s_eat_r, 1, :grass_eng, 30)
-set_subpart!(s_eat_r, 1, :sheep_eng, :(e+4))
+begin # test 
+  ex = @acset LV begin Sheep=1; V=3; E=2; src=[1,2]; tgt=[2,3]; sheep_loc=2
+    sheep_eng=[3]; grass_eng=[9,0,11]; dir=fill(North(),2); sheep_dir=[North()]
+  end
 
-sheep_eat = RuleApp("Sheep eat", 
-  Rule(hom(s_eat_i, s_eat_l), 
-       hom(s_eat_i, s_eat_r)), S)
+  rewrite(se_rule,ex)
+end 
 
 # Eat sheep + 20 eng
 #-------------------
+
 w_eat_l = @acset LV begin
-  Sheep=1; Wolf=1; V=1; grass_eng=[Var(:_0)]
-  sheep_dir=[Var(:_1)]; wolf_dir=[Var(:_2)]; 
-  sheep_eng=[Var(:_3)]; wolf_eng=[Var(:e)]
+  Sheep=1; Wolf=1; V=1; Eng=3; Dir=2; grass_eng=[AttrVar(1)]
+  sheep_dir=[AttrVar(1)]; wolf_dir=[AttrVar(2)]; 
+  sheep_eng=[AttrVar(2)]; wolf_eng=[AttrVar(3)]
   sheep_loc=1; wolf_loc=1
 end
 
-w_eat_i = @acset LV begin
-  Wolf=1; V=1; grass_eng=[Var(:_0)]
-  wolf_dir=[Var(:_2)]; wolf_eng=[Var(:e)]; wolf_loc=1
+w_eat_r = @acset LV begin
+  Wolf=1; V=1; Eng=2; Dir=1; grass_eng=[AttrVar(1)]
+  wolf_dir=[AttrVar(1)]; wolf_eng=[AttrVar(2)]; wolf_loc=1
 end
 
-w_eat_r = deepcopy(w_eat_i)
-set_subpart!(w_eat_r, 1, :wolf_eng, :(e+20))
+we_rule = Rule(homomorphism(w_eat_r, w_eat_l), id(w_eat_r); expr=(Eng=[vs->vs[1],vs->vs[3]+20],))
+wolf_eat = RuleApp("Wolf eat", we_rule, W)
 
-wolf_eat = RuleApp("Wolf eat", 
-  Rule(hom(w_eat_i, w_eat_l), 
-       hom(w_eat_i, w_eat_r)), W)
+begin # test 
+  ex = @acset LV begin Sheep=1; Wolf=1; V=3; E=2; src=[1,2]; tgt=[2,3]; sheep_loc=2
+    sheep_eng=[3]; grass_eng=[9,10,11]; dir=fill(North(),2); sheep_dir=[North()]
+    wolf_loc=[2]; wolf_eng=[16]; wolf_dir=[South()]
+  end
+  rewrite(we_rule,ex)
+end
 
 # Die if 0 eng
 #-------------
 s_die_l = @acset LV begin
-  Sheep=1; V=1; grass_eng=[Var(:_1)]
-  sheep_eng=[0]; sheep_loc=1; sheep_dir=[Var(:_0)]
+  Sheep=1; V=1; Eng=1; Dir=1; grass_eng=[AttrVar(1)]
+  sheep_eng=[0]; sheep_loc=1; sheep_dir=[AttrVar(1)]
 end
-s_die_r = @acset LV begin V=1; grass_eng=[Var(:_1)] end
-sheep_die_rule = Rule(hom(s_die_r, s_die_l), id(s_die_r))
+sheep_die_rule = Rule(homomorphism(G, s_die_l), id(G))
 sheep_starve = RuleApp("starve", sheep_die_rule)
+
+
+begin # test 
+  ex = @acset LV begin Sheep=1; Wolf=1; V=3; E=2; src=[1,2]; tgt=[2,3]; sheep_loc=2
+    sheep_eng=[0]; grass_eng=[9,10,11]; dir=fill(North(),2); sheep_dir=[North()]
+    wolf_loc=[2]; wolf_eng=[16]; wolf_dir=[South()]
+  end
+  rewrite(sheep_die_rule,ex)
+end
 
 # reproduction
 #-------------
-s_reprod_l =  @acset LV begin
-  Sheep=1; V=1; sheep_loc=1; grass_eng=[Var(:_1)]
-  sheep_dir=[Var(:_2)]; sheep_eng=[Var(:a)]; 
-end
-
-s_reprod_i = @acset LV begin V=1; grass_eng=[Var(:_1)] end
 
 s_reprod_r =  @acset LV begin
-  Sheep=2; V=1; sheep_loc=1; grass_eng=[Var(:_1)]
-  sheep_dir=[Var(:_2),Var(:_2)]; 
-  sheep_eng=fill(:(round(Int, a/2, RoundUp)), 2); 
+  Sheep=2; V=1; Eng=3; Dir=2; sheep_loc=1; grass_eng=[AttrVar(1)]
+  sheep_dir=AttrVar.(1:2); sheep_eng=AttrVar.(2:3); 
 end
 
-sheep_reprod_rule = Rule(hom(s_reprod_i,s_reprod_l),hom(s_reprod_i,s_reprod_r))
+sheep_reprod_rule = Rule(
+  homomorphism(G, S),
+  homomorphism(G, s_reprod_r); 
+  expr=(Dir=[vs->vs[1],vs->vs[1]], Eng=[vs->vs[1], 
+             fill(vs->round(Int, vs[2]/2, RoundUp), 2)...],)
+  )
+
 sheep_reprod = RuleApp("reproduce", sheep_reprod_rule, 
-  Span(hom(S,s_reprod_l),hom(S,s_reprod_r)))
+  Span(id(S),homomorphism(S,s_reprod_r)))
+
+begin # test 
+  ex = @acset LV begin Sheep=1; Wolf=1; V=3; E=2; src=[1,2]; tgt=[2,3]; sheep_loc=2
+    sheep_eng=[10]; grass_eng=[9,10,11]; dir=fill(North(),2); sheep_dir=[North()]
+    wolf_loc=[2]; wolf_eng=[16]; wolf_dir=[South()]
+  end
+  rewrite(sheep_reprod_rule,ex)
+end
 
 # Grass increment
 #----------------
-g_inc_l = @acset LV begin
-  Grass=1; V=1; Eng=1; grass_loc=1; grass_eng=[Var(:a)]
+
+g_inc_n = deepcopy(G)
+set_subpart!(g_inc_n,1, :grass_eng, 0); rem_part!(g_inc_n, :Eng, 1)
+
+g_inc_rule = Rule(id(G), id(G);
+                  ac=[AppCond(homomorphism(G, g_inc_n), false)],
+                  expr=(Eng=[vs->only(vs)-1],))
+g_inc = RuleApp("Grass increments",g_inc_rule, G)
+
+
+begin # test 
+  ex = @acset LV begin Sheep=1; V=3; E=2; src=[1,2]; tgt=[2,3]; sheep_loc=2
+    sheep_eng=[3]; grass_eng=[1,10,2]; dir=fill(North(),2); sheep_dir=[North()]
+  end
+  rewrite(g_inc_rule,ex)
 end
-
-g_inc_i = deepcopy(g_inc_l);
-set_subpart!(g_inc_i, 1, :grass_eng, Var(:b))
-
-g_inc_r = deepcopy(g_inc_i)
-set_subpart!(g_inc_r, 1, :grass_eng, :(a-1))
-
-g_inc_n = deepcopy(g_inc_l)
-set_subpart!(g_inc_n,1, :grass_eng, 0)
-
-g_inc = RuleApp("Grass increments",
-  Rule(hom(g_inc_i, g_inc_l;bindvars=true), hom(g_inc_i, g_inc_r;bindvars=true),
-      [NAC(hom(g_inc_l, g_inc_n))]))
-
 
 # Scheduling Rules
 ##################
@@ -340,33 +356,40 @@ g_inc = RuleApp("Grass increments",
 #----------------------------------
 
 # 25% chance of left turn, 25% chance of right turn, 50% stay in same direction
-general = mk_sched((init=:S,), 0, (S=S,I=I,
-  turn = const_cond([1.,2.,1.], S; name="turn?"), 
-  maybe = const_cond([0.1, .9],S; name="reprod?"), 
-  lft = sheep_rotate_l, rght = sheep_rotate_r, fwd = sheep_fwd, 
-  repro = sheep_reprod, starve = sheep_starve,
-  weak=Weaken("(weaken)",create(S)),), quote 
+general = mk_sched((init=:S,), 0, (
+  S = S, I = I, G = G,
+  turn   = const_cond([1.,2.,1.], S; name="turn?"), 
+  maybe  = const_cond([0.1, 0.9], S; name="reprod?"), 
+  lft    = sheep_rotate_l, 
+  rght   = sheep_rotate_r, 
+  fwd    = sheep_fwd, 
+  repro  = sheep_reprod, 
+  starve = sheep_starve,
+  weak   = Weaken("(weaken)", create(S)),), 
+  quote 
     out_l, out_str, out_r = turn(init)
     moved = fwd([lft(out_l), out_str, rght(out_r)])
     out_repro, out_no_repro = maybe(moved)
-    return starve(weak([repro(out_repro),out_no_repro]))
+    return starve(weak([repro(out_repro), out_no_repro]))
 end) |> typecheck
 
 sheep = sheep_eat ⋅ general                     # once per sheep
-wolf = wolf_eat ⋅ migrate_schedule(F, general)  # once per wolf
+wolf = wolf_eat ⋅ F(general)  # once per wolf
 
 # Do all sheep, then all wolves, then all daily operations
-cycle = ( agent(sheep, S; n="sheep", ret=I)
-        ⋅ agent(wolf, W; n="wolves", ret=I)
-        ⋅ g_inc)
+cycle = ( agent(sheep, S; n="sheep",  ret=I)
+        ⋅ agent(wolf,  W; n="wolves", ret=I)
+        ⋅ agent(singleton(g_inc), G; n="grass"))
 
 # wrap in a while loop
 overall = while_schedule(cycle, curr -> nparts(curr,:Wolf) >= 0) |> typecheck
 
 overall |> to_graphviz
 
-G, coords = initialize(2, .25, .25)
-res = apply_schedule(overall, G; steps=10);
+X, coords = initialize(3, .25, .25)
+res = apply_schedule(overall, X; steps=40);
+
+
 
 # Run these lines to view the trajectory
 if false 

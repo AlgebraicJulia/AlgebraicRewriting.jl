@@ -5,7 +5,9 @@ using AlgebraicRewriting
 using Interact
 @test length(methods(view_traj)) == 2
 
-# include("../docs/src/lotka_volterra.jl") # this shouldn't crash
+@testset "Lotka Volterra" begin
+  # include("../docs/src/lotka_volterra.jl") # this shouldn't crash
+end
 
 # Background 
 ############

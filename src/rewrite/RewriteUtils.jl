@@ -9,6 +9,7 @@ using Catlab.ColumnImplementations: AttrVar
 
 using Random
 
+using ..Constraints
 using ...CategoricalAlgebra, ..RewriteDataStructures
 using ...CategoricalAlgebra.CSets: invert_hom
 
@@ -81,9 +82,8 @@ function can_match(r::Rule{T}, m; initial=Dict(),
   end
 
   for (nᵢ, N) in enumerate(r.conditions)
-    tri = extend_morphism(m, N.f;  monic=N.monic, init_check=N.init_check)
-    if isnothing(tri) == N.positive
-      return ("$(pos(N))AC failed", nᵢ, isnothing(tri) ? () : components(tri))
+    if !apply_constraint(N, m)
+      return ("AC $nᵢ failed", nᵢ)
     end
   end
 
@@ -135,21 +135,31 @@ m ↓    ↓    ↓ res
 
 """
 function get_expr_binding_map(r::Rule{T}, m, result::ACSetTransformation) where T
-  X = codom(result)
-  ats = filter(x->haskey(r.exprs,x), attrtypes(acset_schema(X)))
-  comps = Dict(map(ats) do at 
+  R, X = dom(result), codom(result)
+  show(stdout, "text/plain", R)
+  show(stdout, "text/plain", X)
+  comps = Dict(map(attrtypes(acset_schema(X))) do at 
       bound_vars = Vector{Any}(collect(m[at]))
-      binding = Any[nothing for _ in 1:nparts(X, at)]
-      for (v, expr) in zip(freevars(r, at), r.exprs[at])
-        binding[result[at](v)] = subexpr(expr, bound_vars)
+      binding = Any[nothing for _ in parts(X, at)]
+      if haskey(r.exprs, at) exprs = r.exprs[at]
+      else 
+        exprs = map(parts(R,at)) do rᵢ
+          iᵢ = preimage(right(r)[at], AttrVar(rᵢ))
+          lᵢ = left(r)[at](AttrVar(only(iᵢ))).val
+          vs->vs[lᵢ]
+        end
       end
+      for (v, expr) in enumerate(exprs)
+        binding[result[at](AttrVar(v)).val] = expr(bound_vars)
+      end
+      !any(isnothing, binding) || error("Bad binding $binding")
       at => binding
   end)
   return sub_vars(X, comps)
 end
 get_expr_binding_map(::PBPORule, _, result) = result
 get_expr_binding_map(::AttrPBPORule, _, result) = result
-get_expr_binding_map(r::Rule{T}, m, result) where T = result # non-ACSet
+get_expr_binding_map(::Rule{T}, m, result) where T = result # non-ACSet
 
 
 """Replace AttrVars with values"""

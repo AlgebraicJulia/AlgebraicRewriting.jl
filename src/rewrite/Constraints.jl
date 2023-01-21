@@ -4,7 +4,7 @@ export apply_constraint, Constraint, CGraph,
        AppCond, LiftCond
 using Catlab, Catlab.CategoricalAlgebra, Catlab.Graphs
 using StructEquality
-import ...CategoricalAlgebra.CSets: combinatorialize
+import ...CategoricalAlgebra.CSets: combinatorialize, Migrate
 
 # Constraints 
 #############
@@ -44,6 +44,12 @@ Things to validate:
 const CGraph = VELabeledGraph{Union{Nothing,StructACSet}, 
                                   Union{Nothing, ACSetTransformation}}
 # const CDag = VLabeledGraph{Quantifier}
+function (F::Migrate)(c::CGraph)
+  c = deepcopy(c)
+  c[:vlabel] = [isnothing(x) ? x : F(x) for x in c[:vlabel]]
+  c[:elabel] = [isnothing(x) ? x : F(x) for x in c[:elabel]]
+  return c
+end
 
 
 abstract type BoolExpr end 
@@ -139,6 +145,8 @@ function Constraint(g::CGraph, v::Vector{Quantifier}, i::Int)
   return Constraint(g, cdag, i)
 end 
 
+(F::Migrate)(c::Constraint) = Constraint(F(c.g),c.d, c.i)
+
 """Get the C-Set associated with a vertex in a CGraph"""
 function get_ob(c::CGraph, v_i::Int, curr::Assgn)
   if isnothing(c[v_i, :vlabel])
@@ -182,7 +190,7 @@ triangle commuting.
       (3)
 
 """
-function AppCond(f::ACSetTransformation, pos::Bool)
+function AppCond(f::ACSetTransformation, pos::Bool=true)
   cg = @acset CGraph begin V=3; E=3; src=[2,1,2]; tgt=[1,3,3];
     vlabel=[codom(f), dom(f), nothing]; elabel=[f, nothing, nothing]
   end

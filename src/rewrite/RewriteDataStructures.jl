@@ -10,7 +10,8 @@ import Catlab.Theories: dom, codom
 import Catlab.CategoricalAlgebra: is_natural,components, left, right
 using Catlab.CategoricalAlgebra.DataMigrations: MigrationFunctor
 using Catlab.CategoricalAlgebra.CSets: type_components
-using ...CategoricalAlgebra.CSets: check_pb, extend_morphism, combinatorialize, extend_morphisms
+using ...CategoricalAlgebra.CSets: check_pb, extend_morphism, combinatorialize, 
+                                   extend_morphisms, Migrate
 using ..Constraints
 
 # RULES 
@@ -37,31 +38,30 @@ struct Rule{T} <: AbsRule
   R::Any
   conditions::Vector{Constraint} # constraints on match morphism
   monic::Union{Bool, Vector{Symbol}}
-  exprs::Dict{Symbol, Vector{Expr}}
+  exprs::Dict{Symbol, Vector{<:Function}}
   function Rule{T}(L, R; ac=nothing, monic=false, expr=nothing) where {T}
     dom(L) == dom(R) || error("L<->R not a span")
     ACs = isnothing(ac) ? [] : ac
-    exprs = isnothing(expr) ? Dict() : expr
+    exprs = isnothing(expr) ? Dict() : Dict(pairs(expr))
     map(enumerate([L,R,])) do (i, f)
       if !is_natural(f)
         error("unnatural map #$i: $f")
       end
     end
     for (o, xs) in collect(exprs)
-      n = nparts(codom(R),o) - nparts(dom(R), o)
-      n == length(xs) || error("$n exprs needed for part $o")
+      nparts(codom(R),o) == length(xs) || error("$(nparts(codom(R),o)) exprs needed for part $o")
     end 
     new{T}(L, R, ACs, monic, exprs)
   end
 end
 
 Rule(l,r;kw...) = Rule{:DPO}(l,r; kw...)
-
 ruletype(::Rule{T}) where T = T
+left(r::Rule{T}) where T = r.L
+right(r::Rule{T}) where T = r.R
 
-
-(F::DeltaMigration)(r::Rule{T}) where {T} =
-  Rule{T}(F(r.L), F(r.R), F.(r.conditions); monic=r.monic)
+(F::Migrate)(r::Rule{T}) where {T} =
+  Rule{T}(F(r.L), F(r.R); ac=F.(r.conditions), expr=r.exprs, monic=r.monic)
 
 # PBPO 
 ######

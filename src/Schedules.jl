@@ -2,7 +2,7 @@ module Schedules
 export Schedule, Traj, nports, mk_sched, traj_res, typecheck,
        Query, RuleApp, Weaken, Strengthen, Condition, 
        loop_rule, const_cond, if_cond, has_match,
-       uniform, merge_wires, while_schedule, for_schedule, agent,
+       uniform, merge_wires, while_schedule, for_schedule, agent, singleton,
        rewrite_schedule, apply_schedule, migrate_schedule, graphviz
        
 
@@ -10,15 +10,15 @@ using DataStructures, Random
 
 using Catlab, Catlab.CategoricalAlgebra, Catlab.WiringDiagrams, Catlab.Theories
 using Catlab.Programs
-using Catlab.CategoricalAlgebra.DataMigrations: MigrationFunctor
 using Catlab.WiringDiagrams.DirectedWiringDiagrams: in_port_id, out_port_id
 
 using ..Rewrite
 using ..CategoricalAlgebra
 
-using ..Rewrite.RewriteUtils: rewrite_full_output, get_matches, get_rmap, get_pmap
+using ..Rewrite.RewriteUtils: rewrite_full_output, get_matches, get_rmap, 
+                              get_pmap, get_expr_binding_map
 using ..CategoricalAlgebra.CSets: 
-  postcompose_partial, extend_morphism_constraints, extend_morphisms
+  postcompose_partial, extend_morphism_constraints, extend_morphisms, Migrate
 
 const homs = homomorphisms
 
@@ -41,14 +41,34 @@ There are also higher level patterns built from these generating morphisms.
 """Visualize the data of a CSet homomorphism"""
 str_hom(m::ACSetTransformation) = join([
   "$k: $(collect(c))" for (k,c) in pairs(components(m))
-  if !isempty(collect(c.func))], '\n')
+  if !isempty(collect(c))], '\n')
 
 # Partial map utilities 
 #######################
-id_pmap(s::StructACSet) = Span(id(s),id(s)) # the identity partial map
+"""Canonical map from an acset with only variables, no concrete attrs"""
+function varid(s::StructACSet{S,Ts}) where {S,Ts} 
+
+  X = deepcopy(s); 
+  comps = Dict(map(attrtypes(S)) do at
+    rem_parts!(X, at, parts(X,at))
+    comp = Union{AttrVar,attrtype_instantiation(S,Ts,at)}[]
+    for (f, d, _) in attrs(S; to=at)
+      append!(comp, X[f])
+      X[f] = AttrVar.(add_parts!(X, at, nparts(X,d)))
+    end 
+    at => comp
+  end)
+  for o in ob(S) comps[o]=parts(s,o) end
+  res = ACSetTransformation(X,s; comps...)
+  is_natural(res) || error("bad varid $comps")
+  return res
+end 
+id_pmap(s::StructACSet) = Span(varid(s),varid(s)) # the identity partial map
 no_pmap(s1::StructACSet,s2::StructACSet) = Span(create.([s1,s2])...) # empty
 tot_pmap(f::ACSetTransformation) = Span(id(dom(f)), f)
 
+noattr(s::StructACSet{S}) where S = all(a->nparts(s,a) == 0, attrtypes(S))
+noattr(s::ACSetTransformation) = noattr(codom(s))
 # General wiring diagram utilities
 ###################################
 """Identity WD"""
@@ -98,6 +118,11 @@ struct TrajStep
   pmap::Span{<:StructACSet}
   inwire::Wire
   outwire::Wire
+  function TrajStep(d,w,p,i,o)
+    noattr(w) || error("World state has variables $w")
+    codom(right(p)) == codom(w) || error("World doesn't match pmap")
+    return new(d,w,p,i,o)
+  end
 end 
 
 """
@@ -125,6 +150,8 @@ Base.push!(t::Traj, ts::TrajStep) = push!(t.steps, ts)
 Take a morphism (pointing at world state #i) and push forward to current time.
 """
 function update_agent(t::Traj, i::Int, a::ACSetTransformation)
+  is_natural(a) || error("Updating unnatural a")
+  noattr(a) || error("World state has variables")
   if i < 0
     error("Called update with negative index $i")
   elseif i == length(t) # special case
@@ -134,8 +161,10 @@ function update_agent(t::Traj, i::Int, a::ACSetTransformation)
   codom(a) == codom(left(t[i+1].pmap)) || error("BAD MATCH $i $a")
   for j in i+1:length(t)
     a = postcompose_partial(t[j].pmap, a)
+    is_natural(a) || error("Updated unnatural a")
+    if isnothing(a) return nothing end 
   end
-  codom(a) == traj_res(t) || error("Failed to postcompose")
+  codom(a) == traj_res(t) || error("Failed to postcompose $(codom(a))\n$(traj_res(t))")
   return a 
 end
 
@@ -151,7 +180,7 @@ input_ports(::AgentBox)::Vector{StructACSet} = error("Not yet defined")
 output_ports(::AgentBox)::Vector{StructACSet} = error("Not yet defined")
 initial_state(::AgentBox) = error("Not yet defined") 
 color(::AgentBox) = error("Not yet defined") 
-(::MigrationFunctor)(::AgentBox) = error("Not yet defined")
+(::Migrate)(::AgentBox) = error("Not yet defined")
 
 """ In x P x S -> Out x P x S x Msg ---- output P actually just needs the maps
 Xₙ₋₁ -/-> X and A -> X, which get concatenated to the input trajectory P
@@ -184,7 +213,7 @@ otimes(x::WiringDiagram, y::AgentBox) = otimes(x, singleton(y))
 const Schedule = WiringDiagram{Any, StructACSet, StructACSet, AgentBox}
 
 """Map a functor over the data of a schedule"""
-function migrate_schedule(F::MigrationFunctor, wd::WiringDiagram) 
+function (F::Migrate)(wd::WiringDiagram) 
   wd = deepcopy(wd)
   for x in [:value, Symbol.(["$(x)_port_type" for x in 
                             [:outer_in,:outer_out,:out,:in]])..., 
@@ -245,19 +274,22 @@ input_ports(r::RuleApp) = [dom(left(r.agent))]
 output_ports(r::RuleApp) = input_ports(r)
 color(::RuleApp) = "lightblue"
 initial_state(::RuleApp) = nothing 
-(F::MigrationFunctor)(a::RuleApp) = RuleApp(a.name,F(a.rule), F(a.agent))
+(F::Migrate)(a::RuleApp) = RuleApp(a.name,F(a.rule), F(a.agent))
 
 function update(r::RuleApp, ::Int, instate::Traj, ::Nothing)
   last_step = traj_agent(instate) # A -> X 
   init = extend_morphism_constraints(last_step, left(r.agent))
-  ms = get_matches(r.rule, codom(last_step);initial=init)
+  ms = get_matches(r.rule, codom(last_step); initial=init)
   if isempty(ms)
     return (1, last_step, id_pmap(codom(last_step)), nothing, "(no match)")
   else 
     m = first(ms)
-    res = rewrite_match_maps(r.rule, m)
-    new_agent = right(r.agent) ⋅ get_rmap(ruletype(r.rule), res)
-    pmap = get_pmap(ruletype(r.rule), res)
+    res = rewrite_match_maps(r.rule, m; check=true)
+    rmap = get_rmap(ruletype(r.rule), res)
+    xmap = get_expr_binding_map(r.rule, m, rmap)
+    new_agent = right(r.agent) ⋅ rmap ⋅ xmap
+    pl, pr = get_pmap(ruletype(r.rule), res)
+    pmap = Span(pl, pr ⋅ xmap)
     msg = str_hom(m)
     return (1, new_agent, pmap, nothing, msg)
   end
@@ -291,7 +323,7 @@ color(::Condition) = "lightpink"
 
 # WARNING: the update/prob functions hide their ACSet dependence in code, so 
 # data migration cannot update these parts which may cause runtime errors.
-(F::MigrationFunctor)(a::Condition) = 
+(F::Migrate)(a::Condition) = 
   Condition(a.prob, a.n, F(a.agent); update=a.update, name=a.name, init=a.init)
 
 """Allow `prob` to depend on just the input or optionally the state, too"""
@@ -342,7 +374,7 @@ mutable struct QueryState
   homs::Vector{ACSetTransformation}
 end
 Base.isempty(q::QueryState) = isempty(q.homs)
-Base.pop!(q::QueryState) = pop!(q.homs)
+Base.pop!(q::QueryState) = deepcopy(pop!(q.homs))
 Base.length(q::QueryState) = length(q.homs)
 Base.string(c::Query) = "Query $(c.name)"
 color(::Query) = "yellow"
@@ -351,7 +383,7 @@ out_agent(c::Query) = codom(right(c.agent))
 input_ports(c::Query) = [in_agent(c), c.return_type] 
 output_ports(c::Query) = [in_agent(c), out_agent(c), typeof(in_agent(c))()]
 initial_state(::Query) = QueryState(-1, ACSetTransformation[])
-(F::MigrationFunctor)(a::Query) =  Query(a.name,F(a.agent), F(a.return_type))
+(F::Migrate)(a::Query) =  Query(a.name,F(a.agent), F(a.return_type))
 
 function update(q::Query, i::Int, instate::Traj, boxstate::Any)
   idp = id_pmap(traj_res(instate))
@@ -363,8 +395,8 @@ function update(q::Query, i::Int, instate::Traj, boxstate::Any)
   end 
 
   if isempty(curr_boxstate) # END
-    new_agent = update_agent(instate, curr_boxstate.enter_time, 
-                             get_agent(instate,curr_boxstate.enter_time))
+    old_agent = get_agent(instate,curr_boxstate.enter_time)
+    new_agent = update_agent(instate, curr_boxstate.enter_time, old_agent)
     if isnothing(new_agent) # original agent gone
       msg *= "\nCannot recover original agent."
       curr_boxstate.enter_time = -1
@@ -376,8 +408,12 @@ function update(q::Query, i::Int, instate::Traj, boxstate::Any)
     end 
   else # CONTINUE 
     new_agent = update_agent(instate, curr_boxstate.enter_time, pop!(curr_boxstate))
+    if isnothing(new_agent)
+      println("Queued agent no longer exists")
+      return update(q, i, instate, curr_boxstate)
+    end
     msg *= "\nContinuing ($(length(curr_boxstate)) queued) with \n" * str_hom(new_agent)
-    return (2, new_agent,idp,curr_boxstate,msg)
+    return (2, new_agent, idp, curr_boxstate,msg)
   end 
 end
 
@@ -394,7 +430,7 @@ input_ports(r::Weaken) = [codom(r.agent)]
 output_ports(r::Weaken) = [dom(r.agent)]
 initial_state(::Weaken) = nothing 
 color(::Weaken) = "lavender"
-(F::MigrationFunctor)(a::Weaken) =  Weaken(a.name,F(a.agent))
+(F::Migrate)(a::Weaken) =  Weaken(a.name,F(a.agent))
 function update(r::Weaken, ::Int, instate::Traj, ::Nothing)
   last_step = traj_agent(instate) # A -> X 
   return (1, r.agent ⋅ last_step, id_pmap(codom(last_step)), nothing, "")
@@ -413,7 +449,7 @@ input_ports(r::Strengthen) = [dom(r.agent)]
 output_ports(r::Strengthen) = [codom(r.agent)]
 initial_state(::Strengthen) = nothing 
 color(::Strengthen) = "lightgreen"
-(F::MigrationFunctor)(a::Strengthen) =  Strengthen(a.name,F(a.agent))
+(F::Migrate)(a::Strengthen) =  Strengthen(a.name,F(a.agent))
 function update(r::Strengthen, ::Int, instate::Traj, ::Nothing)
   last_step = traj_agent(instate) # A -> X 
   world_update, new_agent = pushout(last_step, r.agent)
@@ -435,7 +471,7 @@ input_ports(r::Initialize) = [r.in_agent]
 output_ports(r::Initialize) = [typeof(r.state)()]
 initial_state(::Initialize) = nothing 
 color(::Initialize) = "gray"
-(F::MigrationFunctor)(a::Initialize) = Initialize(a.name,F(a.state),F(a.in_agent))
+(F::Migrate)(a::Initialize) = Initialize(a.name,F(a.state),F(a.in_agent))
 function update(r::Initialize, ::Int, instate::Traj, ::Nothing)
   last_state = traj_re(instate) 
   return (1, create(r.state), no_pmap(last_state,r.state),  nothing, "")
