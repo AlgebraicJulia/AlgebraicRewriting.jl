@@ -4,7 +4,6 @@ using Test
 using Catlab, Catlab.Theories, Catlab.WiringDiagrams, Catlab.Graphics
 using Catlab.Graphs, Catlab.CategoricalAlgebra
 using AlgebraicRewriting
-const hom = homomorphism
 using Interact
 using Blink: Window, body!
 function viewer(s,r)
@@ -19,7 +18,7 @@ end
 z, g1, ar, loop = Graph(), Graph(1), path_graph(Graph, 2), apex(terminal(Graph))
 
 av = RuleApp("add vertex", Rule(id(z), create(Graph(1)))) 
-g2 = hom(Graph(2), ar; monic=true)
+g2 = homomorphism(Graph(2), ar; monic=true)
 de = loop_rule(RuleApp("del edge", Rule(g2, id(Graph(2)))))
 coin = uniform(2, z)
 merge2 = merge_wires(2,g1)
@@ -32,8 +31,8 @@ res = apply_schedule(sched, G);
 
 # Query workflow (add loop to each vertex)
 ##########################################
-al = RuleApp("add loop", Rule(id(g1), hom(g1,loop)), g1)
-q = Query(g1, "Vertex")
+al = RuleApp("add loop", Rule(id(g1), homomorphism(g1,loop)), g1)
+q = Query("Vertex", g1)
 
 sched = mk_sched((i=:Z, o=:O), 1, Dict(:rule=>al, :query=>q, :Z=>z,:O=>g1), 
 quote 
@@ -51,6 +50,7 @@ res = apply_schedule(sched, Graph(3));
 # (flip to add loop to each vertex downstream of tgt, then add edge out of src)
 ##############################################################################
 s_hom, t_hom = [ACSetTransformation(g1,ar; V=[i]) for i in 1:2]
+
 q2 = Query(Span(t_hom,s_hom), "Out edges", g1)
 ws = Weaken("Switch to src", s_hom)
 wt = Weaken("Switch to tgt", t_hom)
@@ -58,6 +58,7 @@ str = Strengthen("Add outedge", s_hom)
 maybe_add_loop = uniform(2, g1) ⋅ (al ⊗ nports(1,g1))
 
 # graphviz(uniform(2, g1) ⋅ (al ⊗ nports(1,g1)) ⋅ merge_wires(2, g1); orientation=LeftToRight)
+
 
 sched = mk_sched((init=:A, trace_arg=:V,), 1, Dict(
   :loop => maybe_add_loop, :out_edges=>q2, :weaken_src=>ws, 
@@ -70,10 +71,11 @@ quote
   return out, [trace1, trace2]
 end);
 
+
 # graphviz(sched ⋅ sched; orientation=LeftToRight)
 
 G = @acset Graph begin V=5; E=4; src=[1,2,2,5];tgt=[2,3,4,2] end 
-arr_start = hom(ar, G; initial=(V=[1,2],))
+arr_start = homomorphism(ar, G; initial=(V=[1,2],))
 res = apply_schedule(sched, arr_start);
 # viewer(sched, res)
 

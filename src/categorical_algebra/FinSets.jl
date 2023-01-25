@@ -50,12 +50,11 @@ end
 function pushout_complement(pair::ComposablePair{<:FinSet{Int}, VarFunction{T}}) where {T}
   l, m = pair
   lm = compose(l,m)
-  I, L, G = dom(l), codom(l), codom(m)
+  I, G = dom(l), codom(m)
   # Initialize I -> K with image of I->L
   image_lm = unique([lm(AttrVar(i)) for i in I])
   # Additionally, any vars not matched by m should be matched by 
   unmatched = setdiff(AttrVar.(G), collect(m))
-  println("G $G image_lm $image_lm unmatched $unmatched")
   K = FinSet(length(image_lm)+length(unmatched))
   ik = VarFunction{T}([AttrVar(findfirst(==(lm(AttrVar(i))), image_lm)) 
                        for i in I], length(K))

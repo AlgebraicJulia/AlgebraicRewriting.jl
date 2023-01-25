@@ -36,7 +36,37 @@ G = Slice(ACSetTransformation(G_, two, V=[1,2,1], E=[1,2]))
 @test length(homomorphisms(L_, G_)) == 2
 @test length(homomorphisms(L, G)) == 1
 
+# Extending morphisms
+#####################
+# TODO
 
+# Postcomposing morphisms
+#########################
+# TODO 
 
+# Inverting morphisms
+#####################
+# TODO 
 
+# Checking pullback up to iso
+#############################
+# TODO 
+
+# Substituting variables
+########################
+
+# Abstraction
+##############
+# TODO 
+
+# Var pullback 
+##############
+
+const WG = WeightedGraph{Bool}
+
+C = @acset WG begin V=1; Weight=1; E=2; src=1;tgt=1;weight=[true, AttrVar(1)] end 
+A = @acset WG begin V=1; Weight=2; E=3; src=1;tgt=1;
+                    weight=[true, AttrVar.(1:2)...] end
+f = homomorphism(A,C; initial=(E=[1,1,2],))
+var_pullback(Cospan(f,f))
 end # module

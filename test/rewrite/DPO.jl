@@ -299,5 +299,3 @@ G = @acset WeightedGraph{Int} begin V=1; E=2; src=1; tgt=1;
   V=1; E=1; src=1; tgt=1; weight=[30] end
 
 end # module 
-
-

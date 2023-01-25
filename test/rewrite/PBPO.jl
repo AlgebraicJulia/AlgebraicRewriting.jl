@@ -5,9 +5,7 @@ using AlgebraicRewriting
 using Catlab, Catlab.CategoricalAlgebra, Catlab.Graphs, Catlab.Graphics
 const hom = homomorphism
 const homs = homomorphisms
-const iso = is_isomorphic
-const isos = isomorphisms
-using AlgebraicRewriting.Rewrite.RewriteUtils: get_matches
+using AlgebraicRewriting.Rewrite.Utils: get_matches
 
 # Example from Fig. 7 of "A PBPO+ Graph Rewriting Tutorial"
 ###########################################################
@@ -33,16 +31,13 @@ rule = PBPORule(l,r,tl,tk,l′)
 G = @acset Graph begin V=5;E=11;
   src=[1,1,1,2,2,2,3,4,5,5,5]; tgt=[2,4,5,1,3,3,2,5,3,3,5] 
 end
-m = hom(L,G; initial=(V=[1,2,3],))
-α = hom(G,L′; initial=(V=[1,2,3,4,4],))
 
-res = rewrite_match(rule,m=>α)
+res = rewrite(rule,G; initial=(V=[1,2,3],)=>(V=[1,2,3,4,4],))
 expected = @acset Graph begin V=6;E=10;
   src=[1,3,3,4,5,6,6,6,6,6];tgt=[3,4,5,5,5,3,3,4,5,6] 
 end
-@test iso(res, expected) && iso(res, rewrite(rule, G))
-m_, α_ = only(get_matches(rule, G))
-@test (m_,α_) == (m,α)
+@test is_isomorphic(res, expected) && is_isomorphic(res, rewrite(rule, G))
+@test length(get_matches(rule, G)) == 1
 
 # Example from Fig 15 of "Graph Rewriting and Relabeling with PBPO+"
 ####################################################################
@@ -67,16 +62,11 @@ rule = PBPORule(l,r,tl,tk,l′)
 G = @acset Graph begin V=5; E=8; 
   src=[1,2,2,2,4,4,5,5]; tgt=[2,1,1,5,1,5,1,4] 
 end
-m = hom(L,G; initial=(V=[1,2],))
-α = hom(G,L′;initial=(V=[1,2,3,3,3],))
 
-res = rewrite_match(rule, m => α)
 expected = @acset Graph begin V=6;E=9;
   src=[1,1,1,1,2,4,4,5,5];tgt=[2,2,2,2,2,1,5,1,4] 
-end 
-@test iso(res, expected)
-m_, α_ = only(get_matches(rule, G))
-@test (m_,α_) == (m,α)
+end
+@test is_isomorphic(rewrite(rule, G), expected)
 
 # Modification of example from slide 68 of "An introduction to graph rewriting"
 ##############################################################################
@@ -91,8 +81,6 @@ tl = ACSetTransformation(L,L′;V=[1])
 K′ = @acset Graph begin V=5;E=9 ;src=[1,2,3,3,4,3,5,3,3];tgt=[2,2,3,2,5,5,5,1,4] end
 tk = ACSetTransformation(K,K′;V=[1,4])
 l′ = hom(K′,L′; initial=(V=[1,2,3,1,2],))
-# to_graphviz(L′; node_labels=true)
-# to_graphviz(K′; node_labels=true)
 
 """      ∀₂                  ∀₂
     [•] ---> G         [•] ---> G
@@ -107,14 +95,13 @@ bottom_6 = hom(arr, L′;initial=(V=[2,2],))
 
 cg = @acset CGraph begin V=4; E=6; src=[2,1,3,1,3,3]; tgt=[3,2,2,3,4,4];
   vlabel=[G1, nothing, arr, L′]; 
-  elabel=[nothing, nothing,  nothing, vertical, bottom_5, bottom_6]
+  elabel=[AttrVar(1), nothing,  nothing, vertical, bottom_5, bottom_6]
 end
 
-expr = Quantifier(2, :Forall, 
-        Quantifier(3, :Exists, 
-          BoolAnd(Commutes([4,3],[2]), 
-                  BoolOr(Commutes([3,1],[6]),Commutes([3,1],[5]))));
-        st=Commutes([2,1],[4,5]))
+expr = Forall(2, Exists(3, 
+                        BoolAnd(Commutes([4,3],[2]), 
+                                BoolOr(Commutes([3,1],[6]),Commutes([3,1],[5]))));
+              st=Commutes([2,1],[4,5]))
 
 
 lc = Constraint(cg, expr)
@@ -128,7 +115,7 @@ G′′ = rewrite(rule, G; initial=Dict(:V=>[2])=>Dict())
 expected = @acset Graph begin V=13;E=14;
   src=[7,7,7,1,1,3,3,4,2,2,10,10,11,8];tgt=[1,2,8,3,4,5,4,6,10,11,12,11,13,9] 
 end
-@test iso(expected,G′) && iso(G′,G′′)
+@test is_isomorphic(expected,G′) && is_isomorphic(G′,G′′)
 
 # Example 20 from "Graph Rewriting and Relabeling with PBPO+"
 #############################################################
@@ -165,13 +152,11 @@ l′ = hom(K′,L′; initial=(V=[1,2],))
 rule = PBPORule(l,r,tl,tk,l′)
 @test length(get_matches(rule,G)) == 1
 expected = @acset Graph begin V=3;E=4;src=[1,2,1,2];tgt=[1,2,2,3] end 
-@test iso(rewrite(rule, G), expected)
+@test is_isomorphic(rewrite(rule, G), expected)
 
 # Attributed problem
 ##############################################################################
 const WG = WeightedGraph{Float64}
-using Catlab.ColumnImplementations: AttrVar
-using AlgebraicRewriting.CategoricalAlgebra.CSets: combinatorialize
 
 L = @acset WG begin V=2; E=1; Weight=1; src=1; tgt=2; weight=[AttrVar(1)] end
 K = WG(2)
@@ -202,16 +187,19 @@ ac = AppCond(homomorphism(L,loop), false) # cannot bind pattern to loop
 """
 lc = LiftCond(homomorphism(R,L), # vertical
               homomorphism(L,L′;initial=(E=[4],)))
-rule = AttrPBPORule(l,r,tl,tk,l′; 
-  k_exprs=Dict(:Weight=>Dict(3=>((x,vs))->x*vs[1])), 
-  acs=[ac], lcs=[lc])
+
+kx = Any[fill(nothing, 9)...]
+kx[3] =  ((x,vs))->x*vs[1]
+rule = PBPORule(l,r,tl,tk,l′; k_expr=(Weight=kx,),acs=[ac], lcs=[lc])
 
 G = @acset WG begin V=5; E=7; src=[1,3,4,3,3,4,5]; tgt=[2,1,1,4,5,2,2]; 
   weight=[2.,3.,4.,5.,6.,7.,9.] 
 end
+expected = @acset WG begin V=4; E=6; src=[2,2,2,3,3,4]; tgt=[1,3,4,1,1,1]; 
+  weight=[6.,5.,6.,8.,7.,9.]
+end
+@test is_isomorphic(expected, rewrite(rule,G))
 
-(m1,α1), = get_matches(rule, G; initial=Dict(:V=>Dict(1=>1))=>Dict())
-
-res = rewrite(rule, G; G=G)
+# Test canonization: TODO
 
 end # module

@@ -2,7 +2,7 @@ module CSets
 export topo_obs, check_eqs, eval_path, extend_morphism, pushout_complement,
        can_pushout_complement, dangling_condition, invert_hom, check_pb,
        gluing_conditions, extend_morphisms, postcompose_partial, sub_vars,
-       combinatorialize, Migrate, invert_iso
+       Migrate, invert_iso, deattr, var_pullback, remove_freevars
 
 using Catlab, Catlab.Theories, Catlab.Graphs, Catlab.Schemas
 using Catlab.CategoricalAlgebra
@@ -10,12 +10,12 @@ using Catlab.CategoricalAlgebra.FinSets: IdentityFunction
 using Catlab.CategoricalAlgebra.CSets: unpack_diagram, type_components
 import ..FinSets: pushout_complement, can_pushout_complement, id_condition
 import Catlab.CategoricalAlgebra: is_natural, Slice, SliceHom, components,
-                                  LooseACSetTransformation, homomorphisms, homomorphism
+                                  LooseACSetTransformation, homomorphisms, 
+                                  homomorphism
 using Catlab.DenseACSets: attrtype_type
 
 import Base: getindex
 using DataStructures: OrderedSet
-using Catlab.ColumnImplementations: AttrVar
 using StructEquality
 
 
@@ -401,92 +401,114 @@ function sub_vars(X::StructACSet{S}, subs::AbstractDict) where S
   return TightACSetTransformation(merge(comps, subs), X, X′)
 end 
 
-
-# Combinatorializing ACSets
-###########################
 """
-StructACSets are converted to AnonACSets which have attributes replaced with 
-objects. (DynamicACSets could likewise be converted to other DynamicACSets)
-
-For each attrtype (with `n` AttrVars and `m` distinct concrete values, across all 
-attrs which refer to that attrtype) there are n+m parts in pseudoobject. An 
-OrderedSet stores, for the m values, what they correspond to. 
+For any ACSet, X, a canonical map A→X where A has distinct variables for all
+subparts.
 """
-function combinatorialize(X::StructACSet{S})::Pair{AnonACSet,Dict} where S
+function abstract(X::StructACSet{S,Ts}) where {S,Ts} 
+  A = deepcopy(X); 
+  comps = Dict{Any,Any}(map(attrtypes(S)) do at
+    rem_parts!(A, at, parts(A,at))
+    comp = Union{AttrVar,attrtype_instantiation(S,Ts,at)}[]
+    for (f, d, _) in attrs(S; to=at)
+      append!(comp, A[f])
+      A[f] = AttrVar.(add_parts!(A, at, nparts(A,d)))
+    end 
+    at => comp
+  end)
+  for o in ob(S) comps[o]=parts(X,o) end
+  res = ACSetTransformation(A,X; comps...)
+  is_natural(res) || error("bad abstract $comps")
+  return res
+end 
+
+
+"""
+Take an ACSet pullback combinatorially and freely add variables for all 
+attribute subparts.
+
+TODO do var_limit, more generally
+
+This relies on implementation details of `abstract`.
+"""
+function var_pullback(c::Cospan{<:StructACSet{S,Ts}}) where {S,Ts}
+  f, g = deattr.(c)
+  legs = pullback(f,g)
+  new_apex = typeof(dom(first(c)))()
+  copy_parts!(new_apex, dom(first(legs))) # has everything except attributes
+  for at in attrtypes(S) add_part!(new_apex, at) end 
+  for (at,c,_) in attrs(S) 
+    new_apex[:,at] = fill(AttrVar(1), nparts(new_apex,c))
+  end 
+  A = abstract(new_apex)
+  map(zip(legs,c)) do (p,f)
+    X = dom(f)
+    attr_components = Dict(map(attrtypes(S)) do at
+      comp = Union{AttrVar,attrtype_instantiation(S,Ts,at)}[]
+      for (f, c, _) in attrs(S; to=at)
+        append!(comp, X[f][collect(A[c]⋅p[c])])
+      end
+      return at => comp
+    end)
+    ACSetTransformation(dom(A),X; components(p)...,attr_components...)
+  end
+end
+
+
+"""
+We may replace some ...
+"""
+function remove_freevars(X::StructACSet{S}) where S 
+  X = deepcopy(X)
+  d = Dict(map(attrtypes(S)) do at
+    vs = Set{Int}()
+    for f in attrs(S; to=at, just_names=true)
+      for v in filter(x->x isa AttrVar, X[f])
+        push!(vs, v.val)
+      end
+    end
+    # Get new variable IDs 
+    svs = sort(collect(vs))
+    vdict = Dict(v=>k for (k,v) in enumerate(svs))
+    n_v = length(vdict)
+    rem_parts!(X,at, parts(X,at)[n_v+1:end])
+    for f in attrs(S; to=at, just_names=true)
+      for (v,fv) in filter(v_->v_[2] isa AttrVar,collect(enumerate(X[f])))
+        X[v,f] = AttrVar(vdict[fv.val])
+      end
+    end
+    return at => svs
+  end)
+  return X => d
+end 
+
+function remove_freevars(f::ACSetTransformation{S}) where S 
+  is_natural(f) || error("unnatural freevars input")
+  X, d = remove_freevars(dom(f))
+  comps = Dict{Symbol,Any}(o=>collect(f[o]) for o in ob(S))
+  for at in attrtypes(S)
+    comps[at] = collect(f[at])[d[at]]
+  end 
+  res = ACSetTransformation(X, codom(f); comps...)
+  is_natural(res) || error("unnatural freevars output")
+  return res 
+end
+
+function deattr(X::StructACSet{S})::AnonACSet where S
   P = Presentation(FreeSchema)
-  add_generators!(P, Ob(FreeSchema, objects(S)..., attrtypes(S)...))
-  avals = Dict(k=>OrderedSet() for k in attrtypes(S))
+  add_generators!(P, Ob(FreeSchema, objects(S)...))
   for (h,s,t) in homs(S)
     add_generator!(P, Hom(h, Ob(FreeSchema,s), Ob(FreeSchema,t)))
   end
-  for (h,s,t) in attrs(S)
-    add_generator!(P, Hom(h, Ob(FreeSchema,s), Ob(FreeSchema,t)))
-    union!(avals[t], filter(x->!(x isa AttrVar), X[h])) 
-  end
-
   aa = AnonACSet(P) # indexing?
   copy_parts!(aa, X)
-  for (k,v) in collect(avals) 
-    add_parts!(aa, k, length(v))
-  end 
-  for (h,_,t) in attrs(S)
-    aa[h] = [v isa AttrVar ? v.val : findfirst(==(v), avals[t])+nparts(X,t) 
-             for v in X[h]]
-  end 
-  return aa => avals
+  return aa
 end 
 
-function combinatorialize(f::ACSetTransformation{S})::Tuple{ACSetTransformation,Dict,Dict} where S
-  (cX, dX), (cY, dY) = combinatorialize.([dom(f), codom(f)])
-
-  od = Dict{Symbol, Vector{Int}}([o=>collect(components(f)[o]) for o in objects(S)])
-  ad = Dict{Symbol, Vector{Int}}(map(attrtypes(S)) do a 
-    a => map(vcat(collect(components(f)[a].fun),collect(dX[a]))) do v 
-      if v isa AttrVar 
-        return v.val 
-      else 
-        return findfirst(==(v), dY[a])+nparts(codom(f),a)
-      end 
-    end 
-  end) 
-  cs = merge(NamedTuple.([od,ad])...)
-  return (TightACSetTransformation(cs, cX, cY), dX, dY)
+function deattr(f::ACSetTransformation{S}) where S
+  X, Y = deattr.([dom(f),codom(f)])
+  return ACSetTransformation(X,Y; Dict(o=>f[o] for o in ob(S))...)
 end 
-
-function decombinatorialize(Xcombo::StructACSet, tX::Type, 
-                            vals::Union{Nothing,AbstractDict}=nothing)
-  res = tX()
-  S = acset_schema(res)
-  copy_parts!(res, Xcombo)
-  for at in attrtypes(S) rem_parts!(res, at, parts(res, at)) end 
-  for (at, c, atype) in attrs(S)
-    new_parts = Dict()
-    for part in parts(Xcombo, c)
-      v = Xcombo[part, at]
-      if isnothing(vals)
-        if haskey(new_parts, v)
-          v_ = new_parts[v]
-        else 
-          new_parts[v] = v_ = add_part!(res, atype)
-        end 
-        set_subpart!(res, part, at, AttrVar(v_))
-      else 
-        set_subpart!(res, part, at, vals[atype][v])
-      end
-    end
-  end
-  res
-end
-
-function decombinatorialize(f::ACSetTransformation, tX::Type, 
-                            domvals=nothing,codomvals=nothing)
-  res = tX()
-  S = acset_schema(res)
-  dcdom = decombinatorialize(dom(f), tX, domvals)
-  dccdom = decombinatorialize(codom(f), tX, codomvals)
-  comps = NamedTuple(Dict([k=>collect(f[k]) for k in ob(S)]))
-  return only(homomorphisms(dcdom,dccdom; initial=comps))
-end
 
 # This should be upstreamed as a PR to Catlab
 #############################################

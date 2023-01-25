@@ -1,7 +1,20 @@
+module TestConstraints 
 using AlgebraicRewriting
-using Catlab.CategoricalAlgebra, Catlab.Graphs
+using Catlab, Catlab.CategoricalAlgebra, Catlab.Graphs
 using Test 
 
+# Testing arity 2 constraints
+#############################
+cg = @acset CGraph begin V=3; E=3; Elabel=2; src=[1,1,2]; tgt=[3,2,3]; 
+  vlabel=Graph.([2,2,2]); elabel=[AttrVar.(1:2)...,nothing] 
+end
+c = Constraint(cg, Exists(3, Commutes([1],[2,3])))
+h1, hid, hnot, _ = homomorphisms(Graph.([2,2])...)
+@test !apply_constraint(c, hid, h1)
+@test apply_constraint(c, hid, hnot)
+
+# AppCond 
+#########
 """
 Positive application condition: a particular matched vertex must have self loop.
 
@@ -21,6 +34,8 @@ f = homomorphism(p2, G)
 @test apply_constraint(constr, f)
 @test !apply_constraint(constr, id(p2))
 
+# LiftCond
+##########
 
 """
          ∀ 
@@ -63,3 +78,5 @@ h1,h2,h3,h4 = homomorphisms(G, loop_csp; initial=(V=Dict(1=>1),))
 @test !apply_constraint(constr,h2)
 @test !apply_constraint(constr,h3)
 @test apply_constraint(constr,h4)
+
+end # module 

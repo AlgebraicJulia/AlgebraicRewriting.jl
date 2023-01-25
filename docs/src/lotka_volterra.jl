@@ -1,3 +1,5 @@
+module LotkaVolterra 
+
 using Catlab, Catlab.Theories, Catlab.CategoricalAlgebra, Catlab.Graphs, 
       Catlab.Graphics, Catlab.WiringDiagrams
 using AlgebraicRewriting
@@ -59,16 +61,6 @@ F = Migrate(
   Dict([:sheep_loc=>:wolf_loc, :wolf_loc=>:sheep_loc,
         :sheep_eng=>:wolf_eng, :wolf_eng=>:sheep_eng,:grass_eng =>:grass_eng,
         :sheep_dir=>:wolf_dir, :wolf_dir=>:sheep_dir,]), LV)
-
-# F = FinFunctor(
-#   Dict([:Sheep => :Wolf, :Wolf => :Sheep, :V=>:V, :E=>:E,:Dir=>:Dir, :Eng=>:Eng]),
-#   Dict([:sheep_loc=>:wolf_loc, :wolf_loc=>:sheep_loc,
-#         :sheep_eng=>:wolf_eng, :wolf_eng=>:sheep_eng,:grass_eng =>:grass_eng,
-#         :sheep_dir=>:wolf_dir, :wolf_dir=>:sheep_dir,
-#         :src=>:src,:tgt=>:tgt,:dir=>:dir]),
-#   TheoryLV, TheoryLV
-# )
-# F = DeltaMigration(F, LV, LV)
 
 """
 Create a nxn grid with periodic boundary conditions. Edges in each cardinal
@@ -398,3 +390,5 @@ if false
   w = Window()
   body!(w, view_traj(overall, res, Graph))
 end
+
+end # module

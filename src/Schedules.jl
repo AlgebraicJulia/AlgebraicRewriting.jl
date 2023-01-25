@@ -15,10 +15,11 @@ using Catlab.WiringDiagrams.DirectedWiringDiagrams: in_port_id, out_port_id
 using ..Rewrite
 using ..CategoricalAlgebra
 
-using ..Rewrite.RewriteUtils: rewrite_full_output, get_matches, get_rmap, 
-                              get_pmap, get_expr_binding_map
+using ..Rewrite.Utils: AbsRule, rewrite_full_output, get_matches, get_rmap, 
+                       get_pmap, get_expr_binding_map
 using ..CategoricalAlgebra.CSets: 
-  postcompose_partial, extend_morphism_constraints, extend_morphisms, Migrate
+  postcompose_partial, extend_morphism_constraints, extend_morphisms, Migrate,
+  abstract
 
 const homs = homomorphisms
 
@@ -45,25 +46,8 @@ str_hom(m::ACSetTransformation) = join([
 
 # Partial map utilities 
 #######################
-"""Canonical map from an acset with only variables, no concrete attrs"""
-function varid(s::StructACSet{S,Ts}) where {S,Ts} 
 
-  X = deepcopy(s); 
-  comps = Dict(map(attrtypes(S)) do at
-    rem_parts!(X, at, parts(X,at))
-    comp = Union{AttrVar,attrtype_instantiation(S,Ts,at)}[]
-    for (f, d, _) in attrs(S; to=at)
-      append!(comp, X[f])
-      X[f] = AttrVar.(add_parts!(X, at, nparts(X,d)))
-    end 
-    at => comp
-  end)
-  for o in ob(S) comps[o]=parts(s,o) end
-  res = ACSetTransformation(X,s; comps...)
-  is_natural(res) || error("bad varid $comps")
-  return res
-end 
-id_pmap(s::StructACSet) = Span(varid(s),varid(s)) # the identity partial map
+id_pmap(s::StructACSet) = Span(abstract(s),abstract(s)) # the identity partial map
 no_pmap(s1::StructACSet,s2::StructACSet) = Span(create.([s1,s2])...) # empty
 tot_pmap(f::ACSetTransformation) = Span(id(dom(f)), f)
 
@@ -230,7 +214,8 @@ function typecheck(wd::WiringDiagram)::Schedule
       d = Dict(:w=>wd.diagram[i,wval], :s=>wd.diagram[op, sval],
                :t=>wd.diagram[ip, tval])
       val = Set(filter(x->!isnothing(x), collect(values(d))))
-      if length(val) != 1 error("#$i ($s:$op->$t:$ip): $(collect(d))") end 
+      inbox, outbox = wd.diagram[op, :out_port_box], wd.diagram[ip, :in_port_box]
+      if length(val) != 1 error("#$i ($s($inbox) ->$t($outbox): $(collect(d))") end 
       set_subpart!(wd.diagram, i,  wval, only(val))
       set_subpart!(wd.diagram, op, sval, only(val))
       set_subpart!(wd.diagram, ip, tval, only(val))
@@ -259,15 +244,15 @@ The agent is related to the L and R patterns of the rule.
 """
 struct RuleApp <: AgentBox
   name::String 
-  rule::Rule 
+  rule::AbsRule 
   agent::Span # map L <-- A --> R
-  RuleApp(n,r::Rule, a::Multispan) = new(n,r,Span(a...))
-  RuleApp(n,r::Rule, a::ACSetTransformation) = 
-    RuleApp(n,r,Span(a⋅r.L, a⋅r.R))
-  RuleApp(n,r::Rule, a::StructACSet; kw...) = 
-    RuleApp(n,r,only(homs(a, dom(r.L); kw...)))
-  RuleApp(n,r::Rule) = 
-    RuleApp(n,r,create(dom(r.L))) # empty interface by default
+  RuleApp(n,r::AbsRule, a::Multispan) = new(n,r,Span(a...))
+  RuleApp(n,r::AbsRule, a::ACSetTransformation) = 
+    RuleApp(n,r,Span(a⋅left(r), a⋅right(r)))
+  RuleApp(n,r::AbsRule, a::StructACSet; kw...) = 
+    RuleApp(n,r,only(homs(a, dom(left(r)); kw...)))
+  RuleApp(n,r::AbsRule) = 
+    RuleApp(n,r,create(dom(left(r)))) # empty interface by default
 end  
 Base.string(c::RuleApp) = c.name
 input_ports(r::RuleApp) = [dom(left(r.agent))] 
@@ -286,11 +271,11 @@ function update(r::RuleApp, ::Int, instate::Traj, ::Nothing)
     m = first(ms)
     res = rewrite_match_maps(r.rule, m; check=true)
     rmap = get_rmap(ruletype(r.rule), res)
-    xmap = get_expr_binding_map(r.rule, m, rmap)
+    xmap = get_expr_binding_map(r.rule, m, res)
     new_agent = right(r.agent) ⋅ rmap ⋅ xmap
     pl, pr = get_pmap(ruletype(r.rule), res)
     pmap = Span(pl, pr ⋅ xmap)
-    msg = str_hom(m)
+    msg = m isa ACSetTransformation ? str_hom(m) : str_hom(first(m)) # PBPO
     return (1, new_agent, pmap, nothing, msg)
   end
 end 
@@ -327,11 +312,11 @@ color(::Condition) = "lightpink"
   Condition(a.prob, a.n, F(a.agent); update=a.update, name=a.name, init=a.init)
 
 """Allow `prob` to depend on just the input or optionally the state, too"""
-apply_prob(c::Condition, arg1, arg2) = try 
-  return c.prob(arg1,arg2)
+apply_prob(c::Condition, curr_state, box_state) = try 
+  return c.prob(curr_state,box_state)
 catch e 
   if e isa MethodError 
-    return c.prob(arg1)
+    return c.prob(curr_state)
   else 
     throw(e)
   end
@@ -349,24 +334,63 @@ end
 
 """
 Has an A input/output and a B input/output (by default, the B input can be 
-changed to some other type if needed). Performs one action
-per element of Hom(B,A) (i.e. sends you out along the B wire with agent Bₙ->X
-). After you have done this for all Bₙ, then you exit the A port (you need to 
+changed to some other type if needed). 
+
+    A  R ---------↖
+    ↓  ↓          []  
+  ⌜-------⌝       []
+  | Query | [agent subroutine] 
+  ⌞-------⌟       []
+   ↓  ↓  ↓        []
+   A  B  ∅        []
+      ↘-----------↗
+Performs one action per element of Hom(B,X), optionally with some constraints.
+(i.e. sends you out along the B wire with agent Bₙ->X). 
+
+After you have done this for all Bₙ, then you exit the A port (you need to 
 update the A->X map, and, if at any point the agent was deleted, then you exit a 
 third door typed by 0).
-Optional: give a partial map from A->B so that only B agents that are related 
-to the current A agent are found.
 """
 struct Query <: AgentBox
   name::String
-  agent::Span
+  agent::StructACSet
+  subagent::StructACSet
   return_type::StructACSet
-  Query(a::Span, n::String="", ret=nothing) = 
-    new(n,a, isnothing(ret) ? codom(right(a)) : ret)
-  Query(a_out::StructACSet, n::String="", ret=nothing) =
-    Query(typeof(a_out)(), a_out, n, ret)
-  Query(a_in::StructACSet,a_out::StructACSet, n::String="", ret=nothing) = 
-    Query(no_pmap(a_in,a_out), n, ret)
+  constraint::Constraint
+  Query(n::String,sa::StructACSet,a::Union{Nothing,StructACSet}=nothing, 
+        ret::Union{StructACSet,Nothing}=nothing; constraint=Trivial) = 
+    new(n, isnothing(a) ? typeof(sa)() : a, sa, 
+        isnothing(ret) ? sa : ret, constraint)
+  Query(sa::StructACSet,a::StructACSet=nothing, n::String="",ret=nothing; constraint=Trivial) = 
+    Query(n,sa,a,ret;constraint=constraint)
+  """ 
+  Span Aₒ<-•->Aₙ relates old agent shape to new agent shape, such that the 
+  new agent Aₙ->X makes the square commute. If constraint is nontrivial, this 
+  constraint is added to it.
+  """
+  function Query(a::Span, n::String="", ret=nothing; constraint=Trivial)
+    in_shape, agent_shape = codom.([left(a),right(a)])
+    if arity(constraint) == 0 # trivial
+      cg = @acset CGraph begin V=4; E=4; Elabel=1; src=[1,1,2,3]; tgt=[2,3,4,4]
+        vlabel=[apex(a), in_shape, agent_shape, nothing]
+        elabel=[a...,AttrVar.([2,1])...]
+      end
+      xpr = Commutes([1,3],[2,4])
+    elseif arity(constraint) == 1 
+      cg = deepcopy(constraint.g)
+      v_a,v_l = add_vertices!(constraint.g; vlabel=[apex(a),in_shape]) 
+      e_r = findfirst(==(AttrVar(1)), constraint.g[:elabel])
+      v_r, v_w = [constraint.g[e_r, x] for x in [:src,:tgt]]
+      e1,e2,e3 = add_edges!(constraint.g; src=[v_a,v_a,v_l], tgt=[v_l,v_r,v_w], 
+                 elabel=[a...,AttrVar(2)])
+      xpr = And(Commute([e1,e2],[e3,e_r]), constraint.d)
+    else
+      error("Odd constraint") 
+    end 
+    rshape = isnothing(ret) ? agent_shape : ret
+    new(n, in_shape, agent_shape, rshape, Constraint(cg, xpr))
+  end
+
 end
 
 mutable struct QueryState 
@@ -378,10 +402,8 @@ Base.pop!(q::QueryState) = deepcopy(pop!(q.homs))
 Base.length(q::QueryState) = length(q.homs)
 Base.string(c::Query) = "Query $(c.name)"
 color(::Query) = "yellow"
-in_agent(c::Query) = codom(left(c.agent))
-out_agent(c::Query) = codom(right(c.agent))
-input_ports(c::Query) = [in_agent(c), c.return_type] 
-output_ports(c::Query) = [in_agent(c), out_agent(c), typeof(in_agent(c))()]
+input_ports(c::Query) = [c.agent, c.return_type] 
+output_ports(c::Query) = [c.agent, c.subagent, typeof(c.agent)()]
 initial_state(::Query) = QueryState(-1, ACSetTransformation[])
 (F::Migrate)(a::Query) =  Query(a.name,F(a.agent), F(a.return_type))
 
@@ -389,7 +411,8 @@ function update(q::Query, i::Int, instate::Traj, boxstate::Any)
   idp = id_pmap(traj_res(instate))
   msg = ""
   curr_boxstate = (i != 1) ? boxstate : begin 
-    ms = extend_morphisms(left(q.agent)⋅traj_agent(instate), right(q.agent))
+    ms = filter(h->apply_constraint(q.constraint, h, traj_agent(instate)),
+                homomorphisms(q.subagent, traj_res(instate)))
     msg *= "Found $(length(ms)) agents"
     QueryState(length(instate), ms)
   end 
@@ -494,7 +517,7 @@ if_cond(name::String, boolfun::Function, agent::StructACSet) =
 """
 A box that takes the first output iff there is a match from a rule into the 
 current state"""
-has_match(rulename::String, r::Rule, agent::StructACSet) = 
+has_match(rulename::String, r::AbsRule, agent::StructACSet) = 
   if_cond("Can match $rulename", x->!isempty(get_matches(r,x)), agent)
 
 """
@@ -542,8 +565,8 @@ end
 
 for_schedule(s::AgentBox, n::Int) = for_schedule(singleton(s),n)
 
-function agent(s::WiringDiagram, a::Union{Span,StructACSet}; n="agent", ret=nothing)
-  q = Query(a, n, ret)
+function agent(s::WiringDiagram, sa::StructACSet, a=nothing; n="agent", ret=nothing)
+  q = Query(n, sa, a, ret)
   a,b,z = output_ports(q)
   a_, c = input_ports(q)
   a == a_ || error("Bad ports")
@@ -554,8 +577,6 @@ function agent(s::WiringDiagram, a::Union{Span,StructACSet}; n="agent", ret=noth
       return out, sched(loop)
   end)
 end 
-
-
 
 # Executing schedules 
 #####################

@@ -6,7 +6,7 @@ using Interact
 @test length(methods(view_traj)) == 2
 
 @testset "Lotka Volterra" begin
-  # include("../docs/src/lotka_volterra.jl") # this shouldn't crash
+  include("../docs/src/lotka_volterra.jl") # this shouldn't crash
 end
 
 # Background 

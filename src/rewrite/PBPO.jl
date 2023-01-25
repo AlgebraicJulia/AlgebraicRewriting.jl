@@ -1,14 +1,80 @@
 module PBPO 
-import ..RewriteUtils: rewrite_match_maps, get_matches
+export PBPORule
 
-using ..RewriteDataStructures
+import ..Utils: 
+  rewrite_match_maps, get_matches, get_expr_binding_map, AbsRule, ruletype
+using ..Utils
 using ..Constraints
 using ...CategoricalAlgebra
 
-using ...CategoricalAlgebra.CSets: extend_morphisms, decombinatorialize
+using ...CategoricalAlgebra.CSets: 
+  extend_morphisms, abstract, var_pullback, remove_freevars
+using Catlab, Catlab.CategoricalAlgebra
+import Catlab.CategoricalAlgebra: left, right
 
 
-using Catlab.CategoricalAlgebra
+"""
+      l    r 
+   L  ⟵ K ⟶ R 
+tl ↓     ↓ tk     <== these must be monic
+   L' ⟵ K'
+
+It is assumed we never want the typing/adherence match to be monic, but we 
+can optionally restrict the match L → G to be monic.
+
+We can attach application conditions to both the match morphism as well as the 
+adherence morphism. 
+"""
+struct PBPORule <: AbsRule
+  l
+  r
+  tl
+  tk 
+  l′
+  monic::Union{Bool, Vector{Symbol}}
+  acs::Vector{Constraint}
+  lcs::Vector{Constraint}
+  exprs::Dict 
+  k_exprs::Dict
+  function PBPORule(l,r,tl,tk,l′; monic=true, acs=[], lcs=[], 
+                    expr=nothing,k_expr=nothing)
+    # check things match up
+    S = acset_schema(dom(l))
+    all(is_natural, [l,r,tl,tk,l′]) || error("Unnatural")
+    dom(l) == dom(r) == dom(tk) || error("bad K")
+    codom(l) == dom(tl) || error("bad L")
+    codom(tk) == dom(l′) || error("bad K'")
+    codom(l′) == codom(tl) || error("bad L'")
+    check_pb(deattr.([tl,l′,l,tk])...) || error("(l,tk) not the pullback of (tl,l′)")
+    all(o->is_monic(tl[o]), ob(S)) || error("tl map must be monic $tl")
+    all(o->is_monic(tk[o]), ob(S)) || error("tk map must be monic $tk")
+    # check adherence conditions?
+    exprs = isnothing(expr) ? Dict() : Dict(pairs(expr))
+    k_exprs = isnothing(k_expr) ? Dict() : Dict(pairs(k_expr))
+
+    return new(l,r,tl,tk,l′, monic, acs, lcs, exprs, k_exprs)
+  end
+end
+
+ruletype(::PBPORule) = :PBPO
+left(r::PBPORule) = r.l 
+right(r::PBPORule) = r.r
+
+
+"""
+Take a PBPO rule and put into normal form, i.e. 
+where the lower square forms a pullback
+
+See Prop 2.4 of "The PBPO graph transformation approach"
+"""
+function canon(l,r,tl,tk,l′)::PBPORule
+  new_l , new_tk = pb = pullback(tl, l′)
+  ns = filter(n->force(n⋅new_tk)==force(tk), 
+              homomorphisms(dom(l), apex(pb)))
+  n = only(ns) # is there a better way to get this via pullback?
+  new_r, _ = pushout(n, r)
+  PBPORule(force.([new_l, new_r, tl, new_tk,l′])...)
+end
 
 """
 PBPO matches consist of *two* morphisms. First, a match L → G and secondly 
@@ -16,20 +82,70 @@ a typing G → L′.
 
 We enumerate matches first and then consider, for each of them, if there is a 
 valid typing.
+     m
+  L⌟ ⟶ G 
+  ||    ↓ α
+  L  ⟶ L′
+     tl
+
+     ∀m
+   L ⟶ G 
+tl ↓ ↘a ↑ (abstraction)
+   L′⟵ A 
+      α
+
+Search over all pairs m: L->G and α:A->L′. 
+"Strong match" condition we check is that: tl⁻¹(α(A)) = a⁻¹(A).
 """
-function get_matches(rule::PBPORule, G; verbose=false, initial=nothing, seen=nothing, kw...)
+function get_matches(rule::PBPORule, G::StructACSet{S}; verbose=false, 
+                     initial=nothing, kw...) where S
   res = []
-  matchinit, typinit = isnothing(initial) ? (Dict()=>Dict()) : initial 
+  if isnothing(initial)
+    matchinit, typinit = Dict(), Dict()
+  elseif initial isa Union{NamedTuple,AbstractDict}
+    matchinit, typinit = Dict(pairs(initial)), Dict()
+  elseif length(initial)==2
+    matchinit, typinit = [Dict(pairs(x)) for x in initial]
+  else 
+    error("Unexpected type for `initial` keyword: $initial")
+  end 
   L = codom(left(rule))
   for m in homomorphisms(L, G; monic=rule.monic, initial=NamedTuple(matchinit))
-    if verbose println("m: ", collect(pairs(components(m)))...) end
     if all(ac->apply_constraint(ac, m), rule.acs)
-      alpha_candidates = extend_morphisms(rule.tl, m; initial=typinit)
-      if verbose println("length(alpha_candidates) $(length(alpha_candidates))") end
-      αs = collect(filter(a->check_pb(rule.tl, a, id(L), m; verbose=verbose) 
-                          && all(lc->apply_constraint(lc, a), rule.lcs),
-                          alpha_candidates))
-      append!(res, [m=>α for α in αs])
+      if verbose 
+        println("m: ", [k=>collect(v) for (k,v) in pairs(components(m))]) 
+      end
+      # Construct maps a:L->A and ab A->G such that m = a;ab
+      ab = abstract(G)
+      A = dom(ab)    
+      ainit = NamedTuple(Dict(o=>collect(m[o]) for o in ob(S)))
+      for (a, cd, _) in attrs(S)
+        for (v, fv) in filter(v_->!(v_[2] isa AttrVar),collect(enumerate(L[a])))
+          A[m[cd](v), a] = fv
+        end
+      end 
+      ab = remove_freevars(ab)
+      A = dom(ab)
+      a = only(homomorphisms(L, A; initial=ainit))
+      for α in extend_morphisms(rule.tl, a; initial=typinit)
+        if verbose 
+          println("\tα: ", [k=>collect(v) for (k,v) in pairs(components(α))]) 
+        end
+        strong_match = all(ob(S)) do o 
+          all(parts(A,o)) do i 
+            p1 = preimage(rule.tl[o],α[o](i))
+            p2 = preimage(a[o], i)
+            sort(p1) == sort(p2)
+          end
+        end
+        if strong_match && all(lc -> apply_constraint(lc, α), rule.lcs)
+          all(is_natural, [m,a,ab,α]) || error("Unnatural match")
+          if verbose print("\tSUCCESS") end 
+          push!(res, (m,a,ab,α))
+        elseif verbose 
+          println("\tFAILURE")
+        end
+      end
     end
   end
   return res
@@ -47,63 +163,66 @@ Gₗ <---- Gk ----> Gᵣ
 For the adherence morphism α to be valid, it must satisfy a condition with 
 m, tₗ. This is checked for matches provided by get_matches, so by default 
 we do not check it.
+
+  L <--⌞•
+m ↓     ↓
+  G ⟵ Gk
 """
 function rewrite_match_maps(rule::PBPORule,mα; check=false, kw...)
-  m, α = mα 
-  !check || check_pb(rule.tl, α, id(codom(left(rule))), m) || error("Invalid PBPO match") 
-
-  gl, u′ = pullback(α, rule.l′)
-  l_check, u = pullback(m, gl)
-  force(l_check) == force(left(rule)) || error("failed l check")
-  w, gr = pushout(rule.r, u)
+  _, a, _, α = mα 
+  S = acset_schema(dom(left(rule)))
+  gl, u′ = var_pullback(Cospan(α, rule.l′)) # A <-- Gk --> K'
+  abs_K = abstract(dom(left(rule))) # absK -> K 
+  u = only(filter(u->force(compose(u,u′))==force(compose(abs_K,rule.tk)), 
+                  homomorphisms(dom(abs_K), dom(u′))))
+  abs_r = homomorphism(dom(abs_K), codom(right(rule)); 
+                       initial=Dict([o=>collect(right(rule)[o]) for o in ob(S)]))
+  # We need to move the map absK-->Gk to K-->Gk. Need a map absK --> K
+  w, gr = pushout(abs_r, u)
 
   # relevant morphisms to return: u′, u, gr, w
   return Dict(:gl=>gl, :u′=>u′, :u=>u, :gr=>gr, :w=>w)
 end
 
 
-function get_matches(rule::AttrPBPORule, G::StructACSet; verbose=false, initial=nothing, seen=nothing, kw...)
-  G_combo, _ = combinatorialize(G)
-  get_matches(rule.combo_rule, G_combo; initial=initial, verbose=verbose, seen=seen)
-end
-
 """
-We must pass in the original graph to be rewritten.
+Use exprs and k_exprs
 """
-function rewrite_match_maps(r::AttrPBPORule, m; G=nothing, kw...) 
-  S = acset_schema(dom(r.l))
-  _, G_dict = combinatorialize(G)
-  res_data = rewrite_match_maps(r.combo_rule, m; kw...)
-  combo_res = codom(res_data[:w])
-  var_repl = Dict(map(attrtypes(S)) do at 
-    bound_vars = [G_dict[at][x] for x in collect(m[1][at])]
-    at => map(parts(combo_res, at)) do result_var
-      r_var = preimage(res_data[:w][at], result_var)
-      if !isempty(r_var) 
-        return subexpr(r.exprs[at][only(r_var)], bound_vars)
-      else 
+function get_expr_binding_map(rule::PBPORule, mtch, res) 
+  R, X = dom(res[:w]), codom(res[:w])
+  K′ = codom(rule.tk)
+  (m, _, ab, _) = mtch
 
-        gk_var = preimage(res_data[:gr][at], result_var)
-        gl_val = G_dict[at][res_data[:gl][at](gk_var[1])] # G has no variables
-        k_var = res_data[:u′][at](gk_var[1]) # Assume K′ has no attributes? 
-        println("($gl_val, $k_var)")
-        if haskey(r.k_exprs[at], k_var)
-          return r.k_exprs[at][k_var](gl_val, bound_vars)
-        else 
-          return gl_val
+  comps = Dict(map(attrtypes(acset_schema(X))) do at 
+    bound_vars = Vector{Any}(collect(m[at]))
+    G_bound_vars = Vector{Any}(collect(compose(res[:gl][at],ab[at])))
+    K_bound_vars = [k isa AttrVar ? k.val : k for k in collect(res[:u′][at])]
+    exprs = haskey(rule.k_exprs,at) ? rule.k_exprs[at] : Dict()
+    at => map(parts(X, at)) do x 
+      p_r = preimage(res[:w][at], AttrVar(x))
+      if !isempty(p_r) 
+        v = only(p_r)
+        if haskey(rule.exprs,at)
+          rx = rule.exprs[at]
+          rexpr = rx isa AbstractVector ? rx[v] : get(rx, v, nothing)
+          if !isnothing(rexpr)
+            return rexpr(bound_vars)
+          end
         end
+      end 
+      # Try to get value via Gk
+      p_k = only(preimage(res[:gr][at], AttrVar(x)))
+      ik = K_bound_vars[p_k]
+      k_expr = exprs isa AbstractVector ? exprs[ik] : get(exprs, ik, nothing)
+      if isnothing(k_expr)
+        return G_bound_vars[p_k]
+      else 
+        return k_expr(G_bound_vars[p_k], bound_vars)
       end
     end
   end)
-  gl = decombinatorialize(res_data[:gl], typeof(G), nothing, G_dict)
-  gr = decombinatorialize(res_data[:gr], typeof(G), nothing, var_repl)
-  u = decombinatorialize(res_data[:u], typeof(G), nothing, nothing)
-  w = decombinatorialize(res_data[:w], typeof(G), nothing, var_repl)
-  return Dict(:gl=>gl,:gr=>gr, :u=>u,:w=>w)
-end 
-
-
-
+  return sub_vars(X, comps)
+end
 
 
 

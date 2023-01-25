@@ -1,7 +1,7 @@
 module DPO 
-import ..RewriteUtils: rewrite_match_maps
+import ..Utils: rewrite_match_maps
 
-using ..RewriteDataStructures
+using ..Utils
 using ...CategoricalAlgebra.CSets
 using Catlab.CategoricalAlgebra
 

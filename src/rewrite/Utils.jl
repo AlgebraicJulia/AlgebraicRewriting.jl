@@ -1,18 +1,68 @@
-module RewriteUtils
+module Utils
 
-export rewrite, rewrite_match, rewrite_parallel, rewrite_full_output,
+export Rule, ruletype,rewrite, rewrite_match, rewrite_parallel, rewrite_full_output,
        rewrite_match_maps, rewrite_parallel_maps, rewrite_sequential_maps
 
 using Catlab, Catlab.Theories, Catlab.Schemas
 using Catlab.CategoricalAlgebra
-using Catlab.ColumnImplementations: AttrVar
+import Catlab.CategoricalAlgebra: left, right
 
 using Random
+using StructEquality
 
 using ..Constraints
-using ...CategoricalAlgebra, ..RewriteDataStructures
+using ...CategoricalAlgebra
 using ...CategoricalAlgebra.CSets: invert_hom
 
+
+# RULES 
+#######
+abstract type AbsRule end 
+
+"""
+Rewrite rules which are encoded as spans. 
+The L structure encodes a pattern to be matched. 
+The R morphism encodes a replacement pattern to be substituted in.
+They are related to each other by an interface I with maps: L ⟵ I ⟶ R 
+
+A semantics (DPO, SPO, or SqPO) must be chosen.
+
+Control the match-finding process by specifying whether the match is
+intended to be monic or not, as well as an optional application
+condition(s) 
+
+Monic constraints can be independently given
+to the match morphism and to the morphisms searched for when checking NAC.
+"""
+struct Rule{T} <: AbsRule
+  L::Any
+  R::Any
+  conditions::Vector{Constraint} # constraints on match morphism
+  monic::Union{Bool, Vector{Symbol}}
+  exprs::Dict{Symbol, Vector{<:Function}}
+  function Rule{T}(L, R; ac=nothing, monic=false, expr=nothing) where {T}
+    dom(L) == dom(R) || error("L<->R not a span")
+    ACs = isnothing(ac) ? [] : ac
+    exprs = isnothing(expr) ? Dict() : Dict(pairs(expr))
+    map(enumerate([L,R,])) do (i, f)
+      if !is_natural(f)
+        error("unnatural map #$i: $f")
+      end
+    end
+    for (o, xs) in collect(exprs)
+      nparts(codom(R),o) == length(xs) || error("$(nparts(codom(R),o)) exprs needed for part $o")
+    end 
+    new{T}(L, R, ACs, monic, exprs)
+  end
+end
+
+Rule(l,r;kw...) = Rule{:DPO}(l,r; kw...)
+ruletype(::Rule{T}) where T = T
+left(r::Rule{T}) where T = r.L
+right(r::Rule{T}) where T = r.R
+
+(F::Migrate)(r::Rule{T}) where {T} =
+  Rule{T}(F(r.L), F(r.R); ac=F.(r.conditions), expr=r.exprs, monic=r.monic)
 
 # Extracting specific maps from rewriting output data 
 #####################################################
@@ -24,7 +74,6 @@ function get_rmap(sem::Symbol, maps)
   elseif sem == :SPO  invert_hom(maps[:nb]) ⋅ maps[:nd]
   elseif sem == :SqPO maps[:r]
   elseif sem == :PBPO maps[:w]
-  elseif sem == :AttrPBPO maps[:w]
   else   error("Rewriting semantics $sem not supported")
   end
 end
@@ -134,10 +183,9 @@ m ↓    ↓    ↓ res
             X′
 
 """
-function get_expr_binding_map(r::Rule{T}, m, result::ACSetTransformation) where T
+function get_expr_binding_map(r::Rule{T}, m::ACSetTransformation, res) where T
+  result = get_rmap(ruletype(r),res)
   R, X = dom(result), codom(result)
-  show(stdout, "text/plain", R)
-  show(stdout, "text/plain", X)
   comps = Dict(map(attrtypes(acset_schema(X))) do at 
       bound_vars = Vector{Any}(collect(m[at]))
       binding = Any[nothing for _ in parts(X, at)]
@@ -157,9 +205,9 @@ function get_expr_binding_map(r::Rule{T}, m, result::ACSetTransformation) where 
   end)
   return sub_vars(X, comps)
 end
-get_expr_binding_map(::PBPORule, _, result) = result
-get_expr_binding_map(::AttrPBPORule, _, result) = result
-get_expr_binding_map(::Rule{T}, m, result) where T = result # non-ACSet
+
+get_expr_binding_map(r::Rule{T}, m, res) where T = 
+  get_rmap(ruletype(r),res) |> codom |> id
 
 
 """Replace AttrVars with values"""
@@ -203,8 +251,7 @@ end
 Perform a rewrite (with a supplied match morphism) and return result.
 """
 rewrite_match(r::AbsRule, m; kw...) =
-  codom(get_expr_binding_map(r, m, get_rmap(ruletype(r), 
-                                            rewrite_match_maps(r,m; kw...))))
+  codom(get_expr_binding_map(r, m, rewrite_match_maps(r,m; kw...)))
 
   """    rewrite_parallel(rs::Vector{Rule}, G; kw...)
   Perform multiple rewrites in parallel (automatically finding arbitrary matches)
