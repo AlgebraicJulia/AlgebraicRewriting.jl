@@ -5,7 +5,6 @@ using AlgebraicRewriting
 using Catlab, Catlab.CategoricalAlgebra, Catlab.Graphs, Catlab.Graphics
 const hom = homomorphism
 const homs = homomorphisms
-using AlgebraicRewriting.Rewrite.Utils: get_matches
 
 # Example from Fig. 7 of "A PBPO+ Graph Rewriting Tutorial"
 ###########################################################
@@ -83,9 +82,9 @@ tk = ACSetTransformation(K,K′;V=[1,4])
 l′ = hom(K′,L′; initial=(V=[1,2,3,1,2],))
 
 """      ∀₂                  ∀₂
-    [•] ---> G         [•] ---> G
+    [•]₁ --> G₂        [•] ---> G₂
     ₄↓  ↗∃₃  ↓ λ₁  or  ₄↓  ↗∃₃  ↓ λ₁
-   [•→•] --> L′       [•→•] --> L′
+   [•→•]₃--> L′₄      [•→•]₃--> L′₄
     1 2  ⁵            2 2    ⁶
 """
 G1, arr = Graph(1), path_graph(Graph,2)
@@ -93,7 +92,7 @@ vertical = ACSetTransformation(G1, arr; V=[2])
 bottom_5 = hom(arr, L′; initial=(V=[1,2],))
 bottom_6 = hom(arr, L′;initial=(V=[2,2],))
 
-cg = @acset CGraph begin V=4; E=6; src=[2,1,3,1,3,3]; tgt=[3,2,2,3,4,4];
+cg = @acset CGraph begin V=4; E=6; src=[2,1,3,1,3,3]; tgt=[4,2,2,3,4,4];
   vlabel=[G1, nothing, arr, L′]; 
   elabel=[AttrVar(1), nothing,  nothing, vertical, bottom_5, bottom_6]
 end

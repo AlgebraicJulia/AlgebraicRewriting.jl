@@ -54,6 +54,9 @@ function (F::Migrate)(c::CGraph)
 end
 
 abstract type BoolExpr end 
+check_expr(::CGraph, ::BoolExpr) = error("Method undefined")
+bound(::BoolExpr) = error("Method undefined")
+eval_boolexpr(::BoolExpr, ::CGraph, ::Assgn) = error("Method undefined")
 
 @struct_hash_equal struct Commutes <: BoolExpr 
   pths::Vector{Vector{Int}}
@@ -101,6 +104,30 @@ end
   expr::BoolExpr
 end 
 
+function check_expr(g::CGraph, c::Commutes)
+  viol = String[]  
+  # check paths are parallel 
+  srcs = unique([g[first(p),:src] for p in c.pths])
+  length(srcs) == 1 || push!(viol,"Paths don't share common src $srcs ")
+  tgts = unique([g[last(p),:tgt] for p in c.pths])
+  length(tgts) == 1 || push!(viol, "Paths don't share common tgt $tgts ")
+  for (i,p) in enumerate(c.pths)  # check each path matches head to tail 
+    for (e1, e2) in zip(p, p[2:end])
+      g[e1,:tgt] == g[e2, :src] || push!(viol, "Path $i doesn't compose $p")
+    end
+  end
+  return viol
+end
+check_expr(g::CGraph, c::Quantifier) = vcat(
+  isnothing(g[c.e, :elabel]) ? [] : ["quantified var $(c.e) already assigned"], 
+  check_expr(g, c.expr), check_expr(g, c.st))
+
+check_expr(::CGraph, ::BoolConst) = String[]
+check_expr(g::CGraph, a::BoolAnd) = vcat([check_expr(g,e) for e in a.exprs]...)
+check_expr(g::CGraph, a::BoolOr) = vcat([check_expr(g,e) for e in a.exprs]...)
+check_expr(g::CGraph, a::BoolNot) = check_expr(g,a.expr)
+
+
 bound(::BoolConst) = Set{Int}([])
 bound(b::BoolOr) = union(bound.(b.exprs)...)
 bound(b::BoolAnd) = union(bound.(b.exprs)...)
@@ -108,31 +135,38 @@ bound(b::BoolNot) = bound(b.expr)
 bound(b::Quantifier) = Set([b.e]) ∪ bound(b.expr)
 bound(::Commutes) = Set{Int}([])
 
-eval_boolexpr(c::BoolConst, ::CGraph, ::Assgn) = c.val
-eval_boolexpr(c::BoolNot, g::CGraph, m::Assgn) = !eval_boolexpr(c.expr,g,m)
-eval_boolexpr(c::BoolAnd, g::CGraph, m::Assgn) = 
-  all(eval_boolexpr(x,g,m) for x in c.exprs)
-eval_boolexpr(c::BoolOr, g::CGraph, m::Assgn) = 
-  any(eval_boolexpr(x,g,m) for x in c.exprs)
+eval_boolexpr(c::BoolConst, ::CGraph, ::Assgn; verbose::Bool=false) = c.val
+eval_boolexpr(c::BoolNot, g::CGraph, m::Assgn; verbose::Bool=false) = 
+  !eval_boolexpr(c.expr, g, m; verbose=verbose)
+eval_boolexpr(c::BoolAnd, g::CGraph, m::Assgn; verbose::Bool=false) = 
+  all(eval_boolexpr(x, g, m; verbose=verbose) for x in c.exprs)
+eval_boolexpr(c::BoolOr, g::CGraph, m::Assgn; verbose::Bool=false) = 
+  any(eval_boolexpr(x, g, m; verbose=verbose) for x in c.exprs)
 
-function eval_boolexpr(c::Commutes, ::CGraph, ms::Assgn)
-  maps = [force(length(p)==1 ? ms[p[1]] : compose(ms[p]...)) for p in c.pths]
+function eval_boolexpr(c::Commutes, ::CGraph, ms::Assgn; verbose::Bool=false)
+  maps = map(c.pths) do p 
+    force(length(p)==1 ? ms[p[1]] : compose(ms[p]...))
+  end 
   return c.commutes == (all(m->m==maps[1],maps))
 end 
 
-function eval_boolexpr(q::Quantifier, g::CGraph, curr::Assgn)
+function eval_boolexpr(q::Quantifier, g::CGraph, curr::Assgn; verbose=false)
   d, cd = [get_ob(g,x,curr) for x in [g[q.e, :src], g[q.e, :tgt]]]
   cands = []
+  if verbose println("$(q.kind) ($(q.e))") end
   for h in homomorphisms(d, cd; monic=q.monic)
     x = deepcopy(curr)
     x[q.e] = h 
-    if eval_boolexpr(q.st, g, x)
+    if verbose println("candidate morphism $(components(h))") end
+    if eval_boolexpr(q.st, g, x; verbose=verbose)
+      if verbose println("successful candidate!") end
       push!(cands, x)
     end
   end 
   n = length(cands)
   suc = [eval_boolexpr(q.expr, g, cand) for cand in cands]
   n_success = sum([0, suc...])
+  if verbose println("$(q.kind) ($(q.e)) n $n success $suc") end 
   if     q.kind == :Exists  return n_success > 0
   elseif q.kind == :Exists! return n_success == 1
   elseif q.kind == :Forall  return n_success == n
@@ -142,7 +176,36 @@ end
 @struct_hash_equal struct Constraint
   g::CGraph 
   d::BoolExpr 
-  Constraint(g,d)= new(g,d)
+  function Constraint(g,d)
+    nparts(g,:VLabel) == 0 || error("No vertex variables allowed")
+    # check that all of the object assignments match the defined morphisms 
+    for (eind, (s, t, h)) in enumerate(zip(g[:src], g[:tgt], g[:elabel]))
+      sv, tv = [g[x,:vlabel] for x in [s,t]]
+      if h isa ACSetTransformation 
+        if dom(h) != sv 
+          println("e $eind s $s ");show(stdout,"text/plain",dom(h)); show(stdout,"text/plain",sv) 
+        end 
+        if codom(h) != tv 
+          println("e $eind s $s ");show(stdout,"text/plain",codom(h)); show(stdout,"text/plain",tv) 
+        end 
+
+        dom(h) == sv && codom(h) == tv || error("Diagram not functorial: edge $eind")
+      elseif isnothing(h) # h is filled by a quantifier. Src/Tgt must be defined
+        for (i,v) in [(s,sv),(t,tv)]
+          if !(v isa ACSet) 
+            inc = vcat(incident(g, i, :src), incident(g,i,:tgt))
+            err = "Edge $eind: undefined vertex $i for a quantifier in $g \n $d"
+            any(e->g[e,:elabel] isa AttrVar, inc) || error(err)
+          end
+        end 
+      end # if a variable, no constraints until runtime
+    end 
+    # Check that the constraint is compatible with the graph
+    ce = check_expr(g,d)
+    isempty(ce) || error(join(ce,"\n"))
+
+    return new(g,d)
+  end 
 end
 arity(g::Constraint) = arity(g.g)
 
@@ -161,16 +224,22 @@ function get_ob(c::CGraph, v_i::Int, curr::Assgn)
   error("Failed to get ob")
 end
 
-function apply_constraint(c::Constraint, fs...)
+function apply_constraint(c::Constraint, fs...; verbose::Bool=false)
   # populate assignment of ACSetTransformations 
   ms = Assgn(map(enumerate(c.g[:elabel])) do (i, e) 
     if e isa ACSetTransformation 
       return e 
-    elseif e isa AttrVar 
-      return fs[e.val]
-    end
+    elseif e isa AttrVar # need to check that the argument typechecks
+      f = fs[e.val]
+      s, t = [c.g[i, [x, :vlabel]] for x in [:src,:tgt]]
+      errs = "Edge $i: Bad src $s($dom(f)) for arg $(e.val)"
+      isnothing(s) || dom(f) == s || error(errs)
+      errt = "Edge $i: Bad tgt $t!=$(codom(f)) for arg $(e.val)"
+      isnothing(t) || codom(f) == t || error(errt)
+      return f
+    end # Assignment has "nothing" for variables that are quantified
   end)
-  return eval_boolexpr(c.d, c.g, ms)  # Evaluate expression
+  return eval_boolexpr(c.d, c.g, ms; verbose=verbose)  # Evaluate expression
 end
 
 # Special forms of constraints
@@ -183,7 +252,6 @@ triangle commuting.
 (1) <- (2)
    ∃₂↘  ↓ λ₃
       (3)
-
 """
 function AppCond(f::ACSetTransformation, pos::Bool=true; monic=false)
   cg = @acset CGraph begin V=3; E=3; Elabel=1; src=[2,1,2]; tgt=[1,3,3];

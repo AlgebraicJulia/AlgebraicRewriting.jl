@@ -9,7 +9,7 @@ using Blink: Window, body!
 function viewer(s,r)
   w = Window()
   body!(w, view_traj(s, r, to_graphviz))
-end 
+end
 
 
 # Simple workflow with control and rewriting 
@@ -23,7 +23,7 @@ de = loop_rule(RuleApp("del edge", Rule(g2, id(Graph(2)))))
 coin = uniform(2, z)
 merge2 = merge_wires(2,g1)
 
-sched = (coin ⋅ (av ⊗ nports(1,z)) ⋅ merge2 ⋅ de)
+sched = (coin ⋅ (av ⊗ id_wires(1,z)) ⋅ merge2 ⋅ de)
 
 G = path_graph(Graph, 4)
 res = apply_schedule(sched, G);
@@ -42,7 +42,7 @@ quote
   return out, trace
 end);
 
-res = apply_schedule(sched, Graph(3));
+res = apply_schedule(sched, Graph(3))
 # viewer(sched, res)
 
 
@@ -55,9 +55,9 @@ q2 = Query(Span(t_hom,s_hom), "Out edges", g1)
 ws = Weaken("Switch to src", s_hom)
 wt = Weaken("Switch to tgt", t_hom)
 str = Strengthen("Add outedge", s_hom)
-maybe_add_loop = uniform(2, g1) ⋅ (al ⊗ nports(1,g1))
+maybe_add_loop = uniform(2, g1) ⋅ (al ⊗ id_wires(1,g1))
 
-# graphviz(uniform(2, g1) ⋅ (al ⊗ nports(1,g1)) ⋅ merge_wires(2, g1); orientation=LeftToRight)
+# graphviz(uniform(2, g1) ⋅ (al ⊗ id_wires(1,g1)) ⋅ merge_wires(2, g1); orientation=LeftToRight)
 
 
 sched = mk_sched((init=:A, trace_arg=:V,), 1, Dict(

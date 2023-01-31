@@ -3,7 +3,7 @@ using .Interact
 using Catlab.WiringDiagrams, Catlab.Graphics
 using Catlab.WiringDiagrams.DirectedWiringDiagrams: out_port_id
 using Catlab.Graphics.Graphviz: Graph, Subgraph, Statement, pprint, Node, Edge, NodeID
-using .Schedules: color 
+using .Wiring: color 
 
 # Code related to combining two graphs together. Potentially upstreamable.
 ##########################################################################

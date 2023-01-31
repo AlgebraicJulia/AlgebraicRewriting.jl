@@ -222,7 +222,7 @@ sheep_fwd_rule = Rule(
 )
 
 sheep_fwd = RuleApp("move fwd", sheep_fwd_rule, 
-  Span(homomorphism(S,s_fwd_l), homomorphism(S,s_fwd_r)))
+  homomorphism(S,s_fwd_l), homomorphism(S,s_fwd_r))
 
 begin # test 
   ex = @acset LV begin Sheep=1; V=3; E=2; src=[1,2]; tgt=[2,3]; sheep_loc=2
@@ -285,7 +285,8 @@ s_die_l = @acset LV begin
   sheep_eng=[0]; sheep_loc=1; sheep_dir=[AttrVar(1)]
 end
 sheep_die_rule = Rule(homomorphism(G, s_die_l), id(G))
-sheep_starve = RuleApp("starve", sheep_die_rule)
+sheep_starve = RuleApp("starve", sheep_die_rule, 
+                       homomorphism(S,s_die_l), create(G))
 
 
 begin # test 
@@ -312,7 +313,7 @@ sheep_reprod_rule = Rule(
   )
 
 sheep_reprod = RuleApp("reproduce", sheep_reprod_rule, 
-  Span(id(S),homomorphism(S,s_reprod_r)))
+                       id(S), homomorphism(S, s_reprod_r))
 
 begin # test 
   ex = @acset LV begin Sheep=1; Wolf=1; V=3; E=2; src=[1,2]; tgt=[2,3]; sheep_loc=2
@@ -356,13 +357,12 @@ general = mk_sched((init=:S,), 0, (
   rght   = sheep_rotate_r, 
   fwd    = sheep_fwd, 
   repro  = sheep_reprod, 
-  starve = sheep_starve,
-  weak   = Weaken("(weaken)", create(S)),), 
+  starve = sheep_starve), 
   quote 
     out_l, out_str, out_r = turn(init)
     moved = fwd([lft(out_l), out_str, rght(out_r)])
     out_repro, out_no_repro = maybe(moved)
-    return starve(weak([repro(out_repro), out_no_repro]))
+    return starve([repro(out_repro), out_no_repro])
 end) |> typecheck
 
 sheep = sheep_eat ⋅ general                     # once per sheep

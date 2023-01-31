@@ -1,7 +1,8 @@
 module Utils
 
 export Rule, ruletype,rewrite, rewrite_match, rewrite_parallel, rewrite_full_output,
-       rewrite_match_maps, rewrite_parallel_maps, rewrite_sequential_maps
+       rewrite_match_maps, rewrite_parallel_maps, rewrite_sequential_maps,
+       can_match, get_matches
 
 using Catlab, Catlab.Theories, Catlab.Schemas
 using Catlab.CategoricalAlgebra
@@ -108,10 +109,10 @@ rule, otherwise returns the reason why it should be rejected
 """
 function can_match(r::Rule{T}, m; initial=Dict(),
                    seen=Set()) where T
-
-  for (k,v) in pairs(components(m))
-    if has_comp(r.monic,k) && !is_monic(v)
-      return ("Match is not injective", k, v)
+  S = acset_schema(dom(m))
+  for k in ob(S)
+    if has_comp(r.monic,k) && !is_monic(m[k])
+      return ("Match is not injective", k, m[k])
     end
   end
   for (k, vs) in collect(initial)
@@ -152,8 +153,7 @@ end
 function get_matches(r::Rule{T}, G; initial=nothing, seen=Set(),
                      verbose=false) where T
   initial = isnothing(initial) ? Dict() : initial
-  hs = homomorphisms(codom(r.L), G; monic=r.monic,
-                     initial=NamedTuple(initial))
+  hs = homomorphisms(codom(r.L), G; monic=r.monic, initial=NamedTuple(initial))
   collect(filter(hs) do h
     cm = can_match(r,h)
     if verbose && !isnothing(cm)

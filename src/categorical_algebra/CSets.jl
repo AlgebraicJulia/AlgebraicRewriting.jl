@@ -9,6 +9,7 @@ using Catlab.CategoricalAlgebra
 using Catlab.CategoricalAlgebra.FinSets: IdentityFunction
 using Catlab.CategoricalAlgebra.CSets: unpack_diagram, type_components
 import ..FinSets: pushout_complement, can_pushout_complement, id_condition
+import Catlab.ACSetInterface: acset_schema
 import Catlab.CategoricalAlgebra: is_natural, Slice, SliceHom, components,
                                   LooseACSetTransformation, homomorphisms, 
                                   homomorphism
@@ -53,6 +54,15 @@ function eval_path(x::StructACSet, h, i::Int)::Int
   return val
 end
 
+"""
+Given a span of morphisms, we seek to find all morphisms B → C that make a
+commuting triangle.
+
+    B
+ g ↗ ↘ ?
+ A ⟶ C
+   f
+"""
 function extend_morphism_constraints(f::ACSetTransformation{S},
                                      g::ACSetTransformation{S}
                                      ) where S
@@ -334,7 +344,7 @@ function invert_hom(f::ACSetTransformation{S}; epic=true,monic=true) where S
   d2 = NamedTuple(Dict(map(attrtypes(S)) do o 
     o => map(parts(B, o)) do b
       p = preimage(f[o], AttrVar(b))
-      if length(p) == 1 return only(p)
+      if length(p) == 1 return AttrVar(only(p))
       elseif length(p) > 1 return monic ? error("f not monic") : first(p)
       else return epic ? error("f not epic") : AttrVar(1)
       end
@@ -512,6 +522,7 @@ end
 
 # This should be upstreamed as a PR to Catlab
 #############################################
+acset_schema(x::Slice) = acset_schema(dom(x))
 is_natural(x::SliceHom) = is_natural(x.f)
 components(x::SliceHom) = components(x.f)
 Base.getindex(x::SliceHom, c) = x.f[c]
