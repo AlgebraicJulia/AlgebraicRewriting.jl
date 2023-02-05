@@ -11,7 +11,7 @@ using ...CategoricalAlgebra.CSets:
   extend_morphisms, abstract, var_pullback, remove_freevars
 using Catlab, Catlab.CategoricalAlgebra
 import Catlab.CategoricalAlgebra: left, right
-
+using StructEquality
 
 """
       l    r 
@@ -25,7 +25,7 @@ can optionally restrict the match L → G to be monic.
 We can attach application conditions to both the match morphism as well as the 
 adherence morphism. 
 """
-struct PBPORule <: AbsRule
+@struct_hash_equal struct PBPORule <: AbsRule
   l
   r
   tl
@@ -59,6 +59,10 @@ end
 ruletype(::PBPORule) = :PBPO
 left(r::PBPORule) = r.l 
 right(r::PBPORule) = r.r
+
+(F::Migrate)(r::PBPORule) =
+  PBPORule(F(r.l), F(r.r), F(r.tl), F(r.tk), F(r.l′); monic=r.monic,
+           acs=F.(r.acs), lcs=F.(r.lcs), expr=F(r.exprs), k_expr=F(r.k_exprs))
 
 
 """
@@ -143,7 +147,7 @@ function get_matches(rule::PBPORule, G::StructACSet{S}; verbose=false,
           if verbose print("\tSUCCESS") end 
           push!(res, (m,a,ab,α))
         elseif verbose 
-          println("\tFAILURE")
+          println("\tFAILURE (strong $strong_match)")
         end
       end
     end

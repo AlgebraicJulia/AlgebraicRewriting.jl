@@ -140,14 +140,20 @@ if possible.
        G ↩ K → H
 
 """
-function postcompose_partial(kgh::Span, m::ACSetTransformation{S,Ts}) where {S,Ts}
-  d = Dict()
+function postcompose_partial(kgh::Span, m::ACSetTransformation{S,Ts}; 
+                             check::Bool=false) where {S,Ts}
   kg, kh = kgh
   L = dom(m)
+  if codom(m) != codom(kg) 
+    show(stdout,"text/plain",codom(m))
+    show(stdout,"text/plain",codom(kg))
+    error("inconsistent match + partial map ")
+  end
   H = codom(kh)
   all(o->is_monic(kg[o]),ob(S)) || error("postcompose partial left leg must be monic $(collect.(collect(pairs(components(kg)))))")
-  all(is_natural,[kg,kh,m]) || error("unnatural")
-
+  is_natural(kg) || error("unnatural kg")
+  is_natural(kh) || error("unnatural kh")
+  is_natural(m) || error("unnatural m")
   fake_res = m ⋅ invert_hom(kg; monic=true, epic=false) ⋅ kh 
   res_comps = Dict{Symbol,Any}(o=>collect(fake_res[o]) for o in ob(S))
   for at in attrtypes(S)
@@ -164,7 +170,7 @@ function postcompose_partial(kgh::Span, m::ACSetTransformation{S,Ts}) where {S,T
     res_comps[at] = mapping 
   end 
   res = ACSetTransformation(L,H; res_comps...)
-  is_natural(res) || error("unnatural composed")
+  !check || is_natural(res) || error("unnatural composed")
   return res
  end
 
@@ -184,11 +190,12 @@ function pushout_complement(pair::ComposablePair{<:ACSet, <:TightACSetTransforma
   k_components, g_components = map(first, components), map(last, components)
 
   # Reassemble components into natural transformations.
-  g = hom(Subobject(codom(pair), g_components))
+  g = hom(Subobject(codom(pair), NamedTuple(Dict(o=>g_components[o] for o in ob(S)))))
   K = dom(g)
-  k_c = Dict([[o=>k_components[o] for o in ob(S)]...,
-              [at=>k_components[at] for at in attrtypes(S)]...])
-  k = ACSetTransformation(k_c, I, K)
+  # k_c = Dict([[o=>k_components[o] for o in ob(S)]...,
+  #             [at=>k_components[at] for at in attrtypes(S)]...])
+  kinit = Dict(o=>collect(k_components[o]) for o in ob(S))
+  k = only(homomorphisms(I, K; initial=kinit))
 
   # Fix variable attributes
   for (at, d, cd) in attrs(S)
@@ -295,10 +302,13 @@ end
 
 # The following can be deleted when Catlab pull 605 is merged
 """A map f (from A to B) as a map of subobjects of A to subjects of B"""
-(f::ACSetTransformation)(X::SubACSet) = begin
+function (f::ACSetTransformation{S})(X::SubACSet)  where S
   codom(hom(X)) == dom(f) || error("Cannot apply $f to $X")
-  Subobject(codom(f); Dict(
-    [k=>f.(collect(components(X)[k])) for (k,f) in pairs(components(f))])...)
+  comps = Dict(map(ob(S)) do k
+    k=>(f[k]).(collect(components(X)[k]))
+  end)
+  
+  Subobject(codom(f); comps...)
 end
 
 
@@ -327,8 +337,9 @@ Invert a morphism which may not be monic nor epic. When the morphism is not
 monic, an arbitrary element of the preimage is mapped to. When it is not epic,
 an arbitrary element of the domain is mapped to.
 """
-function invert_hom(f::ACSetTransformation{S}; epic=true,monic=true) where S
-  is_natural(f) || error("inverting unnatural hom")
+function invert_hom(f::ACSetTransformation{S}; 
+                    epic::Bool=true,monic::Bool=true, check::Bool=false) where S
+  !check || is_natural(f) || error("inverting unnatural hom")
   if epic && monic return invert_iso(f) end # efficient
   A, B = dom(f), codom(f)
   d = NamedTuple(Dict{Symbol, Vector{Int}}(map(ob(S)) do o 
@@ -415,7 +426,7 @@ end
 For any ACSet, X, a canonical map A→X where A has distinct variables for all
 subparts.
 """
-function abstract(X::StructACSet{S,Ts}) where {S,Ts} 
+function abstract(X::StructACSet{S,Ts}; check::Bool=false) where {S,Ts} 
   A = deepcopy(X); 
   comps = Dict{Any,Any}(map(attrtypes(S)) do at
     rem_parts!(A, at, parts(A,at))
@@ -428,7 +439,7 @@ function abstract(X::StructACSet{S,Ts}) where {S,Ts}
   end)
   for o in ob(S) comps[o]=parts(X,o) end
   res = ACSetTransformation(A,X; comps...)
-  is_natural(res) || error("bad abstract $comps")
+  !check || is_natural(res) || error("bad abstract $comps")
   return res
 end 
 
@@ -492,15 +503,15 @@ function remove_freevars(X::StructACSet{S}) where S
   return X => d
 end 
 
-function remove_freevars(f::ACSetTransformation{S}) where S 
-  is_natural(f) || error("unnatural freevars input")
+function remove_freevars(f::ACSetTransformation{S}; check::Bool=false) where S 
+  !check || is_natural(f) || error("unnatural freevars input")
   X, d = remove_freevars(dom(f))
   comps = Dict{Symbol,Any}(o=>collect(f[o]) for o in ob(S))
   for at in attrtypes(S)
     comps[at] = collect(f[at])[d[at]]
   end 
   res = ACSetTransformation(X, codom(f); comps...)
-  is_natural(res) || error("unnatural freevars output")
+  !check || is_natural(res) || error("unnatural freevars output")
   return res 
 end
 
@@ -548,7 +559,8 @@ end
   homs::Dict{Symbol, Symbol}
   T1::Type 
   T2::Type 
-  Migrate(o,h,t1,t2=nothing) = new(o,h,t1,isnothing(t2) ? t1 : t2)
+  Migrate(o,h,t1,t2=nothing) = new(
+    Dict(collect(pairs(o))),Dict(collect(pairs(h))),t1,isnothing(t2) ? t1 : t2)
 end 
 function (m::Migrate)(Y::ACSet)
   typeof(Y) <: m.T1 || error("Cannot migrate a $x")
@@ -574,5 +586,6 @@ end
 
 (F::Migrate)(s::Multispan) = Multispan(apex(s), F.(collect(s)))
 (F::Migrate)(s::Multicospan) = Multicospan(apex(s), F.(collect(s)))
+(F::Migrate)(d::AbstractDict) = Dict(get(F.obs,k, k)=>v for (k,v) in collect(d))
 
 end # module

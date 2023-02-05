@@ -86,7 +86,7 @@ end
 struct TrajStep 
   desc::String
   world::ACSetTransformation
-  pmap::Span{<:StructACSet}
+  pmap::Span{<:StructACSet} # nothing == id
   inwire::Wire
   outwire::Wire
   function TrajStep(d,w,p,i,o)
@@ -120,8 +120,8 @@ Base.push!(t::Traj, ts::TrajStep) = push!(t.steps, ts)
 """
 Take a morphism (pointing at world state #i) and push forward to current time.
 """
-function update_agent(t::Traj, i::Int, a::ACSetTransformation)
-  is_natural(a) || error("Updating unnatural a")
+function update_agent(t::Traj, i::Int, a::ACSetTransformation; check=false)
+  !check || is_natural(a) || error("Updating unnatural a")
   noattr(a) || error("World state has variables")
   if i < 0
     error("Called update with negative index $i")
@@ -132,7 +132,11 @@ function update_agent(t::Traj, i::Int, a::ACSetTransformation)
   codom(a) == codom(left(t[i+1].pmap)) || error("BAD MATCH $i $a")
   for j in i+1:length(t)
     a = postcompose_partial(t[j].pmap, a)
-    is_natural(a) || error("Updated unnatural a")
+    if check && !is_natural(a) 
+      println("dom(a)"); show(stdout, "text/plain", dom(a))
+      println("codom(a)"); show(stdout, "text/plain", codom(a))
+      error("Updated unnatural a $(collect(pairs(components(a))))")
+    end
     if isnothing(a) return nothing end 
   end
   codom(a) == traj_res(t) || error("Failed to postcompose $(codom(a))\n$(traj_res(t))")

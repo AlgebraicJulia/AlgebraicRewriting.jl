@@ -81,4 +81,13 @@ m = homomorphism(Tri, quadrangle)
 @test is_isomorphic(rewrite_match(r,m),
                   @acset SSet begin E=2; V=3; src=1; tgt=[2,3] end)
 
+# Attributed rewrite
+#-------------------
+WG = WeightedGraph{Int}
+r = Rule{:SPO}(create(WG(1)), id(WG()))
+G = @acset WeightedGraph{Int} begin V=4; E=3; Weight=2; src=[1,2,3]; tgt=[2,3,4]; 
+                                    weight=[3,4, 5] end
+@test only(rewrite(r,G; initial=(V=[2],))[:weight]) == 5
+@test only(rewrite(r,G; initial=(V=[3],))[:weight]) == 3
+
 end # module 

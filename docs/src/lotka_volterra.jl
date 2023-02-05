@@ -206,13 +206,15 @@ s_fwd_l = @acset LV begin
 end
 
 s_fwd_i = deepcopy(s_fwd_l)
-rem_part!(s_fwd_i, :Sheep, 1); rem_part!(s_fwd_i, :Eng, 3)
+rem_part!(s_fwd_i, :Sheep, 1); 
+rem_part!(s_fwd_i, :Eng, 3)
 
 s_fwd_r = deepcopy(s_fwd_l)
 s_fwd_r[1, :sheep_loc] = 2
 
 s_n = deepcopy(s_fwd_l)
-set_subpart!(s_n, 1, :sheep_eng, 0); rem_part!(s_n, :Eng, 3)
+set_subpart!(s_n, 1, :sheep_eng, 0); 
+rem_part!(s_n, :Eng, 3)
 
 sheep_fwd_rule = Rule(
   homomorphism(s_fwd_i, s_fwd_l; monic=true),
@@ -229,7 +231,8 @@ begin # test
     sheep_eng=[3]; grass_eng=[9,10,11]; dir=fill(North(),2); sheep_dir=[North()]
   end
   expected = deepcopy(ex); 
-  expected[1,:sheep_loc] = 3; expected[1,:sheep_eng] = 2
+  expected[1,:sheep_loc] = 3; 
+  expected[1,:sheep_eng] = 2
   @test is_isomorphic(expected, rewrite(sheep_fwd_rule,ex))
 end
 
@@ -327,7 +330,8 @@ end
 #----------------
 
 g_inc_n = deepcopy(G)
-set_subpart!(g_inc_n,1, :grass_eng, 0); rem_part!(g_inc_n, :Eng, 1)
+set_subpart!(g_inc_n,1, :grass_eng, 0); 
+rem_part!(g_inc_n, :Eng, 1)
 
 g_inc_rule = Rule(id(G), id(G);
                   ac=[AppCond(homomorphism(G, g_inc_n), false)],
@@ -379,7 +383,7 @@ overall = while_schedule(cycle, curr -> nparts(curr,:Wolf) >= 0) |> typecheck
 overall |> to_graphviz
 
 X, coords = initialize(3, .25, .25)
-res = apply_schedule(overall, X; steps=40);
+res = apply_schedule(overall, X; steps=40, verbose=false);
 
 
 

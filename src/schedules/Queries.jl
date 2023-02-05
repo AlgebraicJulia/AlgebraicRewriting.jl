@@ -134,7 +134,7 @@ initial_state(::Query) = QueryState(-1, ACSetTransformation[])
 (F::Migrate)(a::Query) =  Query(a.name,F(a.agent), F(a.return_type))
 
 function update(q::Query, i::Int, instate::Traj, boxstate::Any)
-  idp = id_pmap(traj_res(instate))
+  idp = id_pmap(traj_res(instate)) 
   msg = ""
   curr_boxstate = (i != 1) ? boxstate : begin 
     ms = filter(h->apply_constraint(q.constraint, h, traj_agent(instate)),
@@ -175,8 +175,10 @@ function agent(s::WiringDiagram, sa::ATypes; n="agent", ret=nothing,
     q = Query(sa, n, ret; constraint=constraint)
   elseif sa isa Pair{StructACSet,StructACSet}
     q = Query(n, sa[1], sa[2], ret; constraint=constraint)
-  else 
+  elseif sa isa StructACSet
     q = Query(n, sa, nothing, ret; constraint=constraint)
+  else 
+    error("sa of type $(typeof(sa))")
   end 
   a,b,z = output_ports(q)
   a_, c = input_ports(q)

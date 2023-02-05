@@ -63,7 +63,7 @@ function update(r::RuleApp, ::Int, instate::Traj, ::Nothing)
     return (1, last_step, id_pmap(codom(last_step)), nothing, "(no match)")
   else 
     m = first(ms)
-    res = rewrite_match_maps(r.rule, m; check=true)
+    res = rewrite_match_maps(r.rule, m)
     rmap = get_rmap(ruletype(r.rule), res)
     xmap = get_expr_binding_map(r.rule, m, res)
     new_agent = r.out_agent ⋅ rmap ⋅ xmap
@@ -73,6 +73,7 @@ function update(r::RuleApp, ::Int, instate::Traj, ::Nothing)
     return (1, new_agent, pmap, nothing, msg)
   end
 end 
+
 """Helper function for `update` and `loop_rule`"""
 function update_matches(r::RuleApp, agent::ACSetTransformation; kwargs...)
   init = extend_morphism_constraints(agent, r.in_agent)

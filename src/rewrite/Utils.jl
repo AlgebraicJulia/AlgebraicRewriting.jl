@@ -35,7 +35,7 @@ condition(s)
 Monic constraints can be independently given
 to the match morphism and to the morphisms searched for when checking NAC.
 """
-struct Rule{T} <: AbsRule
+@struct_hash_equal struct Rule{T} <: AbsRule
   L::Any
   R::Any
   conditions::Vector{Constraint} # constraints on match morphism
@@ -63,7 +63,7 @@ left(r::Rule{T}) where T = r.L
 right(r::Rule{T}) where T = r.R
 
 (F::Migrate)(r::Rule{T}) where {T} =
-  Rule{T}(F(r.L), F(r.R); ac=F.(r.conditions), expr=r.exprs, monic=r.monic)
+  Rule{T}(F(r.L), F(r.R); ac=F.(r.conditions), expr=F(r.exprs), monic=r.monic)
 
 # Extracting specific maps from rewriting output data 
 #####################################################
@@ -185,10 +185,20 @@ m ↓    ↓    ↓ res
 """
 function get_expr_binding_map(r::Rule{T}, m::ACSetTransformation, res) where T
   result = get_rmap(ruletype(r),res)
+  pmap_l, pmap_r = get_pmap(ruletype(r), res)
   R, X = dom(result), codom(result)
   comps = Dict(map(attrtypes(acset_schema(X))) do at 
       bound_vars = Vector{Any}(collect(m[at]))
       binding = Any[nothing for _ in parts(X, at)]
+
+      # Assign variables from partial map
+      for p in parts(X,at)
+        pr = unique(pmap_l[at](AttrVar.(preimage(pmap_r[at],AttrVar(p)))))
+        if length(pr) == 1 
+          binding[p] = only(pr)
+        end 
+      end 
+
       if haskey(r.exprs, at) exprs = r.exprs[at]
       else 
         exprs = map(parts(R,at)) do rᵢ
@@ -198,7 +208,10 @@ function get_expr_binding_map(r::Rule{T}, m::ACSetTransformation, res) where T
         end
       end
       for (v, expr) in enumerate(exprs)
-        binding[result[at](AttrVar(v)).val] = expr(bound_vars)
+        tgt_attr = result[at](AttrVar(v))
+        if tgt_attr isa AttrVar
+          binding[tgt_attr.val] = expr(bound_vars)
+        end
       end
       !any(isnothing, binding) || error("Bad binding $binding")
       at => binding
@@ -241,8 +254,8 @@ function rewrite_match_maps end  # to be implemented for each T
 """    rewrite(r::Rule, G; kw...)
 Perform a rewrite (automatically finding an arbitrary match) and return result.
 """
-function rewrite(r::AbsRule, G; kw...)
-  ms = get_matches(r, G; kw...)
+function rewrite(r::AbsRule, G; initial=nothing, kw...)
+  ms = get_matches(r, G; initial=initial, kw...)
   return isempty(ms) ? nothing : rewrite_match(r, first(ms); kw...)
 end
 
@@ -285,34 +298,6 @@ end
 # Executing multiple rewrites
 #############################
 
-"""
-Take a graph G and a rewrite rule and look for all possible matches.
-Execute the sequence in random or an arbitrary (but deterministic) order.
-"""
-function rewrite_sequential_maps(r::Rule{T}, G; random=false, seen=Set(),
-                                 verbose=verbose, prob=1.0, kw...) where {T}
-  ms = get_matches(r,G; seen=seen, verbose=verbose)
-  output = Any[(create(G), Span(id(G), id(G)), G)]
-  if isempty(ms)
-    return Any[]
-  elseif random
-    shuffle!(ms)
-  end
-
-  for m in ms
-    _, prev_span, _ = output[end]
-    m′ = postcompose_partial(prev_span, m)
-    if !isnothing(m′) && is_natural(m′)
-      if isnothing(can_match(r′, m′)) && rand() < prob
-        res = rewrite_match_maps(r′, m′; kw...)
-        prev_span = get_pmap(T, res)
-        push!(output, (m′, get_pmap(T, res), get_result(T, res)))
-      end
-    end
-  end
-  output[2:end]
-end
-
 """    rewrite_parallel_maps(rs::Vector{Rule{T}}, G::StructACSet{S}; initial=Dict(), kw...) where {S,T}
 Perform multiple rewrites in parallel (automatically finding arbitrary matches)
 and return all computed data. Restricted to C-set rewriting
@@ -320,26 +305,26 @@ and return all computed data. Restricted to C-set rewriting
 function rewrite_parallel_maps(rs::Vector{Rule{T}}, G::StructACSet{S};
                                initial=Dict(), kw...) where {S,T}
 
-    (ms,Ls,Rs) = [ACSetTransformation{S}[] for _ in 1:3]
-    seen = [Set{Int}() for _ in ob(S)]
-    init = NamedTuple(initial) # UNUSED
-    for r in rs
-      ms = get_matches(r,G,initial=initial, seen=seen)
-      for m in ms
-        new_dels = map(zip(components(r.L), components(m))) do (l_comp, m_comp)
-          L_image = Set(collect(l_comp))
-          del = Set([m_comp(x) for x in codom(l_comp) if x ∉ L_image])
-          LM_image = Set(m_comp(collect(L_image)))
-          return del => LM_image
+  (ms,Ls,Rs) = [ACSetTransformation{S}[] for _ in 1:3]
+  seen = [Set{Int}() for _ in ob(S)]
+  init = NamedTuple(initial) # UNUSED
+  for r in rs
+    ms = get_matches(r,G,initial=initial, seen=seen)
+    for m in ms
+      new_dels = map(zip(components(r.L), components(m))) do (l_comp, m_comp)
+        L_image = Set(collect(l_comp))
+        del = Set([m_comp(x) for x in codom(l_comp) if x ∉ L_image])
+        LM_image = Set(m_comp(collect(L_image)))
+        return del => LM_image
+      end
+      if all(isempty.([x∩new_keep for (x,(_, new_keep)) in zip(seen, new_dels)]))
+        for (x, (new_del, new_keep)) in zip(seen, new_dels)
+          union!(x, union(new_del, new_keep))
         end
-        if all(isempty.([x∩new_keep for (x,(_, new_keep)) in zip(seen, new_dels)]))
-          for (x, (new_del, new_keep)) in zip(seen, new_dels)
-            union!(x, union(new_del, new_keep))
-          end
-          push!(ms, m); push!(Ls, deepcopy(r.L)); push!(Rs, r.R)
-        end
+        push!(ms, m); push!(Ls, deepcopy(r.L)); push!(Rs, r.R)
       end
     end
+  end
 
   if isempty(ms) return nothing end
   length(Ls) == length(ms) || error("Ls $Ls")
