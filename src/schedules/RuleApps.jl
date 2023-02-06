@@ -57,12 +57,12 @@ initial_state(::RuleApp) = nothing
 
 
 function update(r::RuleApp, ::Int, instate::Traj, ::Nothing)
+
   last_step = traj_agent(instate) # A -> X 
-  ms = update_matches(r,last_step)
-  if isempty(ms)
+  m = update_match(r, last_step)
+  if isnothing(m)
     return (1, last_step, id_pmap(codom(last_step)), nothing, "(no match)")
   else 
-    m = first(ms)
     res = rewrite_match_maps(r.rule, m)
     rmap = get_rmap(ruletype(r.rule), res)
     xmap = get_expr_binding_map(r.rule, m, res)
@@ -75,20 +75,20 @@ function update(r::RuleApp, ::Int, instate::Traj, ::Nothing)
 end 
 
 """Helper function for `update` and `loop_rule`"""
-function update_matches(r::RuleApp, agent::ACSetTransformation; kwargs...)
+function update_match(r::RuleApp, agent::ACSetTransformation; kwargs...)
   init = extend_morphism_constraints(agent, r.in_agent)
-  get_matches(r.rule, codom(agent); initial=init, kwargs...)
+  get_match(r.rule, codom(agent); initial=init, kwargs...)
 end 
 
 """
 A box that takes the first output iff there is a match from a rule into the 
 current state"""
 has_match(rulename::String, r::AbsRule, agent::StructACSet) = 
-  if_cond("Can match $rulename", x->!isempty(get_matches(r,x)), agent)
+  if_cond("Can match $rulename", x->!isnothing(get_match(r,x)), agent)
 
 
 loop_rule(a::RuleApp) =
-  while_schedule(a, x->!isempty(update_matches(a,x)); 
+  while_schedule(a, x->!isnothing(update_match(a,x)); 
                  name = "match $(a.name)", argtype = :agent)
 
 

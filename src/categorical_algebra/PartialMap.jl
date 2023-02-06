@@ -2,8 +2,38 @@ module PartialMap
 export partial_map_classifier_universal_property, partial_map_functor_hom,
       partial_map_classifier_eta
 using DataStructures
-using Catlab, Catlab.CategoricalAlgebra, Catlab.Schemas
+using Catlab, Catlab.CategoricalAlgebra, Catlab.Schemas, Catlab.Graphs
 using ..CSets
+
+
+"""Get topological sort of objects of a schema. Fail if cyclic."""
+function topo_obs(S::Type)::Vector{Symbol}
+  G = Graph(length(ob(S)))
+  for (_, s, t) in homs(S)
+    add_edge!(G, findfirst(==(s),ob(S)), findfirst(==(t),ob(S)))
+  end
+  return [ob(S)[i] for i in reverse(topological_sort(G))]
+end
+
+"""Confirm a C-Set satisfies its equational axioms"""
+function check_eqs(x::StructACSet, pres::Presentation, o::Symbol, i::Int)::Bool
+  for (p1,p2) in filter(e->only(e[1].type_args[1].args) == o, pres.equations)
+    eval_path(x, p1, i) == eval_path(x,p2, i) || return false
+  end
+  return true
+end
+
+"""
+Take a GATExpr (an id morphism, a generator, or a composite) and evaluate,
+starting at a particular point.
+"""
+function eval_path(x::StructACSet, h, i::Int)::Int
+  val = i
+  for e in h.args
+    val = x[val, e]
+  end
+  return val
+end
 
 """
 A functor T, playing the role of Maybe in Set, but generalized to C-Sets.

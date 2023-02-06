@@ -1,11 +1,10 @@
 module SqPO 
 
-import ..Utils: rewrite_match_maps
-
-using ..Utils
 using Catlab, Catlab.CategoricalAlgebra
 
 using ...CategoricalAlgebra.PartialMap
+using ..Utils
+import ..Utils: rewrite_match_maps
 
 
 # Sesqui-pushout rewriting
@@ -59,7 +58,5 @@ function rewrite_match_maps(r::Rule{:SqPO},m; pres::Union{Nothing, Presentation}
   r, o = pushout(r.R, k)
   return Dict(:r => r, :o=>o, :k=>k, :i=>i)
 end
-
-
 
 end # module 

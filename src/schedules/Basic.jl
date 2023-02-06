@@ -27,7 +27,7 @@ end
 
 
 """
-Add to both agent and the state of the world via a pushout.
+Adds to both agent and the state of the world via a pushout.
 """
 struct Strengthen <: AgentBox
   name::String 

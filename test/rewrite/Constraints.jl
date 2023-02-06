@@ -8,7 +8,7 @@ using Test
 cg = @acset CGraph begin V=3; E=3; Elabel=2; src=[1,1,2]; tgt=[3,2,3]; 
   vlabel=Graph.([2,2,2]); elabel=[AttrVar.(1:2)...,nothing] 
 end
-c = Constraint(cg, Exists(3, Commutes([1],[2,3])))
+c = Constraint(cg, ∃(3, Commutes([1],[2,3])))
 h1, hid, hnot, _ = homomorphisms(Graph.([2,2])...)
 @test !apply_constraint(c, hid, h1)
 @test apply_constraint(c, hid, hnot)
@@ -78,5 +78,16 @@ h1,h2,h3,h4 = homomorphisms(G, loop_csp; initial=(V=Dict(1=>1),))
 @test !apply_constraint(constr,h2)
 @test !apply_constraint(constr,h3)
 @test apply_constraint(constr,h4)
+
+# Combining constraints
+#######################
+
+# match vertex iff it has 2 or 3 self loops
+two_loops = @acset Graph begin V=1; E=2; src=1; tgt=1 end 
+three_loops = @acset Graph begin V=1; E=3; src=1; tgt=1 end 
+
+c2 = AppCond(homomorphism(Graph(1), two_loops); monic=true) 
+c3 = AppCond(homomorphism(Graph(1), three_loops); monic=true) 
+constr = c2 ⊕ c3
 
 end # module 

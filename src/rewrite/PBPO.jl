@@ -1,22 +1,26 @@
 module PBPO 
 export PBPORule
 
-import ..Utils: 
-  rewrite_match_maps, get_matches, get_expr_binding_map, AbsRule, ruletype
-using ..Utils
-using ..Constraints
-using ...CategoricalAlgebra
-
-using ...CategoricalAlgebra.CSets: 
-  extend_morphisms, abstract, var_pullback, remove_freevars
 using Catlab, Catlab.CategoricalAlgebra
 import Catlab.CategoricalAlgebra: left, right
+using Catlab.CategoricalAlgebra.CSets: backtracking_search
+
 using StructEquality
+
+using ..Utils
+import ..Utils: 
+  rewrite_match_maps, get_matches, get_expr_binding_map, AbsRule, ruletype
+using ..Constraints
+using ...CategoricalAlgebra
+using ...CategoricalAlgebra.CSets: 
+  extend_morphism_constraints, abstract, var_pullback, remove_freevars, 
+  combine_dicts!
+  
 
 """
       l    r 
    L  ⟵ K ⟶ R 
-tl ↓     ↓ tk     <== these must be monic
+tl ↓     ↓ tk     <== tl, tk must be monic 
    L' ⟵ K'
 
 It is assumed we never want the typing/adherence match to be monic, but we 
@@ -82,13 +86,17 @@ end
 
 """
 PBPO matches consist of *two* morphisms. First, a match L → G and secondly 
-a typing G → L′. 
+a typing G → L′. With attributes, it is not so simple because G has concrete 
+values for attributes and L′ may have variables. Therefore, we actually the 
+typing to map out of A, an abstracted version of G (with its attributes replaced 
+by variables). So we lift matches L->G to matches L->A, then search α∈Hom(A,L′).
 
-We enumerate matches first and then consider, for each of them, if there is a 
-valid typing.
+In general, we want α to be uniquely determined by m, so by default `α_unique`  
+is set to true.
+
      m
   L⌟ ⟶ G 
-  ||    ↓ α
+ ||     ↓ α
   L  ⟶ L′
      tl
 
@@ -98,12 +106,17 @@ tl ↓ ↘a ↑ (abstraction)
    L′⟵ A 
       α
 
-Search over all pairs m: L->G and α:A->L′. 
-"Strong match" condition we check is that: tl⁻¹(α(A)) = a⁻¹(A).
+The "strong match" condition we enforce is that: tl⁻¹(α(A)) = a⁻¹(A). This means 
+we can deduce precisely what m is by looking at α.
+
 """
 function get_matches(rule::PBPORule, G::StructACSet{S}; verbose=false, 
-                     initial=nothing, kw...) where S
-  res = []
+                     initial=nothing, α_unique=true, random=false, n=-1, kw...
+                     ) where S
+  res = [] # Pairs of (m,α)
+  L = codom(left(rule))
+
+  # Process the initial constraints for match morphism and typing morphism
   if isnothing(initial)
     matchinit, typinit = Dict(), Dict()
   elseif initial isa Union{NamedTuple,AbstractDict}
@@ -113,45 +126,59 @@ function get_matches(rule::PBPORule, G::StructACSet{S}; verbose=false,
   else 
     error("Unexpected type for `initial` keyword: $initial")
   end 
-  L = codom(left(rule))
-  for m in homomorphisms(L, G; monic=rule.monic, initial=NamedTuple(matchinit))
+
+  # Search for each match morphism
+  backtracking_search(L, G; monic=rule.monic, initial=NamedTuple(matchinit),
+                      random=random) do m
+    m_seen = false # keeps track if α_unique is violated for each new m
     if all(ac->apply_constraint(ac, m), rule.acs)
       if verbose 
         println("m: ", [k=>collect(v) for (k,v) in pairs(components(m))]) 
       end
-      # Construct maps a:L->A and ab A->G such that m = a;ab
+      # Construct abtract version of G. ab: A->G 
       ab = abstract(G)
-      A = dom(ab)    
-      ainit = NamedTuple(Dict(o=>collect(m[o]) for o in ob(S)))
+      A = dom(ab) # not completely abstract: fill in where L has concrete attrs
       for (a, cd, _) in attrs(S)
         for (v, fv) in filter(v_->!(v_[2] isa AttrVar),collect(enumerate(L[a])))
           A[m[cd](v), a] = fv
         end
-      end 
+      end
       ab = remove_freevars(ab)
-      A = dom(ab)
+      # Construct a:L->A such that m = a;ab
+      ainit = NamedTuple(Dict(o=>collect(m[o]) for o in ob(S)))
       a = only(homomorphisms(L, A; initial=ainit))
-      for α in extend_morphisms(rule.tl, a; initial=typinit)
-        if verbose 
-          println("\tα: ", [k=>collect(v) for (k,v) in pairs(components(α))]) 
-        end
-        strong_match = all(ob(S)) do o 
-          all(parts(A,o)) do i 
-            p1 = preimage(rule.tl[o],α[o](i))
-            p2 = preimage(a[o], i)
-            sort(p1) == sort(p2)
+      
+      # Search for maps α: A -> L′ such that a;α=tl 
+      init = combine_dicts!(extend_morphism_constraints(rule.tl,a), typinit)
+      if !isnothing(init) 
+        backtracking_search(codom(a), codom(rule.tl); initial=init, kw...) do α
+          if verbose 
+            println("\tα: ", [k=>collect(v) for (k,v) in pairs(components(α))]) 
           end
-        end
-        if strong_match && all(lc -> apply_constraint(lc, α), rule.lcs)
-          all(is_natural, [m,a,ab,α]) || error("Unnatural match")
-          if verbose print("\tSUCCESS") end 
-          push!(res, (m,a,ab,α))
-        elseif verbose 
-          println("\tFAILURE (strong $strong_match)")
+          strong_match = all(ob(S)) do o 
+            all(parts(A,o)) do i 
+              p1 = preimage(rule.tl[o],α[o](i))
+              p2 = preimage(a[o], i)
+              sort(p1) == sort(p2)
+            end
+          end
+          if strong_match && all(lc -> apply_constraint(lc, α), rule.lcs)
+            all(is_natural, [m,a,ab,α]) || error("Unnatural match")
+            if m_seen  error("Multiple α for a single match $m") end 
+            if verbose print("\tSUCCESS") end 
+            push!(res, deepcopy((m,a,ab,α)))
+            m_seen |= α_unique
+            return length(res) == n
+          elseif verbose 
+            println("\tFAILURE (strong $strong_match)")
+            return false
+          else return false
+          end
         end
       end
     end
-  end
+    return length(res) == n
+  end 
   return res
 end
 
@@ -173,7 +200,7 @@ m ↓     ↓
   G ⟵ Gk
 """
 function rewrite_match_maps(rule::PBPORule,mα; check=false, kw...)
-  _, a, _, α = mα 
+  _, _, _, α = mα 
   S = acset_schema(dom(left(rule)))
   gl, u′ = var_pullback(Cospan(α, rule.l′)) # A <-- Gk --> K'
   abs_K = abstract(dom(left(rule))) # absK -> K 
@@ -181,16 +208,14 @@ function rewrite_match_maps(rule::PBPORule,mα; check=false, kw...)
                   homomorphisms(dom(abs_K), dom(u′))))
   abs_r = homomorphism(dom(abs_K), codom(right(rule)); 
                        initial=Dict([o=>collect(right(rule)[o]) for o in ob(S)]))
-  # We need to move the map absK-->Gk to K-->Gk. Need a map absK --> K
   w, gr = pushout(abs_r, u)
 
-  # relevant morphisms to return: u′, u, gr, w
   return Dict(:gl=>gl, :u′=>u′, :u=>u, :gr=>gr, :w=>w)
 end
 
 
 """
-Use exprs and k_exprs
+Use exprs and k_exprs to fill in variables introduced by applying the rw rule.
 """
 function get_expr_binding_map(rule::PBPORule, mtch, res) 
   R, X = dom(res[:w]), codom(res[:w])
@@ -227,7 +252,5 @@ function get_expr_binding_map(rule::PBPORule, mtch, res)
   end)
   return sub_vars(X, comps)
 end
-
-
 
 end # module 

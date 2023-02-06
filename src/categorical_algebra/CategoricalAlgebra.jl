@@ -1,5 +1,10 @@
 module CategoricalAlgebra
 
+
+"""
+Functionality that is of more general use than just rewriting
+"""
+
 using Reexport
 
 include("FinSets.jl")

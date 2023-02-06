@@ -1,9 +1,10 @@
 module SPO 
-import ..Utils: rewrite_match_maps
 
-using ..Utils
-using ...CategoricalAlgebra.CSets: var_pullback
 using Catlab, Catlab.CategoricalAlgebra
+
+using ...CategoricalAlgebra.CSets: var_pullback
+using ..Utils
+import ..Utils: rewrite_match_maps
 
 
 # Single-pushout rewriting
@@ -43,7 +44,6 @@ function pullback_complement(f::ACSetTransformation{S}, g; check=false) where S
   d_to_c = homomorphism(D, codom(d_to_c); 
                         initial=Dict(o=>collect(d_to_c[o]) for o in ob(S)))
   
-  !check || is_natural(d_to_c) || error("d_to_c ")
   fg = compose(f,g)
   ad = Dict(map(ob(S)) do cmp 
     fg_as = fg[cmp]
@@ -52,8 +52,9 @@ function pullback_complement(f::ACSetTransformation{S}, g; check=false) where S
     end)
   end)
   a_to_d = homomorphism(A, dom(d_to_c); initial=ad) 
-  !check || is_natural(a_to_d) || error("a_to_d ")
 
+  !check || is_natural(d_to_c) || error("d_to_c ")
+  !check || is_natural(a_to_d) || error("a_to_d ")
   return a_to_d => d_to_c
 end
 

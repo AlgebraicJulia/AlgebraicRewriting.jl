@@ -1,11 +1,11 @@
 module Utils
 
-export Rule, ruletype,rewrite, rewrite_match, rewrite_parallel, rewrite_full_output,
-       rewrite_match_maps, rewrite_parallel_maps, rewrite_sequential_maps,
-       can_match, get_matches
+export Rule, ruletype,rewrite, rewrite_match, rewrite_full_output, 
+       rewrite_match_maps, can_match, get_match, get_matches
 
 using Catlab, Catlab.Theories, Catlab.Schemas
 using Catlab.CategoricalAlgebra
+using Catlab.CategoricalAlgebra.CSets: backtracking_search
 import Catlab.CategoricalAlgebra: left, right
 
 using Random
@@ -21,7 +21,7 @@ using ...CategoricalAlgebra.CSets: invert_hom
 abstract type AbsRule end 
 
 """
-Rewrite rules which are encoded as spans. 
+Rewrite rules which are (usually) encoded as spans. 
 The L structure encodes a pattern to be matched. 
 The R morphism encodes a replacement pattern to be substituted in.
 They are related to each other by an interface I with maps: L ⟵ I ⟶ R 
@@ -31,9 +31,6 @@ A semantics (DPO, SPO, or SqPO) must be chosen.
 Control the match-finding process by specifying whether the match is
 intended to be monic or not, as well as an optional application
 condition(s) 
-
-Monic constraints can be independently given
-to the match morphism and to the morphisms searched for when checking NAC.
 """
 @struct_hash_equal struct Rule{T} <: AbsRule
   L::Any
@@ -51,13 +48,14 @@ to the match morphism and to the morphisms searched for when checking NAC.
       end
     end
     for (o, xs) in collect(exprs)
-      nparts(codom(R),o) == length(xs) || error("$(nparts(codom(R),o)) exprs needed for part $o")
+      err = "$(nparts(codom(R),o)) exprs needed for part $o"
+      nparts(codom(R),o) == length(xs) || error(err)
     end 
     new{T}(L, R, ACs, monic, exprs)
   end
 end
 
-Rule(l,r;kw...) = Rule{:DPO}(l,r; kw...)
+Rule(l, r; kw...) = Rule{:DPO}(l, r; kw...)
 ruletype(::Rule{T}) where T = T
 left(r::Rule{T}) where T = r.L
 right(r::Rule{T}) where T = r.R
@@ -107,8 +105,7 @@ has_comp(monic::Vector{Symbol}, c::Symbol) = c ∈ monic
 Returns nothing if the match is acceptable for rewriting according to the
 rule, otherwise returns the reason why it should be rejected
 """
-function can_match(r::Rule{T}, m; initial=Dict(),
-                   seen=Set()) where T
+function can_match(r::Rule{T}, m; initial=Dict()) where T
   S = acset_schema(dom(m))
   for k in ob(S)
     if has_comp(r.monic,k) && !is_monic(m[k])
@@ -133,35 +130,45 @@ function can_match(r::Rule{T}, m; initial=Dict(),
 
   for (nᵢ, N) in enumerate(r.conditions)
     if !apply_constraint(N, m)
-      return ("AC $nᵢ failed", nᵢ)
+      return ("Constraint $nᵢ failed", nᵢ)
     end
   end
 
-  if !isempty(seen)
-    res = rewrite_match(r, m; kw...)
-    for s in seen
-      if is_isomorphic(s,res)
-        return ("Result is iso to previously seen result", s)
-      end
-    end
-  end
-
-  return nothing
+  return nothing # we can match
 end
+
+get_match(args...; kw...) = let x = get_matches(args...; n=1, kw...);
+  isempty(x) ? nothing : only(x) end 
 
 """Get list of possible matches based on the constraints of the rule"""
-function get_matches(r::Rule{T}, G; initial=nothing, seen=Set(),
-                     verbose=false) where T
+function get_matches(r::Rule{T}, G::StructACSet; initial=nothing,
+                     verbose=false, random=false, n=-1) where T
   initial = isnothing(initial) ? Dict() : initial
-  hs = homomorphisms(codom(r.L), G; monic=r.monic, initial=NamedTuple(initial))
-  collect(filter(hs) do h
+
+  hs = []
+  backtracking_search(codom(r.L), G; monic=r.monic, initial=NamedTuple(initial), 
+                      random=random) do h 
     cm = can_match(r,h)
-    if verbose && !isnothing(cm)
+    if isnothing(cm)
+      push!(hs, deepcopy(h))
+      return length(hs) == n # we stop the search Hom(L,G) when this holds
+    elseif verbose 
       println("$([k => collect(v) for (k,v) in pairs(components(h))]): $cm")
+      return false
+    else return false
     end
-    isnothing(cm)
-  end)
+  end 
+  return hs
 end
+
+"""If not rewriting ACSets, we have to compute entire Hom(L,G)."""
+function get_matches(r::Rule{T}, G; initial=nothing, verbose=false, 
+                     random=false, n=-1) where T 
+  initial = isnothing(initial) ? Dict() : initial
+  ms = homomorphisms(codom(left(r)), G; monic=r.monic, 
+                     initial=NamedTuple(initial), random=random)
+  return [m for m in ms if isnothing(can_match(r, m))][1: (n==0 ? end : n)]
+end 
 
 # Variables
 ###########
@@ -219,31 +226,8 @@ function get_expr_binding_map(r::Rule{T}, m::ACSetTransformation, res) where T
   return sub_vars(X, comps)
 end
 
-get_expr_binding_map(r::Rule{T}, m, res) where T = 
-  get_rmap(ruletype(r),res) |> codom |> id
-
-
-"""Replace AttrVars with values"""
-function subexpr(expr::Expr, bound_vars::Vector{Any})
-  x = deepcopy(expr)
-  for (i, v) in enumerate(bound_vars)
-    rep!(x, Expr(:call, :AttrVar, i), v)
-  end
-  return eval(x)
-end
-
-"""Replace old with new in an expression recursively"""
-function rep!(e, old, new)
-  for (i,a) in enumerate(e.args)
-    if a==old
-      e.args[i] = new
-    elseif a isa Expr
-      rep!(a, old, new)
-    end # otherwise do nothing
-  end
-  e
-end
-
+"""Don't bind variables for things that are not ACSets"""
+get_expr_binding_map(r::Rule{T}, m, X) where T =  id(get_result(ruletype(r), X))
 
 
 # Rewriting functions that just get the final result
@@ -254,9 +238,9 @@ function rewrite_match_maps end  # to be implemented for each T
 """    rewrite(r::Rule, G; kw...)
 Perform a rewrite (automatically finding an arbitrary match) and return result.
 """
-function rewrite(r::AbsRule, G; initial=nothing, kw...)
-  ms = get_matches(r, G; initial=initial, kw...)
-  return isempty(ms) ? nothing : rewrite_match(r, first(ms); kw...)
+function rewrite(r::AbsRule, G; initial=nothing, random=false, kw...)
+  m = get_match(r, G; initial=initial, random=random)
+  return isnothing(m) ? nothing : rewrite_match(r, m; kw...)
 end
 
 
@@ -266,14 +250,6 @@ Perform a rewrite (with a supplied match morphism) and return result.
 rewrite_match(r::AbsRule, m; kw...) =
   codom(get_expr_binding_map(r, m, rewrite_match_maps(r,m; kw...)))
 
-  """    rewrite_parallel(rs::Vector{Rule}, G; kw...)
-  Perform multiple rewrites in parallel (automatically finding arbitrary matches)
-  and return result.
-  """
-rewrite_parallel(rs::Vector{Rule{T}}, G; kw...) where {T} =
-    get_result(T, rewrite_parallel_maps(rs, G; kw...))
-
-rewrite_parallel(r::Rule, G; kw...) = rewrite_parallel([r], G; kw...)
 
 # Rewriting function which return the maps, too
 ###############################################
@@ -282,9 +258,9 @@ Perform a rewrite (automatically finding an arbitrary match) and return a tuple:
 1.) the match morphism 2.) all computed data 3.) variable binding morphism
 """
 function rewrite_full_output(r::AbsRule, G; initial=nothing, random=false,
-                            seen=Set(), verbose=false, kw...) 
+                             verbose=false, n=-1, kw...) 
   T = ruletype(r)
-  ms = get_matches(r,G,initial=initial, seen=seen, verbose=verbose)
+  ms = get_matches(r,G,initial=initial, random=random, n=n, verbose=verbose)
   if isempty(ms)
     return nothing
   elseif random
@@ -294,48 +270,5 @@ function rewrite_full_output(r::AbsRule, G; initial=nothing, random=false,
   rdata = rewrite_match_maps(r, m; verbose=verbose, kw...)
   return (m, rdata, codom(get_expr_binding_map(r, m, get_rmap(T, rdata))))
 end
-
-# Executing multiple rewrites
-#############################
-
-"""    rewrite_parallel_maps(rs::Vector{Rule{T}}, G::StructACSet{S}; initial=Dict(), kw...) where {S,T}
-Perform multiple rewrites in parallel (automatically finding arbitrary matches)
-and return all computed data. Restricted to C-set rewriting
-"""
-function rewrite_parallel_maps(rs::Vector{Rule{T}}, G::StructACSet{S};
-                               initial=Dict(), kw...) where {S,T}
-
-  (ms,Ls,Rs) = [ACSetTransformation{S}[] for _ in 1:3]
-  seen = [Set{Int}() for _ in ob(S)]
-  init = NamedTuple(initial) # UNUSED
-  for r in rs
-    ms = get_matches(r,G,initial=initial, seen=seen)
-    for m in ms
-      new_dels = map(zip(components(r.L), components(m))) do (l_comp, m_comp)
-        L_image = Set(collect(l_comp))
-        del = Set([m_comp(x) for x in codom(l_comp) if x ∉ L_image])
-        LM_image = Set(m_comp(collect(L_image)))
-        return del => LM_image
-      end
-      if all(isempty.([x∩new_keep for (x,(_, new_keep)) in zip(seen, new_dels)]))
-        for (x, (new_del, new_keep)) in zip(seen, new_dels)
-          union!(x, union(new_del, new_keep))
-        end
-        push!(ms, m); push!(Ls, deepcopy(r.L)); push!(Rs, r.R)
-      end
-    end
-  end
-
-  if isempty(ms) return nothing end
-  length(Ls) == length(ms) || error("Ls $Ls")
-
-  # Composite rewrite rule
-  R = Rule{T}(oplus(Ls), oplus(Rs))
-
-  return rewrite_match_maps(R, copair(ms); kw...)
-end
-
-rewrite_parallel_maps(r::Rule, G; initial=Dict(), kw...) =
-  rewrite_parallel_maps([r], G; initial=initial, kw...)
 
 end # module
