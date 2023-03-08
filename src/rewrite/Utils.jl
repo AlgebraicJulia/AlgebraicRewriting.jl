@@ -198,8 +198,9 @@ function get_expr_binding_map(r::Rule{T}, m::ACSetTransformation, res) where T
       bound_vars = Vector{Any}(collect(m[at]))
       binding = Any[nothing for _ in parts(X, at)]
 
-      # Assign variables from partial map
+      # By default, assign variables from partial map
       for p in parts(X,at)
+        preim = preimage(pmap_r[at],AttrVar(p))
         pr = unique(pmap_l[at](AttrVar.(preimage(pmap_r[at],AttrVar(p)))))
         if length(pr) == 1 
           binding[p] = only(pr)
@@ -210,8 +211,8 @@ function get_expr_binding_map(r::Rule{T}, m::ACSetTransformation, res) where T
       else 
         exprs = map(parts(R,at)) do rᵢ
           iᵢ = preimage(right(r)[at], AttrVar(rᵢ))
-          lᵢ = left(r)[at](AttrVar(only(iᵢ))).val
-          vs->vs[lᵢ]
+          lᵢ = left(r)[at](AttrVar(only(iᵢ)))
+          return lᵢ isa AttrVar ? (vs->vs[lᵢ.val]) : (vs->lᵢ)
         end
       end
       for (v, expr) in enumerate(exprs)

@@ -95,7 +95,7 @@ bottom_6 = homomorphism(arr, L′;initial=(V=[2,2],))
 
 cg = @acset CGraph begin V=4; E=6; src=[2,1,3,1,3,3]; tgt=[4,2,2,3,4,4];
   vlabel=[G1, nothing, arr, L′]; 
-  elabel=[AttrVar(1), nothing,  nothing, vertical, bottom_5, bottom_6]
+  elabel=[1, nothing,  nothing, vertical, bottom_5, bottom_6]
 end
 
 expr = ∀(2, ∃(3, 
@@ -108,20 +108,43 @@ lc = Constraint(cg, expr)
 rule = PBPORule(l,r,tl,tk,l′; lcs = [lc])
 rule_no_condition = PBPORule(l,r,tl,tk,l′)
 
+function get_adherence(m::ACSetTransformation) 
+  root, G = only(collect(m[:V])), codom(m)
+  descendents = Set()
+  queue = [root]
+  topological_sort(G) # the following assumes G is a DAG
+  while !isempty(queue)
+    nxt = pop!(queue)
+    union!(descendents, outneighbors(G,nxt))
+    union!(queue, outneighbors(G,nxt))
+  end
+  return (V = map(parts(codom(m),:V)) do v_G 
+  if     v_G == root       return 1 
+  elseif v_G ∈ descendents return 2 
+  else                     return 3 
+  end 
+end,)
+end
+
+rule_manual = PBPORule(l,r,tl,tk,l′; adherence=get_adherence)
+
 
 G = @acset Graph begin V=8; E=8; 
   src=[1,1,2,2,3,4,4,5]; tgt=[2,3,4,5,6,5,7,8] 
 end
 
-@test length(get_matches(rule_no_condition, G; initial=Dict(:V=>[2])=>Dict(), α_unique=false)) > 1
-@test_throws ErrorException get_matches(rule_no_condition, G; initial=Dict(:V=>[2])=>Dict()) 
+init = (initial=Dict(:V=>[2])=>Dict(),)
 
-init = Dict(:V=>[2])=>Dict()
-@test only(get_matches(rule, G; initial=init)) == get_match(rule, G;initial=init)
+@test length(get_matches(rule_no_condition, G; α_unique=false, init...)) > 1
+@test_throws ErrorException get_matches(rule_no_condition, G; init...) 
+
+@test get_matches(rule, G; init...) == get_matches(rule_manual, G; init...)
+
+@test only(get_matches(rule, G; init...)) == get_match(rule, G; init...)
 expected = @acset Graph begin V=13;E=14;
   src=[7,7,7,1,1,3,3,4,2,2,10,10,11,8]; tgt=[1,2,8,3,4,5,4,6,10,11,12,11,13,9] 
 end
-@test is_isomorphic(expected,rewrite(rule, G; initial=init))
+@test is_isomorphic(expected,rewrite(rule, G; init...))
 
 # Example 20 from "Graph Rewriting and Relabeling with PBPO+"
 #############################################################

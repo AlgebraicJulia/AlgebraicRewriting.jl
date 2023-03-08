@@ -1,30 +1,7 @@
-using .Interact
-
 using Catlab.WiringDiagrams, Catlab.Graphics
-using Catlab.WiringDiagrams.DirectedWiringDiagrams: out_port_id
 using Catlab.Graphics.Graphviz: Graph, Subgraph, Statement, pprint, Node, Edge, NodeID
 using .Wiring: color 
-
-# Code related to combining two graphs together. Potentially upstreamable.
-##########################################################################
-to_subgraph(g::Graph) = Subgraph(
-  name="cluster_"*g.name, stmts=g.stmts, 
-  graph_attrs=g.graph_attrs, node_attrs=g.node_attrs, edge_attrs=g.edge_attrs)
-
-
-rename(g::Graph, suffix::String) = Graph(
-  g.name * suffix, g.directed, g.prog,
-  [rename(stmt, suffix) for stmt in g.stmts],
-  g.graph_attrs, g.node_attrs,g.edge_attrs, 
-)
-
-rename(n::Node, suffix::String) = Node(n.name*suffix; n.attrs...)
-rename(n::Edge, suffix::String) = Edge([rename(i,suffix) for i in n.path]; n.attrs...)
-rename(n::NodeID, suffix::String) = NodeID(n.name*suffix, n.port, n.anchor)
-mrg(gs::AbstractVector{Graph}; kw...) =  
-  Graph(name="Trajectory",directed=gs[1].directed, prog=gs[1].prog,
-        stmts=Statement[to_subgraph(gs[1]),[to_subgraph(rename(g,"suffix$i")) 
-                        for (i,g) in enumerate(gs[2:end])]...]; kw...)
+using .Luxor
 
 # Visualization
 ###############
@@ -32,33 +9,44 @@ mrg(gs::AbstractVector{Graph}; kw...) =
 Visualize a trajectory with two views: one showing the current position within 
 the schedule, and the other showing the world state.
 """
-function view_traj(sched_::WiringDiagram, rG::Traj, viewer)
-  sched = WiringDiagram([], [])
-  copy_parts!(sched.diagram,sched_.diagram)
-
-  # Create slider 
-  return @manipulate for n in slider(1:length(rG), value=1, label="Step:")
-    step = rG[n]
-    name, G = step.desc, codom(step.world)
-    rhs_graphs = viewer.([codom(n==1 ? rG.initial : rG[n-1].world), G])
-    begin # mark position in schedule 
-      sched.diagram[:outer_in_port_type] = [""]
-      sched.diagram[:outer_out_port_type] = [""]
-      sched.diagram[:out_port_type] = fill("", nparts(sched.diagram, :OutPort))
-      if step.inwire.source.box == input_id(sched) 
-        sched.diagram[step.inwire.source.port, :outer_in_port_type] = "→"
-      else 
-        sched.diagram[out_port_id(sched, step.inwire.source), :out_port_type] = "→"
-      end
-      sched.diagram[out_port_id(sched, step.outwire.source), :out_port_type] = "←"
+function view_traj(sched_::WiringDiagram, rG::Traj, viewer; out="traj")
+  if isdir(out) # clear old dir
+    for fi in filter(x->length(x)>4 && x[end-3:end] == ".png",  readdir(out))
+      rm(joinpath(out,fi))
     end
-
-    lhs_graph = to_graphviz(sched; labels=true, 
-      graph_attrs=Dict(:label=>name, :labelloc=>"t"),
-      node_colors=Dict(i=>color(b.value) for (i,b) in enumerate(boxes(sched))))
-
-    merged_graph = mrg([lhs_graph,rhs_graphs...])
-    # pprint(merged_graph)
-    return merged_graph
+  else
+    mkdir(out)
   end
+  for n in 1:length(rG)
+    view_traj(sched_,rG, viewer, n; out=out)
+  end
+end 
+
+function view_traj(sched_::WiringDiagram, rG::Traj, viewer, n::Int; out="traj")
+  step = rG[n]
+  graphs = [view_sched(sched_; name=step.desc, source=step.inwire.source, 
+                       target=step.outwire.source)]
+  worlds = [(n==1 ? rG.initial : rG[n-1].world), step.world]
+  append!(graphs, viewer.(codom.(worlds)))
+  svgs = map(enumerate(graphs)) do (i,g)
+    open("tmp$i.svg", "w") do io 
+      show(io,"image/svg+xml",g)
+    end
+    readsvg("tmp$i.svg")
+  end
+  for i in 1:3 rm("tmp$i.svg") end
+
+  heights=[x.height for x in svgs]; width=maximum([x.width for x in svgs])
+  height=sum(heights)
+  Drawing(width+10, height+10, "$out/$n.png")
+  p(h) = Point(width/2,h)
+  line(Point(0,heights[1]),Point(width,heights[1]), :stroke)
+  line(Point(0,sum(heights[1:2])),Point(width,sum(heights[1:2])), :stroke)
+  placeimage(svgs[1],p(heights[1]/2); centered=true)
+  placeimage(svgs[2],p(heights[1] + heights[2]/2); centered=true)
+  placeimage(svgs[3],p(height - heights[3]/2); centered=true)
+  finish()
 end
+
+
+

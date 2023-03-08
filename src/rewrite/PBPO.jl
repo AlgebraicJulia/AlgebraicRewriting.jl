@@ -27,21 +27,24 @@ It is assumed we never want the typing/adherence match to be monic, but we
 can optionally restrict the match L → G to be monic.
 
 We can attach application conditions to both the match morphism as well as the 
-adherence morphism. 
+adherence morphism. Until morphism search under constraints becomes efficient,
+it's sometimes needed to just directly state the adherence morphism as a 
+function of the match morphism.
 """
 @struct_hash_equal struct PBPORule <: AbsRule
-  l
-  r
-  tl
-  tk 
-  l′
+  l::ACSetTransformation
+  r::ACSetTransformation
+  tl::ACSetTransformation
+  tk::ACSetTransformation
+  l′::ACSetTransformation
   monic::Union{Bool, Vector{Symbol}}
   acs::Vector{Constraint}
   lcs::Vector{Constraint}
   exprs::Dict 
   k_exprs::Dict
+  adherence::Union{Nothing, Function}
   function PBPORule(l,r,tl,tk,l′; monic=true, acs=[], lcs=[], 
-                    expr=nothing,k_expr=nothing)
+                    expr=nothing,k_expr=nothing, adherence=nothing)
     # check things match up
     S = acset_schema(dom(l))
     all(is_natural, [l,r,tl,tk,l′]) || error("Unnatural")
@@ -56,7 +59,7 @@ adherence morphism.
     exprs = isnothing(expr) ? Dict() : Dict(pairs(expr))
     k_exprs = isnothing(k_expr) ? Dict() : Dict(pairs(k_expr))
 
-    return new(l,r,tl,tk,l′, monic, acs, lcs, exprs, k_exprs)
+    return new(l,r,tl,tk,l′, monic, acs, lcs, exprs, k_exprs, adherence)
   end
 end
 
@@ -66,7 +69,8 @@ right(r::PBPORule) = r.r
 
 (F::Migrate)(r::PBPORule) =
   PBPORule(F(r.l), F(r.r), F(r.tl), F(r.tk), F(r.l′); monic=r.monic,
-           acs=F.(r.acs), lcs=F.(r.lcs), expr=F(r.exprs), k_expr=F(r.k_exprs))
+           acs=F.(r.acs), lcs=F.(r.lcs), expr=F(r.exprs), k_expr=F(r.k_exprs), 
+           adherence=r.adherence)
 
 
 """
@@ -144,35 +148,47 @@ function get_matches(rule::PBPORule, G::StructACSet{S}; verbose=false,
         end
       end
       ab = remove_freevars(ab)
+      A = dom(ab) # now with free variables removed
       # Construct a:L->A such that m = a;ab
       ainit = NamedTuple(Dict(o=>collect(m[o]) for o in ob(S)))
       a = only(homomorphisms(L, A; initial=ainit))
-      
       # Search for maps α: A -> L′ such that a;α=tl 
       init = combine_dicts!(extend_morphism_constraints(rule.tl,a), typinit)
       if !isnothing(init) 
-        backtracking_search(codom(a), codom(rule.tl); initial=init, kw...) do α
-          if verbose 
-            println("\tα: ", [k=>collect(v) for (k,v) in pairs(components(α))]) 
+        # If we have a built in function to deduce the adherence from the match
+        if !isnothing(rule.adherence)
+          init = rule.adherence(m) # return nothing if failure
+          if !isnothing(init)
+            αs = homomorphisms(codom(a), codom(rule.tl); initial=init)
+            if length(αs) ==1 
+              push!(res, deepcopy((m,a,ab,only(αs)))) 
+            end 
           end
-          strong_match = all(ob(S)) do o 
-            all(parts(A,o)) do i 
-              p1 = preimage(rule.tl[o],α[o](i))
-              p2 = preimage(a[o], i)
-              sort(p1) == sort(p2)
+        else 
+          # Search for adherence morphisms.
+          backtracking_search(codom(a), codom(rule.tl); initial=init, kw...) do α
+            if verbose 
+              println("\tα: ", [k=>collect(v) for (k,v) in pairs(components(α))]) 
             end
-          end
-          if strong_match && all(lc -> apply_constraint(lc, α), rule.lcs)
-            all(is_natural, [m,a,ab,α]) || error("Unnatural match")
-            if m_seen  error("Multiple α for a single match $m") end 
-            if verbose print("\tSUCCESS") end 
-            push!(res, deepcopy((m,a,ab,α)))
-            m_seen |= α_unique
-            return length(res) == n
-          elseif verbose 
-            println("\tFAILURE (strong $strong_match)")
-            return false
-          else return false
+            strong_match = all(ob(S)) do o 
+              all(parts(A,o)) do i 
+                p1 = preimage(rule.tl[o],α[o](i))
+                p2 = preimage(a[o], i)
+                sort(p1) == sort(p2)
+              end
+            end
+            if strong_match && all(lc -> apply_constraint(lc, α), rule.lcs)
+              all(is_natural, [m,a,ab,α]) || error("Unnatural match")
+              if m_seen  error("Multiple α for a single match $m") end 
+              if verbose print("\tSUCCESS") end 
+              push!(res, deepcopy((m,a,ab,α)))
+              m_seen |= α_unique
+              return length(res) == n
+            elseif verbose 
+              println("\tFAILURE (strong $strong_match)")
+              return false
+            else return false
+            end
           end
         end
       end
@@ -218,17 +234,23 @@ end
 Use exprs and k_exprs to fill in variables introduced by applying the rw rule.
 """
 function get_expr_binding_map(rule::PBPORule, mtch, res) 
-  R, X = dom(res[:w]), codom(res[:w])
-  K′ = codom(rule.tk)
+  # unpack data
+  X = codom(res[:w])
   (m, _, ab, _) = mtch
 
   comps = Dict(map(attrtypes(acset_schema(X))) do at 
+    # match morphism data
     bound_vars = Vector{Any}(collect(m[at]))
+    # For each variable in the intermediate rewrite state, determine what 
+    # it refers to in the original graph and what in K′ it refers to, too.
     G_bound_vars = Vector{Any}(collect(compose(res[:gl][at],ab[at])))
     K_bound_vars = [k isa AttrVar ? k.val : k for k in collect(res[:u′][at])]
+    # Functions we associate with K′ variables 
     exprs = haskey(rule.k_exprs,at) ? rule.k_exprs[at] : Dict()
+    # Compute a value for each variable in the result
     at => map(parts(X, at)) do x 
       p_r = preimage(res[:w][at], AttrVar(x))
+      # If the variable was introduced via R, try to use rule.exprs
       if !isempty(p_r) 
         v = only(p_r)
         if haskey(rule.exprs,at)
@@ -239,14 +261,14 @@ function get_expr_binding_map(rule::PBPORule, mtch, res)
           end
         end
       end 
-      # Try to get value via Gk
+      # Try to get value via the intermediate graph
       p_k = only(preimage(res[:gr][at], AttrVar(x)))
       ik = K_bound_vars[p_k]
       k_expr = exprs isa AbstractVector ? exprs[ik] : get(exprs, ik, nothing)
       if isnothing(k_expr)
-        return G_bound_vars[p_k]
+        return G_bound_vars[p_k] # default to corresponding attr in original G
       else 
-        return k_expr(G_bound_vars[p_k], bound_vars)
+        return k_expr(G_bound_vars[p_k], bound_vars) # apply custom function
       end
     end
   end)

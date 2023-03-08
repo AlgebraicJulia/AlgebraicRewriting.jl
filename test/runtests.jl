@@ -2,8 +2,8 @@ using Test
 
 using AlgebraicRewriting
 @test length(methods(view_traj)) == 1
-using Interact
-@test length(methods(view_traj)) == 2
+using Luxor
+@test length(methods(view_traj)) > 1
 
 @testset "Lotka Volterra" begin
   include("../docs/src/lotka_volterra.jl") # this shouldn't crash

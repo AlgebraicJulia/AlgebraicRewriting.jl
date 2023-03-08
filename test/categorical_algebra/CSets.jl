@@ -23,6 +23,18 @@ ik, kg = pushout_complement(ComposablePair(l,m))
 K = codom(ik)
 @test nparts(K, :X) == 1 # algorithm currently picks the first option
 
+@present TheoryLFinSet(FreeSchema) begin
+  X::Ob; D::AttrType; f::Attr(X,D)
+end
+@acset_type LFinSetType(TheoryLFinSet)
+const LSet = LFinSetType{Symbol}
+
+I = @acset LSet begin X=1; D=1; f=[AttrVar(1)] end
+G = @acset LSet begin X=2; D=2; f=[:x,:y] end
+f = homomorphism(I,G)
+expected = @acset LSet begin X=2; D=1; f=[AttrVar(1),:y] end
+@test dom(last(pushout_complement(id(I),f))) == expected
+
 # Slices 
 ########
 two = @acset Graph begin V=2; E=2; src=[1,2]; tgt=[2,1] end
@@ -69,4 +81,5 @@ A = @acset WG begin V=1; Weight=2; E=3; src=1;tgt=1;
                     weight=[true, AttrVar.(1:2)...] end
 f = homomorphism(A,C; initial=(E=[1,1,2],))
 var_pullback(Cospan(f,f))
+
 end # module

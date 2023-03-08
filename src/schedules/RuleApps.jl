@@ -1,5 +1,5 @@
 module RuleApps
-export RuleApp, loop_rule
+export RuleApp, loop_rule, tryrule
 
 using Catlab.CategoricalAlgebra
 
@@ -7,7 +7,7 @@ using ...Rewrite
 using ...Rewrite.Utils: AbsRule, get_rmap, get_pmap, get_expr_binding_map
 using ...CategoricalAlgebra.CSets: Migrate, extend_morphism_constraints
 using ..Wiring
-using ..Wiring: id_pmap, str_hom, traj_agent
+using ..Wiring: id_pmap, str_hom, traj_agent, mk_sched, typecheck
 import ..Wiring: AgentBox, input_ports, output_ports, initial_state, color, 
   update
 using ..Conditionals
@@ -16,7 +16,7 @@ using ..Conditionals
 """
 Has the semantics of applying the rule to *some* match that is found 
 (no guarantees on *which* one, which should be controlled by application 
-conditions).
+conditions). If rewrite occurs, exit mode 1, else exit mode 2.
 
 The agent is related to the L and R patterns of the rule. This can be done 
 via a Span, or implicitly as a homomorphism into "I" of the rewrite 
@@ -49,7 +49,7 @@ struct RuleApp <: AgentBox
 end  
 Base.string(c::RuleApp) = c.name
 input_ports(r::RuleApp) = [dom(r.in_agent)] 
-output_ports(r::RuleApp) = [dom(r.out_agent)]
+output_ports(r::RuleApp) = [dom(r.out_agent), dom(r.in_agent)]
 color(::RuleApp) = "lightblue"
 initial_state(::RuleApp) = nothing 
 (F::Migrate)(a::RuleApp) = 
@@ -61,7 +61,7 @@ function update(r::RuleApp, ::Int, instate::Traj, ::Nothing)
   last_step = traj_agent(instate) # A -> X 
   m = update_match(r, last_step)
   if isnothing(m)
-    return (1, last_step, id_pmap(codom(last_step)), nothing, "(no match)")
+    return (2, last_step, id_pmap(codom(last_step)), nothing, "(no match)")
   else 
     res = rewrite_match_maps(r.rule, m)
     rmap = get_rmap(ruletype(r.rule), res)
@@ -74,7 +74,7 @@ function update(r::RuleApp, ::Int, instate::Traj, ::Nothing)
   end
 end 
 
-"""Helper function for `update` and `loop_rule`"""
+# """Helper function for `update`"""
 function update_match(r::RuleApp, agent::ACSetTransformation; kwargs...)
   init = extend_morphism_constraints(agent, r.in_agent)
   get_match(r.rule, codom(agent); initial=init, kwargs...)
@@ -86,10 +86,17 @@ current state"""
 has_match(rulename::String, r::AbsRule, agent::StructACSet) = 
   if_cond("Can match $rulename", x->!isnothing(get_match(r,x)), agent)
 
-
+"""
+Feed the "rewrite applied" output back into the input of the rule application
+"""
 loop_rule(a::RuleApp) =
-  while_schedule(a, x->!isnothing(update_match(a,x)); 
-                 name = "match $(a.name)", argtype = :agent)
+  mk_sched((i=:X,trace_arg=:X), 1, (f=a,X=dom(a.in_agent),Y=dom(a.out_agent)), 
+  quote 
+    found_match, no_match = f([i,trace_arg]) 
+    return no_match, found_match
+  end) |> typecheck
+
+tryrule(a::RuleApp) = a ⋅ merge_wires(2, dom(a.in_agent)) |> typecheck
 
 
 end # module 

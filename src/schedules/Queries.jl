@@ -59,25 +59,13 @@ struct Query <: AgentBox
   """
   function Query(a::Span, n::String="", ret=nothing; constraint=Trivial)
     in_shape, agent_shape = codom.([left(a),right(a)])
-    if arity(constraint) == 0 # trivial
-      cg = @acset CGraph begin V=4; E=4; Elabel=1; src=[1,1,2,3]; tgt=[2,3,4,4]
-        vlabel=[apex(a), in_shape, agent_shape, nothing]
-        elabel=[a...,AttrVar.([2,1])...]
-      end
-      xpr = Commutes([1,3],[2,4])
-    elseif arity(constraint) == 1 
-      cg = deepcopy(constraint.g)
-      v_a,v_l = add_vertices!(cg; vlabel=[apex(a),in_shape]) 
-      e_r = findfirst(==(AttrVar(1)), cg[:elabel])
-      v_r, v_w = [cg[e_r, x] for x in [:src,:tgt]]
-      e1,e2,e3 = add_edges!(cg,[v_a,v_a,v_l],[v_l,v_r,v_w]; 
-                 elabel=[a...,AttrVar(2)])
-      xpr = BoolAnd(Commute([e1,e2],[e3,e_r]), constraint.d)
-    else
-      error("Odd constraint") 
-    end 
+    cg = @acset CGraph begin V=4; E=4; Elabel=1; src=[1,1,2,3]; tgt=[2,3,4,4]
+      vlabel=[apex(a), in_shape, agent_shape, nothing]
+      elabel=[a...,2,1]
+    end
+    constr = Constraint(cg, Commutes([1,3],[2,4])) ⊗ constraint
     rshape = isnothing(ret) ? agent_shape : ret
-    new(n, in_shape, agent_shape, rshape, Constraint(cg, xpr))
+    new(n, in_shape, agent_shape, rshape, constr)
   end
   """
   Constrain agents with a map OldAgent -> NewAgent (triangle must commute)
@@ -90,27 +78,13 @@ struct Query <: AgentBox
   """
   function Query(a::ACSetTransformation, n::String="", ret=nothing; constraint=Trivial)
     in_shape, agent_shape = [dom(a),codom(a)]
-
-    if arity(constraint) == 0 # trivial
-      cg = @acset CGraph begin V=3; E=3; Elabel=1; src=[1,2,1]; tgt=[2,3,3]
-        vlabel=[in_shape, agent_shape, nothing]
-        elabel=[a,AttrVar.([2,1])...]
-      end
-      xpr = Commutes([3],[1,2])
-    elseif arity(constraint) == 1 
-      cg = deepcopy(constraint.g)
-      agent_new_vertex = add_vertex!(cg; vlabel=in_shape)
-      input_edge = findfirst(==(AttrVar(1)), cg[:elabel])
-      input_edge_src, input_edge_tgt = [cg[input_edge, x] for x in [:src,:tgt]]
-      e1,e2 = add_edges!(cg,[agent_new_vertex,agent_new_vertex],
-                            [input_edge_src,input_edge_tgt];
-                             elabel=[a,AttrVar(2)])
-      xpr = BoolAnd(Commutes([e2],[e1,input_edge]), constraint.d)
-    else
-      error("Odd constraint of arity $(arity(constraint))")
-    end 
+    cg = @acset CGraph begin V=3; E=3; src=[1,2,1]; tgt=[2,3,3]
+      vlabel=[in_shape, agent_shape, nothing]
+      elabel=[a,2,1]
+    end
+    constr = Constraint(cg, Commutes([3],[1,2])) ⊗ constraint
     rshape = isnothing(ret) ? agent_shape : ret
-    new(n, in_shape, agent_shape, rshape, Constraint(cg, xpr))
+    new(n, in_shape, agent_shape, rshape, constr)
   end
 end
 
@@ -131,8 +105,8 @@ color(::Query) = "yellow"
 input_ports(c::Query) = [c.agent, c.return_type] 
 output_ports(c::Query) = [c.agent, c.subagent, typeof(c.agent)()]
 initial_state(::Query) = QueryState(-1, ACSetTransformation[])
-(F::Migrate)(a::Query) =  Query(a.name,F(a.agent), F(a.return_type))
-
+(F::Migrate)(a::Query) =  Query(F(a.subagent), F(a.agent), a.name, F(a.return_type); constraint=F(a.constraint))
+# Query(sa::StructACSet,a::StructACSet=nothing, n::String="",ret=nothing; constraint=Trivial)
 function update(q::Query, i::Int, instate::Traj, boxstate::Any)
   idp = id_pmap(traj_res(instate)) 
   msg = ""
@@ -158,7 +132,7 @@ function update(q::Query, i::Int, instate::Traj, boxstate::Any)
   else # CONTINUE 
     new_agent = update_agent(instate, curr_boxstate.enter_time, pop!(curr_boxstate))
     if isnothing(new_agent)
-      println("Queued agent no longer exists")
+      println("WARNING: Queued agent no longer exists")
       return update(q, i, instate, curr_boxstate)
     end
     msg *= "\nContinuing ($(length(curr_boxstate)) queued) with \n" * str_hom(new_agent)

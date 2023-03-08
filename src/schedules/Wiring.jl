@@ -1,9 +1,10 @@
 module Wiring
 export Schedule,Traj, TrajStep, mk_sched, typecheck, merge_wires, 
-       singleton, id_wires, id_wire, traj_res, traj_agent
+       singleton, id_wires, id_wire, traj_res, traj_agent, view_sched
 
 using Catlab.CategoricalAlgebra, Catlab.WiringDiagrams, Catlab.Programs, Catlab.Theories
-import Catlab.WiringDiagrams.DirectedWiringDiagrams: input_ports,output_ports
+using Catlab.Graphics
+import Catlab.WiringDiagrams.DirectedWiringDiagrams: input_ports,output_ports,out_port_id
 import Catlab.Theories: compose, otimes, ⋅, ⊗
 using ...CategoricalAlgebra.CSets
 using ...CategoricalAlgebra.CSets: abstract
@@ -42,12 +43,16 @@ id_wire(agent::StructACSet) = id_wires(1, agent)
 """Feed the last n outputs into the last n inputs of a WD""" 
 function mk_trace(w::WiringDiagram, n::Int)
   ips, ops = input_ports(w), output_ports(w)
+  length(ips) > n || error("not enough inputs")
+  length(ops) > n || error("not enough outputs")
   wd = WiringDiagram(ips[1:end-n], ops[1:end-n])
   add_box!(wd, Box(ips, ops))
-  add_wires!(wd, [
-    [Wire(ip, (input_id(wd),i),(1,i)) for (i,ip) in enumerate(ips[1:end-n])]...,
-    [Wire(op, (1,i),(output_id(wd),i)) for (i,op) in enumerate(ops[1:end-n])]...,
-    [Wire(ip, (1,i+n),(1,i+n)) for (i,ip) in enumerate(ips[end-n+1 : end])]...])
+  trace_ports = ips[end-n+1 : end]
+  off_i, off_o = length.([ips, ops]) .- n 
+  iws = [Wire(ip, (input_id(wd),i),(1,i)) for (i,ip) in enumerate(ips[1:end-n])]
+  ows = [Wire(op, (1,i),(output_id(wd),i)) for (i,op) in enumerate(ops[1:end-n])]
+  ws = [Wire(trace_ports[i], (1,i+off_i),(1,i+off_o)) for i in 1:n]
+  add_wires!(wd, [iws...,ows...,ws...])
   ocompose(wd, [w])
 end 
 
@@ -232,5 +237,31 @@ function merge_wires(n::Int, agent::StructACSet)::Schedule
   add_wires!(wd, [Wire(agent,(input_id(wd),i),(output_id(wd),1)) for i in 1:n])
   return wd
 end
+
+# Visualization
+###############
+"""
+Create a graphviz graph corresponding to a schedule wiring diagram
+"""
+function view_sched(sched_::WiringDiagram; name="",source=nothing, target=nothing)
+  sched = WiringDiagram([], [])
+  copy_parts!(sched.diagram,sched_.diagram)
+
+  sched.diagram[:outer_in_port_type] = [""]
+  sched.diagram[:outer_out_port_type] = [""]
+  sched.diagram[:out_port_type] = fill("", nparts(sched.diagram, :OutPort))
+  if !isnothing(source)
+    if source.box == input_id(sched) 
+      sched.diagram[source.port, :outer_in_port_type] = "→"
+    else 
+      sched.diagram[out_port_id(sched, source), :out_port_type] = "→"
+    end
+    sched.diagram[out_port_id(sched, target), :out_port_type] = "←"
+  end
+  return to_graphviz(sched; labels=true, 
+    graph_attrs=Dict(:label=>name, :labelloc=>"t"),
+    node_colors=Dict(i=>color(b.value) for (i,b) in enumerate(boxes(sched))))
+end
+
 
 end # module 

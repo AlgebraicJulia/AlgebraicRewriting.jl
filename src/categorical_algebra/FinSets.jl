@@ -3,7 +3,7 @@ export pushout_complement,can_pushout_complement,id_condition
 
 using Catlab.Theories
 using Catlab.CategoricalAlgebra: ComposablePair, FinSet, FinFunction
-using Catlab.CategoricalAlgebra.FinSets: VarFunction
+using Catlab.CategoricalAlgebra.FinSets: VarFunction, VarSet
 using Catlab.ColumnImplementations: AttrVar
 
 # Pushout complements
@@ -56,7 +56,7 @@ This may not be the actual pushout complement in the relevant (Kleisli) category
       g
 
 """
-function pushout_complement(pair::ComposablePair{<:FinSet{Int}, VarFunction{T}}) where {T}
+function pushout_complement(pair::ComposablePair{<:VarSet{T}}) where {T}
   l, m = pair
   lm = compose(l,m)
   I, G = dom(l), codom(m)
@@ -69,11 +69,11 @@ function pushout_complement(pair::ComposablePair{<:FinSet{Int}, VarFunction{T}})
 
   # Construct I -> K 
   ik = VarFunction{T}([AttrVar(findfirst(==(lm(AttrVar(i))), image_lm)) 
-                       for i in I], length(K))
+                       for i in I], FinSet(length(K)))
   # Construct K -> G 
   kg = VarFunction{T}(Union{T,AttrVar}[
     [lm(AttrVar(findfirst(==(AttrVar(k)), collect(ik)))) 
-     for k in 1:length(image_lm)]..., unmatched...], length(G))
+     for k in 1:length(image_lm)]..., unmatched...], FinSet(length(G)))
   return ComposablePair(ik, kg)
 end
 

@@ -50,17 +50,29 @@ Dir is an attribute which can take values :N, :E, :W, and :S.
   dir::Attr(E, Dir)
 end
 
+@present TheoryLV′ <: TheoryLV begin
+  Coord::AttrType 
+  coord::Attr(V,Coord)
+end
+
+
 
 to_graphviz(TheoryLV; prog="dot")
 
 @acset_type LV_Generic(TheoryLV) <: HasGraph
 const LV = LV_Generic{Direction, Int}
 
+@acset_type LV′_Generic(TheoryLV′) <: HasGraph
+const LV′ = LV′_Generic{Direction, Int, Tuple{Int,Int}}
+
 F = Migrate(
   Dict(:Sheep=>:Wolf, :Wolf=>:Sheep), 
   Dict([:sheep_loc=>:wolf_loc, :wolf_loc=>:sheep_loc,
         :sheep_eng=>:wolf_eng, :wolf_eng=>:sheep_eng,:grass_eng =>:grass_eng,
         :sheep_dir=>:wolf_dir, :wolf_dir=>:sheep_dir,]), LV)
+F2 = Migrate(
+  Dict(x=>x for x in Symbol.(TheoryLV.generators[:Ob])), 
+  Dict(x=>x for x in Symbol.(TheoryLV.generators[:Hom])), LV′; delta=false)
 
 """
 Create a nxn grid with periodic boundary conditions. Edges in each cardinal
@@ -73,12 +85,12 @@ direction originate at every point
 
 """
 function create_grid(n::Int)
-  lv = LV()
+  lv = LV′()
   coords = Dict()
   # Initialize grass 50% green, 50% uniformly between 0-30
   for i in 0:n-1
     for j in 0:n-1
-      coords[i=>j] = add_part!(lv, :V; grass_eng=max(0,rand(-30:30)))
+      coords[i=>j] = add_part!(lv, :V; grass_eng=max(0,rand(-30:30)), coord=(i,j))
     end
   end
   for i in 0:n-1
@@ -89,20 +101,19 @@ function create_grid(n::Int)
       add_part!(lv, :E; src=coords[i=>j], tgt=coords[i=>mod(j-1,n)], dir=South())
     end
   end
-  c = fill(0=>0, nv(lv))
-  for (k,v) in collect(coords) c[v] = k end
-  return lv, c
+  return lv
 end
 
-g, c = create_grid(2)
+g = create_grid(2)
+
 
 """
 `n` is the length of the grid.
 `sheep` and `wolves` are the fraction of spaces that are 
 populated with that animal
 """
-function initialize(n::Int, sheep::Float64, wolves::Float64)
-  grid, coords = create_grid(n)
+function initialize(n::Int, sheep::Float64, wolves::Float64)::LV′
+  grid = create_grid(n)
   args = [(sheep, :Sheep, :sheep_loc, :sheep_eng, :sheep_dir),
           (wolves, :Wolf, :wolf_loc, :wolf_eng, :wolf_dir)]
   for (n_, name, loc, eng, d) in args
@@ -112,7 +123,7 @@ function initialize(n::Int, sheep::Float64, wolves::Float64)
       add_part!(grid, name; dic...)
     end
   end
-  return grid, coords
+  return grid
 end
 
 
@@ -122,9 +133,9 @@ supscript_d = Dict([
   'd'=>'ᵈ'])
 supscript(x::String) = join([get(supscript_d, c, c) for c in x])
 
-"""Visualize a LV with dot (cannot fix positions)"""
-function Graph(p::LV)
-  dcolor = Dict(["N"=>"lightpink","W"=>"yellow", "E"=>"orange", "S"=>"purple"])
+"""Visualize a LV"""
+function view_LV(p::LV′; name="G", title="")
+  pstr = ["$(i),$(j)!" for (i,j) in p[:coord]]
   stmts = Statement[]
     for s in 1:nv(p)
         gv = p[s, :grass_eng]
@@ -132,54 +143,52 @@ function Graph(p::LV)
         push!(stmts,Node("v$s", Attributes(
                     :label=>gv == 0 ? "" : string(gv), #"v$s",
                     :shape=>"circle",
-                    :color=> col)))
+                    :color=> col, :pos=>pstr[s])))
     end
-    for x in values(NEWS)
-      push!(stmts,Node(x, Attributes(:label=>x,:shape=>"triangle", :color=>dcolor[x])))
-    end
-    for e in 1:ne(p)
-      d = NEWS[p[e,:dir]]
-      if d ∈ ["N","E"]
-      push!(stmts, 
-           Edge(["v$(p[e,:src])","v$(p[e,:tgt])"]; color=dcolor[d]))
-      end
-    end 
+  d = Dict([East()=>(1,0),North()=>(0,1), South()=>(0,-1),West()=>(-1,0),])
+
   args = [(:true,:Wolf,:wolf_loc,:wolf_eng,:wolf_dir),
           (false, :Sheep, :sheep_loc, :sheep_eng,:sheep_dir)]
 
   for (is_wolf, prt, loc, eng, dr) in args
     for w in parts(p, prt)
-      pos = p[w,loc]
-      dir = NEWS[p[w,dr]]
+      e = only(incident(p,p[w,loc], :src) ∩ incident(p,p[w,dr], :dir))
+      s = src(p,e)
+      dx, dy = d[p[e, :dir]]
+      (sx,sy) = p[s,:coord]
 
+      L, R = 0.25, 0.1
+      wx = sx+L*dx+R*rand()
+      wy = sy+L*dy+R*rand()
       ID = "$(is_wolf ? :w : :s)$w"
       append!(stmts,[Node(ID, Attributes(
         :label=>"$w"*supscript("$(p[w,eng])"),
         :shape=>"square", :width=>"0.3px", :height=>"0.3px", :fixedsize=>"true",
-        :color=> is_wolf ? "red" : "lightblue")),
-        Edge([ID,"v$pos"]), Edge([ID, "$dir"])])
+        :pos=>"$(wx),$(wy)!",:color=> is_wolf ? "red" : "lightblue"))])
     end
   end
 
-  g = Graphviz.Digraph("x", Statement[stmts...]; prog="dot",
+  g = Graphviz.Digraph(name, Statement[stmts...]; prog="neato",
+        graph_attrs=Attributes(:label=>title, :labelloc=>"t"),
         node_attrs=Attributes(:shape=>"plain", :style=>"filled"))
   return g
 end
 
-i1,i2 = initialize(1,1.,1.)
-Graph(i1)
+i1 = initialize(2,.5,.5)
+view_LV(i1)
 
 # RULES
 #######
+# Empty agent type
 I = LV()
-# Generic sheep
+# Generic sheep agent
 S = @acset LV begin
   Sheep=1; V=1; Dir=1; Eng=2; sheep_loc=1; grass_eng=[AttrVar(1)]
   sheep_dir=[AttrVar(1)]; sheep_eng=[AttrVar(2)]; 
 end
-# Generic wolf
+# Generic wolf agent
 W = F(S)
-# Generic grass
+# Generic grass agent
 G = @acset LV begin V=1; Eng=1; grass_eng=[AttrVar(1)] end
 
 # Rotating
@@ -188,12 +197,12 @@ G = @acset LV begin V=1; Eng=1; grass_eng=[AttrVar(1)] end
 rl = Rule(id(S),id(S); expr=(Dir=[xs->left(only(xs))],))
 rr = Rule(id(S),id(S); expr=(Dir=[xs->right(only(xs))],))
 
-sheep_rotate_l = RuleApp("turn left", rl, S)
-sheep_rotate_r = RuleApp("turn right", rr, S)
+sheep_rotate_l = tryrule(RuleApp("turn left", rl, S))
+sheep_rotate_r = tryrule(RuleApp("turn right", rr, S))
 
 # we can imagine executing these rules in sequence or in parallel
 sched = (sheep_rotate_l⋅sheep_rotate_r) 
-to_graphviz(sched)
+view_sched(sched)
 
 
 # Moving forward
@@ -223,8 +232,8 @@ sheep_fwd_rule = Rule(
   expr=(Eng=[vs->vs[1], vs->vs[2], vs->vs[3]-1],)
 )
 
-sheep_fwd = RuleApp("move fwd", sheep_fwd_rule, 
-  homomorphism(S,s_fwd_l), homomorphism(S,s_fwd_r))
+sheep_fwd = tryrule(RuleApp("move fwd", sheep_fwd_rule, 
+  homomorphism(S,s_fwd_l), homomorphism(S,s_fwd_r)))
 
 begin # test 
   ex = @acset LV begin Sheep=1; V=3; E=2; src=[1,2]; tgt=[2,3]; sheep_loc=2
@@ -245,7 +254,7 @@ s_eat_l = @acset LV begin
 end
 
 se_rule = Rule(homomorphism(S,s_eat_l), id(S); expr=(Eng=[vs->30,vs->only(vs)+4],))
-sheep_eat = RuleApp("Sheep eat", se_rule, S)
+sheep_eat = tryrule(RuleApp("Sheep eat", se_rule, S))
 
 begin # test 
   ex = @acset LV begin Sheep=1; V=3; E=2; src=[1,2]; tgt=[2,3]; sheep_loc=2
@@ -271,14 +280,18 @@ w_eat_r = @acset LV begin
 end
 
 we_rule = Rule(homomorphism(w_eat_r, w_eat_l), id(w_eat_r); expr=(Eng=[vs->vs[1],vs->vs[3]+20],))
-wolf_eat = RuleApp("Wolf eat", we_rule, W)
+wolf_eat = tryrule(RuleApp("Wolf eat", we_rule, W))
 
 begin # test 
   ex = @acset LV begin Sheep=1; Wolf=1; V=3; E=2; src=[1,2]; tgt=[2,3]; sheep_loc=2
     sheep_eng=[3]; grass_eng=[9,10,11]; dir=fill(North(),2); sheep_dir=[North()]
     wolf_loc=[2]; wolf_eng=[16]; wolf_dir=[South()]
   end
-  rewrite(we_rule,ex)
+  expected = @acset LV begin Wolf=1; V=3; E=2; src=[1,2]; tgt=[2,3]; 
+    grass_eng=[9,10,11]; dir=fill(North(),2); sheep_dir=[North()]
+    wolf_loc=[2]; wolf_eng=[36]; wolf_dir=[South()]
+  end
+  @test is_isomorphic(rewrite(we_rule,ex), expected)
 end
 
 # Die if 0 eng
@@ -288,16 +301,22 @@ s_die_l = @acset LV begin
   sheep_eng=[0]; sheep_loc=1; sheep_dir=[AttrVar(1)]
 end
 sheep_die_rule = Rule(homomorphism(G, s_die_l), id(G))
-sheep_starve = RuleApp("starve", sheep_die_rule, 
+sheep_starve = (RuleApp("starve", sheep_die_rule, 
                        homomorphism(S,s_die_l), create(G))
+                ⋅ (id_wire(I) ⊗ Weaken("",create(S))) ⋅ merge_wires(2,I))
 
+# view_sched(sheep_starve |> typecheck)
 
 begin # test 
   ex = @acset LV begin Sheep=1; Wolf=1; V=3; E=2; src=[1,2]; tgt=[2,3]; sheep_loc=2
     sheep_eng=[0]; grass_eng=[9,10,11]; dir=fill(North(),2); sheep_dir=[North()]
     wolf_loc=[2]; wolf_eng=[16]; wolf_dir=[South()]
   end
-  rewrite(sheep_die_rule,ex)
+  expected = @acset LV begin Wolf=1; V=3; E=2; src=[1,2]; tgt=[2,3]; 
+    grass_eng=[9,10,11]; dir=fill(North(),2);
+    wolf_loc=[2]; wolf_eng=[16]; wolf_dir=[South()]
+  end
+  @test is_isomorphic(rewrite(sheep_die_rule,ex), expected)
 end
 
 # reproduction
@@ -316,14 +335,18 @@ sheep_reprod_rule = Rule(
   )
 
 sheep_reprod = RuleApp("reproduce", sheep_reprod_rule, 
-                       id(S), homomorphism(S, s_reprod_r))
+                       id(S), homomorphism(S, s_reprod_r)) |> tryrule
 
 begin # test 
   ex = @acset LV begin Sheep=1; Wolf=1; V=3; E=2; src=[1,2]; tgt=[2,3]; sheep_loc=2
     sheep_eng=[10]; grass_eng=[9,10,11]; dir=fill(North(),2); sheep_dir=[North()]
     wolf_loc=[2]; wolf_eng=[16]; wolf_dir=[South()]
   end
-  rewrite(sheep_reprod_rule,ex)
+  expected = @acset LV begin Sheep=2; Wolf=1; V=3; E=2; src=[1,2]; tgt=[2,3]; sheep_loc=2
+    sheep_eng=[5,5]; grass_eng=[9,10,11]; dir=fill(North(),2); sheep_dir=[North(),North()]
+    wolf_loc=[2]; wolf_eng=[16]; wolf_dir=[South()]
+  end
+  @test is_isomorphic(rewrite(sheep_reprod_rule,ex),expected)
 end
 
 # Grass increment
@@ -336,14 +359,17 @@ rem_part!(g_inc_n, :Eng, 1)
 g_inc_rule = Rule(id(G), id(G);
                   ac=[AppCond(homomorphism(G, g_inc_n), false)],
                   expr=(Eng=[vs->only(vs)-1],))
-g_inc = RuleApp("Grass increments",g_inc_rule, G)
+g_inc = RuleApp("Grass increments",g_inc_rule, G) |> tryrule
 
 
 begin # test 
   ex = @acset LV begin Sheep=1; V=3; E=2; src=[1,2]; tgt=[2,3]; sheep_loc=2
     sheep_eng=[3]; grass_eng=[1,10,2]; dir=fill(North(),2); sheep_dir=[North()]
   end
-  rewrite(g_inc_rule,ex)
+  expected = @acset LV begin Sheep=1; V=3; E=2; src=[1,2]; tgt=[2,3]; sheep_loc=2
+    sheep_eng=[3]; grass_eng=[0,10,2]; dir=fill(North(),2); sheep_dir=[North()]
+  end
+  @test is_isomorphic(rewrite(g_inc_rule,ex), expected)
 end
 
 # Scheduling Rules
@@ -375,24 +401,16 @@ wolf = wolf_eat ⋅ F(general)  # once per wolf
 # Do all sheep, then all wolves, then all daily operations
 cycle = ( agent(sheep, S; n="sheep",  ret=I)
         ⋅ agent(wolf,  W; n="wolves", ret=I)
-        ⋅ agent(singleton(g_inc), G; n="grass"))
+        ⋅ agent(g_inc, G; n="grass"))
 
 # wrap in a while loop
-overall = while_schedule(cycle, curr -> nparts(curr,:Wolf) >= 0) |> typecheck
-
-overall |> to_graphviz
-
-X, coords = initialize(3, .25, .25)
-res = apply_schedule(overall, X; steps=40, verbose=false);
-
-
+overall = while_schedule(cycle, curr -> nparts(curr,:Wolf) >= 0) |> F2 |> typecheck
+view_sched(overall)
+X = initialize(3, .25, .25)
+res = apply_schedule(overall, X; steps=50, verbose=false);
 
 # Run these lines to view the trajectory
-if false 
-  using Interact
-  using Blink: Window, body!
-  w = Window()
-  body!(w, view_traj(overall, res, Graph))
-end
+using Luxor
+view_traj(overall, res, view_LV)
 
 end # module

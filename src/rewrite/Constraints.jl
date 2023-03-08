@@ -40,14 +40,13 @@ end
 
 """
 "nothing" means something that will be determined via a quantifier
-AttrVars are explicit arguments provided when apply_constraint is called
+Ints are explicit arguments provided when apply_constraint is called
 """
 const CGraph = VELabeledGraph{Union{Nothing,StructACSet},
-                              Union{Nothing,ACSetTransformation}}
+                              Union{Nothing,Int, ACSetTransformation}}
 
 """Number of variables in a constraint graph"""
-arity(g::CGraph) = let x = filter(v->v isa AttrVar, g[:elabel]); 
-  isempty(x) ? 0 : maximum([v.val for v in x]) end
+arity(g::CGraph) = maximum(filter(v->v isa Int, g[:elabel]); init=0) 
 
 """Apply migration to all literals in the constraint"""
 function (F::Migrate)(c::CGraph)
@@ -62,7 +61,6 @@ Take two CGraphs and merge them along their overlapping vertices and edges
 Returns an ACSetColimit
 """
 function merge_graphs(g1,g2)
-  arity(g1) == arity(g2) || error("Cannot merge different arities")
   # Vertices with literal acsets on them that match
   overlap_g = CGraph()
   p1, p2 = [Dict(:V=>Int[], :E=>Int[]) for _ in 1:2]
@@ -84,29 +82,31 @@ function merge_graphs(g1,g2)
     end
   end 
   # Merge variable edges 
-  for v in parts(g1, :ELabel)
-    e1,e2 = [findfirst(==(AttrVar(v)), g[:elabel]) for g in [g1,g2]]
+  i1, i2 = [collect(filter(x->x isa Int, g[:elabel])) for g in [g1,g2]]
+  for v in i1 ∩ i2
+    e1,e2 = [findfirst(==(v), g[:elabel]) for g in [g1,g2]]
     src1, tgt1 = g1[e1,:src], g1[e1,:tgt]
     src2, tgt2 = g2[e1,:src], g2[e1,:tgt]
     if src1 ∉ p1[:V]
       s = add_vertex!(overlap_g; vlabel=g1[src1, :vlabel])
       push!(p1[:V], src1); push!(p2[:V], src2); 
-    else 
+    else
       s = findfirst(==(src1), p1[:V])
-    end 
+    end
     if tgt1 ∉ p1[:V]
       t = add_vertex!(overlap_g; vlabel=g1[tgt1, :vlabel])
-      push!(p1[:V], tgt1); push!(p2[:V], tgt2); 
-    else 
+      push!(p1[:V], tgt1); push!(p2[:V], tgt2);
+    else
       t = findfirst(==(tgt1), p1[:V])
-    end 
-    add_edge!(overlap_g, s, t; 
-              elabel=AttrVar(add_part!(overlap_g, :ELabel)))
+    end
+    add_edge!(overlap_g, s, t; elabel=v)
     push!(p1[:E], e1); push!(p2[:E], e2); 
   end 
-  ps = [ACSetTransformation(overlap_g, g; p..., ELabel=AttrVar.(1:arity(g1))) 
-        for (g,p) in [(g1,p1),(g2,p2)]]
-  all(is_natural, ps) || error("UNNATURAL")
+  ps = [ACSetTransformation(overlap_g, g; p...) for (g,p) in [(g1,p1),(g2,p2)]]
+  for (i,p) in enumerate(ps) 
+    errs = is_natural(p; return_failures=true)
+    isempty(errs) || error("UNNATURAL $i: $errs\n$(components(p))")
+  end
   return colimit(Span(ps...))
 end
 
@@ -276,6 +276,7 @@ map_edges(f,c::Quantifier) = Quantifier(f[:E](c.e),c.kind,map_edges(f,c.expr);
   d::BoolExpr 
   function Constraint(g,d)
     nparts(g,:VLabel) == 0 || error("No vertex variables allowed")
+    nparts(g,:ELabel) == 0 || error("No edge variables allowed")
     # check that all of the object assignments match the defined morphisms 
     for (eind, (s, t, h)) in enumerate(zip(g[:src], g[:tgt], g[:elabel]))
       sv, tv = [g[x,:vlabel] for x in [s,t]]
@@ -293,7 +294,7 @@ map_edges(f,c::Quantifier) = Quantifier(f[:E](c.e),c.kind,map_edges(f,c.expr);
           if !(v isa ACSet) 
             inc = vcat(incident(g, i, :src), incident(g,i,:tgt))
             err = "Edge $eind: undefined vertex $i for a quantifier in $g \n $d"
-            any(e->g[e,:elabel] isa AttrVar, inc) || error(err)
+            any(e->g[e,:elabel] isa Int, inc) || error(err)
           end
         end 
       end # if a variable, no constraints until runtime
@@ -309,15 +310,16 @@ arity(g::Constraint) = arity(g.g)
 
 (F::Migrate)(c::Constraint) = Constraint(F(c.g),c.d)
 const Trivial = Constraint(CGraph(), True)
+const Trivial′ = Constraint(CGraph(), False)
 
 """
 Combine two constraints conjunctively, sharing as much of the computation graph 
 as possible (i.e. pushout along the maximum common subgraph)
 """
 function ⊗(c1::Constraint,c2::Constraint) 
-  if c1 == False || c2 == False return False end 
-  if c1 == True  return c2 
-  elseif c2 == True return c1 
+  if c1 == Trivial′ || c2 == Trivial′ return Trivial′ end 
+  if c1 == Trivial  return c2 
+  elseif c2 == Trivial return c1 
   end  
 
   new_g = merge_graphs(c1.g, c2.g)
@@ -325,23 +327,23 @@ function ⊗(c1::Constraint,c2::Constraint)
   Constraint(apex(new_g), map_edges(l1,c1.d) ⊗ map_edges(l2,c2.d))
 end
 
-⊗(cs::Constraint...) = reduce(⊗, cs; init=True) 
+⊗(cs::Constraint...) = reduce(⊗, cs; init=Trivial) 
 
 """
 Combine two constraints disjunctively, sharing as much of the computation graph 
 as possible.
 """
 function ⊕(c1::Constraint,c2::Constraint) 
-  if c1 == True || c2 == True return True end 
-  if c1 == False  return c2 
-  elseif c2 == False return c1 
+  if c1 == Trivial || c2 == Trivial return Trivial end 
+  if c1 == Trivial′  return c2 
+  elseif c2 == Trivial′ return c1 
   end  
   new_g = merge_graphs(c1.g, c2.g)
   l1, l2 = legs(new_g)
   Constraint(apex(new_g), map_edges(l1,c1.d) ⊕ map_edges(l2,c2.d))
 end
 
-⊕(cs::Constraint...) = reduce(⊗, cs; init=False) 
+⊕(cs::Constraint...) = reduce(⊗, cs; init=Trivial′) 
 
 ¬(c::Constraint) = Constraint(c.g, ¬c.d)
 
@@ -363,12 +365,12 @@ function apply_constraint(c::Constraint, fs...; verbose::Bool=false)
   ms = Assgn(map(enumerate(c.g[:elabel])) do (i, e) 
     if e isa ACSetTransformation 
       return e 
-    elseif e isa AttrVar # need to check that the argument typechecks
-      f = fs[e.val]
+    elseif e isa Int # need to check that the argument typechecks
+      f = fs[e]
       s, t = [c.g[i, [x, :vlabel]] for x in [:src,:tgt]]
-      errs = "Edge $i: Bad src $s($dom(f)) for arg $(e.val)"
+      errs = "Edge $i: Bad src $s($dom(f)) for arg $e"
       isnothing(s) || dom(f) == s || error(errs)
-      errt = "Edge $i: Bad tgt $t!=$(codom(f)) for arg $(e.val)"
+      errt = "Edge $i: Bad tgt $t!=$(codom(f)) for arg $e"
       isnothing(t) || codom(f) == t || error(errt)
       return f
     end # Assignment has "nothing" for variables that are quantified
@@ -388,8 +390,8 @@ triangle commuting.
       (3)
 """
 function AppCond(f::ACSetTransformation, pos::Bool=true; monic=false)
-  cg = @acset CGraph begin V=3; E=3; ELabel=1; src=[2,1,2]; tgt=[1,3,3];
-    vlabel=[codom(f), dom(f), nothing]; elabel=[f, nothing, AttrVar(1)]
+  cg = @acset CGraph begin V=3; E=3; src=[2,1,2]; tgt=[1,3,3];
+    vlabel=[codom(f), dom(f), nothing]; elabel=[f, nothing, 1]
   end
   expr = ∃(2, Commutes([1,2],[3]); monic=monic)
   return Constraint(cg, pos ? expr : ¬(expr))
@@ -410,8 +412,8 @@ function LiftCond(vertical::ACSetTransformation, bottom::ACSetTransformation;
                   monic_all=false, monic_exists=false)
   codom(vertical) == dom(bottom) || error("Composable pair required")
   A, B = dom.([vertical, bottom]); Y = codom(bottom)
-  cg = @acset CGraph begin V=4; E=5; ELabel=1; src=[1,1,2,2,3]; tgt=[2,3,3,4,4]
-    vlabel=[A,B,nothing,Y]; elabel=[vertical, nothing, nothing, bottom, AttrVar(1)]
+  cg = @acset CGraph begin V=4; E=5; src=[1,1,2,2,3]; tgt=[2,3,3,4,4]
+    vlabel=[A,B,nothing,Y]; elabel=[vertical, nothing, nothing, bottom, 1]
   end
   expr = ∀(2, ∃(3, Commutes([1,3],[2]) ⊗ Commutes([3,5],[4]); 
                 monic=monic_exists);

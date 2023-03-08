@@ -11,7 +11,7 @@ G3, G5, G4 = Graph.([3,5,4])
 G35 = CSetTransformation(G3, G5; V=[1,2,3])
 G54 = CSetTransformation(G5, G4; V=[1,1,2,3,4])
 ad,dc = pullback_complement(G35,G54)
-
+@test G3 == pullback(dc, G54) |> apex
 
 A = path_graph(Graph, 3);
 K = path_graph(Graph, 2);

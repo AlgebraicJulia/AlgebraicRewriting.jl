@@ -4,12 +4,7 @@ using Test
 using Catlab, Catlab.Theories, Catlab.WiringDiagrams, Catlab.Graphics
 using Catlab.Graphs, Catlab.CategoricalAlgebra
 using AlgebraicRewriting
-using Interact
-using Blink: Window, body!
-function viewer(s,r)
-  w = Window()
-  body!(w, view_traj(s, r, to_graphviz))
-end
+using Luxor
 
 
 # Simple workflow with control and rewriting 
@@ -17,21 +12,21 @@ end
 
 z, g1, ar, loop = Graph(), Graph(1), path_graph(Graph, 2), apex(terminal(Graph))
 
-av = RuleApp("add vertex", Rule(id(z), create(Graph(1)))) 
+av = RuleApp("add vertex", Rule(id(z), create(Graph(1))))
 g2 = homomorphism(Graph(2), ar; monic=true)
 de = loop_rule(RuleApp("del edge", Rule(g2, id(Graph(2)))))
 coin = uniform(2, z)
 merge2 = merge_wires(2,g1)
 
-sched = (coin ⋅ (av ⊗ id_wires(1,z)) ⋅ merge2 ⋅ de)
+sched = (coin ⋅ (tryrule(av) ⊗ id_wires(1,z)) ⋅ merge2 ⋅ de)
 
 G = path_graph(Graph, 4)
 res = apply_schedule(sched, G);
-# viewer(sched, res)
+view_traj(sched, res, to_graphviz)
 
 # Query workflow (add loop to each vertex)
 ##########################################
-al = RuleApp("add loop", Rule(id(g1), homomorphism(g1,loop)), g1)
+al = tryrule(RuleApp("add loop", Rule(id(g1), homomorphism(g1,loop)), g1))
 q = Query("Vertex", g1)
 
 sched = mk_sched((i=:Z, o=:O), 1, Dict(:rule=>al, :query=>q, :Z=>z,:O=>g1), 
