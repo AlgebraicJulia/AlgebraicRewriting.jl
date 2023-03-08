@@ -11,7 +11,8 @@ jobs:
       - name: "Set up Julia"
         uses: julia-actions/setup-julia@latest
         with:
-          version: '1.7'
+          version: '1.9'
+          include-all-prereleases: true
       - name: "Install system dependencies"
         run: |
           sudo apt-get update
