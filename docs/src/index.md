@@ -7,12 +7,6 @@ rewriting in C-set categories) in addition to rewriting C-set slice categories
 and structured cospans of C-sets. Future work will allow us to perform rewriting
 of diagrams in C-set categories.
 
-## DISCLAIMER
-
-AlgebraicRewriting is in a period of transition as we better ingrain the notion
-of attribute variables into Catlab.jl. Until then, this documentation should be 
-considered out of date and rewriting with attributed C-sets is not advised.  
-
 ## Double pushout rewriting of graphs
 
 This is the classic setting of graph transformation. Suppose we wish to rewrite

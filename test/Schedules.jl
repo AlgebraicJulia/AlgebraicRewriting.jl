@@ -3,10 +3,25 @@ module TestSchedules
 using Test
 using Catlab, Catlab.Theories, Catlab.WiringDiagrams, Catlab.Graphics
 using Catlab.Graphs, Catlab.CategoricalAlgebra
+using Catlab.Graphics: to_graphviz_property_graph
+
 using AlgebraicRewriting
+
 using Luxor
 
-
+# Graph + agent viewer 
+######################
+function view_graph(a)
+  g = codom(a)
+  pg = to_graphviz_property_graph(g)
+  for v in collect(a[:V])
+    set_vprops!(pg, v, Dict([ :style=>"filled",:fillcolor=>"red"]))
+  end
+  for e in collect(a[:E])
+    set_eprops!(pg, e, Dict([:color=>"red"]))
+  end
+  return to_graphviz(pg)
+end
 # Simple workflow with control and rewriting 
 ############################################
 
@@ -22,7 +37,7 @@ sched = (coin ⋅ (tryrule(av) ⊗ id_wires(1,z)) ⋅ merge2 ⋅ de)
 
 G = path_graph(Graph, 4)
 res = apply_schedule(sched, G);
-view_traj(sched, res, to_graphviz)
+view_traj(sched, res, view_graph; agent=true)
 
 # Query workflow (add loop to each vertex)
 ##########################################
@@ -38,7 +53,7 @@ quote
 end);
 
 res = apply_schedule(sched, Graph(3))
-# viewer(sched, res)
+view_traj(sched, res, view_graph; agent=true)
 
 
 # Dependent query workflow 
@@ -72,13 +87,61 @@ end);
 G = @acset Graph begin V=5; E=4; src=[1,2,2,5];tgt=[2,3,4,2] end 
 arr_start = homomorphism(ar, G; initial=(V=[1,2],))
 res = apply_schedule(sched, arr_start);
-# viewer(sched, res)
+view_traj(sched, res, view_graph; agent=true)
+view_traj(sched, res, to_graphviz; agent=false)
 
 
 # For-loop: add 3 loops
 #######################
 sched = for_schedule(maybe_add_loop ⋅ merge2, 3)
 res = apply_schedule(sched, id(g1));
-# viewer(sched, res)
+
+
+# Simple game of life 
+#####################
+@present SchLifeGraph <: SchGraph begin # inherit Graph schema
+  Cell::Ob
+  (Life, Eng)::AttrType
+  (cell_W,cell_E,cell_S,cell_N)::Hom(Cell, E)
+  live::Attr(Cell, Life)
+  eng::Attr(Cell, Eng)
+end
+@acset_type AbsLifeGraph(SchLifeGraph)
+const LG = AbsLifeGraph{Bool,Int}
+
+# A generic cell
+Cell = @acset LG begin Cell=1; V=4; E=4; Life=1; Eng=1
+  src=[1,1,2,3]; tgt=[2,3,4,4]; live=[AttrVar(1)]; eng=[AttrVar(1)] 
+  cell_S=1; cell_W=2; cell_E=3; cell_N=4
+end 
+
+# Rule which updates eastern neighbor of a live cell to have +1 eng
+inc_E_ = @acset LG begin Cell=2; V=6; E=7; Life=1; Eng=2
+  src=[1,1,2,2,3,4,5]; tgt=[2,4,3,5,6,5,6]; 
+  cell_W=[2,4]; cell_E=[4,5]; cell_S=[1,3]; cell_N=[6,7]
+  live=[true,AttrVar(1)]; eng=AttrVar.(1:2)
+end
+inc_E = Rule(id(inc_E_),id(inc_E_); expr=(Eng=[es->es[1],es->es[2]+1],))
+inc_E_rule = RuleApp("incE",inc_E,homomorphism(Cell,inc_E_)) |> tryrule
+
+# Assemble a schedule 
+sched = agent(inc_E_rule, Cell, ret=Cell)
+
+
+# Demonstrate on a 2 x 2 grid: 
+# L D
+# L D
+G = @acset LG begin Cell=4; V=9; E=12
+  src=[1,1,2,2,3,4,4,5,5,6,7,8]; tgt=[2,4,3,5,6,5,7,6,8,9,8,9]; 
+  cell_W=[2,4,7,9]; cell_E=[4,5,9,10]; cell_S=[1,3,6,8]; cell_N=[6,8,11,12]
+  live=[true,false,true,false]; eng=[1,10,100,1000]
+end
+
+res = apply_schedule(sched, G)
+
+expected = deepcopy(G)
+expected[:eng] = [1,11,100,1001] # the dead cells get +1
+
+@test is_isomorphic(traj_res(res), expected)
 
 end # module

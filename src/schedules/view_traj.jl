@@ -9,7 +9,7 @@ using .Luxor
 Visualize a trajectory with two views: one showing the current position within 
 the schedule, and the other showing the world state.
 """
-function view_traj(sched_::WiringDiagram, rG::Traj, viewer; out="traj")
+function view_traj(sched_::WiringDiagram, rG::Traj, viewer; out="traj", agent=false)
   if isdir(out) # clear old dir
     for fi in filter(x->length(x)>4 && x[end-3:end] == ".png",  readdir(out))
       rm(joinpath(out,fi))
@@ -18,33 +18,44 @@ function view_traj(sched_::WiringDiagram, rG::Traj, viewer; out="traj")
     mkdir(out)
   end
   for n in 1:length(rG)
-    view_traj(sched_,rG, viewer, n; out=out)
+    view_traj(sched_,rG, viewer, n; out=out, agent=agent)
   end
-end 
+end
 
-function view_traj(sched_::WiringDiagram, rG::Traj, viewer, n::Int; out="traj")
+"""
+If agent is true, then the viewer function should operate on 
+ACSetTransformations, rather than ACSets.
+"""
+function view_traj(sched_::WiringDiagram, rG::Traj, viewer, n::Int; out="traj",
+                   agent=false)
   step = rG[n]
   graphs = [view_sched(sched_; name=step.desc, source=step.inwire.source, 
                        target=step.outwire.source)]
   worlds = [(n==1 ? rG.initial : rG[n-1].world), step.world]
-  append!(graphs, viewer.(codom.(worlds)))
+  view(w) = viewer(agent ?  w : codom(w))
+  append!(graphs, view.(worlds))
   svgs = map(enumerate(graphs)) do (i,g)
-    open("tmp$i.svg", "w") do io 
+    f = tempname()
+    open(f, "w") do io 
       show(io,"image/svg+xml",g)
     end
-    readsvg("tmp$i.svg")
+    readsvg(f)
   end
-  for i in 1:3 rm("tmp$i.svg") end
-
+  # Constants
+  SPACE = 10
   heights=[x.height for x in svgs]; width=maximum([x.width for x in svgs])
   height=sum(heights)
-  Drawing(width+10, height+10, "$out/$n.png")
+  # Helper functions
   p(h) = Point(width/2,h)
-  line(Point(0,heights[1]),Point(width,heights[1]), :stroke)
-  line(Point(0,sum(heights[1:2])),Point(width,sum(heights[1:2])), :stroke)
-  placeimage(svgs[1],p(heights[1]/2); centered=true)
-  placeimage(svgs[2],p(heights[1] + heights[2]/2); centered=true)
-  placeimage(svgs[3],p(height - heights[3]/2); centered=true)
+  hline(h) = line(Point(0,h),Point(width,h), :stroke)
+  pimg(i,h) = placeimage(svgs[i],p(h); centered=true)
+  # Draw image 
+  Drawing(width, height+SPACE*2, "$out/$n.png")
+  pimg(1,heights[1]/2)
+  hline(heights[1])
+  pimg(2,heights[1] + SPACE + heights[2]/2)
+  hline(sum(heights[1:2])+SPACE)
+  pimg(3,2*SPACE + height - heights[3]/2)
   finish()
 end
 

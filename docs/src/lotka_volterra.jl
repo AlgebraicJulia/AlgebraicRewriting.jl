@@ -134,16 +134,29 @@ supscript_d = Dict([
 supscript(x::String) = join([get(supscript_d, c, c) for c in x])
 
 """Visualize a LV"""
-function view_LV(p::LV′; name="G", title="")
+function view_LV(p::ACSetTransformation; name="G", title="")
+  if nparts(dom(p),:Wolf) == 1 
+    star = :Wolf=>p[:Wolf](1)
+  elseif nparts(dom(p),:Sheep) == 1 
+    star = :Sheep=>p[:Sheep](1)
+  elseif nparts(dom(p),:V) == 1 
+    star = :V=>p[:V](1)
+  else
+    star = nothing
+  end
+  view_LV(codom(p); name=name, title=title, star=star)
+end  
+function view_LV(p::LV′; name="G", title="", star=nothing)
   pstr = ["$(i),$(j)!" for (i,j) in p[:coord]]
   stmts = Statement[]
     for s in 1:nv(p)
-        gv = p[s, :grass_eng]
-        col = gv  == 0 ? "lightgreen" : "tan"
-        push!(stmts,Node("v$s", Attributes(
-                    :label=>gv == 0 ? "" : string(gv), #"v$s",
-                    :shape=>"circle",
-                    :color=> col, :pos=>pstr[s])))
+      st = (star == (:V=>s)) ? "*" : ""
+      gv = p[s, :grass_eng]
+      col = gv  == 0 ? "lightgreen" : "tan"
+      push!(stmts,Node("v$s", Attributes(
+                  :label=>gv == 0 ? "" : string(gv)*st,
+                  :shape=>"circle",
+                  :color=> col, :pos=>pstr[s])))
     end
   d = Dict([East()=>(1,0),North()=>(0,1), South()=>(0,-1),West()=>(-1,0),])
 
@@ -152,6 +165,7 @@ function view_LV(p::LV′; name="G", title="")
 
   for (is_wolf, prt, loc, eng, dr) in args
     for w in parts(p, prt)
+      st = (star == ((is_wolf ? :Wolf : :Sheep) => w)) ? "*" : ""
       e = only(incident(p,p[w,loc], :src) ∩ incident(p,p[w,dr], :dir))
       s = src(p,e)
       dx, dy = d[p[e, :dir]]
@@ -162,7 +176,7 @@ function view_LV(p::LV′; name="G", title="")
       wy = sy+L*dy+R*rand()
       ID = "$(is_wolf ? :w : :s)$w"
       append!(stmts,[Node(ID, Attributes(
-        :label=>"$w"*supscript("$(p[w,eng])"),
+        :label=>"$w"*supscript("$(p[w,eng])")*st,
         :shape=>"square", :width=>"0.3px", :height=>"0.3px", :fixedsize=>"true",
         :pos=>"$(wx),$(wy)!",:color=> is_wolf ? "red" : "lightblue"))])
     end
@@ -390,7 +404,7 @@ general = mk_sched((init=:S,), 0, (
   starve = sheep_starve), 
   quote 
     out_l, out_str, out_r = turn(init)
-    moved = fwd([lft(out_l), out_str, rght(out_r)])
+    moved = fwd([lft(out_l), out_str, rght(out_r)]) 
     out_repro, out_no_repro = maybe(moved)
     return starve([repro(out_repro), out_no_repro])
 end) |> typecheck
@@ -411,6 +425,6 @@ res = apply_schedule(overall, X; steps=50, verbose=false);
 
 # Run these lines to view the trajectory
 using Luxor
-view_traj(overall, res, view_LV)
+view_traj(overall, res, view_LV; agent=true)
 
 end # module
