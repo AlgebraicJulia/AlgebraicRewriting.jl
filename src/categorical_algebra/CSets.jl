@@ -35,9 +35,9 @@ This may be impossible, because f(a₁)≠f(a₂) but g(a₁)=g(a₂), in which 
 return `nothing`. Otherwise, return a Dict which can be used to initialize the 
 homomorphism search Hom(B,C).
 """
-function extend_morphism_constraints(f::ACSetTransformation{S},
-                                     g::ACSetTransformation{S}
-                                     ) where S
+function extend_morphism_constraints(f::ACSetTransformation,
+                                     g::ACSetTransformation)
+  S = acset_schema(dom(f))
   dom(f) == dom(g) || error("f and g are not a span: \n$(dom(f)) \n$(dom(g))")
 
   init = Dict() # {Symbol, Dict{Int,Int}}
@@ -111,9 +111,10 @@ if possible.
        G ↩ K → H
 
 """
-function postcompose_partial(kgh::Span, m::ACSetTransformation{S,Ts}; 
-                             check::Bool=false) where {S,Ts}
+function postcompose_partial(kgh::Span, m::ACSetTransformation; 
+                             check::Bool=false)
   # Unpack data
+  S = acset_schema(dom(m))
   kg, kh = kgh
   L = dom(m)
   H = codom(kh)
@@ -148,8 +149,9 @@ function postcompose_partial(kgh::Span, m::ACSetTransformation{S,Ts};
 """
 Invert some (presumed iso) components of an ACSetTransformation (given by s)
 """
-function invert_iso(f::ACSetTransformation{S},
-                    s::Union{Nothing,AbstractVector{Symbol}}=nothing) where S
+function invert_iso(f::ACSetTransformation,
+                    s::Union{Nothing,AbstractVector{Symbol}}=nothing)
+  S = acset_schema(dom(f))
   s_obs = isnothing(s) ? ob(S) : s
   d = Dict(map(ob(S)) do o 
     o => o ∈ s_obs ? Base.invperm(collect(f[o])) : collect(f[o])
@@ -162,8 +164,9 @@ Invert a morphism which may not be monic nor epic. When the morphism is not
 monic, an arbitrary element of the preimage is mapped to. When it is not epic,
 a completely arbitrary element is mapped to.
 """
-function invert_hom(f::ACSetTransformation{S}; epic::Bool=true,
-                    monic::Bool=true, check::Bool=false) where S
+function invert_hom(f::ACSetTransformation; epic::Bool=true,
+                    monic::Bool=true, check::Bool=false)
+  S = acset_schema(dom(f))
   !check || is_natural(f) || error("inverting unnatural hom")
   if epic && monic return invert_iso(f) end # efficient
   A, B = dom(f), codom(f)
@@ -231,10 +234,10 @@ use the function [`can_pushout_complement`](@ref).
 
 Because subobject does not work well with attributes, we handle that
 """
-function pushout_complement(pair::ComposablePair{<:ACSet, <:TightACSetTransformation{S}}
-                           ) where S
+function pushout_complement(pair::ComposablePair{<:ACSet, <:TightACSetTransformation})
   p1,p2 = pair 
   I,L,G = dom(p1),codom(p1), codom(p2)
+  S = acset_schema(I)
   # Compute pushout complements pointwise in FinSet.
   components = NamedTuple(Dict([o=>pushout_complement(ComposablePair(p1[o],p2[o])) 
                                 for o in ob(S)]))
@@ -367,7 +370,8 @@ end
 # The following can be deleted when Catlab pull 605 is merged
 # Subobjects don't have the right behavior when variables are at play, though.
 """A map f (from A to B) as a map of subobjects of A to subjects of B"""
-function (f::ACSetTransformation{S})(X::SubACSet)  where S
+function (f::ACSetTransformation)(X::SubACSet)
+  S = acset_schema(dom(f))
   codom(hom(X)) == dom(f) || error("Cannot apply $f to $X")
   comps = Dict(map(ob(S)) do k
     k=>(f[k]).(collect(components(X)[k]))
@@ -497,7 +501,8 @@ function remove_freevars(X::StructACSet{S}) where S
   return X => d
 end 
 
-function remove_freevars(f::ACSetTransformation{S}; check::Bool=false) where S 
+function remove_freevars(f::ACSetTransformation; check::Bool=false)
+  S = acset_schema(dom(f))
   !check || is_natural(f) || error("unnatural freevars input")
   X, d = remove_freevars(dom(f))
   comps = Dict{Symbol,Any}(o=>collect(f[o]) for o in ob(S))
@@ -520,8 +525,9 @@ function deattr(X::StructACSet{S})::AnonACSet where S
   return aa
 end 
 
-function deattr(f::ACSetTransformation{S}) where S
+function deattr(f::ACSetTransformation)
   X, Y = deattr.([dom(f),codom(f)])
+  S = acset_schema(X)
   return ACSetTransformation(X,Y; Dict(o=>f[o] for o in ob(S))...)
 end 
 
@@ -586,7 +592,8 @@ function (m::Migrate)(Y::ACSet)
   return X
 end 
 
-function (F::Migrate)(f::ACSetTransformation{S}) where {S} 
+function (F::Migrate)(f::ACSetTransformation)
+  S = acset_schema(dom(f))
   d = Dict(map(collect(pairs(components(f)))) do (k,v)
     get(F.obs,k,k) => collect(v)
   end)

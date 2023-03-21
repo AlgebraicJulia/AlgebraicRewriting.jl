@@ -21,9 +21,10 @@ Pullback complement where there first morphism is a mono.
 Define D to be Im(g) to make it the largest possible subset of C such that we
 can get a pullback.
 """
-function pullback_complement(f::ACSetTransformation{S}, g; check=false) where S
+function pullback_complement(f::ACSetTransformation, g; check=false)
   is_monic(f) || error("can only take pullback complement if f is mono")
   A = dom(f)
+  S = acset_schema(A)
   d_to_c = hom(¬g(¬f(A))) # why isn't this just g(B)?
   # force square to commute by looking for the index in D making it commute
   D = dom(d_to_c)
