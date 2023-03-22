@@ -205,6 +205,7 @@ W = F(S)
 # Generic grass agent
 G = @acset LV begin V=1; Eng=1; grass_eng=[AttrVar(1)] end
 
+N = Dict(W=>"W",S=>"S",G=>"G", I=>"")
 # Rotating
 #---------
 
@@ -216,7 +217,7 @@ sheep_rotate_r = tryrule(RuleApp("turn right", rr, S))
 
 # we can imagine executing these rules in sequence or in parallel
 sched = (sheep_rotate_l⋅sheep_rotate_r) 
-view_sched(sched)
+view_sched(sched; names=N)
 
 
 # Moving forward
@@ -409,7 +410,7 @@ general = mk_sched((init=:S,), 0, (
     return starve([repro(out_repro), out_no_repro])
 end) |> typecheck
 
-sheep = sheep_eat ⋅ general                     # once per sheep
+sheep = sheep_eat ⋅ general   # once per sheep
 wolf = wolf_eat ⋅ F(general)  # once per wolf
 
 # Do all sheep, then all wolves, then all daily operations
@@ -418,8 +419,8 @@ cycle = ( agent(sheep, S; n="sheep",  ret=I)
         ⋅ agent(g_inc, G; n="grass"))
 
 # wrap in a while loop
-overall = while_schedule(cycle, curr -> nparts(curr,:Wolf) >= 0) |> F2 |> typecheck
-view_sched(overall)
+overall = while_schedule(cycle, curr -> nparts(curr,:Wolf) >= 0) |> F2
+view_sched(overall; names=F2(N))
 X = initialize(3, .25, .25)
 res = apply_schedule(overall, X; steps=50, verbose=false);
 

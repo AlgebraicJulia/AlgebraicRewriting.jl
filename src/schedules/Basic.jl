@@ -1,5 +1,5 @@
 module Basic 
-export Weaken, Strengthen, Initialize 
+export Weaken, Strengthen, Initialize, Fail
 
 using Catlab.CategoricalAlgebra
 
@@ -66,5 +66,19 @@ function update(r::Initialize, ::Int, instate::Traj, ::Nothing)
   last_state = traj_re(instate) 
   return (1, create(r.state), no_pmap(last_state,r.state),  nothing, "")
 end 
+
+
+struct Fail <: AgentBox
+  agent::StructACSet
+end 
+Base.string(::Fail) = "Fail"
+name(::Fail) = "Fail"
+input_ports(r::Fail) = [r.agent] 
+output_ports(::Fail) = []
+initial_state(::Fail) = nothing 
+color(::Fail) = "red"
+(F::Migrate)(a::Fail) = Fail(F(a.agent))
+update(r::Fail, ::Int, ::Traj, ::Nothing) = error("FAIL")
+
 
 end # module 

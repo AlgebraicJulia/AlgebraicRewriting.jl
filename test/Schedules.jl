@@ -27,6 +27,8 @@ end
 
 z, g1, ar, loop = Graph(), Graph(1), path_graph(Graph, 2), apex(terminal(Graph))
 
+N=Dict(z=>"Z",g1=>"•",ar=>"•→•")
+
 av = RuleApp("add vertex", Rule(id(z), create(Graph(1))))
 g2 = homomorphism(Graph(2), ar; monic=true)
 de = loop_rule(RuleApp("del edge", Rule(g2, id(Graph(2)))))
@@ -35,23 +37,38 @@ merge2 = merge_wires(2,g1)
 
 sched = (coin ⋅ (tryrule(av) ⊗ id_wires(1,z)) ⋅ merge2 ⋅ de)
 
+view_sched(sched, name="X", names=N)
 G = path_graph(Graph, 4)
 res = apply_schedule(sched, G);
 view_traj(sched, res, view_graph; agent=true)
 
 # Query workflow (add loop to each vertex)
 ##########################################
-al = tryrule(RuleApp("add loop", Rule(id(g1), homomorphism(g1,loop)), g1))
+al = succeed(RuleApp("add loop", Rule(id(g1), homomorphism(g1,loop)), g1))
 q = Query("Vertex", g1)
 
 sched = mk_sched((i=:Z, o=:O), 1, Dict(:rule=>al, :query=>q, :Z=>z,:O=>g1), 
 quote 
   q1,q2,q3 = query(i,o)
-  trace = rule(q2)
-  out = [q1,q3]
+  trace = rule([q1,q2])
+  out = [q3]
   return out, trace
 end);
 
+@test_throws ErrorException typecheck(sched)
+
+
+sched = mk_sched((o=:O, i=:Z), 1, Dict(:rule=>al, :query=>q, :Z=>z,:O=>g1), 
+quote 
+  q1,q2,q3 = query(i,o)
+  trace = rule(q2)
+  out = [q1,q3]
+  return trace, out
+end);
+
+typecheck(sched)
+
+view_sched(sched; names=N)
 res = apply_schedule(sched, Graph(3))
 view_traj(sched, res, view_graph; agent=true)
 
@@ -67,10 +84,7 @@ wt = Weaken("Switch to tgt", t_hom)
 str = Strengthen("Add outedge", s_hom)
 maybe_add_loop = uniform(2, g1) ⋅ (al ⊗ id_wires(1,g1))
 
-# graphviz(uniform(2, g1) ⋅ (al ⊗ id_wires(1,g1)) ⋅ merge_wires(2, g1); orientation=LeftToRight)
-
-
-sched = mk_sched((init=:A, trace_arg=:V,), 1, Dict(
+sched = mk_sched((trace_arg=:V, init=:A), 1, Dict(
   :loop => maybe_add_loop, :out_edges=>q2, :weaken_src=>ws, 
   :weaken_tgt=>wt, :add=>str, :A=>ar,:V=>g1, :Z=>z), 
 quote 
@@ -78,11 +92,13 @@ quote
   out_neighbor = weaken_tgt(out_edge)
   trace1, trace2 = loop(out_neighbor)
   out = add(weaken_src(added_loops))
-  return out, [trace1, trace2]
+  return [trace1, trace2], out
 end);
 
 
-# graphviz(sched ⋅ sched; orientation=LeftToRight)
+view_sched(maybe_add_loop; names=N)
+view_sched(sched; names=N)
+typecheck(sched)
 
 G = @acset Graph begin V=5; E=4; src=[1,2,2,5];tgt=[2,3,4,2] end 
 arr_start = homomorphism(ar, G; initial=(V=[1,2],))

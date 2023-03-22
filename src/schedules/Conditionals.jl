@@ -85,14 +85,13 @@ if_cond(name::String, boolfun::Function, agent::StructACSet; argtype=:world) =
 """Perform a 1-1 schedule until a condition is met"""
 function while_schedule(s::WiringDiagram, boolfun::Function; name::String="while", argtype=:world)
   err = "While pattern requires a schedule with inputs [A] and outputs [A]"
-  ip, op = ipop = input_ports(s),output_ports(s)
-  a, a′ = only.(ipop)
+  a, a′ = only.([input_ports(s),output_ports(s)])
   a == a′ || error(err)
-  wd = WiringDiagram(input_ports(s),output_ports(s))
-  add_boxes!(wd, [Box(ip,op), Box(ip,vcat(op,op))])
-  add_wires!(wd, [Wire(a,(input_id(wd),1),(1,1)), Wire(a,(1,1),(2,1)),
-                  Wire(a,(2,1),(1,1)), Wire(a,(2,2),(output_id(wd),1))])
-  return ocompose(wd, [s, singleton(if_cond(name, boolfun, a; argtype=argtype))])
+  ic = singleton(if_cond(name, boolfun, a; argtype=argtype))
+  return mk_sched((init=:X,trace_arg=:X),1,(X=a,iff=ic,f=s), quote 
+    if_t, if_f = iff([init,trace_arg])
+    return if_f, f(if_t)
+  end)
 end
 while_schedule(s::AgentBox, boolfun::Function; name::String="while", argtype=:world) = 
   while_schedule(singleton(s), boolfun; name=name, argtype=argtype)

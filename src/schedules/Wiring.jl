@@ -3,8 +3,7 @@ export Schedule,Traj, TrajStep, mk_sched, typecheck, merge_wires,
        singleton, id_wires, id_wire, traj_res, traj_agent, view_sched
 
 using Catlab.CategoricalAlgebra, Catlab.WiringDiagrams, Catlab.Programs, Catlab.Theories
-using Catlab.Graphics
-import Catlab.WiringDiagrams.DirectedWiringDiagrams: input_ports,output_ports,out_port_id
+import Catlab.WiringDiagrams.DirectedWiringDiagrams: input_ports,output_ports
 import Catlab.Theories: compose, otimes, ⋅, ⊗
 using ...CategoricalAlgebra.CSets
 using ...CategoricalAlgebra.CSets: abstract
@@ -41,20 +40,21 @@ id_wires(i::Int, agent::StructACSet) = id(Ports(fill(agent, i)))
 id_wire(agent::StructACSet) = id_wires(1, agent)
 
 """Feed the last n outputs into the last n inputs of a WD""" 
-function mk_trace(w::WiringDiagram, n::Int)
-  ips, ops = input_ports(w), output_ports(w)
-  length(ips) > n || error("not enough inputs")
-  length(ops) > n || error("not enough outputs")
-  wd = WiringDiagram(ips[1:end-n], ops[1:end-n])
-  add_box!(wd, Box(ips, ops))
-  trace_ports = ips[end-n+1 : end]
-  off_i, off_o = length.([ips, ops]) .- n 
-  iws = [Wire(ip, (input_id(wd),i),(1,i)) for (i,ip) in enumerate(ips[1:end-n])]
-  ows = [Wire(op, (1,i),(output_id(wd),i)) for (i,op) in enumerate(ops[1:end-n])]
-  ws = [Wire(trace_ports[i], (1,i+off_i),(1,i+off_o)) for i in 1:n]
-  add_wires!(wd, [iws...,ows...,ws...])
-  ocompose(wd, [w])
-end 
+# function mk_trace(w::WiringDiagram, n::Int)
+#   ips, ops = input_ports(w), output_ports(w)
+#   length(ips) > n || error("not enough inputs")
+#   length(ops) > n || error("not enough outputs")
+#   wd = WiringDiagram(ips[1:end-n], ops[1:end-n])
+#   add_box!(wd, Box(ips, ops))
+#   trace_ports = ips[end-n+1 : end]
+#   off_i, off_o = length.([ips, ops]) .- n 
+#   iws = [Wire(ip, (input_id(wd),i),(1,i)) for (i,ip) in enumerate(ips[1:end-n])]
+#   ows = [Wire(op, (1,i),(output_id(wd),i)) for (i,op) in enumerate(ops[1:end-n])]
+#   ws = [Wire(trace_ports[i], (1,i+off_i),(1,i+off_o)) for i in 1:n]
+#   println("adding wires w/ $trace_ports")
+#   add_wires!(wd, [iws...,ows...,ws...])
+#   ocompose(wd, [w])
+# end 
 
 """
 Make a wiring diagram with ob/hom generators using @program macro
@@ -76,9 +76,13 @@ function mk_sched(args::NamedTuple, n_trace::Int,
     add_generator!(P, Hom(k, i, otimes([os_[op] for op in output_ports(v)])))
   end
   args_ = Expr(:tuple,[Expr(Symbol("::"), k,v) for (k,v) in pairs(args)]...)
-  wd = mk_trace(parse_wiring_diagram(P, args_, wd), n_trace)
+  #wd = mk_trace(parse_wiring_diagram(P, args_, wd), n_trace)
+  tmp = parse_wiring_diagram(P, args_, wd)
+  Xports = Ports{ThSymmetricMonoidalCategory}(input_ports(tmp)[1:n_trace])
+  wd = trace(Xports, tmp)
 
-  for x in Symbol.(["$(x)_port_type" for x in [:outer_in,:outer_out,:out,:in]])
+  println("TRACE MADE"); show(stdout, "text/plain", wd.diagram)
+  for x in Symbol.(["$(x)_port_type" for x in [:outer_in,:outer_out]])
     wd.diagram[:,x] = [kw[v] for v in wd.diagram[x]]
   end
   return ocompose(wd, WiringDiagram[hs[b.value] for b in boxes(wd)])
@@ -203,28 +207,36 @@ function (F::Migrate)(wd::WiringDiagram)
   return wd
 end 
 
+const wnames = [
+  [:src,:tgt,:wire_value,:out_port_type,:in_port_type],
+  [:in_src,:in_tgt,:in_wire_value,:outer_in_port_type,:in_port_type],
+  [:out_src,:out_tgt,:out_wire_value,:out_port_type,:outer_out_port_type]
+]
+
+
 function typecheck(wd::WiringDiagram)::Schedule 
   wd = deepcopy(wd)
-  function checkfun(s::Symbol,t::Symbol, wval::Symbol, sval::Symbol, tval::Symbol)
-    for (i, (op, ip)) in enumerate(zip(wd.diagram[s], wd.diagram[t]))
-      d = Dict(:w=>wd.diagram[i,wval], :s=>wd.diagram[op, sval],
-               :t=>wd.diagram[ip, tval])
-      val = Set(filter(x->!isnothing(x), collect(values(d))))
-      inbox, outbox = wd.diagram[op, :out_port_box], wd.diagram[ip, :in_port_box]
-      if length(val) != 1 error("#$i ($s($inbox) ->$t($outbox): $(collect(d))") end 
-      set_subpart!(wd.diagram, i,  wval, only(val))
-      set_subpart!(wd.diagram, op, sval, only(val))
-      set_subpart!(wd.diagram, ip, tval, only(val))
-    end 
-  end 
-  checkfun(:src,:tgt,:wire_value,:out_port_type,:in_port_type)
-  checkfun(:in_src,:in_tgt,:in_wire_value,:outer_in_port_type,:in_port_type)
-  checkfun(:out_src,:out_tgt,:out_wire_value,:out_port_type,:outer_out_port_type)
-
+  for (i, (s,t,wval,sval,tval)) in enumerate(wnames)
+    for (w,vs) in enumerate(wire_vals(wd, i))
+      if length(vs) != 1 error("#$wval $w $vs") end 
+      set_subpart!(wd.diagram, i,  wval, only(vs))
+      set_subpart!(wd.diagram, wd.diagram[w,s], sval, only(vs))
+      set_subpart!(wd.diagram, wd.diagram[w,t], tval, only(vs))
+    end
+  end
   wd2 = Schedule([],[])
   copy_parts!(wd2.diagram, wd.diagram)
   return wd2
-end 
+end
+
+"""1 = wire, 2 = inwire, 3 = outwire"""
+function wire_vals(wd::WiringDiagram, i::Int)
+  (s,t,wval,sval,tval) = wnames[i]
+  map(enumerate(zip(wd.diagram[s], wd.diagram[t]))) do (i, (op, ip))
+    d = [wd.diagram[i,wval], wd.diagram[op, sval],wd.diagram[ip, tval]]
+    return unique(filter(x->!isnothing(x), collect(values(d))))
+  end 
+end
 
 
 
@@ -238,30 +250,6 @@ function merge_wires(n::Int, agent::StructACSet)::Schedule
   return wd
 end
 
-# Visualization
-###############
-"""
-Create a graphviz graph corresponding to a schedule wiring diagram
-"""
-function view_sched(sched_::WiringDiagram; name="",source=nothing, target=nothing)
-  sched = WiringDiagram([], [])
-  copy_parts!(sched.diagram,sched_.diagram)
-
-  sched.diagram[:outer_in_port_type] = [""]
-  sched.diagram[:outer_out_port_type] = [""]
-  sched.diagram[:out_port_type] = fill("", nparts(sched.diagram, :OutPort))
-  if !isnothing(source)
-    if source.box == input_id(sched) 
-      sched.diagram[source.port, :outer_in_port_type] = "→"
-    else 
-      sched.diagram[out_port_id(sched, source), :out_port_type] = "→"
-    end
-    sched.diagram[out_port_id(sched, target), :out_port_type] = "←"
-  end
-  return to_graphviz(sched; labels=true, 
-    graph_attrs=Dict(:label=>name, :labelloc=>"t"),
-    node_colors=Dict(i=>color(b.value) for (i,b) in enumerate(boxes(sched))))
-end
 
 
 end # module 

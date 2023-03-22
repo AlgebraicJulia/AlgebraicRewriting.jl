@@ -567,6 +567,8 @@ end
     Dict(collect(pairs(o))),Dict(collect(pairs(h))),t1,isnothing(t2) ? t1 : t2, delta)
 end 
 
+(F::Migrate)(d::Dict{<:ACSet,V}) where V = Dict([F(k)=>v for (k,v) in collect(d)])
+
 function (m::Migrate)(Y::ACSet)
   if m.delta
      typeof(Y) <: m.T1 || error("Cannot Δ migrate a $(typeof(Y))")

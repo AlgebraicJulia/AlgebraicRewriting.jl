@@ -1,5 +1,5 @@
 module RuleApps
-export RuleApp, loop_rule, tryrule
+export RuleApp, loop_rule, tryrule, succeed
 
 using Catlab.CategoricalAlgebra
 
@@ -7,6 +7,7 @@ using ...Rewrite
 using ...Rewrite.Utils: AbsRule, get_rmap, get_pmap, get_expr_binding_map
 using ...CategoricalAlgebra.CSets: Migrate, extend_morphism_constraints
 using ..Wiring
+using ..Basic: Fail
 using ..Wiring: id_pmap, str_hom, traj_agent, mk_sched, typecheck
 import ..Wiring: AgentBox, input_ports, output_ports, initial_state, color, 
   update
@@ -97,6 +98,6 @@ loop_rule(a::RuleApp) =
   end) |> typecheck
 
 tryrule(a::RuleApp) = a ⋅ merge_wires(2, dom(a.in_agent)) |> typecheck
-
+succeed(a::RuleApp) = a ⋅ (id_wire(dom(a.out_agent)) ⊗ Fail(dom(a.in_agent)))
 
 end # module 
