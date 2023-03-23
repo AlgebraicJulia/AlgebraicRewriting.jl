@@ -2,7 +2,7 @@ module Visuals
 export view_traj, graphviz, view_sched
 
 using ..Schedules
-using ..Schedules.Wiring: wnames, wire_vals, color
+using ..Schedules.Wiring: wnames, wire_vals, color, Schedule
 using Catlab.CategoricalAlgebra, Catlab.WiringDiagrams, Catlab.Graphics
 using Catlab.WiringDiagrams.DirectedWiringDiagrams: out_port_id
 using Requires
@@ -16,9 +16,9 @@ function __init__()
 end
 
 
-function view_sched(sched_::WiringDiagram; name="",source=nothing, target=nothing, names=nothing)
+function view_sched(sched_::Schedule; name="",source=nothing, target=nothing, names=nothing)
   sched = WiringDiagram([], [])
-  copy_parts!(sched.diagram,sched_.diagram)
+  copy_parts!(sched.diagram,sched_.d.diagram)
 
 
   for (i, (s,t,wval,sval,tval)) in enumerate(wnames)
@@ -39,7 +39,6 @@ function view_sched(sched_::WiringDiagram; name="",source=nothing, target=nothin
     end
     sched.diagram[out_port_id(sched, target), :out_port_type] = "←"
   end
-
   return to_graphviz(sched; labels=true, 
     graph_attrs=Dict(:label=>name, :labelloc=>"t"),
     node_colors=Dict(i=>color(b.value) for (i,b) in enumerate(boxes(sched))))

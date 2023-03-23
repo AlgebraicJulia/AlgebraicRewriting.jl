@@ -1,5 +1,5 @@
 module Schedules
-export Schedule, Traj, id_wire, id_wires, mk_sched, traj_res, typecheck,
+export Schedule, Traj, mk_sched, traj_res, typecheck,
        Query, RuleApp, Weaken, Strengthen, Conditional, Initialize,
        loop_rule, const_cond, if_cond, has_match,
        uniform, merge_wires, while_schedule, for_schedule, agent, singleton,
@@ -10,13 +10,9 @@ export Schedule, Traj, id_wire, id_wires, mk_sched, traj_res, typecheck,
 using DataStructures, Random
 
 
-
-# using ..CategoricalAlgebra.CSets: 
-#   postcompose_partial, extend_morphism_constraints, extend_morphisms, Migrate,
-#   abstract
-
 using Reexport
 
+include("Theories.jl")
 include("Wiring.jl")
 include("Basic.jl")
 include("Conditionals.jl")
@@ -25,7 +21,7 @@ include("Queries.jl")
 include("Eval.jl")
 include("Visuals.jl")
 
-
+@reexport using .Theories
 @reexport using .Wiring
 @reexport using .Basic
 @reexport using .Conditionals

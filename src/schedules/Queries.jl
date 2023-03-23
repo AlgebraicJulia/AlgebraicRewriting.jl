@@ -5,6 +5,7 @@ using Catlab, Catlab.CategoricalAlgebra, Catlab.WiringDiagrams
 
 using ...Rewrite
 using ...CategoricalAlgebra.CSets: Migrate
+using ..Basic: Fail
 using ..Wiring
 using ..Wiring: AgentBox, update_agent, id_pmap, str_hom, get_agent
 import ..Wiring: input_ports, output_ports, initial_state, color, update
@@ -35,16 +36,16 @@ and purported new agent. (the new agent is the first argument to the constraint)
 
 """
 struct Query <: AgentBox
-  name::String
+  name::Symbol
   agent::StructACSet
   subagent::StructACSet
   return_type::StructACSet
   constraint::Constraint
-  Query(n::String,sa::StructACSet,a::Union{Nothing,StructACSet}=nothing, 
+  Query(n::Symbol,sa::StructACSet,a::Union{Nothing,StructACSet}=nothing, 
         ret::Union{StructACSet,Nothing}=nothing; constraint=Trivial) = 
     new(n, isnothing(a) ? typeof(sa)() : a, sa, 
         isnothing(ret) ? sa : ret, constraint)
-  Query(sa::StructACSet,a::StructACSet=nothing, n::String="",ret=nothing; constraint=Trivial) = 
+  Query(sa::StructACSet,a::StructACSet=nothing, n::Symbol=:Query,ret=nothing; constraint=Trivial) = 
     Query(n,sa,a,ret;constraint=constraint)
   """ 
   Span Aₒ<-•->Aₙ relates old agent shape to new agent shape, such that the 
@@ -57,7 +58,7 @@ struct Query <: AgentBox
       A₂-> W₄
         λ₂
   """
-  function Query(a::Span, n::String="", ret=nothing; constraint=Trivial)
+  function Query(a::Span, n::Symbol=:Query, ret=nothing; constraint=Trivial)
     in_shape, agent_shape = codom.([left(a),right(a)])
     cg = @acset CGraph begin V=4; E=4; Elabel=1; src=[1,1,2,3]; tgt=[2,3,4,4]
       vlabel=[apex(a), in_shape, agent_shape, nothing]
@@ -76,7 +77,7 @@ struct Query <: AgentBox
       λ₁↘ ↓ λ₂
          W₃
   """
-  function Query(a::ACSetTransformation, n::String="", ret=nothing; constraint=Trivial)
+  function Query(a::ACSetTransformation, n::Symbol=:Query, ret=nothing; constraint=Trivial)
     in_shape, agent_shape = [dom(a),codom(a)]
     cg = @acset CGraph begin V=3; E=3; src=[1,2,1]; tgt=[2,3,3]
       vlabel=[in_shape, agent_shape, nothing]
@@ -105,8 +106,8 @@ color(::Query) = "yellow"
 input_ports(c::Query) = [c.agent, c.return_type] 
 output_ports(c::Query) = [c.agent, c.subagent, typeof(c.agent)()]
 initial_state(::Query) = QueryState(-1, ACSetTransformation[])
-(F::Migrate)(a::Query) =  Query(F(a.subagent), F(a.agent), a.name, F(a.return_type); constraint=F(a.constraint))
-# Query(sa::StructACSet,a::StructACSet=nothing, n::String="",ret=nothing; constraint=Trivial)
+(F::Migrate)(a::Query) =  Query(F(a.subagent), F(a.agent), a.name, 
+                                F(a.return_type); constraint=F(a.constraint))
 function update(q::Query, i::Int, instate::Traj, boxstate::Any)
   idp = id_pmap(traj_res(instate)) 
   msg = ""
@@ -143,7 +144,7 @@ end
 
 const ATypes = Union{Span,ACSetTransformation,Pair{StructACSet,StructACSet},
                      StructACSet}
-function agent(s::WiringDiagram, sa::ATypes; n="agent", ret=nothing, 
+function agent(s::Schedule, sa::ATypes; n=:agent, ret=nothing, 
                constraint=Trivial)
   if sa isa ACSetTransformation || sa isa Span 
     q = Query(sa, n, ret; constraint=constraint)
@@ -157,10 +158,13 @@ function agent(s::WiringDiagram, sa::ATypes; n="agent", ret=nothing,
   a,b,z = output_ports(q)
   a_, c = input_ports(q)
   a == a_ || error("Bad ports")
-  mk_sched((init=:A, trace_arg=:C,), 1, (
-    query = q, sched=s, A=a, B=b, C=c, Z=z), quote 
-      out, loop, _ = query(init, trace_arg)
-      return out, sched(loop)
+  init_sym = (a == c) ? (:C) : (:A)
+
+  mk_sched((trace_arg=:C,), (init=init_sym,), (
+    query = q, sched=s, A=a, B=b, C=c, Z=z, fail=Fail(typeof(a)())), quote 
+      out, loop, ignore = query(init, trace_arg)
+      fail(ignore)
+      return sched(loop), out
   end)
 end 
 

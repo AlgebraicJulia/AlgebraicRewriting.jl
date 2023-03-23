@@ -19,7 +19,7 @@ ACSet.
 The state and update function are by default trivial.
 """
 struct Conditional <: AgentBox
-  name::String 
+  name::Symbol 
   prob::Function                  # ACSetTransformation (x S) -> ℝⁿ
   update::Union{Nothing,Function} # ACSetTransformation x S -> S
   n::Int
@@ -30,7 +30,6 @@ struct Conditional <: AgentBox
     argtype ∈ [:world, :agent, :traj] ? new(name,r,update,n,a,init,argtype) : error(
       "Argtype $argtype must be world, agent, or traj")
 end
-Base.string(c::Conditional) = c.name
 input_ports(c::Conditional) = [c.agent] 
 output_ports(c::Conditional) = fill(c.agent, c.n) 
 initial_state(c::Conditional) = c.init
@@ -72,42 +71,42 @@ end
 
 """Create a branching point with fixed probabilities for each branch"""
 const_cond(v::Vector{Float64}, agent::StructACSet, ;name=nothing) = 
-  Conditional(_->v,length(v),agent; name=isnothing(name) ? "const $v" : name)
+  Conditional(_->v,length(v),agent; name=isnothing(name) ? Symbol("const $v") : name)
 
 """A uniform chance of leaving each of n branches"""
-uniform(n::Int, agent::StructACSet) = const_cond(fill(1/n,n), agent; name="uniform")
+uniform(n::Int, agent::StructACSet) = const_cond(fill(1/n,n), agent; name=:uniform)
 
 """Enter the 1st branch iff the world state evaluates to true""" 
-if_cond(name::String, boolfun::Function, agent::StructACSet; argtype=:world) = 
+if_cond(name::Symbol, boolfun::Function, agent::StructACSet; argtype=:world) = 
   Conditional((x,_)->boolfun(x) ? [1,0] : [0,1], 2, agent; name=name, argtype=argtype)
 
 
 """Perform a 1-1 schedule until a condition is met"""
-function while_schedule(s::WiringDiagram, boolfun::Function; name::String="while", argtype=:world)
+function while_schedule(s::Schedule, boolfun::Function; name=:while, argtype=:world)
   err = "While pattern requires a schedule with inputs [A] and outputs [A]"
-  a, a′ = only.([input_ports(s),output_ports(s)])
+  a, a′ = only.([input_ports(s.d),output_ports(s.d)])
   a == a′ || error(err)
   ic = singleton(if_cond(name, boolfun, a; argtype=argtype))
-  return mk_sched((init=:X,trace_arg=:X),1,(X=a,iff=ic,f=s), quote 
+  return mk_sched((trace_arg=:X,),(init=:X,),(X=a,iff=ic,f=s), quote 
     if_t, if_f = iff([init,trace_arg])
     return if_f, f(if_t)
   end)
 end
-while_schedule(s::AgentBox, boolfun::Function; name::String="while", argtype=:world) = 
+while_schedule(s::AgentBox, boolfun::Function; name=:while, argtype=:world) = 
   while_schedule(singleton(s), boolfun; name=name, argtype=argtype)
 
 
 """Perform a 1-1 schedule `n` times"""
-function for_schedule(s_::WiringDiagram, n::Int)
+function for_schedule(s_::Schedule, n::Int)
   s = typecheck(s_)
-  a = only(input_ports(s))
-  a == only(output_ports(s)) || error("for_schedule ports not 1-1")
-  forblock = Conditional((_,i) -> i>0 ? [0., 1] : [1., 0], 2, a; name="for 1:$n",
+  a = only(input_ports(s.d))
+  a == only(output_ports(s.d)) || error("for_schedule ports not 1-1")
+  forblock = Conditional((_,i) -> i>0 ? [0., 1] : [1., 0], 2, a; name=Symbol("for 1:$n"),
                        update=(_,i) -> i - 1, init=n)
-  return mk_sched((init=:A, trace_arg=:A,), 1, Dict(
+  return mk_sched((trace_arg=:A,),(init=:A,), Dict(
     :forb => forblock, :sched=>s,  :A=>a), quote 
       out, loop = forb([init, trace_arg])
-      return out, sched(loop)
+      return sched(loop), out
   end)
 end
 

@@ -212,8 +212,8 @@ N = Dict(W=>"W",S=>"S",G=>"G", I=>"")
 rl = Rule(id(S),id(S); expr=(Dir=[xs->left(only(xs))],))
 rr = Rule(id(S),id(S); expr=(Dir=[xs->right(only(xs))],))
 
-sheep_rotate_l = tryrule(RuleApp("turn left", rl, S))
-sheep_rotate_r = tryrule(RuleApp("turn right", rr, S))
+sheep_rotate_l = tryrule(RuleApp(:turn_left, rl, S))
+sheep_rotate_r = tryrule(RuleApp(:turn_right, rr, S))
 
 # we can imagine executing these rules in sequence or in parallel
 sched = (sheep_rotate_l⋅sheep_rotate_r) 
@@ -247,7 +247,7 @@ sheep_fwd_rule = Rule(
   expr=(Eng=[vs->vs[1], vs->vs[2], vs->vs[3]-1],)
 )
 
-sheep_fwd = tryrule(RuleApp("move fwd", sheep_fwd_rule, 
+sheep_fwd = tryrule(RuleApp(:move_fwd, sheep_fwd_rule, 
   homomorphism(S,s_fwd_l), homomorphism(S,s_fwd_r)))
 
 begin # test 
@@ -269,7 +269,7 @@ s_eat_l = @acset LV begin
 end
 
 se_rule = Rule(homomorphism(S,s_eat_l), id(S); expr=(Eng=[vs->30,vs->only(vs)+4],))
-sheep_eat = tryrule(RuleApp("Sheep eat", se_rule, S))
+sheep_eat = tryrule(RuleApp(:Sheep_eat, se_rule, S))
 
 begin # test 
   ex = @acset LV begin Sheep=1; V=3; E=2; src=[1,2]; tgt=[2,3]; sheep_loc=2
@@ -295,7 +295,7 @@ w_eat_r = @acset LV begin
 end
 
 we_rule = Rule(homomorphism(w_eat_r, w_eat_l), id(w_eat_r); expr=(Eng=[vs->vs[1],vs->vs[3]+20],))
-wolf_eat = tryrule(RuleApp("Wolf eat", we_rule, W))
+wolf_eat = tryrule(RuleApp(:Wolf_eat, we_rule, W))
 
 begin # test 
   ex = @acset LV begin Sheep=1; Wolf=1; V=3; E=2; src=[1,2]; tgt=[2,3]; sheep_loc=2
@@ -316,9 +316,9 @@ s_die_l = @acset LV begin
   sheep_eng=[0]; sheep_loc=1; sheep_dir=[AttrVar(1)]
 end
 sheep_die_rule = Rule(homomorphism(G, s_die_l), id(G))
-sheep_starve = (RuleApp("starve", sheep_die_rule, 
+sheep_starve = (RuleApp(:starve, sheep_die_rule, 
                        homomorphism(S,s_die_l), create(G))
-                ⋅ (id_wire(I) ⊗ Weaken("",create(S))) ⋅ merge_wires(2,I))
+                ⋅ (id([I]) ⊗ Weaken(create(S))) ⋅ merge_wires(I))
 
 # view_sched(sheep_starve |> typecheck)
 
@@ -349,7 +349,7 @@ sheep_reprod_rule = Rule(
              fill(vs->round(Int, vs[2]/2, RoundUp), 2)...],)
   )
 
-sheep_reprod = RuleApp("reproduce", sheep_reprod_rule, 
+sheep_reprod = RuleApp(:reproduce, sheep_reprod_rule, 
                        id(S), homomorphism(S, s_reprod_r)) |> tryrule
 
 begin # test 
@@ -374,7 +374,7 @@ rem_part!(g_inc_n, :Eng, 1)
 g_inc_rule = Rule(id(G), id(G);
                   ac=[AppCond(homomorphism(G, g_inc_n), false)],
                   expr=(Eng=[vs->only(vs)-1],))
-g_inc = RuleApp("Grass increments",g_inc_rule, G) |> tryrule
+g_inc = RuleApp(:GrassIncrements,g_inc_rule, G) |> tryrule
 
 
 begin # test 
@@ -394,10 +394,10 @@ end
 #----------------------------------
 
 # 25% chance of left turn, 25% chance of right turn, 50% stay in same direction
-general = mk_sched((init=:S,), 0, (
+general = mk_sched(NamedTuple(),(init=:S,), (
   S = S, I = I, G = G,
-  turn   = const_cond([1.,2.,1.], S; name="turn?"), 
-  maybe  = const_cond([0.1, 0.9], S; name="reprod?"), 
+  turn   = const_cond([1.,2.,1.], S; name=:turn), 
+  maybe  = const_cond([0.1, 0.9], S; name=:reprod), 
   lft    = sheep_rotate_l, 
   rght   = sheep_rotate_r, 
   fwd    = sheep_fwd, 
@@ -408,15 +408,15 @@ general = mk_sched((init=:S,), 0, (
     moved = fwd([lft(out_l), out_str, rght(out_r)]) 
     out_repro, out_no_repro = maybe(moved)
     return starve([repro(out_repro), out_no_repro])
-end) |> typecheck
+end)
 
 sheep = sheep_eat ⋅ general   # once per sheep
 wolf = wolf_eat ⋅ F(general)  # once per wolf
 
 # Do all sheep, then all wolves, then all daily operations
-cycle = ( agent(sheep, S; n="sheep",  ret=I)
-        ⋅ agent(wolf,  W; n="wolves", ret=I)
-        ⋅ agent(g_inc, G; n="grass"))
+cycle = ( agent(sheep, S; n=:sheep,  ret=I)
+        ⋅ agent(wolf,  W; n=:wolves, ret=I)
+        ⋅ agent(g_inc, G; n=:grass))
 
 # wrap in a while loop
 overall = while_schedule(cycle, curr -> nparts(curr,:Wolf) >= 0) |> F2

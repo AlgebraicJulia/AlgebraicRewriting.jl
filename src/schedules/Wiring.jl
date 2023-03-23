@@ -1,12 +1,15 @@
 module Wiring
 export Schedule,Traj, TrajStep, mk_sched, typecheck, merge_wires, 
-       singleton, id_wires, id_wire, traj_res, traj_agent, view_sched
+       singleton, traj_res, traj_agent, view_sched
 
-using Catlab.CategoricalAlgebra, Catlab.WiringDiagrams, Catlab.Programs, Catlab.Theories
+using Catlab, Catlab.CategoricalAlgebra, Catlab.WiringDiagrams, Catlab.Programs,
+      Catlab.Theories
 import Catlab.WiringDiagrams.DirectedWiringDiagrams: input_ports,output_ports
-import Catlab.Theories: compose, otimes, ⋅, ⊗
+import Catlab.Theories: Ob,Hom,id, create, compose, otimes, ⋅, ⊗, ∇,□, trace, munit, braid, dom, codom, mmerge
 using ...CategoricalAlgebra.CSets
 using ...CategoricalAlgebra.CSets: abstract
+using ..Theories: TM, ThTracedMonoidalWithBidiagonals
+
 
 """
 The true "primitive" is the Scientist category, which works for morphisms of any 
@@ -35,57 +38,64 @@ noattr(s::ACSetTransformation) = noattr(codom(s))
 
 # General wiring diagram utilities
 ###################################
-"""Identity WD"""
-id_wires(i::Int, agent::StructACSet) = id(Ports(fill(agent, i)))
-id_wire(agent::StructACSet) = id_wires(1, agent)
-
-"""Feed the last n outputs into the last n inputs of a WD""" 
-# function mk_trace(w::WiringDiagram, n::Int)
-#   ips, ops = input_ports(w), output_ports(w)
-#   length(ips) > n || error("not enough inputs")
-#   length(ops) > n || error("not enough outputs")
-#   wd = WiringDiagram(ips[1:end-n], ops[1:end-n])
-#   add_box!(wd, Box(ips, ops))
-#   trace_ports = ips[end-n+1 : end]
-#   off_i, off_o = length.([ips, ops]) .- n 
-#   iws = [Wire(ip, (input_id(wd),i),(1,i)) for (i,ip) in enumerate(ips[1:end-n])]
-#   ows = [Wire(op, (1,i),(output_id(wd),i)) for (i,op) in enumerate(ops[1:end-n])]
-#   ws = [Wire(trace_ports[i], (1,i+off_i),(1,i+off_o)) for i in 1:n]
-#   println("adding wires w/ $trace_ports")
-#   add_wires!(wd, [iws...,ows...,ws...])
-#   ocompose(wd, [w])
-# end 
 
 """
 Make a wiring diagram with ob/hom generators using @program macro
 
 TODO double check that this does not introduce any wire splitting.
 """
-function mk_sched(args::NamedTuple, n_trace::Int, 
+function mk_sched(t_args::NamedTuple,args::NamedTuple,
                   kw::Union{NamedTuple,AbstractDict}, wd::Expr)
+  n_trace=length(t_args)
   os = Dict(k=>v for (k,v) in collect(pairs(kw)) if v isa StructACSet)
   hs = Dict(k=>(v isa AgentBox ? singleton(v) : v) for (k,v) in collect(pairs(kw))
-            if v isa Union{WiringDiagram,AgentBox})
-  P = Presentation(FreeSymmetricMonoidalCategory)
-  os_ = Dict(v=>add_generator!(P, Ob(FreeSymmetricMonoidalCategory, k)) 
-             for (k,v) in collect(os))
+            if v isa Union{Schedule,AgentBox})
+  P = Presentation(TM)
+  os_ = Dict(v=>add_generator!(P, Ob(TM,k)) for (k,v) in collect(os))
+  # for (k,v) in collect(os) 
+  #   if haskey(os,v)
+  #     sym_dict[k] = Symbol(os[v])
+  #   else
+  #     os_[v]=add_generator!(P, Ob(TM, k))
+  #   end
+  # end
   for (k,v) in collect(hs)
     i = (isempty(input_ports(v)) 
-        ? munit(FreeSymmetricMonoidalCategory.Ob) 
+        ? munit(TM.Ob) 
         : otimes([os_[ip] for ip in input_ports(v)]))
-    add_generator!(P, Hom(k, i, otimes([os_[op] for op in output_ports(v)])))
+    o = (isempty(output_ports(v)) ? munit(TM.Ob) : otimes([os_[op] for op in output_ports(v)]))
+    add_generator!(P, Hom(k, i, o))
   end
-  args_ = Expr(:tuple,[Expr(Symbol("::"), k,v) for (k,v) in pairs(args)]...)
-  #wd = mk_trace(parse_wiring_diagram(P, args_, wd), n_trace)
-  tmp = parse_wiring_diagram(P, args_, wd)
-  Xports = Ports{ThSymmetricMonoidalCategory}(input_ports(tmp)[1:n_trace])
-  wd = trace(Xports, tmp)
+  args_ = Expr(:tuple,[Expr(Symbol("::"), k,v) for (k,v) in pairs(merge(t_args,args))]...)
 
-  println("TRACE MADE"); show(stdout, "text/plain", wd.diagram)
-  for x in Symbol.(["$(x)_port_type" for x in [:outer_in,:outer_out]])
-    wd.diagram[:,x] = [kw[v] for v in wd.diagram[x]]
+  tmp = parse_wiring_diagram(P, args_, wd)
+  tmpx = to_hom_expr(TM, tmp)
+  
+  Xports = Ports{ThTracedMonoidalWithBidiagonals}(input_ports(tmp)[1:n_trace])
+  new_d = trace(Xports, tmp)
+
+  X = n_trace == 0 ? munit(TM.Ob) : otimes(dom(tmpx).args[1:n_trace])
+  A = n_trace == length(dom(tmpx).args) ? munit(TM.Ob) : otimes([Ob(TM,x) for x in dom(tmpx).args[n_trace+1:end]])
+  B = n_trace == length(codom(tmpx).args) ? munit(TM.Ob) : otimes([Ob(TM,x) for x in codom(tmpx).args[n_trace+1:end]])
+  new_x = trace(X, A,B, tmpx)
+
+  function ob_map(expr)
+    sxpr = Symbol(expr)
+    haskey(os, sxpr) ? Ob(TM, os[sxpr]) : expr 
   end
-  return ocompose(wd, WiringDiagram[hs[b.value] for b in boxes(wd)])
+  function hom_map(expr)
+    sxpr = Symbol(expr)
+    haskey(hs, sxpr) ? hs[sxpr].x : expr   
+  end
+
+  newer_x = functor((TM.Ob,TM.Hom),new_x, terms=Dict(:Ob=>ob_map, :Hom=>hom_map))
+  
+  sub = ocompose(new_d, [hs[Symbol(b.value)].d for b in boxes(new_d)])
+  sub.diagram[:wire_value] = nothing
+  for x in Symbol.(["$(x)_port_type" for x in [:outer_in,:outer_out,]])
+    sub.diagram[:,x] = [kw[v] for v in sub.diagram[x]]
+  end
+  return Schedule(sub, newer_x)
 end 
 
 
@@ -159,11 +169,13 @@ of a traced monoidal category, with objects being lists of ACSets.
 abstract type AgentBox end 
 mk_box(a::AgentBox) = Box(a, input_ports(a), output_ports(a))
 Base.show(io::IO, c::AgentBox) = show(io, string(c))
+Base.string(c::AgentBox) = string(name(c))
 
 input_ports(::AgentBox)::Vector{StructACSet} = error("Not yet defined")
 output_ports(::AgentBox)::Vector{StructACSet} = error("Not yet defined")
 initial_state(::AgentBox) = error("Not yet defined") 
 color(::AgentBox) = error("Not yet defined") 
+name(a::AgentBox) = a.name
 (::Migrate)(::AgentBox) = error("Not yet defined")
 
 """ In x P x S -> Out x P x S x Msg ---- output P actually just needs the maps
@@ -174,57 +186,101 @@ update(::AgentBox, iid_wire::Int, instate::Traj) = error("Not yet defined")
 """Make a wiring diagram around a box"""
 function singleton(b::AgentBox)::Schedule
   ips, ops = input_ports(b), output_ports(b)
-  wd = Schedule(ips, ops)
+  wd = WD(ips, ops)
   add_box!(wd, mk_box(b))
   add_wires!(wd, [
     [Wire(ip,(input_id(wd),i),(1,i)) for (i, ip) in enumerate(ips)]...,
     [Wire(op,(1,i),(output_id(wd),i)) for (i, op) in enumerate(ops)]...,])
-  return wd 
+  iob, oob = otimes.([TM.Ob[Ob(TM, x) for x in xs] for xs in [ips,ops]])
+  x = Hom(name(b), iob, oob)
+  return Schedule(wd, x)
 end
-# Automatically call singleton when composing boxes w/ wiring diagrams
-compose(x::AgentBox, y::Union{WiringDiagram, AgentBox}) = compose(singleton(x), y)
-compose(x::WiringDiagram, y::AgentBox) = compose(x, singleton(y))
-⋅(x::AgentBox, y::Union{WiringDiagram, AgentBox}) = ⋅(singleton(x), y)
-⋅(x::WiringDiagram, y::AgentBox) = ⋅(x, singleton(y))
-otimes(x::AgentBox, y::Union{WiringDiagram, AgentBox}) = otimes(singleton(x), y)
-otimes(x::WiringDiagram, y::AgentBox) = otimes(x, singleton(y))
-⊗(x::AgentBox, y::Union{WiringDiagram, AgentBox}) = ⊗(singleton(x), y)
-⊗(x::WiringDiagram, y::AgentBox) = ⊗(x, singleton(y))
 
+
+const WD = WiringDiagram{ThTracedMonoidalWithBidiagonals, StructACSet, 
+                         StructACSet, AgentBox}
 
 # It would be nice if ⊗ and ⋅ preserved the type of WDs, then we could more 
 # strongly type our code.
-const Schedule = WiringDiagram{Any, StructACSet, StructACSet, AgentBox}
+struct Schedule 
+  d::WD
+  x::GATExpr
+  Schedule(d,x) = new(typecheck(d), x)
+end
+struct SPorts p::Ports end 
+input_ports(s::Schedule)::Vector{StructACSet} = input_ports(s.d)
+output_ports(s::Schedule)::Vector{StructACSet} = output_ports(s.d)
+
+
+@instance ThTracedMonoidalWithBidiagonals{SPorts, Schedule} begin
+  @import dom, codom
+
+  id(A::SPorts) =  Schedule(id(A.p), to_hom_expr(TM,id(A.p)))
+  compose(f::Schedule, g::Schedule) = Schedule(f.d ⋅ g.d, f.x ⋅ g.x)
+  otimes(A::SPorts, B::SPorts) = SPorts(A.p ⊗ B.p)
+  munit(::Type{SPorts}) = SPorts(munit(Ports))
+  otimes(f::Schedule, g::Schedule) = Schedule(f.d⊗g.d,f.x ⊗ g.x)
+  braid(A::SPorts, B::SPorts) = SPorts(braid(A.p,B.p))
+  trace(X::SPorts, A::SPorts, B::SPorts,f::Schedule) = 
+    Schedule(trace(X,A.p,B.p,f.d), trace(X,A,B,f.x)) 
+  mmerge(A::SPorts;i=2) = let m = mmerge(A.p,i); 
+    Schedule(m, to_hom_expr(TM,m)) end
+  create(A::SPorts) = mmerge(A;i=0)
+end
+
+
+# Automatically call singleton when composing boxes w/ wiring diagrams
+compose(x::AgentBox, y::Union{Schedule, AgentBox}) = compose(singleton(x), y)
+compose(x::Schedule, y::AgentBox) = compose(x, singleton(y))
+⋅(x::AgentBox, y::Union{Schedule, AgentBox}) = ⋅(singleton(x), y)
+⋅(x::Schedule, y::AgentBox) = ⋅(x, singleton(y))
+otimes(x::AgentBox, y::Union{Schedule, AgentBox}) = otimes(singleton(x), y)
+otimes(x::Schedule, y::AgentBox) = otimes(x, singleton(y))
+⊗(x::AgentBox, y::Union{Schedule, AgentBox}) = ⊗(singleton(x), y)
+⊗(x::Schedule, y::AgentBox) = ⊗(x, singleton(y))
+
+
+# make the theory of mk_sched tracedmonoidalcategory 
+# use Functor to do GATExpr substitution
+
 
 """Map a functor over the data of a schedule"""
-function (F::Migrate)(wd::WiringDiagram) 
-  wd = deepcopy(wd)
+function (F::Migrate)(wd_::Schedule) 
+  wd = deepcopy(wd_.d)
   for x in [:value, Symbol.(["$(x)_port_type" for x in 
                             [:outer_in,:outer_out,:out,:in]])..., 
                     Symbol.(["$(x)wire_value" for x in ["",:in_,:out_]])...]
     wd.diagram[:,x] = F.(wd.diagram[x])
   end 
-  return wd
+  return Schedule(wd,wd_.x)
 end 
 
 const wnames = [
-  [:src,:tgt,:wire_value,:out_port_type,:in_port_type],
-  [:in_src,:in_tgt,:in_wire_value,:outer_in_port_type,:in_port_type],
-  [:out_src,:out_tgt,:out_wire_value,:out_port_type,:outer_out_port_type]
+  # Begin   End          Val            BeginType             EndType
+  [:src,    :tgt,    :wire_value,    :out_port_type,      :in_port_type],
+  [:in_src, :in_tgt, :in_wire_value, :outer_in_port_type, :in_port_type],
+  [:out_src,:out_tgt,:out_wire_value,:out_port_type,      :outer_out_port_type]
 ]
 
+typecheck(s::Schedule) = begin typecheck(s.d); return s end 
 
-function typecheck(wd::WiringDiagram)::Schedule 
+function typecheck(wd::WiringDiagram)::WD 
   wd = deepcopy(wd)
   for (i, (s,t,wval,sval,tval)) in enumerate(wnames)
     for (w,vs) in enumerate(wire_vals(wd, i))
-      if length(vs) != 1 error("#$wval $w $vs") end 
-      set_subpart!(wd.diagram, i,  wval, only(vs))
+      if length(vs) != 1 
+        if i == 1
+          error("#$wval $w $(wd.diagram[w,[:src, :out_port_box,:value]]) $(wd.diagram[w,[:tgt, :in_port_box,:value]]) $vs")
+        else
+          error("#$wval $w $vs") 
+        end
+      end 
+      set_subpart!(wd.diagram, w,  wval, only(vs))
       set_subpart!(wd.diagram, wd.diagram[w,s], sval, only(vs))
       set_subpart!(wd.diagram, wd.diagram[w,t], tval, only(vs))
     end
   end
-  wd2 = Schedule([],[])
+  wd2 = WD([],[])
   copy_parts!(wd2.diagram, wd.diagram)
   return wd2
 end
@@ -244,12 +300,9 @@ end
 The comonoid structure - merging multiple wires into one. This is unproblematic
 because the world state only ever exists on one wire at a given time.
 """
-function merge_wires(n::Int, agent::StructACSet)::Schedule
-  wd = Schedule(fill(agent,n),[agent])
-  add_wires!(wd, [Wire(agent,(input_id(wd),i),(output_id(wd),1)) for i in 1:n])
-  return wd
-end
-
+merge_wires(agent::StructACSet, n::Int=2)::Schedule = 
+  mmerge(SPorts(Ports([agent]));i=n)
+id(agents::AbstractVector{<:StructACSet}) = id(SPorts(Ports(agents)))
 
 
 end # module 

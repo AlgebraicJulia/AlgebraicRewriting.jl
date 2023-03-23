@@ -241,7 +241,7 @@ set_subpart!(s_move_n, 1, :sheep_eng, 0)
 sheep_move_forward = Rule(
   hom(s_move_forward_i, s_move_forward_l; monic=true),
   hom(s_move_forward_i, s_move_forward_r; monic=true),
-  [NAC(hom(s_move_forward_l, s_move_n; monic=true))]
+  [AppCond(hom(s_move_forward_l, s_move_n; monic=true), false)]
 )
 
 wolf_move_forward = F(sheep_move_forward)

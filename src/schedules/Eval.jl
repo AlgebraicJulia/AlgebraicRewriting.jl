@@ -14,7 +14,7 @@ using ..Wiring: initial_state, update
 Execute a single primitive box (either a Conditional or a NamedRule).
 Return output wire.
 """
-function apply_schedule_step(s::Schedule, P::Traj, S::AbstractVector, 
+function apply_schedule_step(s::WiringDiagram, P::Traj, S::AbstractVector, 
                              iw::Wire; verbose=verbose)::Wire 
   I = iw.target # in port
   box = boxes(s)[I.box]
@@ -29,10 +29,10 @@ function apply_schedule_step(s::Schedule, P::Traj, S::AbstractVector,
 end
 
 """Execute an entire schedule. Optionally limit # of steps"""
-function apply_schedule(s_::WiringDiagram,g::ACSetTransformation; in_port=1,
+function apply_schedule(s_::Schedule,g::ACSetTransformation; in_port=1,
                         steps::Int=-1, verbose::Bool=false)::Traj
   # Validate
-  s = typecheck(s_)
+  s = s_.d
   input_ports(s)[in_port] == dom(g) || error("Bad input agent to schedule")
   # Initialize
   P = Traj(g)
@@ -48,11 +48,11 @@ function apply_schedule(s_::WiringDiagram,g::ACSetTransformation; in_port=1,
 end
 
 # assuming input has 0 agent.
-apply_schedule(s::WiringDiagram,g::StructACSet; kw...) = 
+apply_schedule(s::Schedule,g::StructACSet; kw...) = 
   apply_schedule(s, create(g); kw...)
 
 """Just get the result from applying the schedule"""
-rewrite_schedule(s::WiringDiagram, G; kw...) = 
+rewrite_schedule(s::Schedule, G; kw...) = 
   traj_res(apply_schedule(s, G; kw...))
 
 

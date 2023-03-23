@@ -9,7 +9,7 @@ using .Luxor
 Visualize a trajectory with two views: one showing the current position within 
 the schedule, and the other showing the world state.
 """
-function view_traj(sched_::WiringDiagram, rG::Traj, viewer; out="traj", agent=false)
+function view_traj(sched_::Schedule, rG::Traj, viewer; out="traj", agent=false)
   if isdir(out) # clear old dir
     for fi in filter(x->length(x)>4 && x[end-3:end] == ".png",  readdir(out))
       rm(joinpath(out,fi))
@@ -26,7 +26,7 @@ end
 If agent is true, then the viewer function should operate on 
 ACSetTransformations, rather than ACSets.
 """
-function view_traj(sched_::WiringDiagram, rG::Traj, viewer, n::Int; out="traj",
+function view_traj(sched_::Schedule, rG::Traj, viewer, n::Int; out="traj",
                    agent=false)
   step = rG[n]
   graphs = [view_sched(sched_; name=step.desc, source=step.inwire.source, 

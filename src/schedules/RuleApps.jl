@@ -25,7 +25,7 @@ rule, and alternatively just from the shape of the agent alone (if it is
 identical to I, take the id map, otherwise take the unique morphism into I).
 """
 struct RuleApp <: AgentBox
-  name::String 
+  name::Symbol 
   rule::AbsRule 
   in_agent::ACSetTransformation  # map A --> L 
   out_agent::ACSetTransformation # map A --> R
@@ -48,7 +48,6 @@ struct RuleApp <: AgentBox
   RuleApp(n,r::AbsRule) = 
     RuleApp(n,r,create(dom(left(r))))
 end  
-Base.string(c::RuleApp) = c.name
 input_ports(r::RuleApp) = [dom(r.in_agent)] 
 output_ports(r::RuleApp) = [dom(r.out_agent), dom(r.in_agent)]
 color(::RuleApp) = "lightblue"
@@ -85,19 +84,17 @@ end
 A box that takes the first output iff there is a match from a rule into the 
 current state"""
 has_match(rulename::String, r::AbsRule, agent::StructACSet) = 
-  if_cond("Can match $rulename", x->!isnothing(get_match(r,x)), agent)
+  if_cond(Symbol("Can match $rulename"), x->!isnothing(get_match(r,x)), agent)
 
 """
 Feed the "rewrite applied" output back into the input of the rule application
 """
-loop_rule(a::RuleApp) =
-  mk_sched((i=:X,trace_arg=:X), 1, (f=a,X=dom(a.in_agent),Y=dom(a.out_agent)), 
-  quote 
-    found_match, no_match = f([i,trace_arg]) 
-    return no_match, found_match
-  end) |> typecheck
-
-tryrule(a::RuleApp) = a ⋅ merge_wires(2, dom(a.in_agent)) |> typecheck
-succeed(a::RuleApp) = a ⋅ (id_wire(dom(a.out_agent)) ⊗ Fail(dom(a.in_agent)))
+function loop_rule(a::RuleApp)
+  dom(a.in_agent) == dom(a.out_agent) || error("Cannot loop rule w/ different in/out agent")
+  mk_sched((trace_arg=:X,), (i=:X,), (f=a,X=dom(a.in_agent),), 
+            quote  f([i,trace_arg]) end) # |> typecheck
+end
+tryrule(a::RuleApp) = a ⋅ merge_wires(dom(a.in_agent))
+succeed(a::RuleApp) = a ⋅ (id([dom(a.out_agent)]) ⊗ Fail(dom(a.in_agent)))
 
 end # module 

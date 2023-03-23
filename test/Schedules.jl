@@ -1,6 +1,7 @@
 module TestSchedules
 
 using Test
+using Revise
 using Catlab, Catlab.Theories, Catlab.WiringDiagrams, Catlab.Graphics
 using Catlab.Graphs, Catlab.CategoricalAlgebra
 using Catlab.Graphics: to_graphviz_property_graph
@@ -8,6 +9,7 @@ using Catlab.Graphics: to_graphviz_property_graph
 using AlgebraicRewriting
 
 using Luxor
+
 
 # Graph + agent viewer 
 ######################
@@ -29,13 +31,12 @@ z, g1, ar, loop = Graph(), Graph(1), path_graph(Graph, 2), apex(terminal(Graph))
 
 N=Dict(z=>"Z",g1=>"•",ar=>"•→•")
 
-av = RuleApp("add vertex", Rule(id(z), create(Graph(1))))
+av = RuleApp(:add_vertex, Rule(id(z), create(g1)))
 g2 = homomorphism(Graph(2), ar; monic=true)
-de = loop_rule(RuleApp("del edge", Rule(g2, id(Graph(2)))))
+de = loop_rule(RuleApp(:del_edge, Rule(g2, id(Graph(2)))))
 coin = uniform(2, z)
-merge2 = merge_wires(2,g1)
+sched = coin ⋅ (tryrule(av) ⊗ id([z])) ⋅ merge_wires(z) ⋅ de
 
-sched = (coin ⋅ (tryrule(av) ⊗ id_wires(1,z)) ⋅ merge2 ⋅ de)
 
 view_sched(sched, name="X", names=N)
 G = path_graph(Graph, 4)
@@ -44,21 +45,20 @@ view_traj(sched, res, view_graph; agent=true)
 
 # Query workflow (add loop to each vertex)
 ##########################################
-al = succeed(RuleApp("add loop", Rule(id(g1), homomorphism(g1,loop)), g1))
-q = Query("Vertex", g1)
+al = succeed(RuleApp(:add_loop, Rule(id(g1), homomorphism(g1,loop)), g1))
+q = Query(:Vertex, g1)
 
-sched = mk_sched((i=:Z, o=:O), 1, Dict(:rule=>al, :query=>q, :Z=>z,:O=>g1), 
-quote 
-  q1,q2,q3 = query(i,o)
-  trace = rule([q1,q2])
-  out = [q3]
-  return out, trace
+@test_throws AssertionError mk_sched((trace_arg=:O,), (i=:Z,),
+  (rule=al, query=q, Z=z,O=g1), quote 
+    q1,q2,q3 = query(i,trace_arg)
+    trace = rule([q1,q2])
+    out = [q3]
+    return trace, out
 end);
 
-@test_throws ErrorException typecheck(sched)
 
 
-sched = mk_sched((o=:O, i=:Z), 1, Dict(:rule=>al, :query=>q, :Z=>z,:O=>g1), 
+sched = mk_sched((o=:O,), (i=:Z,), Dict(:rule=>al, :query=>q, :Z=>z,:O=>g1), 
 quote 
   q1,q2,q3 = query(i,o)
   trace = rule(q2)
@@ -78,17 +78,18 @@ view_traj(sched, res, view_graph; agent=true)
 ##############################################################################
 s_hom, t_hom = [ACSetTransformation(g1,ar; V=[i]) for i in 1:2]
 
-q2 = Query(Span(t_hom,s_hom), "Out edges", g1)
-ws = Weaken("Switch to src", s_hom)
-wt = Weaken("Switch to tgt", t_hom)
-str = Strengthen("Add outedge", s_hom)
-maybe_add_loop = uniform(2, g1) ⋅ (al ⊗ id_wires(1,g1))
+q2 = Query(Span(t_hom,s_hom), :OutEdges, g1)
+ws = Weaken(:Switch_to_src, s_hom)
+wt = Weaken(:Switch_to_tgt, t_hom)
+str = Strengthen(:Add_outedge, s_hom)
+maybe_add_loop = uniform(2, g1) ⋅ (al ⊗ id([g1]))
 
-sched = mk_sched((trace_arg=:V, init=:A), 1, Dict(
+sched = mk_sched((trace_arg=:V,), (init=:A,), Dict(
   :loop => maybe_add_loop, :out_edges=>q2, :weaken_src=>ws, 
-  :weaken_tgt=>wt, :add=>str, :A=>ar,:V=>g1, :Z=>z), 
+  :weaken_tgt=>wt, :add=>str, :A=>ar,:V=>g1, :Z=>z, :fail=>Fail(z)), 
 quote 
   added_loops, out_edge, ignore = out_edges(init, trace_arg)
+  fail(ignore)
   out_neighbor = weaken_tgt(out_edge)
   trace1, trace2 = loop(out_neighbor)
   out = add(weaken_src(added_loops))
@@ -109,8 +110,8 @@ view_traj(sched, res, to_graphviz; agent=false)
 
 # For-loop: add 3 loops
 #######################
-sched = for_schedule(maybe_add_loop ⋅ merge2, 3)
-res = apply_schedule(sched, id(g1));
+sched = for_schedule(maybe_add_loop ⋅ merge_wires(g1), 3)
+# res = apply_schedule(sched, id(g1));
 
 
 # Simple game of life 
@@ -138,15 +139,14 @@ inc_E_ = @acset LG begin Cell=2; V=6; E=7; Life=1; Eng=2
   live=[true,AttrVar(1)]; eng=AttrVar.(1:2)
 end
 inc_E = Rule(id(inc_E_),id(inc_E_); expr=(Eng=[es->es[1],es->es[2]+1],))
-inc_E_rule = RuleApp("incE",inc_E,homomorphism(Cell,inc_E_)) |> tryrule
+inc_E_rule = RuleApp(:incE,inc_E,homomorphism(Cell,inc_E_)) |> tryrule
 
 # Assemble a schedule 
 sched = agent(inc_E_rule, Cell, ret=Cell)
 
 
-# Demonstrate on a 2 x 2 grid: 
-# L D
-# L D
+# Demonstrate on a 2 x 2 grid:  L D
+#                               L D
 G = @acset LG begin Cell=4; V=9; E=12
   src=[1,1,2,2,3,4,4,5,5,6,7,8]; tgt=[2,4,3,5,6,5,7,6,8,9,8,9]; 
   cell_W=[2,4,7,9]; cell_E=[4,5,9,10]; cell_S=[1,3,6,8]; cell_N=[6,8,11,12]
