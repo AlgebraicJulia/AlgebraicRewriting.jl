@@ -33,11 +33,11 @@ function view_sched(sched_::Schedule; name="",source=nothing, target=nothing, na
   end
   if !isnothing(source)
     if source.box == input_id(sched) 
-      sched.diagram[source.port, :outer_in_port_type] = "→"
+      sched.diagram[source.port, :outer_in_port_type] *= "→"
     else 
-      sched.diagram[out_port_id(sched, source), :out_port_type] = "→"
+      sched.diagram[out_port_id(sched, source), :out_port_type] *= "→"
     end
-    sched.diagram[out_port_id(sched, target), :out_port_type] = "←"
+    sched.diagram[out_port_id(sched, target), :out_port_type] *= "←"
   end
   return to_graphviz(sched; labels=true, 
     graph_attrs=Dict(:label=>name, :labelloc=>"t"),

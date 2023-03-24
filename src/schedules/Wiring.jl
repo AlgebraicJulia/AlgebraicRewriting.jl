@@ -1,15 +1,14 @@
 module Wiring
-export Schedule,Traj, TrajStep, mk_sched, typecheck, merge_wires, 
+export Schedule, mk_sched, typecheck, merge_wires, 
        singleton, traj_res, traj_agent, view_sched
 
 using Catlab, Catlab.CategoricalAlgebra, Catlab.WiringDiagrams, Catlab.Programs,
       Catlab.Theories
 import Catlab.WiringDiagrams.DirectedWiringDiagrams: input_ports,output_ports
 import Catlab.Theories: Ob,Hom,id, create, compose, otimes, ⋅, ⊗, ∇,□, trace, munit, braid, dom, codom, mmerge
-using ...CategoricalAlgebra.CSets
-using ...CategoricalAlgebra.CSets: abstract
 using ..Theories: TM, ThTracedMonoidalWithBidiagonals
-
+using ...CategoricalAlgebra.CSets
+using ..Poly
 
 """
 The true "primitive" is the Scientist category, which works for morphisms of any 
@@ -25,16 +24,6 @@ There are also higher level patterns built from these generating morphisms.
 str_hom(m::ACSetTransformation) = join([
   "$k: $(collect(c))" for (k,c) in pairs(components(m))
   if !isempty(collect(c))], '\n')
-
-# Partial map utilities 
-#######################
-
-id_pmap(s::StructACSet) = Span(abstract(s),abstract(s)) # the identity partial map
-no_pmap(s1::StructACSet,s2::StructACSet) = Span(create.([s1,s2])...) # empty
-tot_pmap(f::ACSetTransformation) = Span(id(dom(f)), f)
-
-noattr(s::StructACSet{S}) where S = all(a->nparts(s,a) == 0, attrtypes(S))
-noattr(s::ACSetTransformation) = noattr(codom(s))
 
 # General wiring diagram utilities
 ###################################
@@ -52,13 +41,6 @@ function mk_sched(t_args::NamedTuple,args::NamedTuple,
             if v isa Union{Schedule,AgentBox})
   P = Presentation(TM)
   os_ = Dict(v=>add_generator!(P, Ob(TM,k)) for (k,v) in collect(os))
-  # for (k,v) in collect(os) 
-  #   if haskey(os,v)
-  #     sym_dict[k] = Symbol(os[v])
-  #   else
-  #     os_[v]=add_generator!(P, Ob(TM, k))
-  #   end
-  # end
   for (k,v) in collect(hs)
     i = (isempty(input_ports(v)) 
         ? munit(TM.Ob) 
@@ -99,68 +81,6 @@ function mk_sched(t_args::NamedTuple,args::NamedTuple,
 end 
 
 
-# General Trajectory and Schedule datatypes 
-###########################################
-
-struct TrajStep 
-  desc::String
-  world::ACSetTransformation
-  pmap::Span{<:StructACSet} # nothing == id
-  inwire::Wire
-  outwire::Wire
-  function TrajStep(d,w,p,i,o)
-    noattr(w) || error("World state has variables $w")
-    codom(right(p)) == codom(w) || error("World doesn't match pmap")
-    return new(d,w,p,i,o)
-  end
-end 
-
-"""
-Structure of a trajectory of a "world state" that is generated via traversal of 
-a schedule. The data for each step in time is a world state (with a 
-distinguished agent) as well as a wire ID that one is living on. Furthermore,
-between the world states, there are partial maps to show how they are related 
-to each other.
-"""
-mutable struct Traj
-  initial::ACSetTransformation 
-  steps::Vector{TrajStep}
-  Traj(i::ACSetTransformation) = new(i, TrajStep[])
-end 
-Base.last(t::Traj) = last(t.steps)
-Base.isempty(t::Traj) = isempty(t.steps)
-Base.length(t::Traj) = length(t.steps)
-Base.getindex(t::Traj, i::Int) = t.steps[i]
-get_agent(t::Traj, i::Int) = i == 0 ? t.initial : t[i].world
-traj_res(s::Traj) = codom(traj_agent(s))
-traj_agent(t::Traj) = isempty(t.steps) ? t.initial : last(t).world
-Base.push!(t::Traj, ts::TrajStep) = push!(t.steps, ts)
-
-"""
-Take a morphism (pointing at world state #i) and push forward to current time.
-"""
-function update_agent(t::Traj, i::Int, a::ACSetTransformation; check=false)
-  !check || is_natural(a) || error("Updating unnatural a")
-  noattr(a) || error("World state has variables")
-  if i < 0
-    error("Called update with negative index $i")
-  elseif i == length(t) # special case
-    codom(a) == codom(get_agent(t, i)) || error("BAD MATCH $i $a")
-    return a
-  end 
-  codom(a) == codom(left(t[i+1].pmap)) || error("BAD MATCH $i $a")
-  for j in i+1:length(t)
-    a = postcompose_partial(t[j].pmap, a)
-    if check && !is_natural(a) 
-      println("dom(a)"); show(stdout, "text/plain", dom(a))
-      println("codom(a)"); show(stdout, "text/plain", codom(a))
-      error("Updated unnatural a $(collect(pairs(components(a))))")
-    end
-    if isnothing(a) return nothing end 
-  end
-  codom(a) == traj_res(t) || error("Failed to postcompose $(codom(a))\n$(traj_res(t))")
-  return a 
-end
 
 """
 Type for primitive boxes used in a schedule. These are the generating morphisms
@@ -177,11 +97,7 @@ initial_state(::AgentBox) = error("Not yet defined")
 color(::AgentBox) = error("Not yet defined") 
 name(a::AgentBox) = a.name
 (::Migrate)(::AgentBox) = error("Not yet defined")
-
-""" In x P x S -> Out x P x S x Msg ---- output P actually just needs the maps
-Xₙ₋₁ -/-> X and A -> X, which get concatenated to the input trajectory P
-"""
-update(::AgentBox, iid_wire::Int, instate::Traj) = error("Not yet defined") 
+update(::AgentBox, p::PMonad) = error("Not yet defined")
 
 """Make a wiring diagram around a box"""
 function singleton(b::AgentBox)::Schedule

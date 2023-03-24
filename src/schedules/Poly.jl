@@ -1,60 +1,70 @@
 module Poly 
-export List, Maybe, Mealy, to_btree
-
+export List, Maybe, Dist, Mealy, BTreeEdge, BTree, WireVal, MealyRes, PMonad, WireVal, Sim
+using StructEquality
+using Catlab.WiringDiagrams, Catlab.CategoricalAlgebra
 
 """
 t = Σ_{I:t(1)} y^{t[I]}
 
 I is the summand type 
 Operad
+
+(t ◁ WireVal) = [(I,WV)]
 """
 struct PMonad 
   I::Type
-  η::Function # ∀A, A -> [I×A] 
-  μ::Function # ∀A, [I×[I×A]]  -> [I×A] 
+  η::Function # ∀A, A -> [I×A]
+  μ::Function # ∀A, [I×[I×A]]  -> [I×A]
 end
 
 Maybe = PMonad(Nothing, 
                x  -> [(nothing,x)],
                xs -> isempty(xs) ? xs : only(xs))
-function joinlist(xss; rem_dups=true)  
-  i, res = 1, []
-  for xs in xss 
-    for (_,x) in xs 
-      if !rem_dups
-      push!(res, (i,x))
-      i += 1
-      end
-    end
-    return res
-  end
-end
-List = PMonad(Int, x -> [(1,x)], xss -> joinlist)
 
+# Accepts a vector of Sim
+function joinlist(xs)  
+  collect(enumerate(xs))
+end
+List = PMonad(Int, x -> [(1,x)], joinlist)
+function joindist(xs)  
+  [(prod([s.edge.t[2] for s in x.steps]), x) for x in xs]
+end
+Dist = PMonad(Int, x -> [(1,x)], joindist)
+
+
+"""For an in/output, ΣA, provide wire index + value on wire""" 
+@struct_hash_equal struct WireVal 
+  wire_id::Int
+  val::Any
+end
+
+"""Output of a mealy machine"""
+@struct_hash_equal struct MealyRes
+  newS::Any
+  mval::Vector{Tuple{Any,WireVal}}
+  msg::String
+  MealyRes(newS,mval=Tuple{Any,WireVal}[],msg="") = new(newS,mval, msg)
+end 
 
 """A function that maintains a state"""
-mutable struct Mealy
-  f::Function # S × Σ A -> S × t ◁ Σ B
-  t::PMonad  
-  s::Any # current state
+struct Mealy
+  f::Function # S × WireVal -> S × (t ◁ WireVal)
+  t::PMonad
+  s0::Any # initial state
 end
+(f::Mealy)(w::WireVal; kw...) = f.f(f.s0, w; kw...)
+(f::Mealy)(s::Any,w::WireVal; kw...) = f.f(s, w; kw...)
 
-function (f::Mealy)(i::Int, v::Any)
-  new_state, res = f.f(f.s, i, v)
-  f.s = new_state 
-  return res
-end 
 
-function to_btree(m::Mealy)
-  K = Tuple{m.t.I,Tuple{Int,Any}} # tᵢ, Σᵢ a ∈ Aᵢ
-  V = Function
-  bt = BTree{K,V}((i,a)->deepcopy(m)(i,a))
-  function f(ks::Vector{K′}) where K′
-    error("HERE")
-  end
-  return InfBTree{K,V}(bt, f)
-end 
-
+"""
+Data (i,t) which future behavior is contingent on. For convenience, the output 
+(o) is stored as well.
+"""
+@struct_hash_equal struct BTreeEdge 
+  i::WireVal
+  o::WireVal       
+  t::Tuple{Int,Any}
+end
 
 
 """
@@ -68,58 +78,113 @@ the list of outputs).
        ↖ ↑ ↗
         (f₀)
 
+A vector of keys traverses the BTree.
 """
-struct BTree{K,V}
-  branch::AbstractDict{K, BTree{K,V}}
-  val::V
-  BTree{K,V}(root::V) where {K,V} = new(Dict{K,BTree{K,V}}(),root)
-end
-Base.setindex!(b::BTree{K,V}, k::K, v::V) where {K,V} = b.branch[k] = v
-function Base.setindex!(b::BTree{K,V}, ks::AbstractVector{K}) where {K,V}
-  for k in ks[:end-1] b = b[k] end 
-  b[last(ks)] = v
-end
-Base.getindex(b::BTree{K,V}, k::K) where {K,V} = b.branch[k]
-function getindex!(b::BTree{K,V}, ks::AbstractVector{K}) where {K,V}
-  for k in ks[:end-1] b = b[k] end 
-  b[last(ks)]
+struct BTree
+  S::Dict{Vector{BTreeEdge},Any} # for each node, what is the state
+  f::Mealy
+  BTree(f::Mealy) = new(Dict(BTreeEdge[]=>f.s0), f)
 end
 
-
-"""A BTree that knows how to update itself"""
-struct InfBTree{K,V}
-  t::BTree{K,V}
-  f::Function # Vector{K} -> V
-end
-
-(f::InfBTree{K,V})(k::K) where {K,V} = f([k])
-  """Grow a tree and return the result"""
-function (f::InfBTree{K,V})(ks::AbstractVector{K}) where {K,V}
-  f.t[ks] = f.f(ks)
-end
-
-
-
-# Poly 
-######
-
-"""  ____
- ℕ -|    |- String 
- 𝔹 -|S=ℕ |- Nothing
-     -----
-Machine receives a ℕ, it adds it to its internal state + returns nothing 
-Machine recieves a 𝔹, it outputs symbol e.g. "True23" where the # is the state.
-If the machine has state 10, it returns nothing.
 """
-ex_fun(S::Int, i::Int, val::Any) = S == 10 ? (S, []) : ((
-  i == 1 ? (S+val, [(nothing,(2,nothing))]) 
-         : (S, [(nothing,(1,"$val$S"))])))
-m = Mealy(ex_fun, Maybe, 0)
-m(2,false) |> only
-t = to_btree(m)
-t.t.val(2,false)
+Grow a tree and return the result
 
-t((2,false))
+ks = list which determines the future behavior.
+"""
+function (t::BTree)(ks::Vector{BTreeEdge}, w::WireVal; kw...) 
+  S = t.S[ks]
+  m_res::MealyRes = t.f(S,w; kw...)
+  new_S, m_result = m_res.newS, m_res.mval
+  map(enumerate(m_result)) do (i,(tᵢ, b))
+    new_edge = BTreeEdge(w,b,(i, tᵢ))
+    new_pth = vcat(ks,[new_edge])
+    if haskey(t.S,new_pth) println("WARNING: REPEAT KEY") end
+    t.S[new_pth] = new_S
+    new_edge => m_res.msg * " (i=$i, tᵢ=$tᵢ)"
+  end 
+end
 
 
+# General polynomial simulations 
+################################
+struct SimStep 
+  desc::String
+  edge::BTreeEdge
+  inwire::Wire
+  outwire::Wire
+end
+
+struct Sim
+  initial::WireVal
+  steps::Vector{SimStep}
+end 
+Sim(i) = Sim(i,SimStep[])
+Base.last(t::Sim) = last(t.steps)
+Base.isempty(t::Sim) = isempty(t.steps)
+Base.length(t::Sim) = length(t.steps)
+Base.getindex(t::Sim, i::Int) = t.steps[i]
+add_edge(s::Sim, st::SimStep) = Sim(s.initial, vcat(s.steps, [st]))
+
+"""Get the most recent wire that the simulation is living on"""
+function curr_wire(w::WiringDiagram, s::Sim, outer_in_port::Int=-1)
+  if isempty(s.steps)
+    return only(out_wires(w, Port(input_id(w),OutputPort,outer_in_port)))
+  else
+    return last(s.steps).outwire
+  end
+end 
+curr_traj(s::Sim) = (isempty(s.steps) ? s.initial : last(s.steps).edge.o).val
+sim_edges(s::Sim, boxid::Int) = 
+  BTreeEdge[e.edge for e in s.steps if e.inwire.target.box == boxid]
+
+"""Replace all boxes in a WD with BTrees"""
+function apply_schedule(w_::WiringDiagram,g::Any,t::PMonad=Maybe; 
+                        in_port=1, steps=-1, verbose=false)
+  # Replace boxes of Mealy machines with BTrees
+  w = WiringDiagram([],[])
+  copy_parts!(w.diagram, w_.diagram)
+  w.diagram[:box_type] = Box{BTree}
+  w.diagram[:value] = BTree.(w.diagram[:value])
+  # Initialize queue of simulations to track
+  squeue = [Sim(WireVal(in_port, g))] # start with a single simulation 'token'
+  results = [Sim[] for _ in output_ports(w)] 
+  # Main loop
+  while !isempty(squeue)
+    traj = pop!(squeue)
+    steps -= 1
+    if steps == 0 
+      if length(results) == 1 
+        push!(results[1], traj)
+        if verbose println("TIMEOUT") end
+        continue
+      else 
+        error("timeout! multiple possible outputs") 
+      end
+    elseif verbose
+      if steps > 0 print("$steps STEPS REMAINING ")  end 
+      println("($(length(squeue)) queued)")
+    end
+    wi = curr_wire(w,traj, in_port)
+    if wi.target.box == output_id(w)
+      push!(results[wi.target.port], traj)
+    else 
+      prepend!(squeue, apply_traj_step(w, traj, wi; verbose=verbose)) # DFS
+    end
+  end 
+  return t.μ.(results)  # apply monadic unit / multiplication to results
+end
+
+function apply_traj_step(w::WiringDiagram,t::Sim, wi::Wire; verbose=false)
+  cw = wi.target
+  btree,i = box(w,cw.box).value, cw.port
+  traj_val = WireVal(i, curr_traj(t))
+  es = sim_edges(t,cw.box)
+  bres = btree(es, traj_val; verbose=verbose)
+  map(bres) do (new_edge, msg)
+    ow = only(out_wires(w, Port(cw.box,OutputPort,new_edge.o.wire_id)))
+    add_edge(t, SimStep(msg, new_edge, wi, ow))
+  end 
+end
+
+  
 end # module

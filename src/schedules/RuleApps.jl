@@ -6,12 +6,11 @@ using Catlab.CategoricalAlgebra
 using ...Rewrite
 using ...Rewrite.Utils: AbsRule, get_rmap, get_pmap, get_expr_binding_map
 using ...CategoricalAlgebra.CSets: Migrate, extend_morphism_constraints
-using ..Wiring
-using ..Basic: Fail
-using ..Wiring: id_pmap, str_hom, traj_agent, mk_sched, typecheck
-import ..Wiring: AgentBox, input_ports, output_ports, initial_state, color, 
-  update
+using ..Wiring, ..Poly, ..Eval, ..Basic
+using ..Wiring: str_hom, mk_sched
+import ..Wiring: AgentBox, input_ports, output_ports, initial_state, color, update
 using ..Conditionals
+using ..Eval: Traj, traj_agent, id_pmap, add_step, nochange
 
 
 """
@@ -55,24 +54,29 @@ initial_state(::RuleApp) = nothing
 (F::Migrate)(a::RuleApp) = 
   RuleApp(a.name,F(a.rule), F(a.in_agent), F(a.out_agent))
 
+#
 
-function update(r::RuleApp, ::Int, instate::Traj, ::Nothing)
-
-  last_step = traj_agent(instate) # A -> X 
-  m = update_match(r, last_step)
-  if isnothing(m)
-    return (2, last_step, id_pmap(codom(last_step)), nothing, "(no match)")
-  else 
-    res = rewrite_match_maps(r.rule, m)
-    rmap = get_rmap(ruletype(r.rule), res)
-    xmap = get_expr_binding_map(r.rule, m, res)
-    new_agent = r.out_agent ⋅ rmap ⋅ xmap
-    pl, pr = get_pmap(ruletype(r.rule), res)
-    pmap = Span(pl, pr ⋅ xmap)
-    msg = m isa ACSetTransformation ? str_hom(m) : str_hom(first(m)) # PBPO
-    return (1, new_agent, pmap, nothing, msg)
+function update(r::RuleApp, p::PMonad=Maybe)#, ::Int, instate::Traj, ::Nothing)
+  function update_ruleapp(::Nothing, w::WireVal; verbose=false, kw...)
+    w.wire_id == 1 || error("RuleApps have exactly 1 input")
+    last_step = traj_agent(w.val) # A -> X 
+    m = update_match(r, last_step)
+    if isnothing(m)
+      return MealyRes(nothing, [(nothing,WireVal(2,nochange(w.val)))], "(no match)")
+    else 
+      res = rewrite_match_maps(r.rule, m)
+      rmap = get_rmap(ruletype(r.rule), res)
+      xmap = get_expr_binding_map(r.rule, m, res)
+      new_agent = r.out_agent ⋅ rmap ⋅ xmap
+      pl, pr = get_pmap(ruletype(r.rule), res)
+      pmap = Span(pl, pr ⋅ xmap)
+      msg = m isa ACSetTransformation ? str_hom(m) : str_hom(first(m)) # PBPO
+      wv = WireVal(1,add_step(w.val,TrajStep(new_agent, pmap)))
+      return MealyRes(nothing, [(nothing, wv)], msg)
+    end
   end
 end 
+
 
 # """Helper function for `update`"""
 function update_match(r::RuleApp, agent::ACSetTransformation; kwargs...)
@@ -92,7 +96,7 @@ Feed the "rewrite applied" output back into the input of the rule application
 function loop_rule(a::RuleApp)
   dom(a.in_agent) == dom(a.out_agent) || error("Cannot loop rule w/ different in/out agent")
   mk_sched((trace_arg=:X,), (i=:X,), (f=a,X=dom(a.in_agent),), 
-            quote  f([i,trace_arg]) end) # |> typecheck
+            quote  f([i,trace_arg]) end) 
 end
 tryrule(a::RuleApp) = a ⋅ merge_wires(dom(a.in_agent))
 succeed(a::RuleApp) = a ⋅ (id([dom(a.out_agent)]) ⊗ Fail(dom(a.in_agent)))

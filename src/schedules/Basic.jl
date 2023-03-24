@@ -4,8 +4,10 @@ export Weaken, Strengthen, Initialize, Fail
 using Catlab.CategoricalAlgebra
 
 using ...CategoricalAlgebra.CSets: Migrate
-using ..Wiring: AgentBox, Traj, traj_agent, id_pmap, tot_pmap
-import ..Wiring: input_ports, output_ports, initial_state, color, update, name
+using ..Poly
+using ..Wiring: AgentBox
+import ..Wiring: input_ports, output_ports, initial_state, color,  name, update
+using ..Eval: Traj, TrajStep, traj_agent, id_pmap, tot_pmap, traj_res, add_step
 
 """
 Change the agent to a subset of the current agent without changing the world
@@ -20,10 +22,13 @@ output_ports(r::Weaken) = [dom(r.agent)]
 initial_state(::Weaken) = nothing 
 color(::Weaken) = "lavender"
 (F::Migrate)(a::Weaken) =  Weaken(a.name,F(a.agent))
-function update(r::Weaken, ::Int, instate::Traj, ::Nothing)
-  last_step = traj_agent(instate) # A -> X 
-  return (1, r.agent ⋅ last_step, id_pmap(codom(last_step)), nothing, "")
-end 
+function update(r::Weaken, p::PMonad=Maybe)
+  function update_weaken(::Nothing,w; kw...) 
+    ts = TrajStep(r.agent ⋅ traj_agent(w.val), id_pmap(traj_res(w.val)))
+    wv = WireVal(1, add_step(w.val,ts))
+   return  MealyRes(nothing,[(p==Maybe ? nothing : 1, wv)],"")
+  end
+end
 
 
 """
@@ -35,16 +40,18 @@ struct Strengthen <: AgentBox
 end  
 Strengthen(agent::ACSetTransformation) = Strengthen(Symbol(""), agent)
 
-Base.string(c::Strengthen) = string(c.name)
 input_ports(r::Strengthen) = [dom(r.agent)] 
 output_ports(r::Strengthen) = [codom(r.agent)]
 initial_state(::Strengthen) = nothing 
 color(::Strengthen) = "lightgreen"
 (F::Migrate)(a::Strengthen) =  Strengthen(a.name,F(a.agent))
-function update(r::Strengthen, ::Int, instate::Traj, ::Nothing)
-  last_step = traj_agent(instate) # A -> X 
-  world_update, new_agent = pushout(last_step, r.agent)
-  return (1, new_agent, tot_pmap(world_update),  nothing, "")
+function update(r::Strengthen, t::PMonad)
+  function update_strengthen(::Nothing,w::WireVal; kw...) 
+    last_step = traj_agent(w.val) # A -> X 
+    world_update, new_agent = pushout(last_step, r.agent)
+    wv = WireVal(1, add_step(w.val, TrajStep(new_agent, tot_pmap(world_update))))
+    return MealyRes(nothing,[(t == Maybe ? nothing : 1, wv)], "")
+  end
 end 
 
 
@@ -58,29 +65,31 @@ struct Initialize <: AgentBox
   in_agent::Union{Nothing,StructACSet}
   Initialize(s, in_agent=nothing, n="") = new(n,s,in_agent)
 end
-Base.string(c::Initialize) = string(c.name)
 input_ports(r::Initialize) = isnothing(r.in_agent) ? [] : [r.in_agent] 
 output_ports(r::Initialize) = [typeof(r.state)()]
 initial_state(::Initialize) = nothing 
 color(::Initialize) = "gray"
 (F::Migrate)(a::Initialize) = Initialize(a.name,F(a.state),F(a.in_agent))
-function update(r::Initialize, ::Int, instate::Traj, ::Nothing)
-  last_state = traj_re(instate) 
-  return (1, create(r.state), no_pmap(last_state,r.state),  nothing, "")
+function update(i::Initialize, t::PMonad)
+  update_i(::Nothing,w::WireVal;kw...) = MealyRes(nothing,[
+    (t == Maybe ? nothing : 1, WireVal(1,disjoint(w.val, create(i.state))))], "")
 end 
 
 
 struct Fail <: AgentBox
-  agent::StructACSet
+  agent::ACSet
+  silent::Bool
+  Fail(a::ACSet, silent=false) = new(a,silent)
 end 
-Base.string(::Fail) = "Fail"
 name(::Fail) = "Fail"
 input_ports(r::Fail) = [r.agent] 
 output_ports(::Fail) = []
 initial_state(::Fail) = nothing 
 color(::Fail) = "red"
 (F::Migrate)(a::Fail) = Fail(F(a.agent))
-update(r::Fail, ::Int, ::Traj, ::Nothing) = error("FAIL")
 
+function update(f::Fail, ::PMonad=Maybe)
+  update_f(::Nothing,w; kw...) = f.silent ? MealyRes(nothing,[],"fail") : error("$S $w")
+end
 
 end # module 

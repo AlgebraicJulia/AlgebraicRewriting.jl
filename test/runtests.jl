@@ -50,9 +50,13 @@ end
   include("rewrite/PBPO.jl")
 end
 
-# Advanced 
+# Schedules 
 ##########
 
 @testset "Schedules" begin
-  include("Schedules.jl")
+  include("schedules/Poly.jl")
+end
+
+@testset "Schedules" begin
+  include("schedules/Eval.jl")
 end

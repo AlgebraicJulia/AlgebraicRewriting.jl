@@ -13,15 +13,17 @@ using DataStructures, Random
 using Reexport
 
 include("Theories.jl")
+include("Poly.jl")
 include("Wiring.jl")
+include("Eval.jl")
 include("Basic.jl")
 include("Conditionals.jl")
 include("RuleApps.jl")
 include("Queries.jl")
-include("Eval.jl")
 include("Visuals.jl")
 
 @reexport using .Theories
+@reexport using .Poly
 @reexport using .Wiring
 @reexport using .Basic
 @reexport using .Conditionals

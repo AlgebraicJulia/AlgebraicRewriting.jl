@@ -6,10 +6,11 @@ using Catlab, Catlab.CategoricalAlgebra, Catlab.WiringDiagrams
 using ...Rewrite
 using ...CategoricalAlgebra.CSets: Migrate
 using ..Basic: Fail
-using ..Wiring
-using ..Wiring: AgentBox, update_agent, id_pmap, str_hom, get_agent
+using ..Wiring, ..Poly, ..Eval
+using ..Wiring: AgentBox,  str_hom
 import ..Wiring: input_ports, output_ports, initial_state, color, update
-  
+import ..Eval: Traj, update_agent, id_pmap, get_agent, traj_res, traj_agent, add_step
+
 
 
 """
@@ -108,37 +109,45 @@ output_ports(c::Query) = [c.agent, c.subagent, typeof(c.agent)()]
 initial_state(::Query) = QueryState(-1, ACSetTransformation[])
 (F::Migrate)(a::Query) =  Query(F(a.subagent), F(a.agent), a.name, 
                                 F(a.return_type); constraint=F(a.constraint))
-function update(q::Query, i::Int, instate::Traj, boxstate::Any)
-  idp = id_pmap(traj_res(instate)) 
-  msg = ""
-  curr_boxstate = (i != 1) ? boxstate : begin 
-    ms = filter(h->apply_constraint(q.constraint, h, traj_agent(instate)),
-                homomorphisms(q.subagent, traj_res(instate)))
-    msg *= "Found $(length(ms)) agents"
-    QueryState(length(instate), ms)
-  end 
 
-  if isempty(curr_boxstate) # END
-    old_agent = get_agent(instate,curr_boxstate.enter_time)
-    new_agent = update_agent(instate, curr_boxstate.enter_time, old_agent)
-    if isnothing(new_agent) # original agent gone
-      msg *= "\nCannot recover original agent."
-      curr_boxstate.enter_time = -1
-      return (3, create(traj_res(instate)), idp, curr_boxstate,msg)
-    else # original agent recovered
-      msg *= "\nExiting with original agent."
-      curr_boxstate.enter_time = -1
-      return (1, new_agent, idp, curr_boxstate,msg)
+#
+
+function update(q::Query, p::PMonad=Maybe)#instate::Traj, ::Nothing)
+  function update_query(S,w::WireVal; verbose=false, kw...)
+    idp = id_pmap(traj_res(w.val)) 
+    msg = ""
+    curr_boxstate = (w.wire_id != 1) ? S : begin 
+      ms = filter(h->apply_constraint(q.constraint, h, traj_agent(w.val)),
+                  homomorphisms(q.subagent, traj_res(w.val)))
+      msg *= "Found $(length(ms)) agents"
+      QueryState(length(w.val), ms)
     end 
-  else # CONTINUE 
-    new_agent = update_agent(instate, curr_boxstate.enter_time, pop!(curr_boxstate))
-    if isnothing(new_agent)
-      println("WARNING: Queued agent no longer exists")
-      return update(q, i, instate, curr_boxstate)
-    end
-    msg *= "\nContinuing ($(length(curr_boxstate)) queued) with \n" * str_hom(new_agent)
-    return (2, new_agent, idp, curr_boxstate,msg)
-  end 
+  
+    if isempty(curr_boxstate) # END
+      old_agent = get_agent(w.val,curr_boxstate.enter_time)
+      new_agent = update_agent(w.val, curr_boxstate.enter_time, old_agent)
+      if isnothing(new_agent) # original agent gone
+        msg *= "\nCannot recover original agent."
+        curr_boxstate.enter_time = -1
+        wv = WireVal(3, add_step(w.val, TrajStep(create(traj_res(w.val)), idp)))
+        return MealyRes(curr_boxstate, [(nothing,wv)], msg)
+      else # original agent recovered
+        msg *= "\nExiting with original agent."
+        curr_boxstate.enter_time = -1
+        wv = WireVal(1,add_step(w.val, TrajStep(new_agent, idp)))
+        return MealyRes(curr_boxstate,[(nothing,wv)], msg)
+      end 
+    else # CONTINUE 
+      new_agent = update_agent(w.val, curr_boxstate.enter_time, pop!(curr_boxstate))
+      if isnothing(new_agent)
+        println("WARNING: Queued agent no longer exists")
+        return update_query(curr_boxstate, w; verbose=verbose, kw...)
+      end
+      msg *= "\nContinuing ($(length(curr_boxstate)) queued) with \n" * str_hom(new_agent)
+      wv = WireVal(2, add_step(w.val, TrajStep(new_agent, idp)))
+      return MealyRes(curr_boxstate, [(nothing, wv)] ,msg)
+    end 
+  end
 end
 
 

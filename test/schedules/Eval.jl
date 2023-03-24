@@ -1,13 +1,12 @@
-module TestSchedules
+module TestEval
 
 using Test
-using Revise
+# using Revise
 using Catlab, Catlab.Theories, Catlab.WiringDiagrams, Catlab.Graphics
 using Catlab.Graphs, Catlab.CategoricalAlgebra
 using Catlab.Graphics: to_graphviz_property_graph
 
 using AlgebraicRewriting
-
 using Luxor
 
 
@@ -17,7 +16,7 @@ function view_graph(a)
   g = codom(a)
   pg = to_graphviz_property_graph(g)
   for v in collect(a[:V])
-    set_vprops!(pg, v, Dict([ :style=>"filled",:fillcolor=>"red"]))
+    set_vprops!(pg, v, Dict([ :style=>"filled",:color=>"red",:fillcolor=>"red"]))
   end
   for e in collect(a[:E])
     set_eprops!(pg, e, Dict([:color=>"red"]))
@@ -38,10 +37,10 @@ coin = uniform(2, z)
 sched = coin ⋅ (tryrule(av) ⊗ id([z])) ⋅ merge_wires(z) ⋅ de
 
 
-view_sched(sched, name="X", names=N)
+view_sched(sched, name="Simple schedule", names=N)
 G = path_graph(Graph, 4)
-res = apply_schedule(sched, G);
-view_traj(sched, res, view_graph; agent=true)
+res, = apply_schedule(sched, G);
+view_traj(sched, res, view_graph; agent=true, names=N)
 
 # Query workflow (add loop to each vertex)
 ##########################################
@@ -69,8 +68,8 @@ end);
 typecheck(sched)
 
 view_sched(sched; names=N)
-res = apply_schedule(sched, Graph(3))
-view_traj(sched, res, view_graph; agent=true)
+res, = apply_schedule(sched, Graph(3))
+view_traj(sched, res, view_graph; agent=true, names=N)
 
 
 # Dependent query workflow 
@@ -99,19 +98,18 @@ end);
 
 view_sched(maybe_add_loop; names=N)
 view_sched(sched; names=N)
-typecheck(sched)
 
 G = @acset Graph begin V=5; E=4; src=[1,2,2,5];tgt=[2,3,4,2] end 
 arr_start = homomorphism(ar, G; initial=(V=[1,2],))
-res = apply_schedule(sched, arr_start);
-view_traj(sched, res, view_graph; agent=true)
+res, = apply_schedule(sched, arr_start);
+view_traj(sched, res, view_graph; agent=true, names=N)
 view_traj(sched, res, to_graphviz; agent=false)
 
 
 # For-loop: add 3 loops
 #######################
 sched = for_schedule(maybe_add_loop ⋅ merge_wires(g1), 3)
-# res = apply_schedule(sched, id(g1));
+res = apply_schedule(sched, id(g1));
 
 
 # Simple game of life 
@@ -153,7 +151,7 @@ G = @acset LG begin Cell=4; V=9; E=12
   live=[true,false,true,false]; eng=[1,10,100,1000]
 end
 
-res = apply_schedule(sched, G)
+res, = apply_schedule(sched, G)
 
 expected = deepcopy(G)
 expected[:eng] = [1,11,100,1001] # the dead cells get +1

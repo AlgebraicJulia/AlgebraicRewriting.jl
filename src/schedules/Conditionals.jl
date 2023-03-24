@@ -4,9 +4,10 @@ export Conditional, const_cond, if_cond, uniform, while_schedule, for_schedule
 using Catlab.CategoricalAlgebra, Catlab.WiringDiagrams
 
 using ...CategoricalAlgebra.CSets: Migrate
-using ..Wiring
-using ..Wiring: AgentBox, traj_agent, id_pmap
+using ..Wiring, ..Poly
+using ..Wiring: AgentBox
 import ..Wiring: input_ports, output_ports, initial_state, color, update
+using ..Eval: Traj, id_pmap, traj_res, nochange
 
 """
 A primitive box in a NestedDWD which does not change the state but redirects it 
@@ -51,22 +52,27 @@ catch e
   end
 end
 
-function update(c::Conditional, ::Int, instate::Traj, boxstate::Any)
-  curr_world = traj_res(instate)
-  if c.argtype == :world 
-    curr_state = curr_world
-  elseif c.argtype == :agent 
-    curr_state = traj_agent(instate)
-  else 
-    curr_state = instate
-  end 
-  dist = apply_prob(c, curr_state, boxstate)
-  outdoor = findfirst(q -> q > rand(), cumsum(dist) ./ sum(dist))
-  newstate = isnothing(c.update) ? nothing : c.update(instate,boxstate)
-  state_msg = "$boxstate ↦ $newstate"
-  msg = "$dist" * (all(isnothing, [newstate, boxstate]) ? "" : "\n$state_msg") 
-  return (outdoor, traj_agent(instate), id_pmap(curr_world), newstate, msg)
+function update(c::Conditional, p::PMonad=Maybe)#, ::Int, instate::Traj, ::Nothing)
+  p ∈ [Maybe, List, Dist] || error("Unexpected monad $p")
+  function update_conditional(S, w::WireVal; kw...)
+    w.wire_id == 1 || error("Conditionals have exactly 1 input")
+    if c.argtype == :world 
+      curr_state = traj_res(w.val)
+    elseif c.argtype == :agent 
+      curr_state = traj_agent(w.val)
+    else 
+      curr_state = w.val
+    end 
+    dist = apply_prob(c, curr_state, S)
+    outdoor = findfirst(q -> q > rand(), cumsum(dist) ./ sum(dist))
+    newstate = isnothing(c.update) ? nothing : c.update(curr_state, S)
+    state_msg = "$S ↦ $newstate"
+    msg = "$dist" * (all(isnothing, [newstate, S]) ? "" : "\n$state_msg") 
+    wv = WireVal(outdoor, nochange(w.val))
+    return MealyRes(newstate,[(p == Maybe ? nothing : 1, wv)], msg)
+  end
 end
+
 
 
 """Create a branching point with fixed probabilities for each branch"""

@@ -263,12 +263,14 @@ end
 # Eat grass + 4eng
 #-----------------
 # Grass is at 0 - meaning it's ready to be eaten
-s_eat_l = @acset LV begin
+s_eat_pac = @acset LV begin
   Sheep=1; Eng=1; Dir=1; V=1; sheep_loc=1;  grass_loc=1; 
   grass_eng=[0]; sheep_eng=[AttrVar(1)]; sheep_dir=[AttrVar(1)]
 end
 
-se_rule = Rule(homomorphism(S,s_eat_l), id(S); expr=(Eng=[vs->30,vs->only(vs)+4],))
+
+se_rule = Rule(id(S), id(S); expr=(Eng=[vs->30,vs->vs[2]+4],), 
+               ac=[AppCond(homomorphism(S,s_eat_pac))])
 sheep_eat = tryrule(RuleApp(:Sheep_eat, se_rule, S))
 
 begin # test 
@@ -277,7 +279,7 @@ begin # test
   end
 
   rewrite(se_rule,ex)
-end 
+end
 
 # Eat sheep + 20 eng
 #-------------------
@@ -319,8 +321,6 @@ sheep_die_rule = Rule(homomorphism(G, s_die_l), id(G))
 sheep_starve = (RuleApp(:starve, sheep_die_rule, 
                        homomorphism(S,s_die_l), create(G))
                 ⋅ (id([I]) ⊗ Weaken(create(S))) ⋅ merge_wires(I))
-
-# view_sched(sheep_starve |> typecheck)
 
 begin # test 
   ex = @acset LV begin Sheep=1; Wolf=1; V=3; E=2; src=[1,2]; tgt=[2,3]; sheep_loc=2
@@ -422,10 +422,10 @@ cycle = ( agent(sheep, S; n=:sheep,  ret=I)
 overall = while_schedule(cycle, curr -> nparts(curr,:Wolf) >= 0) |> F2
 view_sched(overall; names=F2(N))
 X = initialize(3, .25, .25)
-res = apply_schedule(overall, X; steps=50, verbose=false);
+res, = apply_schedule(overall, X; steps=50, verbose=true);
 
 # Run these lines to view the trajectory
 using Luxor
-view_traj(overall, res, view_LV; agent=true)
+view_traj(overall, res, view_LV; agent=true, names=F2(N))
 
 end # module
