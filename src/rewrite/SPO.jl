@@ -2,7 +2,7 @@ module SPO
 
 using Catlab, Catlab.CategoricalAlgebra
 
-using ...CategoricalAlgebra.CSets: var_pullback
+using ...CategoricalAlgebra.CSets: var_pullback, subobj, cascade_subobj
 using ..Utils
 import ..Utils: rewrite_match_maps
 
@@ -10,86 +10,80 @@ import ..Utils: rewrite_match_maps
 # Single-pushout rewriting
 ##########################
 
-"""
-  f         f
-A ↣ B     A ↣ B
-    ↓ g   ↓   ↓ g
-    C     D ↣ C
-
-Pullback complement where there first morphism is a mono.
-
-Define D to be Im(g) to make it the largest possible subset of C such that we
-can get a pullback.
-"""
-function pullback_complement(f::ACSetTransformation, g; check=false)
-  is_monic(f) || error("can only take pullback complement if f is mono")
-  A = dom(f)
-  S = acset_schema(A)
-  d_to_c = hom(¬g(¬f(A))) # why isn't this just g(B)?
-  # force square to commute by looking for the index in D making it commute
-  D = dom(d_to_c)
-
-  # big hacks in order to make attribute variables work 
-  for at in attrtypes(S)
-    attrvals = vcat([D[a] for a in attrs(S; to=at, just_names=true)]...)
-    vars = [v.val for v in sort(collect(filter(x->x isa AttrVar, attrvals)))]
-    add_parts!(D, at, length(vars))
-    for a in attrs(S; to=at, just_names=true)
-      for (i,v) in enumerate(D[a])
-        if v isa AttrVar 
-          D[i,a] = AttrVar(findfirst(==(v.val), vars))
-        end 
-      end
-    end
-  end
-  d_to_c = homomorphism(D, codom(d_to_c); 
-                        initial=Dict(o=>collect(d_to_c[o]) for o in ob(S)))
-  
-  fg = compose(f,g)
-  ad = Dict(map(ob(S)) do cmp 
-    fg_as = fg[cmp]
-    cmp => Vector{Int}(map(collect(fg_as)) do fg_a
-      findfirst(==(fg_a), collect(d_to_c[cmp]))
-    end)
-  end)
-  a_to_d = homomorphism(A, dom(d_to_c); initial=ad) 
-
-  !check || is_natural(d_to_c) || error("d_to_c ")
-  !check || is_natural(a_to_d) || error("a_to_d ")
-  return a_to_d => d_to_c
+function rewrite_match_maps(r::Rule{:SPO}, m)
+  e = "SPO rule is not a partial morphism. Left leg not monic."
+  is_monic(r.L) || error(e)
+  (rmono, rmap),(gmono, gmap)  = partial_pushout(Span(r.L, r.R), Span(id(dom(m)), m))
+  return Dict(:rmono=>rmono, :rmap=>rmap, :gmono=>gmono, :gmap=>gmap)
 end
 
-"""    rewrite_match_maps(r::Rule{:SPO}, ac)
-NOTE: In the following diagram, a double arrow indicates a monic arrow.
 
-We start with two partial morphisms, construct M by pullback, then N & O by
-pullback complement, then finally D by pushout.
-
-
-A ⇇ K → B         A ⇇ K → B
-⇈                 ⇈ ⌟ ⇈ ⌞ ⇈
-L          ⭆      L ⇇ M → N
-↓                 ↓ ⌞ ↓ ⌜ ↓
-C                 C ⇇ O → D
-
-We assume the input A→C is total, whereas A→B may be partial, so it is given
-as a monic K↣A and K→B.
-
-Specified in Fig 6 of:
-"Graph rewriting in some categories of partial morphisms"
 """
-function rewrite_match_maps(r::Rule{:SPO}, ac)
-  ka, kb = r.L, r.R
-  e = "SPO rule is not a partial morphism. Left leg not monic."
-  is_monic(ka) || error(e)
+C ← Ag ↪ A ↩ Af → B 
+   
+A ↩ f∇g → Bgf ↪ B 
+     ↓   ⌜ ↓
+C ↩ Cfg -> D
 
-  lc, la = ac, id(dom(ac))
-  ml, mk = var_pullback(Cospan(la, ka))
-  mn, nb = pullback_complement(mk, kb)
-  mo, oc = pullback_complement(ml, lc)
-  od, nd = pushout(mo, mn)
-  return Dict(:ml=>ml, :mk=>mk, :mn=>mn, :mo=>mo, :nb=>nb, :oc=>oc, 
-              :nd=>nd, :od=>od)
+Implementation of Construction 6 in Löwe's 
+"Algebraic approach to SPO graph transformation"
+"""
+function partial_pushout(f::Span,g::Span)
+  AfA, AfB = f
+  AgA, AgC = g 
+  A, B, A_, C = codom.([AfA,AfB,AgA,AgC])
+  A == A_ || error("f and g do not share common domain")
+  all(is_monic, [AfA,AgA]) || error("f and g must be *partial* maps")
+  S = acset_schema(A)
+
+  # Create f ∇ g 
+  #-------------
+  # Step 1: compute Af ∩ Ag
+  glue = Dict(map(ob(S)) do o 
+    o => intersect(Set.(collect.([AfA[o],AgA[o]]))...)
+  end)
+  # Step 2: add any elements which are mapped to the same elems by f or g 
+  for (mono,ϕ) in [f,g]
+    for o in ob(S)
+      glue_img = Set(collect(ϕ[o](vcat([preimage(mono[o],go) for go in glue[o]]...))))
+      for i in parts(dom(ϕ),o)
+        if ϕ[o](i) ∈ glue_img
+          push!(glue[o],mono[o](i)) 
+        end 
+      end
+    end 
+  end
+  fg_A = subobj(A, Dict([k=>collect(v) for (k,v) in collect(glue)])) # f ∇ g ↪ A
+  fg = dom(fg_A) # f ∇ g
+  # Construct scopes Bgf ⊆ B and Cfg ⊆ C
+  #---------------------------
+  Bgf_B, Cfg_C = map([f,g]) do (mono, ϕ) 
+    sub = Dict{Symbol,Vector{Int}}(map(ob(S)) do o 
+      x1 = setdiff(parts(codom(ϕ),o),collect(ϕ[o])) # e.g. C - g(A)
+      pre = [preimage(mono[o], fg_A[o](i)) for i in parts(fg,o)]
+      x2 = Set(collect(ϕ[o](vcat(pre...))))  # e.g. g(f ∇ g)
+      o => sort(collect(x1 ∪ x2))
+    end)
+    subobj(codom(ϕ), cascade_subobj(codom(ϕ), sub))
+  end
+  codom(Cfg_C) == C || error("Not C ")
+  codom(Bgf_B) == B || error("Not B ") 
+  Cfg, Bgf = dom.([Cfg_C,Bgf_B])
+  fg_Bgf, fg_Cfg = map(zip([f,g], [Bgf_B, Cfg_C])) do ((mono, ϕ),cod)
+    
+    init = Dict(map(ob(S)) do o 
+      o => map(parts(fg, o)) do i 
+        c_index = ϕ[o](only(preimage(mono[o],fg_A[o](i))))
+        return findfirst(==(c_index), collect(cod[o]))
+      end
+    end)
+    only(homomorphisms(fg, dom(cod); initial=init))
+  end
+
+  Bd,Cd = pushout(fg_Bgf,fg_Cfg)
+  dom(Bd) == Bgf || error("bad dom1")
+  dom(Cd) == Cfg || error("bad dom2")
+  return Span(Bgf_B,Bd), Span(Cfg_C,Cd)
 end
 
 

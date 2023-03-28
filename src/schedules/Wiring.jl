@@ -51,32 +51,40 @@ function mk_sched(t_args::NamedTuple,args::NamedTuple,
   args_ = Expr(:tuple,[Expr(Symbol("::"), k,v) for (k,v) in pairs(merge(t_args,args))]...)
 
   tmp = parse_wiring_diagram(P, args_, wd)
-  tmpx = to_hom_expr(TM, tmp)
-  
   Xports = Ports{ThTracedMonoidalWithBidiagonals}(input_ports(tmp)[1:n_trace])
+  newer_x = Ob(TM,Xports) # arbitrary gatexpr
+  try 
+    tmpx = to_hom_expr(TM, tmp)
+    X = n_trace == 0 ? munit(TM.Ob) : otimes(dom(tmpx).args[1:n_trace])
+
+    A = n_trace == length(dom(tmpx).args) ? munit(TM.Ob) : otimes([Ob(TM,x) for x in dom(tmpx).args[n_trace+1:end]])
+    B = n_trace == length(codom(tmpx).args) ? munit(TM.Ob) : otimes([Ob(TM,x) for x in codom(tmpx).args[n_trace+1:end]])
+    new_x = trace(X, A,B, tmpx)
+
+    function ob_map(expr)
+      sxpr = Symbol(expr)
+      haskey(os, sxpr) ? Ob(TM, os[sxpr]) : expr
+    end
+    function hom_map(expr)
+      sxpr = Symbol(expr)
+      haskey(hs, sxpr) ? hs[sxpr].x : expr
+    end
+
+    newer_x = functor((TM.Ob,TM.Hom),new_x, terms=Dict(:Ob=>ob_map, :Hom=>hom_map))
+
+  catch e
+    if e.msg != "inputs == outputs[σ]"
+      throw(e)
+    end
+  end 
+
   new_d = trace(Xports, tmp)
-
-  X = n_trace == 0 ? munit(TM.Ob) : otimes(dom(tmpx).args[1:n_trace])
-  A = n_trace == length(dom(tmpx).args) ? munit(TM.Ob) : otimes([Ob(TM,x) for x in dom(tmpx).args[n_trace+1:end]])
-  B = n_trace == length(codom(tmpx).args) ? munit(TM.Ob) : otimes([Ob(TM,x) for x in codom(tmpx).args[n_trace+1:end]])
-  new_x = trace(X, A,B, tmpx)
-
-  function ob_map(expr)
-    sxpr = Symbol(expr)
-    haskey(os, sxpr) ? Ob(TM, os[sxpr]) : expr 
-  end
-  function hom_map(expr)
-    sxpr = Symbol(expr)
-    haskey(hs, sxpr) ? hs[sxpr].x : expr   
-  end
-
-  newer_x = functor((TM.Ob,TM.Hom),new_x, terms=Dict(:Ob=>ob_map, :Hom=>hom_map))
-  
   sub = ocompose(new_d, [hs[Symbol(b.value)].d for b in boxes(new_d)])
   sub.diagram[:wire_value] = nothing
   for x in Symbol.(["$(x)_port_type" for x in [:outer_in,:outer_out,]])
     sub.diagram[:,x] = [kw[v] for v in sub.diagram[x]]
   end
+
   return Schedule(sub, newer_x)
 end 
 
@@ -90,12 +98,12 @@ abstract type AgentBox end
 mk_box(a::AgentBox) = Box(a, input_ports(a), output_ports(a))
 Base.show(io::IO, c::AgentBox) = show(io, string(c))
 Base.string(c::AgentBox) = string(name(c))
+name(a::AgentBox) = a.name
 
 input_ports(::AgentBox)::Vector{StructACSet} = error("Not yet defined")
 output_ports(::AgentBox)::Vector{StructACSet} = error("Not yet defined")
 initial_state(::AgentBox) = error("Not yet defined") 
 color(::AgentBox) = error("Not yet defined") 
-name(a::AgentBox) = a.name
 (::Migrate)(::AgentBox) = error("Not yet defined")
 update(::AgentBox, p::PMonad) = error("Not yet defined")
 
@@ -113,15 +121,19 @@ function singleton(b::AgentBox)::Schedule
 end
 
 
-const WD = WiringDiagram{ThTracedMonoidalWithBidiagonals, StructACSet, 
+const WD = WiringDiagram{ThTracedMonoidalWithBidiagonals, StructACSet,
                          StructACSet, AgentBox}
 
-# It would be nice if ⊗ and ⋅ preserved the type of WDs, then we could more 
+# It would be nice if ⊗ and ⋅ preserved the type of WDs, then we could more
 # strongly type our code.
 struct Schedule 
-  d::WD
+  d::WiringDiagram{<:ThTracedMonoidalWithBidiagonals}
   x::GATExpr
-  Schedule(d,x) = new(typecheck(d), x)
+  function Schedule(d,x) 
+    wd = WiringDiagram{ThTracedMonoidalWithBidiagonals,Any,Any,Any}([],[])
+    copy_parts!(wd.diagram, d.diagram)
+    return new(wd, x)
+  end
 end
 struct SPorts p::Ports end 
 input_ports(s::Schedule)::Vector{StructACSet} = input_ports(s.d)
@@ -156,7 +168,7 @@ otimes(x::Schedule, y::AgentBox) = otimes(x, singleton(y))
 ⊗(x::Schedule, y::AgentBox) = ⊗(x, singleton(y))
 
 
-# make the theory of mk_sched tracedmonoidalcategory 
+# make the theory of mk_sched tracedmonoidalcategory
 # use Functor to do GATExpr substitution
 
 
@@ -164,7 +176,7 @@ otimes(x::Schedule, y::AgentBox) = otimes(x, singleton(y))
 function (F::Migrate)(wd_::Schedule) 
   wd = deepcopy(wd_.d)
   for x in [:value, Symbol.(["$(x)_port_type" for x in 
-                            [:outer_in,:outer_out,:out,:in]])..., 
+                            [:outer_in,:outer_out,:out,:in]])...,
                     Symbol.(["$(x)wire_value" for x in ["",:in_,:out_]])...]
     wd.diagram[:,x] = F.(wd.diagram[x])
   end 
@@ -178,9 +190,9 @@ const wnames = [
   [:out_src,:out_tgt,:out_wire_value,:out_port_type,      :outer_out_port_type]
 ]
 
-typecheck(s::Schedule) = begin typecheck(s.d); return s end 
+typecheck(s::Schedule) = begin typecheck(s.d); return s end
 
-function typecheck(wd::WiringDiagram)::WD 
+function typecheck(wd::WiringDiagram)
   wd = deepcopy(wd)
   for (i, (s,t,wval,sval,tval)) in enumerate(wnames)
     for (w,vs) in enumerate(wire_vals(wd, i))
@@ -188,7 +200,7 @@ function typecheck(wd::WiringDiagram)::WD
         if i == 1
           error("#$wval $w $(wd.diagram[w,[:src, :out_port_box,:value]]) $(wd.diagram[w,[:tgt, :in_port_box,:value]]) $vs")
         else
-          error("#$wval $w $vs") 
+          error("#$wval $w $vs")
         end
       end 
       set_subpart!(wd.diagram, w,  wval, only(vs))
@@ -196,9 +208,7 @@ function typecheck(wd::WiringDiagram)::WD
       set_subpart!(wd.diagram, wd.diagram[w,t], tval, only(vs))
     end
   end
-  wd2 = WD([],[])
-  copy_parts!(wd2.diagram, wd.diagram)
-  return wd2
+  return wd
 end
 
 """1 = wire, 2 = inwire, 3 = outwire"""

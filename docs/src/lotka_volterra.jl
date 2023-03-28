@@ -264,7 +264,7 @@ end
 #-----------------
 # Grass is at 0 - meaning it's ready to be eaten
 s_eat_pac = @acset LV begin
-  Sheep=1; Eng=1; Dir=1; V=1; sheep_loc=1;  grass_loc=1; 
+  Sheep=1; Eng=1; Dir=1; V=1; sheep_loc=1; 
   grass_eng=[0]; sheep_eng=[AttrVar(1)]; sheep_dir=[AttrVar(1)]
 end
 
@@ -394,7 +394,7 @@ end
 #----------------------------------
 
 # 25% chance of left turn, 25% chance of right turn, 50% stay in same direction
-general = mk_sched(NamedTuple(),(init=:S,), (
+general = mk_sched((;),(init=:S,), (
   S = S, I = I, G = G,
   turn   = const_cond([1.,2.,1.], S; name=:turn), 
   maybe  = const_cond([0.1, 0.9], S; name=:reprod), 

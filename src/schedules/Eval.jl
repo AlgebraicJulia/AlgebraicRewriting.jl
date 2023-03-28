@@ -7,7 +7,7 @@ using ..Wiring, ..Poly
 using ..Wiring: initial_state, AgentBox, update
 using ...CategoricalAlgebra.CSets
 using ...CategoricalAlgebra.CSets: abstract
-import ..Poly: Mealy, apply_schedule
+import ..Poly: Mealy, apply_schedule, traj_res
 
 """
 This is a simple way of handling evaluation of diagrams which only works 
@@ -102,6 +102,7 @@ end
 Mealy(a::AgentBox, p::PMonad) = Mealy(update(a,p),p,initial_state(a))
 
 function apply_schedule(s::Schedule,g::Any,t::PMonad=Maybe; kwargs...)
+  typecheck(s)
   # Replace Agents with Mealy
   w = WiringDiagram([],[])
   copy_parts!(w.diagram, s.d.diagram)

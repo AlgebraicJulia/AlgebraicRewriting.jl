@@ -73,6 +73,7 @@ m = CSetTransformation(arr, arr_loop, V=[2,2], E=[2]) # NOT MONIC
 L = CSetTransformation(arr, span, V=[1,2], E=[1]);
 m = CSetTransformation(span, squarediag, V=[2,1,4], E=[1,2]);
 @test (:src, 5, 4) in dangling_condition(ComposablePair(L,m))
+@test_throws ErrorException Rule(L, id(arr)) # unnatural morphism
 
 # violate id condition because two orphans map to same point
 L = CSetTransformation(I2, biarr, V=[1,2]); # delete both arrows

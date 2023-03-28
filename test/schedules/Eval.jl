@@ -1,7 +1,7 @@
 module TestEval
 
 using Test
-# using Revise
+using Revise
 using Catlab, Catlab.Theories, Catlab.WiringDiagrams, Catlab.Graphics
 using Catlab.Graphs, Catlab.CategoricalAlgebra
 using Catlab.Graphics: to_graphviz_property_graph
@@ -47,13 +47,15 @@ view_traj(sched, res, view_graph; agent=true, names=N)
 al = succeed(RuleApp(:add_loop, Rule(id(g1), homomorphism(g1,loop)), g1))
 q = Query(:Vertex, g1)
 
-@test_throws AssertionError mk_sched((trace_arg=:O,), (i=:Z,),
+bad_sched =mk_sched((trace_arg=:O,), (i=:Z,),
   (rule=al, query=q, Z=z,O=g1), quote 
     q1,q2,q3 = query(i,trace_arg)
     trace = rule([q1,q2])
     out = [q3]
     return trace, out
 end);
+
+@test_throws ErrorException typecheck(bad_sched)
 
 
 
@@ -102,8 +104,8 @@ view_sched(sched; names=N)
 G = @acset Graph begin V=5; E=4; src=[1,2,2,5];tgt=[2,3,4,2] end 
 arr_start = homomorphism(ar, G; initial=(V=[1,2],))
 res, = apply_schedule(sched, arr_start);
-view_traj(sched, res, view_graph; agent=true, names=N)
 view_traj(sched, res, to_graphviz; agent=false)
+view_traj(sched, res, view_graph; agent=true, names=N)
 
 
 # For-loop: add 3 loops
@@ -156,6 +158,6 @@ res, = apply_schedule(sched, G)
 expected = deepcopy(G)
 expected[:eng] = [1,11,100,1001] # the dead cells get +1
 
-@test is_isomorphic(traj_res(res), expected)
+@test is_isomorphic(traj_res(traj_res(res)), expected)
 
 end # module

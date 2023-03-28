@@ -3,15 +3,21 @@ module TestSPO
 using Test
 using Catlab, Catlab.Graphs, Catlab.CategoricalAlgebra
 using AlgebraicRewriting
-using AlgebraicRewriting.Rewrite.SPO: pullback_complement
 
-# Pullback complement
-#--------------------
-G3, G5, G4 = Graph.([3,5,4])
-G35 = CSetTransformation(G3, G5; V=[1,2,3])
-G54 = CSetTransformation(G5, G4; V=[1,1,2,3,4])
-ad,dc = pullback_complement(G35,G54)
-@test G3 == pullback(dc, G54) |> apex
+
+# Removing edges 
+#---------------
+p2, g2 = path_graph(Graph, 2), Graph(2)
+f = homomorphism(g2, p2; monic=true)
+r = Rule{:SPO}(f, id(g2))
+r2 = Rule{:SPO}(create(Graph(1)), id(Graph()))
+@test rewrite(r, p2) == Graph(2)
+@test rewrite(r2, p2) == Graph(1)
+
+
+
+# Removing vertices and edges
+#----------------------------
 
 A = path_graph(Graph, 3);
 K = path_graph(Graph, 2);
@@ -23,8 +29,14 @@ ka = path_graph(Graph, 2);
 ka, kb = [CSetTransformation(K, x, V=[1,2], E=[1]) for x in [A,B]];
 ac = CSetTransformation(A, C, V=[1,2,3], E=[1,2]);
 
+"""
+Delete the third vertex of • → • → • → • and add a loop to the second vertex.
+                             ↘---↗
+"""
 spr = rewrite_match(Rule{:SPO}(ka,kb), ac)
 @test is_isomorphic(spr, @acset Graph begin V=3; E=2; src=[1,2]; tgt=2 end)
+
+
 
 # Semisimplicial sets
 #####################

@@ -114,6 +114,7 @@ struct SimStep
   outwire::Wire
 end
 
+"""ToDO: no 'initial' needed; just use η to get first simstep"""
 struct Sim
   initial::WireVal
   steps::Vector{SimStep}
@@ -124,6 +125,7 @@ Base.isempty(t::Sim) = isempty(t.steps)
 Base.length(t::Sim) = length(t.steps)
 Base.getindex(t::Sim, i::Int) = t.steps[i]
 add_edge(s::Sim, st::SimStep) = Sim(s.initial, vcat(s.steps, [st]))
+traj_res(s::Sim) = last(s.steps).edge.o.val
 
 """Get the most recent wire that the simulation is living on"""
 function curr_wire(w::WiringDiagram, s::Sim, outer_in_port::Int=-1)

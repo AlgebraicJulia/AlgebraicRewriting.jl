@@ -70,7 +70,7 @@ right(r::Rule{T}) where T = r.R
 function get_rmap(sem::Symbol, maps)
   if isnothing(maps)  nothing
   elseif sem == :DPO  maps[:rh]
-  elseif sem == :SPO  invert_hom(maps[:nb]) ⋅ maps[:nd]
+  elseif sem == :SPO  invert_hom(maps[:rmono], epic=false) ⋅ maps[:rmap]
   elseif sem == :SqPO maps[:r]
   elseif sem == :PBPO maps[:w]
   else   error("Rewriting semantics $sem not supported")
@@ -83,7 +83,7 @@ get_result(sem::Symbol, maps) = codom(get_rmap(sem, maps))
 function get_pmap(sem::Symbol, maps)
   if isnothing(maps)  nothing
   elseif sem == :DPO  Span(maps[:kg], maps[:kh])
-  elseif sem == :SPO  Span(maps[:oc], maps[:od])
+  elseif sem == :SPO  Span(maps[:gmono], maps[:gmap])
   elseif sem == :SqPO Span(maps[:i], maps[:o])
   elseif sem == :PBPO Span(maps[:gl], maps[:gr])
   else   error("Rewriting semantics $sem not supported")

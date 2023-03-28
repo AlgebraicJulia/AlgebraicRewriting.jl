@@ -156,7 +156,7 @@ function invert_iso(f::ACSetTransformation,
   d = Dict(map(ob(S)) do o 
     o => o ∈ s_obs ? Base.invperm(collect(f[o])) : collect(f[o])
   end)
-  return ACSetTransformation(codom(f), dom(f); d...)
+  return only(homomorphisms(codom(f), dom(f); initial=d))
 end
 
 """
@@ -395,6 +395,53 @@ function predicate(A::Subobject{VarSet{T}}) where T
   end
   pred
 end
+
+"""Modification of `Subobject` to have proper behavior with variables"""
+function subobj(X::ACSet, d)
+  S = acset_schema(X)
+  sX = Subobject(X; d...) |> hom |> dom # has no variables 
+  for d in attrtypes(S) 
+    add_parts!(sX, d, nparts(X,d))
+  end
+  sX′, _ = remove_freevars(sX)
+  return only(homomorphisms(sX′, X; initial=d))
+end
+
+"""Recursively include anything, e.g. and edge includes its vertices """
+function complete_subobj(X::ACSet, sub)
+  sub = Dict([k=>Set(v) for (k,v) in pairs(sub)])
+  S = acset_schema(X)
+  change = true 
+  while change
+    change = false 
+    for (f,c,d) in homs(S)
+      new_d = setdiff(Set(X[collect(sub[c]),f]), sub[d])
+      if !isempty(new_d)
+        change = true 
+        union!(sub[d], new_d)
+      end
+    end
+  end 
+  return Dict([k=>collect(v) for (k,v) in pairs(sub)])
+end 
+"""Recursively delete anything, e.g. deleting a vertex deletes its edge"""
+function cascade_subobj(X::ACSet, sub)
+  sub = Dict([k=>Set(v) for (k,v) in pairs(sub)])
+  S = acset_schema(X)
+  change = true 
+  while change
+    change = false 
+    for (f,c,d) in homs(S)
+      dangling = [c for c in sub[c] if X[c,f] ∉ sub[d]]
+      if !isempty(dangling)
+        change = true 
+        setdiff!(sub[c], dangling)
+      end
+    end
+  end 
+  return Dict([k=>collect(v) for (k,v) in pairs(sub)])
+end 
+
   
   
 # Variables
@@ -568,7 +615,7 @@ end
 end 
 
 (F::Migrate)(d::Dict{<:ACSet,V}) where V = Dict([F(k)=>v for (k,v) in collect(d)])
-
+(m::Migrate)(::Nothing) = nothing
 function (m::Migrate)(Y::ACSet)
   if m.delta
      typeof(Y) <: m.T1 || error("Cannot Δ migrate a $(typeof(Y))")
