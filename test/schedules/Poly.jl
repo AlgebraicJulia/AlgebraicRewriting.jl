@@ -47,6 +47,9 @@ push!(res1, only(first.(t(res1, WireVal(1,7)))))
 push!(res2, only(first.(t(res2, WireVal(1,7)))))
 @test isempty(t(res2, WireVal(1,7)))
 
+# Probability Monad 
+####################
+
 # ℕ → ℕ ⊗ ℕ --- Increment an integer +1 and +2, stateless
 inc_fun(::Nothing,w::WireVal; kw...) = 
   MealyRes(nothing, [(p,WireVal(i,w.val+i)) for (i,p) in enumerate([1//3,2//3])])

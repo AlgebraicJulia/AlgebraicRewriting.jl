@@ -95,7 +95,7 @@ function while_schedule(s::Schedule, boolfun::Function; name=:while, argtype=:wo
   ic = singleton(if_cond(name, boolfun, a; argtype=argtype))
   return mk_sched((trace_arg=:X,),(init=:X,),(X=a,iff=ic,f=s), quote 
     if_t, if_f = iff([init,trace_arg])
-    return if_f, f(if_t)
+    return f(if_t), if_f
   end)
 end
 while_schedule(s::AgentBox, boolfun::Function; name=:while, argtype=:world) = 

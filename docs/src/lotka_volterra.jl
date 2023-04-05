@@ -24,7 +24,6 @@ begin
   right(::South) = West(); right(::West) = North()
   left(::North) = West(); left(::East) = North()
   left(::South) = East(); left(::West) = South()
-  NEWS = Dict(North()=>"N",East()=>"E",West()=>"W",South()=>"S")
 end
 
 """

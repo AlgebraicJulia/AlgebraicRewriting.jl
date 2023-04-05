@@ -14,7 +14,7 @@ import Catlab.CategoricalAlgebra.FinSets: predicate
 import Catlab.CategoricalAlgebra: is_natural, Slice, SliceHom, components,
                                   LooseACSetTransformation, homomorphisms, 
                                   homomorphism
-using Catlab.DenseACSets: attrtype_type
+using Catlab.DenseACSets: attrtype_type, datatypes
 
 import Base: getindex
 using DataStructures: OrderedSet
@@ -285,7 +285,9 @@ gluing_conditions(pair::ComposablePair{<:Slice}) =
 """Check both id condition and dangling condition"""
 function gluing_conditions(pair::ComposablePair{<:ACSet})
   viols = []
-  for (k,x) in pairs(unpack_diagram(pair))
+  S = acset_schema(dom(pair))
+  Ts = datatypes(dom(pair))
+  for (k,x) in pairs(unpack_diagram(pair; S=S, Ts=Ts))
     a,b = collect.(id_condition(x))
     append!(viols, [("Id: nondeleted ↦ deleted ", k, aa) for aa in a])
     append!(viols,[("Id: nonmonic deleted", k, bb) for bb in b])
