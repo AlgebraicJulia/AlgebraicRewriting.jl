@@ -42,7 +42,7 @@ end
 "nothing" means something that will be determined via a quantifier
 Ints are explicit arguments provided when apply_constraint is called
 """
-const CGraph = VELabeledGraph{Union{Nothing,StructACSet},
+const CGraph = VELabeledGraph{Union{Nothing, ACSet},
                               Union{Nothing,Int, ACSetTransformation}}
 
 """Number of variables in a constraint graph"""
