@@ -346,7 +346,8 @@ v1 --> v2
 
 if e1 is not matched but either v1 or v2 are deleted, then e1 is dangling.
 """
-function dangling_condition(pair::ComposablePair{<:StructACSet{S}}) where S
+function dangling_condition(pair::ComposablePair{<:ACSet})
+  S = acset_schema(dom(pair))
   l, m = pair
   orphans = Dict(map(ob(S)) do o
     l_comp,m_comp = l[o], m[o]
@@ -456,7 +457,8 @@ end
 Given a value for each variable, create a morphism X → X′ which applies the 
 substitution.
 """
-function sub_vars(X::StructACSet{S}, subs::AbstractDict) where S
+function sub_vars(X::ACSet, subs::AbstractDict) 
+  S = acset_schema(X)
   X′ = deepcopy(X)
   comps = Dict(o=>parts(X, o) for o in objects(S))
   for (atr, _, at) in attrs(S)

@@ -19,7 +19,7 @@ function view_traj(sched_::Schedule, rG::Sim, viewer; out="traj", agent=false, n
   else
     mkdir(out)
   end
-  for n in 1:length(rG)
+  for n in 1:length(rG)-1
     view_traj(sched_,rG, viewer, n; out=out, agent=agent,names=names)
   end
 end
@@ -30,8 +30,8 @@ ACSetTransformations, rather than ACSets.
 """
 function view_traj(sched_::Schedule, rG::Sim, viewer, n::Int; out="traj", agent=false, names=nothing)
   traj = last(rG).edge.o.val
-  length(traj) == length(rG) || error("Traj length doesn't match sim length")
-  step = rG[n]
+  length(traj)+1 == length(rG) || error("Traj length doesn't match sim length")
+  step = rG[n+1]
   graphs = [view_sched(sched_; name=step.desc, source=step.inwire.source, 
                        target=step.outwire.source, names=names)]
   start_world = n==1 ? traj.initial : traj[n-1].world
@@ -61,5 +61,4 @@ function view_traj(sched_::Schedule, rG::Sim, viewer, n::Int; out="traj", agent=
   hline(sum(heights[1:2])+SPACE)
   pimg(3,2*SPACE + height - heights[3]/2)
   finish()
-
 end

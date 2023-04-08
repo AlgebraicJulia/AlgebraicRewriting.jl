@@ -61,7 +61,7 @@ Data (i,t) which future behavior is contingent on. For convenience, the output
 (o) is stored as well.
 """
 @struct_hash_equal struct BTreeEdge 
-  i::WireVal
+  i::Union{Nothing,WireVal}
   o::WireVal       
   t::Tuple{Int,Any}
 end
@@ -110,21 +110,21 @@ end
 struct SimStep 
   desc::String
   edge::BTreeEdge
-  inwire::Wire
+  inwire::Union{Nothing,Wire}
   outwire::Wire
 end
 
 """ToDO: no 'initial' needed; just use η to get first simstep"""
 struct Sim
-  initial::WireVal
   steps::Vector{SimStep}
 end 
-Sim(i) = Sim(i,SimStep[])
+Sim(w::Wire, i::Any, v::Any) = 
+  Sim([SimStep("init", BTreeEdge(nothing,WireVal(0,v),(1,i)), nothing, w)])
 Base.last(t::Sim) = last(t.steps)
 Base.isempty(t::Sim) = isempty(t.steps)
 Base.length(t::Sim) = length(t.steps)
 Base.getindex(t::Sim, i::Int) = t.steps[i]
-add_edge(s::Sim, st::SimStep) = Sim(s.initial, vcat(s.steps, [st]))
+add_edge(s::Sim, st::SimStep) = Sim(vcat(s.steps, [st]))
 traj_res(s::Sim) = last(s.steps).edge.o.val
 
 """Get the most recent wire that the simulation is living on"""
@@ -137,7 +137,7 @@ function curr_wire(w::WiringDiagram, s::Sim, outer_in_port::Int=-1)
 end 
 curr_traj(s::Sim) = (isempty(s.steps) ? s.initial : last(s.steps).edge.o).val
 sim_edges(s::Sim, boxid::Int) = 
-  BTreeEdge[e.edge for e in s.steps if e.inwire.target.box == boxid]
+  BTreeEdge[e.edge for e in s.steps[2:end] if e.inwire.target.box == boxid]
 
 """Replace all boxes in a WD with BTrees"""
 function apply_schedule(w_::WiringDiagram,g::Any,t::PMonad=Maybe; 
@@ -148,7 +148,8 @@ function apply_schedule(w_::WiringDiagram,g::Any,t::PMonad=Maybe;
   w.diagram[:box_type] = Box{BTree}
   w.diagram[:value] = BTree.(w.diagram[:value])
   # Initialize queue of simulations to track
-  squeue = [Sim(WireVal(in_port, g))] # start with a single simulation 'token'
+  iw = only(out_wires(w, Port(input_id(w),OutputPort, in_port)))
+  squeue = [Sim(iw,i,v) for (i,v) in t.η(g)] # [Sim(WireVal(in_port, g))] # start with a single simulation 'token'
   results = [Sim[] for _ in output_ports(w)] 
   # Main loop
   while !isempty(squeue)
@@ -166,7 +167,7 @@ function apply_schedule(w_::WiringDiagram,g::Any,t::PMonad=Maybe;
       if steps > 0 print("$steps STEPS REMAINING ")  end 
       println("($(length(squeue)) queued)")
     end
-    wi = curr_wire(w,traj, in_port)
+    wi = last(traj.steps).outwire #curr_wire(w,traj, in_port)
     if wi.target.box == output_id(w)
       push!(results[wi.target.port], traj)
     else 

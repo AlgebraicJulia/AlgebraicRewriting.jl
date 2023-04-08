@@ -1,7 +1,6 @@
 module TestEval
 
 using Test
-using Revise
 using Catlab, Catlab.Theories, Catlab.WiringDiagrams, Catlab.Graphics
 using Catlab.Graphs, Catlab.CategoricalAlgebra
 using Catlab.Graphics: to_graphviz_property_graph

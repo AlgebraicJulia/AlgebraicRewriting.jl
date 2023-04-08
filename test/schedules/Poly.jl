@@ -3,7 +3,6 @@ module TestPoly
 using Test
 using AlgebraicRewriting
 using Catlab, Catlab.CategoricalAlgebra,Catlab.Graphs, Catlab.WiringDiagrams, Catlab.Graphics
-using Luxor
 
 
 """  ____
