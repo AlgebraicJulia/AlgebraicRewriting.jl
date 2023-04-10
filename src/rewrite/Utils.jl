@@ -140,8 +140,14 @@ end
 get_match(args...; kw...) = let x = get_matches(args...; n=1, kw...);
   isempty(x) ? nothing : only(x) end 
 
-"""Get list of possible matches based on the constraints of the rule"""
-function get_matches(r::Rule{T}, G::StructACSet; initial=nothing,
+"""
+Get list of possible matches based on the constraints of the rule
+
+This function has the same behavior as the generic `get_matches`, but it is 
+more performant because we do not have to query all homomorphisms before finding 
+a valid match, in case n=1. 
+"""
+function get_matches(r::Rule{T}, G::ACSet; initial=nothing,
                      verbose=false, random=false, n=-1) where T
   initial = isnothing(initial) ? Dict() : initial
 
@@ -167,7 +173,14 @@ function get_matches(r::Rule{T}, G; initial=nothing, verbose=false,
   initial = isnothing(initial) ? Dict() : initial
   ms = homomorphisms(codom(left(r)), G; monic=r.monic, 
                      initial=NamedTuple(initial), random=random)
-  return [m for m in ms if isnothing(can_match(r, m))][1: (n==0 ? end : n)]
+  res = []
+  for m in ms 
+    println("n $n length(res) $(length(res))")
+    if (n < 0 || length(res) < n) && isnothing(can_match(r, m))
+      push!(res, m)
+    end
+  end
+  return res
 end 
 
 # Variables
