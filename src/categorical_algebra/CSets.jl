@@ -14,7 +14,7 @@ import Catlab.CategoricalAlgebra.FinSets: predicate
 import Catlab.CategoricalAlgebra: is_natural, Slice, SliceHom, components,
                                   LooseACSetTransformation, homomorphisms, 
                                   homomorphism
-using Catlab.DenseACSets: attrtype_type, datatypes
+using Catlab.DenseACSets: attrtype_type, datatypes, constructor
 
 import Base: getindex
 using DataStructures: OrderedSet
@@ -232,40 +232,42 @@ this method will raise an error. If the dangling condition fails, the resulting
 C-set will be only partially defined. To check all these conditions in advance,
 use the function [`can_pushout_complement`](@ref).
 
-Because subobject does not work well with attributes, we handle that
+Because Subobject does not work well with AttrVars, a correction is made
 """
 function pushout_complement(pair::ComposablePair{<:ACSet, <:TightACSetTransformation})
   p1,p2 = pair 
-  I,L,G = dom(p1),codom(p1), codom(p2)
+  I,G = dom(p1), codom(p2)
   S = acset_schema(I)
   # Compute pushout complements pointwise in FinSet.
   components = NamedTuple(Dict([o=>pushout_complement(ComposablePair(p1[o],p2[o])) 
-                                for o in ob(S)]))
+                                for o in types(S)]))
   k_components, g_components = map(first, components), map(last, components)
 
   # Reassemble components into natural transformations.
   g = hom(Subobject(G, NamedTuple(Dict(o=>g_components[o] for o in ob(S)))))
   K = dom(g)
-
-  # Fix variable attributes: 
+  
   for at in attrtypes(S)
-    for ivar in AttrVar.(parts(I, at))
-      lvar = p1[at](ivar)
-      if lvar isa AttrVar
-        new_var = AttrVar(add_part!(K, at))
-        for (f, d, _) in attrs(S; to=at)
-          for i in filter(i->L[i,f]==lvar, parts(L, d))
-            for k_i in preimage(g[d],p2[d](i)) 
-              K[k_i,f] = new_var
-            end
-          end
-        end
+    add_parts!(K, at, codom(k_components[at]).n)
+  end
+
+  for (a, d, at) in attrs(S)
+    # force k to be natural
+    for p in parts(I, d)
+      K[k_components[d](p),a] = k_components[at](I[p, a])
+    end
+    # force g to be natural 
+    for p in parts(K, d)
+      gval = G[g_components[d](p), a]
+      preim = preimage(g_components[at], gval)
+      if !isempty(preim) && gval isa AttrVar
+        K[p,a] = AttrVar(only(preim))
       end
     end
   end 
 
-  k = only(homomorphisms(I, K; initial=k_components))
-  g = only(homomorphisms(K, G; initial=g_components))
+  k = ACSetTransformation(I, K; k_components...)
+  g = ACSetTransformation(K, G; g_components...)
 
   force(compose(k,g)) == force(compose(p1,p2)) || error("Square doesn't commute")
   is_natural(k) || error("k unnatural")
@@ -455,23 +457,23 @@ end
 
 """
 Given a value for each variable, create a morphism X → X′ which applies the 
-substitution.
+substitution. We do this via pushout. 
+
+`subs` is a dictionary (keyed by attrtype names) of int-keyed dictionaries
 """
 function sub_vars(X::ACSet, subs::AbstractDict) 
   S = acset_schema(X)
-  X′ = deepcopy(X)
-  comps = Dict(o=>parts(X, o) for o in objects(S))
-  for (atr, _, at) in attrs(S)
-    for (i, v) in enumerate(X′[atr])
-      if v isa AttrVar
-        set_subpart!(X′, i, atr, subs[at][v.val])
-      end 
-    end
+  O, C = [constructor(X)() for _ in 1:2]
+  ox_, oc_ = Dict(), Dict()
+  for at in attrtypes(S)
+    d = get(subs, at, Dict())
+    ox_[at] = AttrVar.(filter(p->p ∈ keys(d) && !(d[p] isa AttrVar), parts(X,at)))
+    oc_[at] = [d[p.val] for p in ox_[at]]
+    add_parts!(O, at, length(oc_[at]))
   end 
-  for at in attrtypes(S) 
-    rem_parts!(X′, at, parts(X′, at))
-  end 
-  return ACSetTransformation(merge(comps, subs), X, X′)
+  ox = ACSetTransformation(O,X; ox_...)
+  oc = ACSetTransformation(O,C; oc_...)
+  return first(legs(pushout(ox, oc)))
 end 
 
 """

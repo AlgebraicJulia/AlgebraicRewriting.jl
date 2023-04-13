@@ -15,3 +15,7 @@ This library is currently under active development, and so is not yet at a
 point where a constant API/behavior can be assumed. That being said, if this
 project looks interesting/relevant please contact us and
 [let us know](https://www.algebraicjulia.org/#contributing)!
+
+Main development since late 2022 has been in the `compat_varacsets` branch, 
+which can be merged once Julia 1.9 is released and a Catlab PR (for VarACSets) 
+is merged into Catlab.

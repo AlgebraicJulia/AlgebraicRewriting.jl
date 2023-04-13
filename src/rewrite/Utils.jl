@@ -36,9 +36,10 @@ condition(s)
   L::Any
   R::Any
   conditions::Vector{Constraint} # constraints on match morphism
-  monic::Union{Bool, Vector{Symbol}}
-  exprs::Dict{Symbol, Vector{<:Function}}
-  function Rule{T}(L, R; ac=nothing, monic=false, expr=nothing) where {T}
+  monic::Union{Bool, Vector{Symbol}} # further constraint on match morphism
+  exprs::Dict{Symbol, Dict{Int,Union{Nothing,Function}}}
+
+  function Rule{T}(L, R; ac=nothing, monic=false, expr=nothing, freevar=false) where {T}
     dom(L) == dom(R) || error("L<->R not a span")
     ACs = isnothing(ac) ? [] : ac
     exprs = isnothing(expr) ? Dict() : Dict(pairs(expr))
@@ -47,10 +48,31 @@ condition(s)
         error("unnatural map #$i: $f")
       end
     end
-    for (o, xs) in collect(exprs)
-      err = "$(nparts(codom(R),o)) exprs needed for part $o"
-      nparts(codom(R),o) == length(xs) || error(err)
-    end 
+    # For the case of ACSet rewriting, address variable substitution in R
+    if !(dom(L) isa ACSet)
+      exprs = Dict()
+    else 
+      exprs = Dict(map(attrtypes(acset_schema(dom(L)))) do o
+        binding = Dict()
+        for r_var in parts(codom(R),o)
+          # User explicitly provides a function to evaluate for this variable
+          if !isnothing(expr) && haskey(expr, o) && r_var ∈ keys(expr[o])
+            binding[r_var] = expr[o][r_var]
+          else # try to see if the value is determined by the partial map
+            preim = preimage(R[o],AttrVar(r_var))
+            pr = unique(L[o](AttrVar.(preimage(R[o],AttrVar(r_var)))))
+            if length(pr) == 1 
+              binding[r_var] = vs -> vs[only(pr).val] 
+            elseif freevar # We are ok with introducing free variables
+              continue 
+            else 
+              error("Unbound variable in R $o#$r_var")
+            end 
+          end
+        end
+        o => binding
+      end)
+    end
     new{T}(L, R, ACs, monic, exprs)
   end
 end
@@ -175,7 +197,6 @@ function get_matches(r::Rule{T}, G; initial=nothing, verbose=false,
                      initial=NamedTuple(initial), random=random)
   res = []
   for m in ms 
-    println("n $n length(res) $(length(res))")
     if (n < 0 || length(res) < n) && isnothing(can_match(r, m))
       push!(res, m)
     end
@@ -204,38 +225,16 @@ m ↓    ↓    ↓ res
 
 """
 function get_expr_binding_map(r::Rule{T}, m::ACSetTransformation, res) where T
-  result = get_rmap(ruletype(r),res)
-  pmap_l, pmap_r = get_pmap(ruletype(r), res)
-  R, X = dom(result), codom(result)
+  X = codom(get_rmap(ruletype(r),res))
   comps = Dict(map(attrtypes(acset_schema(X))) do at 
       bound_vars = Vector{Any}(collect(m[at]))
-      binding = Any[nothing for _ in parts(X, at)]
-
-      # By default, assign variables from partial map
-      for p in parts(X,at)
-        preim = preimage(pmap_r[at],AttrVar(p))
-        pr = unique(pmap_l[at](AttrVar.(preimage(pmap_r[at],AttrVar(p)))))
-        if length(pr) == 1 
-          binding[p] = only(pr)
+      binding = Dict()
+      for prt in parts(X,at)
+        if haskey(r.exprs[at],prt)
+          binding[prt] = r.exprs[at][prt](bound_vars)
         end 
-      end 
-
-      if haskey(r.exprs, at) exprs = r.exprs[at]
-      else 
-        exprs = map(parts(R,at)) do rᵢ
-          iᵢ = preimage(right(r)[at], AttrVar(rᵢ))
-          lᵢ = left(r)[at](AttrVar(only(iᵢ)))
-          return lᵢ isa AttrVar ? (vs->vs[lᵢ.val]) : (vs->lᵢ)
-        end
       end
-      for (v, expr) in enumerate(exprs)
-        tgt_attr = result[at](AttrVar(v))
-        if tgt_attr isa AttrVar
-          binding[tgt_attr.val] = expr(bound_vars)
-        end
-      end
-      !any(isnothing, binding) || error("Bad binding $binding")
-      at => binding
+      return at => binding
   end)
   return sub_vars(X, comps)
 end

@@ -18,8 +18,8 @@ begin
   @struct_hash_equal struct South <: Direction end 
   @struct_hash_equal struct East <: Direction end 
   @struct_hash_equal struct West <: Direction end 
-  show(io,::North) = show(io, :N); show(io,::South) = show(io, :S)
-  show(io,::East) = show(io, :E); show(io,::West) = show(io, :W)
+  Base.show(io::IO,::North) = show(io, :N); Base.show(io::IO,::South) = show(io, :S)
+  Base.show(io::IO,::East) = show(io, :E); Base.show(io::IO,::West) = show(io, :W)
   right(::North) = East(); right(::East) = South(); 
   right(::South) = West(); right(::West) = North()
   left(::North) = West(); left(::East) = North()
@@ -218,7 +218,15 @@ sheep_rotate_r = tryrule(RuleApp(:turn_right, rr, S))
 sched = (sheep_rotate_l⋅sheep_rotate_r) 
 view_sched(sched; names=N)
 
-
+begin 
+  ex = @acset LV begin V=2; E=1; Sheep=1; dir=[North()]
+    src=1; tgt=2; grass_eng=[1,2]; sheep_loc=1; sheep_eng=[3]; sheep_dir=[North()]
+  end
+  expected = @acset LV begin V=2; E=1; Sheep=1; dir=[North()]
+    src=1; tgt=2; grass_eng=[1,2]; sheep_loc=1; sheep_eng=[3]; sheep_dir=[West()]
+  end
+  @test is_isomorphic(rewrite(rl, ex), expected)
+end
 # Moving forward
 #---------------
 s_fwd_l = @acset LV begin
