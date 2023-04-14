@@ -60,7 +60,7 @@ condition(s)
             binding[r_var] = expr[o][r_var]
           else # try to see if the value is determined by the partial map
             preim = preimage(R[o],AttrVar(r_var))
-            pr = unique(L[o](AttrVar.(preimage(R[o],AttrVar(r_var)))))
+            pr = unique(L[o].(AttrVar.(preimage(R[o],AttrVar(r_var)))))
             if length(pr) == 1 
               binding[r_var] = vs -> vs[only(pr).val] 
             elseif freevar # We are ok with introducing free variables

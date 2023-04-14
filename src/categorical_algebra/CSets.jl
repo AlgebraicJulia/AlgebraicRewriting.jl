@@ -7,6 +7,7 @@ export extend_morphism, pushout_complement,
 using Catlab, Catlab.Theories, Catlab.Schemas
 using Catlab.CategoricalAlgebra
 using Catlab.CategoricalAlgebra.FinSets: IdentityFunction, VarSet
+using Catlab.CategoricalAlgebra.Chase: extend_morphism, extend_morphism_constraints
 using Catlab.CategoricalAlgebra.CSets: unpack_diagram, type_components
 import ..FinSets: pushout_complement, can_pushout_complement, id_condition
 import Catlab.ACSetInterface: acset_schema
@@ -24,42 +25,7 @@ using StructEquality
 #################
 
 """
-Given a span of morphisms, we seek to find all morphisms B → C that make a
-commuting triangle.
-
-    B
- g ↗ ↘ ?
- A ⟶ C
-   f
-This may be impossible, because f(a₁)≠f(a₂) but g(a₁)=g(a₂), in which case 
-return `nothing`. Otherwise, return a Dict which can be used to initialize the 
-homomorphism search Hom(B,C).
-"""
-function extend_morphism_constraints(f::ACSetTransformation,
-                                     g::ACSetTransformation)
-  S = acset_schema(dom(f))
-  dom(f) == dom(g) || error("f and g are not a span: \n$(dom(f)) \n$(dom(g))")
-
-  init = Dict() # {Symbol, Dict{Int,Int}}
-  for (ob, mapping) in pairs(components(f))
-    init_comp = [] # Pair{Int,Int}
-    is_var = ob ∈ attrtypes(S)
-    for i in parts(codom(g), ob)
-      p = preimage(g[ob], is_var ? AttrVar(i) : i )
-      vs = Set(mapping(is_var ? AttrVar.(p) : p))
-      if length(vs) == 1
-        push!(init_comp, i => only(vs))
-      elseif length(vs) > 1 # no homomorphism possible
-        return nothing
-      end
-    end
-    init[ob] = Dict(init_comp)
-  end
-  return init
-end
-
-"""
-Given a span of morphisms, we seek to find a morphism B → C that makes a
+Given a span of morphisms, we seek to find morphisms B → C that make a
 commuting triangle if possible.
 
     B
@@ -69,14 +35,6 @@ commuting triangle if possible.
   
 Accepts homomorphism search keyword arguments to constrain the Hom(B,C) search.
 """
-function extend_morphism(f::ACSetTransformation, g::ACSetTransformation;
-                         initial=Dict(), kw...
-                         )::Union{Nothing, ACSetTransformation}
-  init = combine_dicts!(extend_morphism_constraints(f,g), initial)
-  isnothing(init) ? nothing : homomorphism(codom(g), codom(f); initial=init, kw...)
-end
-
-"""Same as `extend_morphism` but returning all such morphisms"""
 function extend_morphisms(f::ACSetTransformation, g::ACSetTransformation;
                           initial=Dict(), kw...
                           )::Vector{ACSetTransformation}
