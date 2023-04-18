@@ -1,5 +1,5 @@
 using AlgebraicRewriting
-using Catlab, Catlab.CategoricalAlgebra, Catlab.Graphics, Catlab.Graphs
+using Catlab, Catlab.CategoricalAlgebra, Catlab.Graphics, Catlab.Graphs, Catlab.Programs
 import AlgebraicPetri
 using Test
 
@@ -72,6 +72,23 @@ to_graphviz(res; node_labels=true)
 # Note that C-Sets are morally regarded up to isomorphism - in particular,  
 # limits and colimits may modify the orderings of edges/vertices
 
+expected = @acset Graph begin V=4; E=4; src=[1,2,3,4]; tgt=[2,3,4,4] end
+@test is_isomorphic(expected, res)
+
+"""
+We can also specify the rule via a colimit-of-representables (i.e. generators 
+and relations) syntax. As your schema gets bigger, this becomes more and more 
+convenient. Assigning temporary names to the C-Set elements can also be helpful.
+"""
+yG = yoneda_cache(Graph); # compute representables
+
+rule2 = Rule(@migration(SchRulel, SchGraph, begin
+          L => @join begin e::E end
+          K => @join begin v::V end 
+          R => @join begin eᵣ::E; src(eᵣ)==tgt(eᵣ) end 
+          l => begin v => src(e) end
+          end), yG)
+
 """We can rewrite without a match (and let it pick an arbitrary match)"""
 
 @test res == rewrite(rule, G)
@@ -85,7 +102,7 @@ Rules are by default DPO, but if we specify a type parameter we can change
 the semantics
 """
 
-rule_spo = Rule{:SPO}(l, r) # same data as before)
+rule_spo = Rule{:SPO}(l, r) # (same data as before)
 
 @test length(get_matches(rule_spo, G)) == 4 # there are now four matches
 res = rewrite(rule_spo, G)
@@ -155,9 +172,9 @@ to_graphviz(L′; node_labels=true)
 # old ones to the new ones) and the matched vertex is duplicated. The new copy 
 # of the matched vertex points at the new ones. It does not have any inneighbors.
 
-K′ = @acset Graph begin V=5; E=9; 
+K′ = @acset Graph begin V=5; E=9;
     src=[1,1,1,2,3,3,3,4,5]; tgt=[1,2,3,3,3,1,5,5,5] 
-end 
+end
 tk = CSetTransformation(K,K′; V=[2,4])
 to_graphviz(K′; node_labels=true)
 
@@ -167,10 +184,12 @@ prule = PBPORule(l,r,tl,tk,l′)
 
 # Apply to an example vertex (#3) with two inneighbors and one outneighbor.
 G = @acset Graph begin V=4; E=5; src=[1,1,2,3,4]; tgt=[2,3,3,4,4] end
+to_graphviz(G; node_labels=true)
 
 m = get_match(prule, G; initial=(V=[3],)=>Dict())
 
 res = rewrite_match(prule, m)
+# V1 is copied to V2. Outneighbor V5 (w/ loop) is copied to V6, creating an edge
 to_graphviz(res; node_labels=true)
 
 ##########################
@@ -252,7 +271,9 @@ constructors AppCond and LiftCond to make these directly.
 Every vertex with a loop also has a map to the vertex marked by the bottom map.
 """
 t = terminal(Graph)|>apex
-looparr = @acset Graph begin V=2; E=2; src=[1,1]; tgt=[1,2] end 
+looparr = @acset_colim yG begin (e1,e2)::E; 
+  src(e1)==tgt(e1); src(e1)==src(e2)
+end
 
 v = homomorphism(t, looparr)
 loop_csp = @acset Graph begin V=3;E=4; src=[1,3,1,3]; tgt=[1,3,2,2] end 
@@ -292,9 +313,10 @@ equipped with a finite set of "variables" which can be mapped to any concrete
 value (or another variable).
 """
 
-
-L = @acset WeightedGraph{Int} begin V=2; E=2; Weight=2; src=1; tgt=2; 
-                                    weight=AttrVar.(1:2) end
+yWG = yoneda_cache(WeightedGraph{Int});
+L = @acset_colim yWG begin (e1,e2)::E
+  src(e1)==src(e2); tgt(e1)==tgt(e2) 
+end
 I = WeightedGraph{Int}(2)
 R = @acset WeightedGraph{Int} begin V=2; E=1; Weight=1; src=1; tgt=2; 
                                     weight=[AttrVar(1)] end
@@ -355,6 +377,8 @@ RS3 = RWStep(Rule1, Pmap3, M3, CM3)
 steps = [RS1, RS2, RS3]
 
 g = find_deps(steps)
+to_graphviz(g; node_labels=true)
+
 expected = @acset Graph begin V=3; E=1; src=1; tgt=2 end
 @test expected == g
 

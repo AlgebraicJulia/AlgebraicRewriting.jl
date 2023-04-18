@@ -50,6 +50,10 @@ end
   include("rewrite/PBPO.jl")
 end
 
+@testset "Representable" begin
+  include("rewrite/Representable.jl")
+end
+
 # Schedules 
 ##########
 

@@ -1,7 +1,7 @@
 module LotkaVolterra 
 
 using Catlab, Catlab.Theories, Catlab.CategoricalAlgebra, Catlab.Graphs, 
-      Catlab.Graphics, Catlab.WiringDiagrams
+      Catlab.Graphics, Catlab.WiringDiagrams, Catlab.Programs
 using AlgebraicRewriting
 using Random, Test, StructEquality
 
@@ -12,18 +12,19 @@ using Catlab.Graphics.Graphviz
 
 import Catlab.CategoricalAlgebra: left, right
 
-abstract type Direction end 
-begin
-  @struct_hash_equal struct North <: Direction end 
-  @struct_hash_equal struct South <: Direction end 
-  @struct_hash_equal struct East <: Direction end 
-  @struct_hash_equal struct West <: Direction end 
-  Base.show(io::IO,::North) = show(io, :N); Base.show(io::IO,::South) = show(io, :S)
-  Base.show(io::IO,::East) = show(io, :E); Base.show(io::IO,::West) = show(io, :W)
-  right(::North) = East(); right(::East) = South(); 
-  right(::South) = West(); right(::West) = North()
-  left(::North) = West(); left(::East) = North()
-  left(::South) = East(); left(::West) = South()
+function right(s::Symbol) 
+  if     s == :N return :E
+  elseif s == :S return :W 
+  elseif s == :E return :S 
+  elseif s == :W return :N 
+  end
+end
+function left(s::Symbol) 
+  if     s == :N return :W
+  elseif s == :S return :E 
+  elseif s == :E return :N 
+  elseif s == :W return :S 
+  end
 end
 
 """
@@ -54,15 +55,13 @@ end
   coord::Attr(V,Coord)
 end
 
-
-
 to_graphviz(TheoryLV; prog="dot")
 
 @acset_type LV_Generic(TheoryLV) <: HasGraph
-const LV = LV_Generic{Direction, Int}
+const LV = LV_Generic{Symbol, Int}
 
 @acset_type LV′_Generic(TheoryLV′) <: HasGraph
-const LV′ = LV′_Generic{Direction, Int, Tuple{Int,Int}}
+const LV′ = LV′_Generic{Symbol, Int, Tuple{Int,Int}}
 
 F = Migrate(
   Dict(:Sheep=>:Wolf, :Wolf=>:Sheep), 
@@ -94,10 +93,10 @@ function create_grid(n::Int)
   end
   for i in 0:n-1
     for j in 0:n-1
-      add_part!(lv, :E; src=coords[i=>j], tgt=coords[mod(i+1,n)=>j], dir=East())
-      add_part!(lv, :E; src=coords[i=>j], tgt=coords[mod(i-1,n)=>j], dir=West())
-      add_part!(lv, :E; src=coords[i=>j], tgt=coords[i=>mod(j+1,n)], dir=North())
-      add_part!(lv, :E; src=coords[i=>j], tgt=coords[i=>mod(j-1,n)], dir=South())
+      add_part!(lv, :E; src=coords[i=>j], tgt=coords[mod(i+1,n)=>j], dir=:E)
+      add_part!(lv, :E; src=coords[i=>j], tgt=coords[mod(i-1,n)=>j], dir=:W)
+      add_part!(lv, :E; src=coords[i=>j], tgt=coords[i=>mod(j+1,n)], dir=:N)
+      add_part!(lv, :E; src=coords[i=>j], tgt=coords[i=>mod(j-1,n)], dir=:S)
     end
   end
   return lv
@@ -118,7 +117,7 @@ function initialize(n::Int, sheep::Float64, wolves::Float64)::LV′
   for (n_, name, loc, eng, d) in args
     for _ in 1:round(Int,n_*n^2)
       dic = Dict([eng => 5, loc => rand(vertices(grid)),
-                  d => rand([North(),East(),South(),West()])])
+                  d => rand([:N,:E,:S,:W])])
       add_part!(grid, name; dic...)
     end
   end
@@ -157,7 +156,7 @@ function view_LV(p::LV′; name="G", title="", star=nothing)
                   :shape=>"circle",
                   :color=> col, :pos=>pstr[s])))
     end
-  d = Dict([East()=>(1,0),North()=>(0,1), South()=>(0,-1),West()=>(-1,0),])
+  d = Dict([:E=>(1,0),:N=>(0,1), :S=>(0,-1),:W=>(-1,0),])
 
   args = [(:true,:Wolf,:wolf_loc,:wolf_eng,:wolf_dir),
           (false, :Sheep, :sheep_loc, :sheep_eng,:sheep_dir)]
@@ -192,17 +191,15 @@ view_LV(i1)
 
 # RULES
 #######
+yLV = yoneda_cache(LV);
 # Empty agent type
 I = LV()
 # Generic sheep agent
-S = @acset LV begin
-  Sheep=1; V=1; Dir=1; Eng=2; sheep_loc=1; grass_eng=[AttrVar(1)]
-  sheep_dir=[AttrVar(1)]; sheep_eng=[AttrVar(2)]; 
-end
+S = @acset_colim yLV begin s::Sheep end
 # Generic wolf agent
 W = F(S)
 # Generic grass agent
-G = @acset LV begin V=1; Eng=1; grass_eng=[AttrVar(1)] end
+G = @acset_colim yLV begin v::V end
 
 N = Dict(W=>"W",S=>"S",G=>"G", I=>"")
 # Rotating
@@ -215,77 +212,81 @@ sheep_rotate_l = tryrule(RuleApp(:turn_left, rl, S))
 sheep_rotate_r = tryrule(RuleApp(:turn_right, rr, S))
 
 # we can imagine executing these rules in sequence or in parallel
-sched = (sheep_rotate_l⋅sheep_rotate_r) 
-view_sched(sched; names=N)
+seq_sched = (sheep_rotate_l⋅sheep_rotate_r) 
+view_sched(seq_sched; names=N)
+par_sched = (sheep_rotate_l ⊗ sheep_rotate_r) 
+view_sched(par_sched; names=N)
+
+
 
 begin 
-  ex = @acset LV begin V=2; E=1; Sheep=1; dir=[North()]
-    src=1; tgt=2; grass_eng=[1,2]; sheep_loc=1; sheep_eng=[3]; sheep_dir=[North()]
+  ex = @acset_colim yLV begin 
+    e::E
+    s::Sheep
+    sheep_loc(s) == src(e)
+    sheep_dir(s) == :N
   end
-  expected = @acset LV begin V=2; E=1; Sheep=1; dir=[North()]
-    src=1; tgt=2; grass_eng=[1,2]; sheep_loc=1; sheep_eng=[3]; sheep_dir=[West()]
-  end
-  @test is_isomorphic(rewrite(rl, ex), expected)
+  expected = copy(ex); 
+  expected[:sheep_dir] = :W
+    @test is_isomorphic(rewrite(rl, ex), expected)
 end
+
 # Moving forward
 #---------------
-s_fwd_l = @acset LV begin
-  Sheep=1; V=2; E=1; sheep_loc=1; Dir=1; Eng=3
-  src=1; tgt=2; dir=[AttrVar(1)]; 
-  grass_eng=AttrVar.(1:2)
-  sheep_dir=[AttrVar(1)]; sheep_eng=[AttrVar(3)]
+s_fwd_l = @acset_colim yLV begin e::E; s::Sheep; sheep_loc(s)==src(e) end 
+s_fwd_i = @acset_colim yLV begin e::E end
+s_fwd_r = @acset_colim yLV begin e::E; s::Sheep; sheep_loc(s)==tgt(e) end 
+s_n = @acset_colim yLV begin 
+  e::E; s::Sheep; sheep_loc(s)==src(e); sheep_eng(s)==0 
 end
-
-s_fwd_i = deepcopy(s_fwd_l)
-rem_part!(s_fwd_i, :Sheep, 1); 
-rem_part!(s_fwd_i, :Eng, 3)
-
-s_fwd_r = deepcopy(s_fwd_l)
-s_fwd_r[1, :sheep_loc] = 2
-
-s_n = deepcopy(s_fwd_l)
-set_subpart!(s_n, 1, :sheep_eng, 0); 
-rem_part!(s_n, :Eng, 3)
 
 sheep_fwd_rule = Rule(
   homomorphism(s_fwd_i, s_fwd_l; monic=true),
   homomorphism(s_fwd_i, s_fwd_r; monic=true),
   ac=[AppCond(homomorphism(s_fwd_l, s_n), false)],
-  expr=(Eng=[vs->vs[1], vs->vs[2], vs->vs[3]-1],)
+  expr=(Eng=Dict(3=>vs->vs[3]-1), Dir=Dict(2=>vs->vs[2]))
 )
 
 sheep_fwd = tryrule(RuleApp(:move_fwd, sheep_fwd_rule, 
   homomorphism(S,s_fwd_l), homomorphism(S,s_fwd_r)))
 
+
+sheep_fwd_rule.L |> codom
+
 begin # test 
-  ex = @acset LV begin Sheep=1; V=3; E=2; src=[1,2]; tgt=[2,3]; sheep_loc=2
-    sheep_eng=[3]; grass_eng=[9,10,11]; dir=fill(North(),2); sheep_dir=[North()]
+  ex = @acset_colim yLV begin (e1,e2)::E; s::Sheep
+    sheep_loc(s)==tgt(e1)
+    tgt(e1)==src(e2)
+    sheep_dir(s)==:N
+    sheep_eng(s) == 10
   end
-  expected = deepcopy(ex); 
-  expected[1,:sheep_loc] = 3; 
-  expected[1,:sheep_eng] = 2
-  @test is_isomorphic(expected, rewrite(sheep_fwd_rule,ex))
+  expected = @acset_colim yLV begin (e1,e2)::E; s::Sheep
+    sheep_loc(s)==tgt(e2)
+    tgt(e1)==src(e2)
+    sheep_dir(s)==:N
+    sheep_eng(s) == 9
+  end
+  @test is_isomorphic(expected,rewrite(sheep_fwd_rule,ex))
 end
 
 # Eat grass + 4eng
 #-----------------
 # Grass is at 0 - meaning it's ready to be eaten
-s_eat_pac = @acset LV begin
-  Sheep=1; Eng=1; Dir=1; V=1; sheep_loc=1; 
-  grass_eng=[0]; sheep_eng=[AttrVar(1)]; sheep_dir=[AttrVar(1)]
-end
+s_eat_pac = @acset_colim yLV begin s::Sheep; grass_eng(sheep_loc(s))==0 end
 
-
-se_rule = Rule(id(S), id(S); expr=(Eng=[vs->30,vs->vs[2]+4],), 
+se_rule = Rule(id(S), id(S); expr=(Eng=[vs->vs[1]+4,vs->30],), 
                ac=[AppCond(homomorphism(S,s_eat_pac))])
 sheep_eat = tryrule(RuleApp(:Sheep_eat, se_rule, S))
 
 begin # test 
-  ex = @acset LV begin Sheep=1; V=3; E=2; src=[1,2]; tgt=[2,3]; sheep_loc=2
-    sheep_eng=[3]; grass_eng=[9,0,11]; dir=fill(North(),2); sheep_dir=[North()]
+  ex = @acset_colim yLV begin s::Sheep; e::E; sheep_loc(s)==tgt(e)
+    sheep_eng(s)==3; grass_eng(tgt(e))==0; grass_eng(src(e))==10
+  end
+  expected = @acset_colim yLV begin s::Sheep; e::E; sheep_loc(s)==tgt(e)
+    sheep_eng(s)==7; grass_eng(tgt(e))==30; grass_eng(src(e))==10
   end
 
-  rewrite(se_rule,ex)
+  @test is_isomorphic(expected, rewrite(se_rule,ex))
 end
 
 # Eat sheep + 20 eng
@@ -308,65 +309,52 @@ wolf_eat = tryrule(RuleApp(:Wolf_eat, we_rule, W))
 
 begin # test 
   ex = @acset LV begin Sheep=1; Wolf=1; V=3; E=2; src=[1,2]; tgt=[2,3]; sheep_loc=2
-    sheep_eng=[3]; grass_eng=[9,10,11]; dir=fill(North(),2); sheep_dir=[North()]
-    wolf_loc=[2]; wolf_eng=[16]; wolf_dir=[South()]
+    sheep_eng=[3]; grass_eng=[9,10,11]; dir=fill(:N,2); sheep_dir=[:N]
+    wolf_loc=[2]; wolf_eng=[16]; wolf_dir=[:S]
   end
   expected = @acset LV begin Wolf=1; V=3; E=2; src=[1,2]; tgt=[2,3]; 
-    grass_eng=[9,10,11]; dir=fill(North(),2); sheep_dir=[North()]
-    wolf_loc=[2]; wolf_eng=[36]; wolf_dir=[South()]
+    grass_eng=[9,10,11]; dir=fill(:N,2); sheep_dir=[:N]
+    wolf_loc=[2]; wolf_eng=[36]; wolf_dir=[:S]
   end
   @test is_isomorphic(rewrite(we_rule,ex), expected)
 end
 
 # Die if 0 eng
 #-------------
-s_die_l = @acset LV begin
-  Sheep=1; V=1; Eng=1; Dir=1; grass_eng=[AttrVar(1)]
-  sheep_eng=[0]; sheep_loc=1; sheep_dir=[AttrVar(1)]
-end
+s_die_l = @acset_colim yLV begin s::Sheep; sheep_eng(s)==0 end 
+
 sheep_die_rule = Rule(homomorphism(G, s_die_l), id(G))
 sheep_starve = (RuleApp(:starve, sheep_die_rule, 
                        homomorphism(S,s_die_l), create(G))
                 ⋅ (id([I]) ⊗ Weaken(create(S))) ⋅ merge_wires(I))
 
 begin # test 
-  ex = @acset LV begin Sheep=1; Wolf=1; V=3; E=2; src=[1,2]; tgt=[2,3]; sheep_loc=2
-    sheep_eng=[0]; grass_eng=[9,10,11]; dir=fill(North(),2); sheep_dir=[North()]
-    wolf_loc=[2]; wolf_eng=[16]; wolf_dir=[South()]
-  end
-  expected = @acset LV begin Wolf=1; V=3; E=2; src=[1,2]; tgt=[2,3]; 
-    grass_eng=[9,10,11]; dir=fill(North(),2);
-    wolf_loc=[2]; wolf_eng=[16]; wolf_dir=[South()]
-  end
+  ex = s_die_l ⊕ W
+  expected = G ⊕ W
   @test is_isomorphic(rewrite(sheep_die_rule,ex), expected)
 end
 
 # reproduction
 #-------------
 
-s_reprod_r =  @acset LV begin
-  Sheep=2; V=1; Eng=3; Dir=2; sheep_loc=1; grass_eng=[AttrVar(1)]
-  sheep_dir=AttrVar.(1:2); sheep_eng=AttrVar.(2:3); 
-end
+s_reprod_r =  @acset_colim yLV begin (x,y)::Sheep; sheep_loc(x)==sheep_loc(y) end
 
 sheep_reprod_rule = Rule(
   homomorphism(G, S),
   homomorphism(G, s_reprod_r); 
-  expr=(Dir=[vs->vs[1],vs->vs[1]], Eng=[vs->vs[1], 
-             fill(vs->round(Int, vs[2]/2, RoundUp), 2)...],)
+  expr=(Dir=[vs->vs[1],vs->vs[1]], Eng=[vs->vs[2], 
+             fill(vs->round(Int, vs[1]/2, RoundUp), 2)...],)
   )
 
 sheep_reprod = RuleApp(:reproduce, sheep_reprod_rule, 
                        id(S), homomorphism(S, s_reprod_r)) |> tryrule
 
 begin # test 
-  ex = @acset LV begin Sheep=1; Wolf=1; V=3; E=2; src=[1,2]; tgt=[2,3]; sheep_loc=2
-    sheep_eng=[10]; grass_eng=[9,10,11]; dir=fill(North(),2); sheep_dir=[North()]
-    wolf_loc=[2]; wolf_eng=[16]; wolf_dir=[South()]
-  end
-  expected = @acset LV begin Sheep=2; Wolf=1; V=3; E=2; src=[1,2]; tgt=[2,3]; sheep_loc=2
-    sheep_eng=[5,5]; grass_eng=[9,10,11]; dir=fill(North(),2); sheep_dir=[North(),North()]
-    wolf_loc=[2]; wolf_eng=[16]; wolf_dir=[South()]
+  ex = @acset_colim yLV begin s::Sheep; w::Wolf; sheep_eng(s) == 10 end
+  expected = @acset_colim yLV  begin 
+    (s1,s2)::Sheep; w::Wolf;
+    sheep_loc(s1) == sheep_loc(s2)
+    sheep_eng(s1) == 5; sheep_eng(s2)==5
   end
   @test is_isomorphic(rewrite(sheep_reprod_rule,ex),expected)
 end
@@ -386,10 +374,10 @@ g_inc = RuleApp(:GrassIncrements,g_inc_rule, G) |> tryrule
 
 begin # test 
   ex = @acset LV begin Sheep=1; V=3; E=2; src=[1,2]; tgt=[2,3]; sheep_loc=2
-    sheep_eng=[3]; grass_eng=[1,10,2]; dir=fill(North(),2); sheep_dir=[North()]
+    sheep_eng=[3]; grass_eng=[1,10,2]; dir=fill(:N,2); sheep_dir=[:N]
   end
   expected = @acset LV begin Sheep=1; V=3; E=2; src=[1,2]; tgt=[2,3]; sheep_loc=2
-    sheep_eng=[3]; grass_eng=[0,10,2]; dir=fill(North(),2); sheep_dir=[North()]
+    sheep_eng=[3]; grass_eng=[0,10,2]; dir=fill(:N,2); sheep_dir=[:N]
   end
   @test is_isomorphic(rewrite(g_inc_rule,ex), expected)
 end
