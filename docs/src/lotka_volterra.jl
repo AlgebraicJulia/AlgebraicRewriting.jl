@@ -292,19 +292,9 @@ end
 # Eat sheep + 20 eng
 #-------------------
 
-w_eat_l = @acset LV begin
-  Sheep=1; Wolf=1; V=1; Eng=3; Dir=2; grass_eng=[AttrVar(1)]
-  sheep_dir=[AttrVar(1)]; wolf_dir=[AttrVar(2)]; 
-  sheep_eng=[AttrVar(2)]; wolf_eng=[AttrVar(3)]
-  sheep_loc=1; wolf_loc=1
-end
+w_eat_l = @acset_colim yLV begin s::Sheep; w::Wolf; sheep_loc(s)==wolf_loc(w) end
 
-w_eat_r = @acset LV begin
-  Wolf=1; V=1; Eng=2; Dir=1; grass_eng=[AttrVar(1)]
-  wolf_dir=[AttrVar(1)]; wolf_eng=[AttrVar(2)]; wolf_loc=1
-end
-
-we_rule = Rule(homomorphism(w_eat_r, w_eat_l), id(w_eat_r); expr=(Eng=[vs->vs[1],vs->vs[3]+20],))
+we_rule = Rule(homomorphism(W, w_eat_l), id(W); expr=(Eng=[vs->vs[3]+20,vs->vs[1]],))
 wolf_eat = tryrule(RuleApp(:Wolf_eat, we_rule, W))
 
 begin # test 
