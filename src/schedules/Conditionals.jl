@@ -7,7 +7,7 @@ using ...CategoricalAlgebra.CSets: Migrate
 using ..Wiring, ..Poly
 using ..Wiring: AgentBox
 import ..Wiring: input_ports, output_ports, initial_state, color, update
-using ..Eval: Traj, id_pmap, traj_res, nochange
+using ..Eval: Traj, id_pmap, traj_res, nochange, traj_agent
 
 """
 A primitive box in a NestedDWD which does not change the state but redirects it 

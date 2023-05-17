@@ -38,13 +38,13 @@ end
 # Caching
 #########
 
-function yoneda_cache(T::Type,S=nothing; clear=false)
+function yoneda_cache(T::Type,S=nothing; clear=false, cache="cache")
   S = isnothing(S) ? Presentation(T) : S
-  name = nameof(T) |> string
-  cache_dir = mkpath(joinpath(@__DIR__, "..", "..", "cache", name))
+  tname = nameof(T) |> string
+  cache_dir = mkpath(cache)
   cache_dict = Dict(Iterators.map(generators(S, :Ob)) do ob
     name = nameof(ob)
-    path = joinpath(cache_dir, "$name.json")
+    path = joinpath(cache_dir, "$tname/$name.json")
     name => if !clear && isfile(path)
       read_json_acset(T, path)
     else 

@@ -398,15 +398,16 @@ function cascade_subobj(X::ACSet, sub)
   while change
     change = false 
     for (f,c,d) in homs(S)
-      dangling = [c for c in sub[c] if X[c,f] ∉ sub[d]]
-      if !isempty(dangling)
-        change = true 
-        setdiff!(sub[c], dangling)
+      for c_part in sub[c]
+        if X[c_part,f] ∉ sub[d]
+          change = true 
+          delete!(sub[c], c_part)
+        end
       end
     end
   end 
-  return Dict([k=>collect(v) for (k,v) in pairs(sub)])
-end 
+  return Dict([k => collect(v) for (k,v) in pairs(sub)])
+end
 
   
   

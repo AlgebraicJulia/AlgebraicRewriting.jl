@@ -47,5 +47,4 @@ expected = @acset WeightedGraph{Float64} begin
 end 
 @test is_isomorphic(rewrite(r, G), expected)
 
-
 end # module 
