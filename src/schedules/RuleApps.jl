@@ -57,7 +57,7 @@ initial_state(::RuleApp) = nothing
 #
 
 function update(r::RuleApp, p::PMonad=Maybe)#, ::Int, instate::Traj, ::Nothing)
-  function update_ruleapp(::Nothing, w::WireVal; verbose=false, kw...)
+  function update_ruleapp(::Nothing, w::WireVal; kw...)
     w.wire_id == 1 || error("RuleApps have exactly 1 input")
     last_step = traj_agent(w.val) # A -> X 
     m = update_match(r, last_step)
@@ -95,7 +95,7 @@ Feed the "rewrite applied" output back into the input of the rule application
 """
 function loop_rule(a::RuleApp)
   dom(a.in_agent) == dom(a.out_agent) || error("Cannot loop rule w/ different in/out agent")
-  mk_sched((trace_arg=:X,), (i=:X,), (f=a,X=dom(a.in_agent),), 
+  mk_sched((trace_arg=:X,), (i=:X,), Names(X=dom(a.in_agent)), (f=a,), 
             quote  f([i,trace_arg]) end) 
 end
 tryrule(a::RuleApp) = a ⋅ merge_wires(dom(a.in_agent))

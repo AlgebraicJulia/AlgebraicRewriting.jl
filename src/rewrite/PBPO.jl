@@ -3,7 +3,7 @@ export PBPORule
 
 using Catlab, Catlab.CategoricalAlgebra
 import Catlab.CategoricalAlgebra: left, right
-using Catlab.CategoricalAlgebra.CSets: backtracking_search
+using Catlab.CategoricalAlgebra.CSets: backtracking_search, abstract_attributes
 
 using StructEquality
 
@@ -13,7 +13,7 @@ import ..Utils:
 using ..Constraints
 using ...CategoricalAlgebra
 using ...CategoricalAlgebra.CSets: 
-  extend_morphism_constraints, abstract, var_pullback, remove_freevars, 
+  extend_morphism_constraints, var_pullback, remove_freevars, 
   combine_dicts!
   
 
@@ -114,9 +114,9 @@ The "strong match" condition we enforce is that: tl⁻¹(α(A)) = a⁻¹(A). Thi
 we can deduce precisely what m is by looking at α.
 
 """
-function get_matches(rule::PBPORule, G::StructACSet{S}; verbose=false, 
-                     initial=nothing, α_unique=true, random=false, n=-1, kw...
-                     ) where S
+function get_matches(rule::PBPORule, G::ACSet;  initial=nothing, 
+                     α_unique=true, random=false, n=-1, kw...)
+  S = acset_schema(G)
   res = [] # Pairs of (m,α)
   L = codom(left(rule))
 
@@ -136,11 +136,9 @@ function get_matches(rule::PBPORule, G::StructACSet{S}; verbose=false,
                       random=random) do m
     m_seen = false # keeps track if α_unique is violated for each new m
     if all(ac->apply_constraint(ac, m), rule.acs)
-      if verbose 
-        println("m: ", [k=>collect(v) for (k,v) in pairs(components(m))]) 
-      end
+      @info "m:  $([k=>collect(v) for (k,v) in pairs(components(m))])"
       # Construct abtract version of G. ab: A->G 
-      ab = abstract(G)
+      ab = abstract_attributes(G)
       A = dom(ab) # not completely abstract: fill in where L has concrete attrs
       for (a, cd, _) in attrs(S)
         for (v, fv) in filter(v_->!(v_[2] isa AttrVar),collect(enumerate(L[a])))
@@ -167,9 +165,7 @@ function get_matches(rule::PBPORule, G::StructACSet{S}; verbose=false,
         else 
           # Search for adherence morphisms.
           backtracking_search(codom(a), codom(rule.tl); initial=init, kw...) do α
-            if verbose 
-              println("\tα: ", [k=>collect(v) for (k,v) in pairs(components(α))]) 
-            end
+            @info "\tα: ", [k=>collect(v) for (k,v) in pairs(components(α))] 
             strong_match = all(ob(S)) do o 
               all(parts(A,o)) do i 
                 p1 = preimage(rule.tl[o],α[o](i))
@@ -180,14 +176,13 @@ function get_matches(rule::PBPORule, G::StructACSet{S}; verbose=false,
             if strong_match && all(lc -> apply_constraint(lc, α), rule.lcs)
               all(is_natural, [m,a,ab,α]) || error("Unnatural match")
               if m_seen  error("Multiple α for a single match $m") end 
-              if verbose print("\tSUCCESS") end 
+              @info "\tSUCCESS"
               push!(res, deepcopy((m,a,ab,α)))
               m_seen |= α_unique
               return length(res) == n
-            elseif verbose 
-              println("\tFAILURE (strong $strong_match)")
+            else
+              @info "\tFAILURE (strong $strong_match)"
               return false
-            else return false
             end
           end
         end
@@ -219,7 +214,7 @@ function rewrite_match_maps(rule::PBPORule,mα; check=false, kw...)
   _, _, _, α = mα 
   S = acset_schema(dom(left(rule)))
   gl, u′ = var_pullback(Cospan(α, rule.l′)) # A <-- Gk --> K'
-  abs_K = abstract(dom(left(rule))) # absK -> K 
+  abs_K = abstract_attributes(dom(left(rule))) # absK -> K 
   u = only(filter(u->force(compose(u,u′))==force(compose(abs_K,rule.tk)), 
                   homomorphisms(dom(abs_K), dom(u′))))
   abs_r = homomorphism(dom(abs_K), codom(right(rule)); 

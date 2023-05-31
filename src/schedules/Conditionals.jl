@@ -93,7 +93,7 @@ function while_schedule(s::Schedule, boolfun::Function; name=:while, argtype=:wo
   a, a′ = only.([input_ports(s.d),output_ports(s.d)])
   a == a′ || error(err)
   ic = singleton(if_cond(name, boolfun, a; argtype=argtype))
-  return mk_sched((trace_arg=:X,),(init=:X,),(X=a,iff=ic,f=s), quote 
+  return mk_sched((trace_arg=:X,),(init=:X,),Names(X=a),(iff=ic,f=s), quote 
     if_t, if_f = iff([init,trace_arg])
     return f(if_t), if_f
   end)
@@ -109,8 +109,8 @@ function for_schedule(s_::Schedule, n::Int)
   a == only(output_ports(s.d)) || error("for_schedule ports not 1-1")
   forblock = Conditional((_,i) -> i>0 ? [0., 1] : [1., 0], 2, a; name=Symbol("for 1:$n"),
                        update=(_,i) -> i - 1, init=n)
-  return mk_sched((trace_arg=:A,),(init=:A,), Dict(
-    :forb => forblock, :sched=>s,  :A=>a), quote 
+  return mk_sched((trace_arg=:A,),(init=:A,), Names(Dict(:A=>a,)), Dict(
+    :forb => forblock, :sched=>s), quote 
       out, loop = forb([init, trace_arg])
       return sched(loop), out
   end)

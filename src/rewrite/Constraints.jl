@@ -104,8 +104,8 @@ function merge_graphs(g1,g2)
   end 
   ps = [ACSetTransformation(overlap_g, g; p...) for (g,p) in [(g1,p1),(g2,p2)]]
   for (i,p) in enumerate(ps) 
-    errs = is_natural(p; return_failures=true)
-    isempty(errs) || error("UNNATURAL $i: $errs\n$(components(p))")
+    errs = naturality_failures(p)
+    all(isempty,values(errs)) || error( "UNNATURAL $i: $errs\n$(components(p))")
   end
   return colimit(Span(ps...))
 end
@@ -221,38 +221,38 @@ bound(b::BoolNot) = bound(b.expr)
 bound(b::Quantifier) = Set([b.e]) ∪ bound(b.expr)
 bound(::Commutes) = Set{Int}([])
 
-eval_boolexpr(c::BoolConst, ::CGraph, ::Assgn; verbose::Bool=false) = c.val
-eval_boolexpr(c::BoolNot, g::CGraph, m::Assgn; verbose::Bool=false) = 
-  !eval_boolexpr(c.expr, g, m; verbose=verbose)
-eval_boolexpr(c::BoolAnd, g::CGraph, m::Assgn; verbose::Bool=false) = 
-  all(eval_boolexpr(x, g, m; verbose=verbose) for x in c.exprs)
-eval_boolexpr(c::BoolOr, g::CGraph, m::Assgn; verbose::Bool=false) = 
-  any(eval_boolexpr(x, g, m; verbose=verbose) for x in c.exprs)
+eval_boolexpr(c::BoolConst, ::CGraph, ::Assgn) = c.val
+eval_boolexpr(c::BoolNot, g::CGraph, m::Assgn) = 
+  !eval_boolexpr(c.expr, g, m)
+eval_boolexpr(c::BoolAnd, g::CGraph, m::Assgn) = 
+  all(eval_boolexpr(x, g, m) for x in c.exprs)
+eval_boolexpr(c::BoolOr, g::CGraph, m::Assgn) = 
+  any(eval_boolexpr(x, g, m) for x in c.exprs)
 
-function eval_boolexpr(c::Commutes, ::CGraph, ms::Assgn; verbose::Bool=false)
+function eval_boolexpr(c::Commutes, ::CGraph, ms::Assgn)
   maps = map(c.pths) do p 
     force(length(p)==1 ? ms[p[1]] : compose(ms[p]...))
   end 
   return c.commutes == (all(m->m==maps[1],maps))
 end 
 
-function eval_boolexpr(q::Quantifier, g::CGraph, curr::Assgn; verbose=false)
+function eval_boolexpr(q::Quantifier, g::CGraph, curr::Assgn)
   d, cd = [get_ob(g,x,curr) for x in [g[q.e, :src], g[q.e, :tgt]]]
   cands = []
-  if verbose println("$(q.kind) ($(q.e))") end
+  @info "$(q.kind) ($(q.e))"
   for h in homomorphisms(d, cd; monic=q.monic)
     x = deepcopy(curr)
     x[q.e] = h 
-    if verbose println("candidate morphism $(components(h))") end
-    if eval_boolexpr(q.st, g, x; verbose=verbose)
-      if verbose println("successful candidate!") end
+    @info "candidate morphism $(components(h))"
+    if eval_boolexpr(q.st, g, x)
+      @info "successful candidate!"
       push!(cands, x)
     end
   end 
   n = length(cands)
   suc = [eval_boolexpr(q.expr, g, cand) for cand in cands]
   n_success = sum([0, suc...])
-  if verbose println("$(q.kind) ($(q.e)) n $n success $suc") end 
+  @info "$(q.kind) ($(q.e)) n $n success $suc"
   if     q.kind == :Exists  return n_success > 0
   elseif q.kind == :Exists! return n_success == 1
   elseif q.kind == :Forall  return n_success == n
@@ -360,7 +360,7 @@ function get_ob(c::CGraph, v_i::Int, curr::Assgn)
   error("Failed to get ob")
 end
 
-function apply_constraint(c::Constraint, fs...; verbose::Bool=false)
+function apply_constraint(c::Constraint, fs...)
   # populate assignment of ACSetTransformations 
   ms = Assgn(map(enumerate(c.g[:elabel])) do (i, e) 
     if e isa ACSetTransformation 
@@ -375,7 +375,7 @@ function apply_constraint(c::Constraint, fs...; verbose::Bool=false)
       return f
     end # Assignment has "nothing" for variables that are quantified
   end)
-  return eval_boolexpr(c.d, c.g, ms; verbose=verbose)  # Evaluate expression
+  return eval_boolexpr(c.d, c.g, ms)  # Evaluate expression
 end
 
 # Special forms of constraints

@@ -170,7 +170,7 @@ more performant because we do not have to query all homomorphisms before finding
 a valid match, in case n=1. 
 """
 function get_matches(r::Rule{T}, G::ACSet; initial=nothing,
-                     verbose=false, random=false, n=-1) where T
+                     random=false, n=-1) where T
   initial = isnothing(initial) ? Dict() : initial
 
   hs = []
@@ -180,18 +180,16 @@ function get_matches(r::Rule{T}, G::ACSet; initial=nothing,
     if isnothing(cm)
       push!(hs, deepcopy(h))
       return length(hs) == n # we stop the search Hom(L,G) when this holds
-    elseif verbose 
-      println("$([k => collect(v) for (k,v) in pairs(components(h))]): $cm")
+    else
+      @info "$([k => collect(v) for (k,v) in pairs(components(h))]): $cm"
       return false
-    else return false
     end
   end 
   return hs
 end
 
 """If not rewriting ACSets, we have to compute entire Hom(L,G)."""
-function get_matches(r::Rule{T}, G; initial=nothing, verbose=false, 
-                     random=false, n=-1) where T 
+function get_matches(r::Rule{T}, G; initial=nothing, random=false, n=-1) where T 
   initial = isnothing(initial) ? Dict() : initial
   ms = homomorphisms(codom(left(r)), G; monic=r.monic, 
                      initial=NamedTuple(initial), random=random)
@@ -271,16 +269,16 @@ Perform a rewrite (automatically finding an arbitrary match) and return a tuple:
 1.) the match morphism 2.) all computed data 3.) variable binding morphism
 """
 function rewrite_full_output(r::AbsRule, G; initial=nothing, random=false,
-                             verbose=false, n=-1, kw...) 
+                             n=-1, kw...) 
   T = ruletype(r)
-  ms = get_matches(r,G,initial=initial, random=random, n=n, verbose=verbose)
+  ms = get_matches(r,G,initial=initial, random=random, n=n)
   if isempty(ms)
     return nothing
   elseif random
     shuffle!(ms)
   end
   m = first(ms)
-  rdata = rewrite_match_maps(r, m; verbose=verbose, kw...)
+  rdata = rewrite_match_maps(r, m; kw...)
   return (m, rdata, codom(get_expr_binding_map(r, m, get_rmap(T, rdata))))
 end
 

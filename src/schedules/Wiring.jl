@@ -1,6 +1,6 @@
 module Wiring
-export Schedule, mk_sched, typecheck, merge_wires, 
-       singleton, traj_res, traj_agent, view_sched
+export Schedule, Names, mk_sched, typecheck, merge_wires, 
+       singleton, traj_res, traj_agent
 
 using Catlab, Catlab.CategoricalAlgebra, Catlab.WiringDiagrams, Catlab.Programs,
       Catlab.Theories
@@ -25,6 +25,22 @@ str_hom(m::ACSetTransformation) = join([
   "$k: $(collect(c))" for (k,c) in pairs(components(m))
   if !isempty(collect(c))], '\n')
 
+struct Names{T}
+  from_name::Dict{String,T}
+  to_name::Dict{T,String}
+  Names(d::Dict{String,T}) where T = new{T}(d, Dict([v=>k for (k,v) in collect(d)]))
+end
+Names(d::Dict) = Names(Dict([string(k)=>v for (k,v) in collect(d)]))
+Names(;kw...) = Names(Dict([string(k)=>v for (k,v) in pairs(kw)]))
+Base.getindex(n::Names,s::String) = n.from_name[s]
+Base.getindex(n::Names,s::Symbol) = n[string(s)]
+Base.getindex(n::Names,x)::String = get(n.to_name,x,"?")
+function Base.setindex(n::Names, x::String, y) 
+  n.from_name[x] = y 
+  n.to_name[y] = x
+end
+(F::Migrate)(n::Names) = Names(F(n.from_name))
+
 # General wiring diagram utilities
 ###################################
 
@@ -33,15 +49,15 @@ Make a wiring diagram with ob/hom generators using @program macro
 
 TODO double check that this does not introduce any wire splitting.
 """
-function mk_sched(t_args::NamedTuple,args::NamedTuple,
+function mk_sched(t_args::NamedTuple,args::NamedTuple,names::Names,
                   kw::Union{NamedTuple,AbstractDict}, wd::Expr)
   n_trace=length(t_args)
-  os = Dict(k=>v for (k,v) in collect(pairs(kw)) if v isa StructACSet)
-  hs = Dict(k=>(v isa AgentBox ? singleton(v) : v) for (k,v) in collect(pairs(kw))
-            if v isa Union{Schedule,AgentBox})
+  os = Dict(Symbol(k)=>v for (k,v) in collect(names.from_name))
+  hs = Dict(Symbol(k)=>v isa AgentBox ? singleton(v) : v for (k,v) in pairs(kw))
   P = Presentation(TM)
   os_ = Dict(v=>add_generator!(P, Ob(TM,k)) for (k,v) in collect(os))
-  for (k,v) in collect(hs)
+
+  for (k,v) in collect(pairs(hs))
     i = (isempty(input_ports(v)) 
         ? munit(TM.Ob) 
         : otimes([os_[ip] for ip in input_ports(v)]))
@@ -73,7 +89,7 @@ function mk_sched(t_args::NamedTuple,args::NamedTuple,
     newer_x = functor((TM.Ob,TM.Hom),new_x, terms=Dict(:Ob=>ob_map, :Hom=>hom_map))
 
   catch e
-    if e.msg != "inputs == outputs[σ]"
+    if !(e isa AssertionError && e.msg == "inputs == outputs[σ]")
       throw(e)
     end
   end 
@@ -82,7 +98,7 @@ function mk_sched(t_args::NamedTuple,args::NamedTuple,
   sub = ocompose(new_d, [hs[Symbol(b.value)].d for b in boxes(new_d)])
   sub.diagram[:wire_value] = nothing
   for x in Symbol.(["$(x)_port_type" for x in [:outer_in,:outer_out,]])
-    sub.diagram[:,x] = [kw[v] for v in sub.diagram[x]]
+    sub.diagram[:,x] = [names[v] for v in sub.diagram[x]]
   end
 
   return Schedule(sub, newer_x)
@@ -113,8 +129,8 @@ function singleton(b::AgentBox)::Schedule
   wd = WD(ips, ops)
   add_box!(wd, mk_box(b))
   add_wires!(wd, [
-    [Wire(ip,(input_id(wd),i),(1,i)) for (i, ip) in enumerate(ips)]...,
-    [Wire(op,(1,i),(output_id(wd),i)) for (i, op) in enumerate(ops)]...,])
+    [Wire(nothing,(input_id(wd),i),(1,i)) for (i, ip) in enumerate(ips)]...,
+    [Wire(nothing,(1,i),(output_id(wd),i)) for (i, op) in enumerate(ops)]...,])
   iob, oob = otimes.([TM.Ob[Ob(TM, x) for x in xs] for xs in [ips,ops]])
   x = Hom(name(b), iob, oob)
   return Schedule(wd, x)
@@ -196,13 +212,7 @@ function typecheck(wd::WiringDiagram)
   wd = deepcopy(wd)
   for (i, (s,t,wval,sval,tval)) in enumerate(wnames)
     for (w,vs) in enumerate(wire_vals(wd, i))
-      if length(vs) != 1 
-        if i == 1
-          error("#$wval $w $(wd.diagram[w,[:src, :out_port_box,:value]]) $(wd.diagram[w,[:tgt, :in_port_box,:value]]) $vs")
-        else
-          error("#$wval $w $vs")
-        end
-      end 
+      if length(vs) != 1  error("#$wval $w $vs") end 
       set_subpart!(wd.diagram, w,  wval, only(vs))
       set_subpart!(wd.diagram, wd.diagram[w,s], sval, only(vs))
       set_subpart!(wd.diagram, wd.diagram[w,t], tval, only(vs))
@@ -211,15 +221,14 @@ function typecheck(wd::WiringDiagram)
   return wd
 end
 
-"""1 = wire, 2 = inwire, 3 = outwire"""
+"""1 = inwire, 2 = outwire"""
 function wire_vals(wd::WiringDiagram, i::Int)
-  (s,t,wval,sval,tval) = wnames[i]
-  map(enumerate(zip(wd.diagram[s], wd.diagram[t]))) do (i, (op, ip))
-    d = [wd.diagram[i,wval], wd.diagram[op, sval],wd.diagram[ip, tval]]
+  (s,t,_,sval,tval) = wnames[i]
+  map(zip(wd.diagram[s], wd.diagram[t])) do (op, ip)
+    d = [wd.diagram[op, sval],wd.diagram[ip, tval]]
     return unique(filter(x->!isnothing(x), collect(values(d))))
   end 
 end
-
 
 
 """

@@ -6,7 +6,7 @@ using Catlab.CategoricalAlgebra
 using ...CategoricalAlgebra.CSets: Migrate
 using ..Poly
 using ..Wiring: AgentBox
-import ..Wiring: input_ports, output_ports, initial_state, color,  name, update
+import ..Wiring: input_ports, output_ports, initial_state, color, update
 using ..Eval: Traj, TrajStep, traj_agent, id_pmap, tot_pmap, traj_res, add_step
 
 """
@@ -79,9 +79,9 @@ end
 struct Fail <: AgentBox
   agent::ACSet
   silent::Bool
-  Fail(a::ACSet, silent=false) = new(a,silent)
+  name::String
+  Fail(a::ACSet, silent=false, name="Fail") = new(a,silent,name)
 end 
-name(::Fail) = "Fail"
 input_ports(r::Fail) = [r.agent] 
 output_ports(::Fail) = []
 initial_state(::Fail) = nothing 

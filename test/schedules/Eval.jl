@@ -27,14 +27,14 @@ end
 
 z, g1, ar, loop = Graph(), Graph(1), path_graph(Graph, 2), apex(terminal(Graph))
 
-N=Dict(z=>"Z",g1=>"•",ar=>"•→•")
+N=Names(Dict("Z"=>z,"•"=>g1,"•→•"=>ar))
+Dot, A = Symbol.([N[g1],N[ar]]) 
 
 av = RuleApp(:add_vertex, Rule(id(z), create(g1)))
 g2 = homomorphism(Graph(2), ar; monic=true)
 de = loop_rule(RuleApp(:del_edge, Rule(g2, id(Graph(2)))))
 coin = uniform(2, z)
 sched = coin ⋅ (tryrule(av) ⊗ id([z])) ⋅ merge_wires(z) ⋅ de
-
 
 view_sched(sched, name="Simple schedule", names=N)
 G = path_graph(Graph, 4)
@@ -46,8 +46,7 @@ view_traj(sched, res, view_graph; agent=true, names=N)
 al = succeed(RuleApp(:add_loop, Rule(id(g1), homomorphism(g1,loop)), g1))
 q = Query(:Vertex, g1)
 
-bad_sched =mk_sched((trace_arg=:O,), (i=:Z,),
-  (rule=al, query=q, Z=z,O=g1), quote 
+bad_sched =mk_sched((trace_arg=Dot,), (i=:Z,), N, (rule=al, query=q), quote 
     q1,q2,q3 = query(i,trace_arg)
     trace = rule([q1,q2])
     out = [q3]
@@ -58,7 +57,7 @@ end);
 
 
 
-sched = mk_sched((o=:O,), (i=:Z,), Dict(:rule=>al, :query=>q, :Z=>z,:O=>g1), 
+sched = mk_sched((o=Dot,), (i=:Z,), N, Dict(:rule=>al, :query=>q), 
 quote 
   q1,q2,q3 = query(i,o)
   trace = rule(q2)
@@ -84,9 +83,9 @@ wt = Weaken(:Switch_to_tgt, t_hom)
 str = Strengthen(:Add_outedge, s_hom)
 maybe_add_loop = uniform(2, g1) ⋅ (al ⊗ id([g1]))
 
-sched = mk_sched((trace_arg=:V,), (init=:A,), Dict(
+sched = mk_sched((trace_arg=Dot,), (init=A,), N, Dict(
   :loop => maybe_add_loop, :out_edges=>q2, :weaken_src=>ws, 
-  :weaken_tgt=>wt, :add=>str, :A=>ar,:V=>g1, :Z=>z, :fail=>Fail(z)), 
+  :weaken_tgt=>wt, :add=>str, :fail=>Fail(z)), 
 quote 
   added_loops, out_edge, ignore = out_edges(init, trace_arg)
   fail(ignore)
@@ -96,11 +95,9 @@ quote
   return [trace1, trace2], out
 end);
 
-
-view_sched(maybe_add_loop; names=N)
 view_sched(sched; names=N)
 
-G = @acset Graph begin V=5; E=4; src=[1,2,2,5];tgt=[2,3,4,2] end 
+G = @acset Graph begin V=5; E=4; src=[1,2,2,5];tgt=[2,3,4,2] end
 arr_start = homomorphism(ar, G; initial=(V=[1,2],))
 res, = apply_schedule(sched, arr_start);
 view_traj(sched, res, to_graphviz; agent=false)
@@ -110,7 +107,8 @@ view_traj(sched, res, view_graph; agent=true, names=N)
 # For-loop: add 3 loops
 #######################
 sched = for_schedule(maybe_add_loop ⋅ merge_wires(g1), 3)
-res = apply_schedule(sched, id(g1));
+res, = apply_schedule(sched, id(g1));
+view_sched(sched; names=N)
 
 
 # Simple game of life 

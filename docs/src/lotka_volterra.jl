@@ -201,7 +201,7 @@ W = F(S)
 # Generic grass agent
 G = @acset_colim yLV begin v::V end
 
-N = Dict(W=>"W",S=>"S",G=>"G", I=>"")
+N = Names(Dict("W"=>W,"S"=>S,"G"=>G, ""=>I))
 # Rotating
 #---------
 
@@ -379,8 +379,7 @@ end
 #----------------------------------
 
 # 25% chance of left turn, 25% chance of right turn, 50% stay in same direction
-general = mk_sched((;),(init=:S,), (
-  S = S, I = I, G = G,
+general = mk_sched((;),(init=:S,), N, (
   turn   = const_cond([1.,2.,1.], S; name=:turn), 
   maybe  = const_cond([0.1, 0.9], S; name=:reprod), 
   lft    = sheep_rotate_l, 
@@ -399,15 +398,15 @@ sheep = sheep_eat ⋅ general   # once per sheep
 wolf = wolf_eat ⋅ F(general)  # once per wolf
 
 # Do all sheep, then all wolves, then all daily operations
-cycle = ( agent(sheep, S; n=:sheep,  ret=I)
-        ⋅ agent(wolf,  W; n=:wolves, ret=I)
-        ⋅ agent(g_inc, G; n=:grass))
+cycle = ( agent(sheep; n=:sheep,  ret=I)
+        ⋅ agent(wolf; n=:wolves, ret=I)
+        ⋅ agent(g_inc; n=:grass))
 
 # wrap in a while loop
 overall = while_schedule(cycle, curr -> nparts(curr,:Wolf) >= 0) |> F2
 view_sched(overall; names=F2(N))
 X = initialize(3, .25, .25)
-res, = apply_schedule(overall, X; steps=50, verbose=true);
+res, = apply_schedule(overall, X; steps=50);
 
 # Run these lines to view the trajectory
 using Luxor

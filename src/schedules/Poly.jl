@@ -51,6 +51,8 @@ struct Mealy
   f::Function # S × WireVal -> S × (t ◁ WireVal)
   t::PMonad
   s0::Any # initial state
+  name::String 
+  Mealy(f,t,s,n="") = new(f,t,s,string(n))
 end
 (f::Mealy)(w::WireVal; kw...) = f.f(f.s0, w; kw...)
 (f::Mealy)(s::Any,w::WireVal; kw...) = f.f(s, w; kw...)
@@ -141,7 +143,7 @@ sim_edges(s::Sim, boxid::Int) =
 
 """Replace all boxes in a WD with BTrees"""
 function apply_schedule(w_::WiringDiagram,g::Any,t::PMonad=Maybe; 
-                        in_port=1, steps=-1, verbose=false)
+                        in_port=1, steps=-1)
   # Replace boxes of Mealy machines with BTrees
   w = WiringDiagram([],[])
   copy_parts!(w.diagram, w_.diagram)
@@ -151,38 +153,41 @@ function apply_schedule(w_::WiringDiagram,g::Any,t::PMonad=Maybe;
   iw = only(out_wires(w, Port(input_id(w),OutputPort, in_port)))
   squeue = [Sim(iw,i,v) for (i,v) in t.η(g)] # [Sim(WireVal(in_port, g))] # start with a single simulation 'token'
   results = [Sim[] for _ in output_ports(w)] 
+  counter = 0
   # Main loop
   while !isempty(squeue)
     traj = pop!(squeue)
-    steps -= 1
+    steps -= 1; counter += 1
     if steps == 0 
       if length(results) == 1 
         push!(results[1], traj)
-        if verbose println("TIMEOUT") end
+        @info "TIMEOUT"
         continue
       else 
         error("timeout! multiple possible outputs") 
       end
-    elseif verbose
-      if steps > 0 print("$steps STEPS REMAINING ")  end 
-      println("($(length(squeue)) queued)")
     end
-    wi = last(traj.steps).outwire #curr_wire(w,traj, in_port)
+    wi = last(traj.steps).outwire
+    b = wi.target.box
     if wi.target.box == output_id(w)
       push!(results[wi.target.port], traj)
     else 
-      prepend!(squeue, apply_traj_step(w, traj, wi; verbose=verbose)) # DFS
+      # info 
+      @info "Step $counter (Box#$(b).$(wi.target.port): $(box(w,b).value.f.name))" 
+      if steps > 0 "($steps STEPS REMAINING )" end
+      if length(squeue) > 0 @info "($(length(squeue)) queued)" end
+        prepend!(squeue, apply_traj_step(w, traj, wi;)) # DFS
     end
   end 
   return t.μ.(results)  # apply monadic unit / multiplication to results
 end
 
-function apply_traj_step(w::WiringDiagram,t::Sim, wi::Wire; verbose=false)
+function apply_traj_step(w::WiringDiagram,t::Sim, wi::Wire;)
   cw = wi.target
   btree,i = box(w,cw.box).value, cw.port
   traj_val = WireVal(i, curr_traj(t))
   es = sim_edges(t,cw.box)
-  bres = btree(es, traj_val; verbose=verbose)
+  bres = btree(es, traj_val)
   map(bres) do (new_edge, msg)
     ow = only(out_wires(w, Port(cw.box,OutputPort,new_edge.o.wire_id)))
     add_edge(t, SimStep(msg, new_edge, wi, ow))

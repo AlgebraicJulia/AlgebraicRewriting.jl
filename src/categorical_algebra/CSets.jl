@@ -8,7 +8,7 @@ using Catlab, Catlab.Theories, Catlab.Schemas
 using Catlab.CategoricalAlgebra
 using Catlab.CategoricalAlgebra.FinSets: IdentityFunction, VarSet
 using Catlab.CategoricalAlgebra.Chase: extend_morphism, extend_morphism_constraints
-using Catlab.CategoricalAlgebra.CSets: unpack_diagram, type_components
+using Catlab.CategoricalAlgebra.CSets: unpack_diagram, type_components, abstract_attributes
 import ..FinSets: pushout_complement, can_pushout_complement, id_condition
 import Catlab.ACSetInterface: acset_schema
 import Catlab.CategoricalAlgebra.FinSets: predicate
@@ -60,48 +60,28 @@ function combine_dicts!(init, initial)
   return NamedTuple(init)
 end 
 
+# default behavior for types that don't explicitly implement `is_isomorphic`
+is_isomorphic(x) = is_monic(x) && is_epic(x) # should be upstreamed
 """
-Convert a morphism L->G to a morphism L->H using a partial morphism G->H, 
+Convert a morphism X->A to a morphism L->H using a partial morphism G->H, 
 if possible.
 
-       L ===== L
-     m ↓       ↓ m'
-       G ↩ K → H
+       A ↩ C → B
+       ↑   ↑ 
+       X ↩⌜Y
+         ≅
 
+This is a more categorical way to compute `update_agent` but for now will 
+remain unused unless we want to generalize rewriting schedules beyond ACSet 
+rewriting.
 """
-function postcompose_partial(kgh::Span, m::ACSetTransformation; 
-                             check::Bool=false)
-  # Unpack data
-  S = acset_schema(dom(m))
-  kg, kh = kgh
-  L = dom(m)
-  H = codom(kh)
-  # Validate data
-  codom(m) == codom(kg) || error("Cannot postcompose")
-  all(o->is_monic(kg[o]),ob(S)) || error("postcompose partial left leg must be monic $(collect.(collect(pairs(components(kg)))))")
-  is_natural(kg) || error("unnatural kg")
-  is_natural(kh) || error("unnatural kh")
-  is_natural(m) || error("unnatural m")
-
-  fake_res = m ⋅ invert_hom(kg; monic=true, epic=false) ⋅ kh 
-  res_comps = Dict{Symbol,Any}(o=>collect(fake_res[o]) for o in ob(S))
-  for at in attrtypes(S)
-    mapping = Union{attrtype_type(apex(kgh), at),AttrVar}[
-      AttrVar(0) for _ in parts(L, at)]
-    for (f, c, _) in attrs(S; to=at)
-      for (i,fi) in enumerate(L[f])
-        if fi isa AttrVar 
-          mapping[fi.val] = H[fake_res[c](i), f]
-        end
-      end
-    end
-    all(!=(AttrVar(0)), mapping) || error("unbound var in L! mapping $mapping")
-    res_comps[at] = mapping 
-  end 
-  res = ACSetTransformation(L,H; res_comps...)
-  !check || is_natural(res) || error("unnatural composed")
-  return res
- end
+function postcompose_partial(ACB::Span, XA::ACSetTransformation)
+  S = acset_schema(dom(XA))
+  YX, YC = var_pullback(Cospan(XA, left(ACB)))
+  if all(o->is_isomorphic(YX[o]), ob(S))
+    return invert_iso(YX) ⋅ YC ⋅ right(ACB)
+  end
+end
 
 
 """
@@ -162,15 +142,15 @@ Check whether (X, f_,g_) is the pullback of (f,g), up to isomorphism (i.e. the
 pullback of f and g produces (Y,π₁,π₂), where Y is isomorphic to X and 
 i⋅f_ = π₁ & i⋅g_ = π₂.
 """
-function check_pb(f,g,f_,g_; verbose=false)
-  if verbose println("checking pb with f $f\ng $g\nf_ $f_\ng_ $g_") end
+function check_pb(f,g,f_,g_)
+  @info "checking pb with f $f\ng $g\nf_ $f_\ng_ $g_"
   codom(f)==codom(g) || error("f,g must be cospan")
   dom(f_)==dom(g_)   || error("f_,g_ must be span")
   codom(f_)==dom(f)  || error("f_,f must compose")
   codom(g_)==dom(g)  || error("g_,g must compose")
 
   pb_check = limit(Cospan(f, g))
-  if verbose println("apex(pb_check) $(apex(pb_check))") end
+  @info "apex(pb_check) $(apex(pb_check))"
   isos = isomorphisms(apex(pb_check), dom(f_))
   return any(isos) do i
     all(zip(force.(legs(pb_check)), [f_, g_])) do (leg, h)
@@ -333,26 +313,6 @@ end
 # Subobjects
 ############
 
-# The following can be deleted when Catlab pull 605 is merged
-# Subobjects don't have the right behavior when variables are at play, though.
-"""A map f (from A to B) as a map of subobjects of A to subjects of B"""
-function (f::ACSetTransformation)(X::SubACSet)
-  S = acset_schema(dom(f))
-  codom(hom(X)) == dom(f) || error("Cannot apply $f to $X")
-  comps = Dict(map(ob(S)) do k
-    k=>(f[k]).(collect(components(X)[k]))
-  end)
-  Subobject(codom(f); comps...)
-end
-
-
-"""
-A map f (from A to B) as a map from A to a subobject of B
-# i.e. we cast the ACSet A to its top subobject
-"""
-(f::ACSetTransformation)(X::StructACSet) =
-  X == dom(f) ? f(top(X)) : error("Cannot apply $f to $X")
-
 function predicate(A::Subobject{VarSet{T}}) where T
   f = hom(A)
   pred = falses(length(codom(f)))
@@ -435,26 +395,26 @@ function sub_vars(X::ACSet, subs::AbstractDict)
   return first(legs(pushout(ox, oc)))
 end 
 
-"""
-For any ACSet, X, a canonical map A→X where A has distinct variables for all
-subparts.
-"""
-function abstract(X::StructACSet{S,Ts}; check::Bool=false) where {S,Ts} 
-  A = deepcopy(X); 
-  comps = Dict{Any,Any}(map(attrtypes(S)) do at
-    rem_parts!(A, at, parts(A,at))
-    comp = Union{AttrVar,attrtype_instantiation(S,Ts,at)}[]
-    for (f, d, _) in attrs(S; to=at)
-      append!(comp, A[f])
-      A[f] = AttrVar.(add_parts!(A, at, nparts(A,d)))
-    end 
-    at => comp
-  end)
-  for o in ob(S) comps[o]=parts(X,o) end
-  res = ACSetTransformation(A,X; comps...)
-  !check || is_natural(res) || error("bad abstract $comps")
-  return res
-end 
+# """
+# For any ACSet, X, a canonical map A→X where A has distinct variables for all
+# subparts.
+# """
+# function abstract(X::StructACSet{S,Ts}; check::Bool=false) where {S,Ts} 
+#   A = deepcopy(X); 
+#   comps = Dict{Any,Any}(map(attrtypes(S)) do at
+#     rem_parts!(A, at, parts(A,at))
+#     comp = Union{AttrVar,attrtype_instantiation(S,Ts,at)}[]
+#     for (f, d, _) in attrs(S; to=at)
+#       append!(comp, A[f])
+#       A[f] = AttrVar.(add_parts!(A, at, nparts(A,d)))
+#     end 
+#     at => comp
+#   end)
+#   for o in ob(S) comps[o]=parts(X,o) end
+#   res = ACSetTransformation(A,X; comps...)
+#   !check || is_natural(res) || error("bad abstract $comps")
+#   return res
+# end 
 
 
 """
@@ -474,7 +434,7 @@ function var_pullback(c::Cospan{<:StructACSet{S,Ts}}) where {S,Ts}
   for (at,c,_) in attrs(S) 
     new_apex[:,at] = fill(AttrVar(1), nparts(new_apex,c))
   end 
-  A = abstract(new_apex)
+  A = abstract_attributes(new_apex)
   map(zip(legs,c)) do (p,f)
     X = dom(f)
     attr_components = Dict(map(attrtypes(S)) do at
@@ -582,6 +542,7 @@ end
     Dict(collect(pairs(o))),Dict(collect(pairs(h))),t1,isnothing(t2) ? t1 : t2, delta)
 end 
 
+(F::Migrate)(d::Dict{V,<:ACSet}) where V = Dict([k=>F(v) for (k,v) in collect(d)])
 (F::Migrate)(d::Dict{<:ACSet,V}) where V = Dict([F(k)=>v for (k,v) in collect(d)])
 (m::Migrate)(::Nothing) = nothing
 function (m::Migrate)(Y::ACSet)

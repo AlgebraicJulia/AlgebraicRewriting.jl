@@ -113,17 +113,19 @@ initial_state(::Query) = QueryState(-1, ACSetTransformation[])
 #
 
 function update(q::Query, p::PMonad=Maybe)#instate::Traj, ::Nothing)
-  function update_query(S,w::WireVal; verbose=false, kw...)
+  function update_query(S,w::WireVal; kw...)
     idp = id_pmap(traj_res(w.val)) 
     msg = ""
     curr_boxstate = (w.wire_id != 1) ? S : begin 
       ms = filter(h->apply_constraint(q.constraint, h, traj_agent(w.val)),
                   homomorphisms(q.subagent, traj_res(w.val)))
       msg *= "Found $(length(ms)) agents"
+      @info "Found $(length(ms)) agents"
       QueryState(length(w.val), ms)
     end 
   
     if isempty(curr_boxstate) # END
+      @info "No more subagents"
       old_agent = get_agent(w.val,curr_boxstate.enter_time)
       new_agent = update_agent(w.val, curr_boxstate.enter_time, old_agent)
       if isnothing(new_agent) # original agent gone
@@ -138,10 +140,11 @@ function update(q::Query, p::PMonad=Maybe)#instate::Traj, ::Nothing)
         return MealyRes(curr_boxstate,[(nothing,wv)], msg)
       end 
     else # CONTINUE 
+      @info "Updating agents"
       new_agent = update_agent(w.val, curr_boxstate.enter_time, pop!(curr_boxstate))
       if isnothing(new_agent)
-        println("WARNING: Queued agent no longer exists")
-        return update_query(curr_boxstate, w; verbose=verbose, kw...)
+        @info "WARNING: Queued agent no longer exists"
+        return update_query(curr_boxstate, w; kw...)
       end
       msg *= "\nContinuing ($(length(curr_boxstate)) queued) with \n" * str_hom(new_agent)
       wv = WireVal(2, add_step(w.val, TrajStep(new_agent, idp)))
@@ -151,30 +154,33 @@ function update(q::Query, p::PMonad=Maybe)#instate::Traj, ::Nothing)
 end
 
 
-const ATypes = Union{Span,ACSetTransformation,Pair{StructACSet,StructACSet},
-                     StructACSet}
-function agent(s::Schedule, sa::ATypes; n=:agent, ret=nothing, 
-               constraint=Trivial)
-  if sa isa ACSetTransformation || sa isa Span 
-    q = Query(sa, n, ret; constraint=constraint)
-  elseif sa isa Pair{StructACSet,StructACSet}
-    q = Query(n, sa[1], sa[2], ret; constraint=constraint)
-  elseif sa isa StructACSet
-    q = Query(n, sa, nothing, ret; constraint=constraint)
+const ATypes = Union{Span,ACSetTransformation,StructACSet,Nothing}
+function agent(s::Schedule, in_agent::ATypes=nothing;
+               n=:agent, ret=nothing, constraint=Trivial)
+  subagent = only(input_ports(s))
+  outagent = only(output_ports(s)) 
+  e = "agent() requires [A]->[A] wiring diagram"
+  (isnothing(ret) && outagent == subagent) || outagent == ret || error(e)
+
+  if in_agent isa ACSetTransformation || in_agent isa Span
+    in_agent isa Span || dom(in_agent) == subagent || error("Bad span input")
+    in_agent isa ACSetTransformation || codom(left(in_agent)) == subagent || error("Bad hom input")
+    q = Query(in_agent, n, ret; constraint=constraint)
+  elseif in_agent isa StructACSet || isnothing(in_agent)
+    q = Query(n, subagent, in_agent, ret; constraint=constraint)
   else 
-    error("sa of type $(typeof(sa))")
+    error("in_agent of type $(typeof(in_agent))")
   end 
   a,b,z = output_ports(q)
   a_, c = input_ports(q)
   a == a_ || error("Bad ports")
   init_sym = (a == c) ? (:C) : (:A)
-
-  mk_sched((trace_arg=:C,), (init=init_sym,), (
-    query = q, sched=s, A=a, B=b, C=c, Z=z, fail=Fail(typeof(a)())), quote 
+  mk_sched((trace_arg=:C,), (init=init_sym,), Names(A=a, B=b, C=c, Z=z), (
+    query = q, sched=s, fail=Fail(typeof(a)())), quote 
       out, loop, ignore = query(init, trace_arg)
       fail(ignore)
       return sched(loop), out
   end)
 end 
 
-end # module 
+end # module

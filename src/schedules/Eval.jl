@@ -1,13 +1,13 @@
 module Eval 
 export Traj, TrajStep, apply_schedule, rewrite_schedule, traj_res
 
-using Catlab.CategoricalAlgebra, Catlab.WiringDiagrams
+using Catlab, Catlab.CategoricalAlgebra, Catlab.WiringDiagrams
 
 using ..Wiring, ..Poly
-using ..Wiring: initial_state, AgentBox, update
+using ..Wiring: initial_state, AgentBox, update, name
 using ...CategoricalAlgebra.CSets
-using ...CategoricalAlgebra.CSets: abstract
 import ..Poly: Mealy, apply_schedule, traj_res
+using Catlab.CategoricalAlgebra.CSets: abstract_attributes, hasvar, attrtype_type
 
 """
 This is a simple way of handling evaluation of diagrams which only works 
@@ -17,13 +17,9 @@ in the Maybe monad setting.
 # Partial map utilities 
 #######################
 
-id_pmap(s::StructACSet) = Span(abstract(s),abstract(s)) # the identity partial map
+id_pmap(s::StructACSet) = Span(abstract_attributes(s),abstract_attributes(s)) # the identity partial map
 no_pmap(s1::StructACSet,s2::StructACSet) = Span(create.([s1,s2])...) # empty
 tot_pmap(f::ACSetTransformation) = Span(id(dom(f)), f)
-
-noattr(s::StructACSet{S}) where S = all(a->nparts(s,a) == 0, attrtypes(S))
-noattr(s::ACSetTransformation) = noattr(codom(s))
-
 
 # General Trajectory and Schedule datatypes 
 ###########################################
@@ -37,7 +33,7 @@ struct TrajStep
   world::ACSetTransformation
   pmap::Span{<:ACSet}
   function TrajStep(w,p)
-    noattr(w) || error("World state has variables $w")
+    !hasvar(codom(w)) || error("World state has variables $w")
     codom(right(p)) == codom(w) || error("World doesn't match pmap")
     return new(w,p)
   end
@@ -72,34 +68,56 @@ disjoint(t::Traj, new_agent::ACSetTransformation) = add_step(t,
 """
 Take a morphism (pointing at world state #i) and push forward to current time.
 """
-function update_agent(t::Traj, i::Int, a::ACSetTransformation; check=false)
+function update_agent(t::Traj, idx::Int, a::ACSetTransformation; check=false)
   !check || is_natural(a) || error("Updating unnatural a")
-  noattr(a) || error("World state has variables")
-  if i < 0
-    error("Called update with negative index $i")
-  elseif i == length(t) # special case
-    codom(a) == codom(get_agent(t, i)) || error("BAD MATCH $i $a")
-    return a
-  end 
-  codom(a) == codom(left(t[i+1].pmap)) || error("BAD MATCH $i $a")
-  for j in i+1:length(t)
-    a = postcompose_partial(t[j].pmap, a)
-    if check && !is_natural(a) 
-      println("dom(a)"); show(stdout, "text/plain", dom(a))
-      println("codom(a)"); show(stdout, "text/plain", codom(a))
-      error("Updated unnatural a $(collect(pairs(components(a))))")
+  !hasvar(codom(a)) || error("World state has variables")
+  A = dom(a)
+  S = acset_schema(A)
+  if idx < 0 error("Called update with negative index $idx") end
+  if length(t) == 0 return idx==0 ? a : error("empty t w/ i=$idx") end
+  comps = Dict{Any,Any}()
+  for o in ob(S)
+    comp = Int[]
+    for aᵢ in parts(A,o)
+      i = a[o](aᵢ)
+      for j in idx+1:length(t)
+        l,r = t[j].pmap
+        p = preimage(l[o], i)
+        if isempty(p) 
+          return nothing 
+        else 
+          i = r[o](only(p))
+        end
+      end
+      push!(comp, i)
     end
-    if isnothing(a) return nothing end 
+    comps[o] = comp
   end
-  codom(a) == traj_res(t) || error("Failed to postcompose $(codom(a))\n$(traj_res(t))")
-  return a 
+  return only(homomorphisms(A, traj_res(t); initial=comps))
 end
+#     if i == length(t) # special case
+#     codom(a) == codom(get_agent(t, i)) || error("BAD MATCH $i $a")
+#     return a
+#   end 
+#   codom(a) == codom(left(t[i+1].pmap)) || error("BAD MATCH $i $a")
+#   for j in i+1:length(t)
+#     a = postcompose_partial(t[j].pmap, a)
+#     if check && !is_natural(a) 
+#       println("dom(a)"); show(stdout, "text/plain", dom(a))
+#       println("codom(a)"); show(stdout, "text/plain", codom(a))
+#       error("Updated unnatural a $(collect(pairs(components(a))))")
+#     end
+#     if isnothing(a) return nothing end 
+#   end
+#   codom(a) == traj_res(t) || error("Failed to postcompose $(codom(a))\n$(traj_res(t))")
+#   return a 
+# end
 
 
 # Executing schedules 
 #####################
 
-Mealy(a::AgentBox, p::PMonad) = Mealy(update(a,p),p,initial_state(a))
+Mealy(a::AgentBox, p::PMonad) = Mealy(update(a,p),p,initial_state(a), name(a))
 
 function apply_schedule(s::Schedule,g::Any,t::PMonad=Maybe; kwargs...)
   typecheck(s)
