@@ -7,21 +7,29 @@ using Catlab.Graphics: to_graphviz_property_graph
 
 using AlgebraicRewriting
 using Luxor
+using PrettyTables
 
 
 # Graph + agent viewer 
 ######################
-function view_graph(a)
+view_graph(a::Graph, path=tempname()) = view_graph(create(a), path)
+
+function view_graph(a::ACSetTransformation, path=tempname())
   g = codom(a)
   pg = to_graphviz_property_graph(g)
   for v in collect(a[:V])
-    set_vprops!(pg, v, Dict([ :style=>"filled",:color=>"red",:fillcolor=>"red"]))
+    set_vprops!(pg, v, Dict([:style=>"filled",:color=>"red",:fillcolor=>"red"]))
   end
   for e in collect(a[:E])
     set_eprops!(pg, e, Dict([:color=>"red"]))
   end
-  return to_graphviz(pg)
+  gv = to_graphviz(pg)
+  open(path, "w") do io
+    show(io,"image/svg+xml",gv)
+  end
+  return gv
 end
+
 # Simple workflow with control and rewriting 
 ############################################
 
@@ -63,7 +71,7 @@ quote
   trace = rule(q2)
   out = [q1,q3]
   return trace, out
-end);
+end)
 
 typecheck(sched)
 
@@ -100,7 +108,7 @@ view_sched(sched; names=N)
 G = @acset Graph begin V=5; E=4; src=[1,2,2,5];tgt=[2,3,4,2] end
 arr_start = homomorphism(ar, G; initial=(V=[1,2],))
 res, = apply_schedule(sched, arr_start);
-view_traj(sched, res, to_graphviz; agent=false)
+view_traj(sched, res, view_graph; agent=false)
 view_traj(sched, res, view_graph; agent=true, names=N)
 
 
@@ -122,6 +130,49 @@ view_sched(sched; names=N)
 end
 @acset_type AbsLifeGraph(SchLifeGraph)
 const LG = AbsLifeGraph{Bool,Int}
+
+"""
+ASCII example
+"""
+function view_life(X::LG, path=tempname())
+  coords, n, m = get_coords(X)
+  mat = pretty_table(String, reduce(hcat,map(1:n) do i 
+    map(1:m) do j 
+      l = X[coords[(i,j)],:live] ? "O" : "X"
+      return "$(l)$(X[coords[(i,j)],:eng])"
+    end
+  end); show_header=false, tf=tf_markdown)
+  open(path, "w") do io write(io, mat) end
+  return mat
+end
+
+"""Assume it's rectangular"""
+function get_coords(X::LG)
+  res = Union{Nothing,Tuple{Int,Int}}[nothing for _ in parts(X,:Cell)]
+  function get_coord!(c)
+    if !isnothing(res[c]) return res[c] end 
+    n_e, w_e = [X[c, Symbol("cell_$s")] for s in "NW"]
+    neighbor_n = incident(X, n_e, :cell_S)
+    if !isempty(neighbor_n)
+      i, j = get_coord!(only(neighbor_n))
+      res[c] = (i+1,j)
+      return res[c]
+    else
+      neighbor_w = incident(X, w_e, :cell_E)
+      if !isempty(neighbor_w)
+        i, j = get_coord!(only(neighbor_w))
+        res[c] = (i,j+1)
+        return res[c]
+      else
+        res[c] = (1,1)
+        return res[c]
+      end
+    end 
+  end
+  get_coord!.(parts(X, :Cell))
+  n, m = [maximum(f.(res)) for f in [first,last]]
+  return Dict(v=>i for (i,v) in enumerate(res)), n, m
+end
 
 # A generic cell
 Cell = @acset LG begin Cell=1; V=4; E=4; Life=1; Eng=1
@@ -156,5 +207,7 @@ expected = deepcopy(G)
 expected[:eng] = [1,11,100,1001] # the dead cells get +1
 
 @test is_isomorphic(traj_res(traj_res(res)), expected)
+
+view_traj(sched, res, view_life; agent=false)
 
 end # module

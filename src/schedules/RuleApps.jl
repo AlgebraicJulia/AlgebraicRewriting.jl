@@ -1,7 +1,7 @@
 module RuleApps
 export RuleApp, loop_rule, tryrule, succeed
 
-using Catlab.CategoricalAlgebra
+using Catlab.CategoricalAlgebra, Catlab.Theories
 
 using ...Rewrite
 using ...Rewrite.Utils: AbsRule, get_rmap, get_pmap, get_expr_binding_map

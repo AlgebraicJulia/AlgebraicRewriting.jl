@@ -368,9 +368,9 @@ function apply_constraint(c::Constraint, fs...)
     elseif e isa Int # need to check that the argument typechecks
       f = fs[e]
       s, t = [c.g[i, [x, :vlabel]] for x in [:src,:tgt]]
-      errs = "Edge $i: Bad src $s($dom(f)) for arg $e"
+      errs = "Edge $i: Bad src $s \n!=\n $(dom(f)) for arg $e"
       isnothing(s) || dom(f) == s || error(errs)
-      errt = "Edge $i: Bad tgt $t!=$(codom(f)) for arg $e"
+      errt = "Edge $i: Bad tgt $t \n!=\n $(codom(f)) for arg $e"
       isnothing(t) || codom(f) == t || error(errt)
       return f
     end # Assignment has "nothing" for variables that are quantified

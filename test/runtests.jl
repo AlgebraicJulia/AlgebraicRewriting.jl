@@ -5,9 +5,17 @@ using AlgebraicRewriting
 using Luxor
 @test length(methods(view_traj)) > 1
 
+# Demos
+#######
+
 @testset "Lotka Volterra" begin
-  include("../docs/src/lotka_volterra.jl") # this shouldn't crash
+  include("../docs/src/lotka_volterra.jl") 
 end
+
+@testset "Game of Life" begin
+  include("../docs/src/GameOfLife.jl") 
+end
+
 
 # Background 
 ############

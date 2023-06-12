@@ -4,18 +4,18 @@ export extend_morphism, pushout_complement,
        gluing_conditions, extend_morphisms, postcompose_partial, sub_vars,
        Migrate, invert_iso, deattr, var_pullback, remove_freevars
 
-using Catlab, Catlab.Theories, Catlab.Schemas
+using Catlab, Catlab.Theories
 using Catlab.CategoricalAlgebra
 using Catlab.CategoricalAlgebra.FinSets: IdentityFunction, VarSet
 using Catlab.CategoricalAlgebra.Chase: extend_morphism, extend_morphism_constraints
 using Catlab.CategoricalAlgebra.CSets: unpack_diagram, type_components, abstract_attributes
 import ..FinSets: pushout_complement, can_pushout_complement, id_condition
-import Catlab.ACSetInterface: acset_schema
+import ACSets: acset_schema
 import Catlab.CategoricalAlgebra.FinSets: predicate
 import Catlab.CategoricalAlgebra: is_natural, Slice, SliceHom, components,
                                   LooseACSetTransformation, homomorphisms, 
                                   homomorphism
-using Catlab.DenseACSets: attrtype_type, datatypes, constructor
+using ACSets.DenseACSets: attrtype_type, datatypes, constructor
 
 import Base: getindex
 using DataStructures: OrderedSet

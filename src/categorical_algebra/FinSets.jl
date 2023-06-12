@@ -4,7 +4,7 @@ export pushout_complement,can_pushout_complement,id_condition
 using Catlab.Theories
 using Catlab.CategoricalAlgebra: ComposablePair, FinSet, FinFunction
 using Catlab.CategoricalAlgebra.FinSets: VarFunction, VarSet
-using Catlab.ColumnImplementations: AttrVar
+using ACSets.ColumnImplementations: AttrVar
 
 # Pushout complements
 #--------------------

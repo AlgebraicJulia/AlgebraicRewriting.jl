@@ -1,7 +1,7 @@
 module Basic 
 export Weaken, Strengthen, Initialize, Fail
 
-using Catlab.CategoricalAlgebra
+using Catlab.CategoricalAlgebra, Catlab.Theories
 
 using ...CategoricalAlgebra.CSets: Migrate
 using ..Poly

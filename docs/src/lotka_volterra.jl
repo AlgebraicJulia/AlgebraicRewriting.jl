@@ -132,7 +132,7 @@ supscript_d = Dict([
 supscript(x::String) = join([get(supscript_d, c, c) for c in x])
 
 """Visualize a LV"""
-function view_LV(p::ACSetTransformation; name="G", title="")
+function view_LV(p::ACSetTransformation, pth=tempname(); name="G", title="")
   if nparts(dom(p),:Wolf) == 1 
     star = :Wolf=>p[:Wolf](1)
   elseif nparts(dom(p),:Sheep) == 1 
@@ -142,9 +142,9 @@ function view_LV(p::ACSetTransformation; name="G", title="")
   else
     star = nothing
   end
-  view_LV(codom(p); name=name, title=title, star=star)
+  view_LV(codom(p), pth; name=name, title=title, star=star)
 end  
-function view_LV(p::LV′; name="G", title="", star=nothing)
+function view_LV(p::LV′, pth=tempname(); name="G", title="", star=nothing)
   pstr = ["$(i),$(j)!" for (i,j) in p[:coord]]
   stmts = Statement[]
     for s in 1:nv(p)
@@ -183,7 +183,9 @@ function view_LV(p::LV′; name="G", title="", star=nothing)
   g = Graphviz.Digraph(name, Statement[stmts...]; prog="neato",
         graph_attrs=Attributes(:label=>title, :labelloc=>"t"),
         node_attrs=Attributes(:shape=>"plain", :style=>"filled"))
-  return g
+  open(pth, "w") do io 
+    show(io,"image/svg+xml",g)
+  end
 end
 
 i1 = initialize(2,.5,.5)

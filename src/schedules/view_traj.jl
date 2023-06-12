@@ -10,6 +10,8 @@ using .Luxor
 """
 Visualize a trajectory with two views: one showing the current position within 
 the schedule, and the other showing the world state.
+
+Viewer must be a function which accepts a path and writes an image to it.
 """
 function view_traj(sched_::Schedule, rG::Sim, viewer; out="traj", agent=false, names=nothing)
   if isdir(out) # clear old dir
@@ -25,25 +27,39 @@ function view_traj(sched_::Schedule, rG::Sim, viewer; out="traj", agent=false, n
 end
 
 """
-If agent is true, then the viewer function should operate on 
+If `agent` is true, then the viewer function should operate on 
 ACSetTransformations, rather than ACSets.
 """
 function view_traj(sched_::Schedule, rG::Sim, viewer, n::Int; out="traj", agent=false, names=nothing)
   traj = last(rG).edge.o.val
   length(traj)+1 == length(rG) || error("Traj length doesn't match sim length")
   step = rG[n+1]
-  graphs = [view_sched(sched_; name=step.desc, source=step.inwire.source, 
-                       target=step.outwire.source, names=names)]
+
+  f = tempname()
+  sched = view_sched(sched_; name=step.desc, source=step.inwire.source, 
+                     target=step.outwire.source, names=names)
+  open(f, "w") do io
+    show(io,"image/svg+xml",sched)
+  end
+  svgs = Any[readsvg(f)]
+
   start_world = n==1 ? traj.initial : traj[n-1].world
   end_world = traj[n].world
-  view(w) = viewer(agent ?  w : codom(w))
-  append!(graphs, view.([start_world, end_world]))
-  svgs = map(enumerate(graphs)) do (i,g)
+  for g in (agent ? identity : codom).([start_world, end_world])
     f = tempname()
-    open(f, "w") do io 
-      show(io,"image/svg+xml",g)
-    end
-    readsvg(f)
+    viewer(g, f) # write graph to file
+    img = 1
+    try 
+      img = readsvg(f)
+    catch _
+      str = read(f, String)
+      img = @drawsvg begin 
+        background("white")
+        settext(str; markup=false)
+      end
+      
+    end 
+    push!(svgs, img) # TODO replace this to work with png and ASCII
   end
   # Constants
   SPACE = 10

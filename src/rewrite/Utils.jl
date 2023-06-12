@@ -3,7 +3,7 @@ module Utils
 export Rule, ruletype,rewrite, rewrite_match, rewrite_full_output, 
        rewrite_match_maps, can_match, get_match, get_matches
 
-using Catlab, Catlab.Theories, Catlab.Schemas
+using Catlab, Catlab.Theories
 using Catlab.CategoricalAlgebra
 using Catlab.CategoricalAlgebra.CSets: backtracking_search
 import Catlab.CategoricalAlgebra: left, right
@@ -48,6 +48,13 @@ condition(s)
         error("unnatural map #$i: $f")
       end
     end
+    for (i,cond) in enumerate(ACs)
+      λ = findfirst(==(1), cond.g[:elabel])
+      λv = cond.g[λ, :src]
+      λs = cond.g[λv,:vlabel]
+      err = "Condition $i: source $λs \n != match L $(codom(L))\nE#$λ V#$λv"
+      λs == codom(L) || error(err)
+    end 
     # For the case of ACSet rewriting, address variable substitution in R
     if !(dom(L) isa ACSet)
       exprs = Dict()

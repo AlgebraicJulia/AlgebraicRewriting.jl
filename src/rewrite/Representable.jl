@@ -1,8 +1,8 @@
 module Representable 
 export yoneda_cache, SchRule, SchRulel, SchRuler, SchRule, SchPBPO
 
-using Catlab.CategoricalAlgebra
-using Catlab.DenseACSets: constructor
+using Catlab, Catlab.CategoricalAlgebra
+using ACSets.DenseACSets: constructor
 using Catlab.Programs.DiagrammaticPrograms: AST
 
 import ..Utils: Rule
@@ -72,7 +72,7 @@ genuine application conditions because we want to be able to apply the rule
 even when the conditions don't hold. (We track them to be able to report user 
 errors.)
 """
-function Rule(rule_schema::FinDomFunctor, y; semantics=:DPO, kw...)
+function Rule(rule_schema::DataMigration, y; semantics=:DPO, kw...)
   rule = colimit_representables(rule_schema, y)
   L, R, K = [rule_ob_map(rule, Symbol(x)) for x in "LRK"]
   l = rule_hom_map(rule, :l, K, L)
