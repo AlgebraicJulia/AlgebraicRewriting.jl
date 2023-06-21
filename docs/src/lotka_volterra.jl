@@ -190,7 +190,7 @@ function view_LV(p::LV′, pth=tempname(); name="G", title="", star=nothing)
 end
 
 i1 = initialize(2,.5,.5)
-view_LV(i1)
+# view_LV(i1)
 
 # RULES
 #######
