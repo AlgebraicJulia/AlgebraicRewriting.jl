@@ -20,6 +20,7 @@ Luxor = "ae8d54c2-7ccd-5906-9d76-62fc9837b5bc"
 AlgebraicRewritingLuxorExt = "Luxor"
 
 [compat]
+ACSets = "0.2"
 Catlab = "0.15"
 DataStructures = "0.17, 0.18"
 Reexport = "^1"
