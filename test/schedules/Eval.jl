@@ -208,6 +208,6 @@ expected[:eng] = [1,11,100,1001] # the dead cells get +1
 
 @test is_isomorphic(traj_res(traj_res(res)), expected)
 
-view_traj(sched, res, view_life; agent=false)
+# view_traj(sched, res, view_life; agent=false)
 
 end # module

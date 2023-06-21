@@ -1,7 +1,7 @@
 name = "AlgebraicRewriting"
 uuid = "725a01d3-f174-5bbd-84e1-b9417bad95d9"
 license = "MIT"
-authors = ["Kris Brown <kristopher.brown@ufl.edu>"]
+authors = ["Kris Brown <kris@topos.institute>"]
 version = "0.1.0"
 
 [deps]
