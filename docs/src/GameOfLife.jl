@@ -5,6 +5,7 @@ using Catlab, Catlab.Graphs, Catlab.CategoricalAlgebra, Catlab.Theories
 import Catlab.Graphics: to_graphviz
 using Catlab.Graphics.Graphviz: Attributes, Statement, Node, Edge, Digraph
 using PrettyTables
+using Luxor
 
 """
 The game of life has two rules: one which turns living things dead, and one 
@@ -173,8 +174,7 @@ traj = last(res).edge.o.val;
 
 view_life(i,traj) = view_life(traj.steps[i].world)
 
-using Luxor
-view_traj(L, res, view_life; agent=true)
+# view_traj(L, res, view_life; agent=true)
 
 
 end # module 

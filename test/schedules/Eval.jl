@@ -44,10 +44,10 @@ de = loop_rule(RuleApp(:del_edge, Rule(g2, id(Graph(2)))))
 coin = uniform(2, z)
 sched = coin ⋅ (tryrule(av) ⊗ id([z])) ⋅ merge_wires(z) ⋅ de
 
-view_sched(sched, name="Simple schedule", names=N)
+# view_sched(sched, name="Simple schedule", names=N)
 G = path_graph(Graph, 4)
 res, = apply_schedule(sched, G);
-view_traj(sched, res, view_graph; agent=true, names=N)
+# view_traj(sched, res, view_graph; agent=true, names=N)
 
 # Query workflow (add loop to each vertex)
 ##########################################
@@ -75,9 +75,9 @@ end)
 
 typecheck(sched)
 
-view_sched(sched; names=N)
+# view_sched(sched; names=N)
 res, = apply_schedule(sched, Graph(3))
-view_traj(sched, res, view_graph; agent=true, names=N)
+# view_traj(sched, res, view_graph; agent=true, names=N)
 
 
 # Dependent query workflow 
@@ -103,20 +103,20 @@ quote
   return [trace1, trace2], out
 end);
 
-view_sched(sched; names=N)
+# view_sched(sched; names=N)
 
 G = @acset Graph begin V=5; E=4; src=[1,2,2,5];tgt=[2,3,4,2] end
 arr_start = homomorphism(ar, G; initial=(V=[1,2],))
 res, = apply_schedule(sched, arr_start);
-view_traj(sched, res, view_graph; agent=false)
-view_traj(sched, res, view_graph; agent=true, names=N)
+# view_traj(sched, res, view_graph; agent=false)
+# view_traj(sched, res, view_graph; agent=true, names=N)
 
 
 # For-loop: add 3 loops
 #######################
 sched = for_schedule(maybe_add_loop ⋅ merge_wires(g1), 3)
 res, = apply_schedule(sched, id(g1));
-view_sched(sched; names=N)
+# view_sched(sched; names=N)
 
 
 # Simple game of life 

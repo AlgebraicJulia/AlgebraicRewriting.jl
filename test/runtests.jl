@@ -1,5 +1,6 @@
 using Test
 
+# Test package extensions
 using AlgebraicRewriting
 @test length(methods(view_traj)) == 1
 using Luxor

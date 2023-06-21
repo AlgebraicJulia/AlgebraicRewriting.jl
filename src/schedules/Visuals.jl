@@ -5,21 +5,13 @@ using ..Schedules
 using ..Schedules.Wiring: wnames, wire_vals, color, Schedule, Names
 using Catlab.CategoricalAlgebra, Catlab.WiringDiagrams, Catlab.Graphics
 using Catlab.WiringDiagrams.DirectedWiringDiagrams: out_port_id
-using Requires
-
 
 
 view_traj() = nothing
 
-function __init__()
-  @require Luxor = "ae8d54c2-7ccd-5906-9d76-62fc9837b5bc" include("view_traj.jl")
-end
-
-
 function view_sched(sched_::Schedule; name="",source=nothing, target=nothing, names=nothing)
   sched = WiringDiagram([], [])
   copy_parts!(sched.diagram,sched_.d.diagram)
-
 
   for (i, (s,t,wval,sval,tval)) in enumerate(wnames)
     for (w,vs) in enumerate(wire_vals(sched, i)) 

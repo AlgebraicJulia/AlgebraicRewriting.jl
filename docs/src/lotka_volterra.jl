@@ -4,6 +4,7 @@ using Catlab, Catlab.Theories, Catlab.CategoricalAlgebra, Catlab.Graphs,
       Catlab.Graphics, Catlab.WiringDiagrams, Catlab.Programs
 using AlgebraicRewriting
 using Random, Test, StructEquality
+using Luxor
 
 Random.seed!(123);
 
@@ -215,9 +216,9 @@ sheep_rotate_r = tryrule(RuleApp(:turn_right, rr, S))
 
 # we can imagine executing these rules in sequence or in parallel
 seq_sched = (sheep_rotate_l⋅sheep_rotate_r) 
-view_sched(seq_sched; names=N)
+# view_sched(seq_sched; names=N)
 par_sched = (sheep_rotate_l ⊗ sheep_rotate_r) 
-view_sched(par_sched; names=N)
+# view_sched(par_sched; names=N)
 
 
 
@@ -406,12 +407,11 @@ cycle = ( agent(sheep; n=:sheep,  ret=I)
 
 # wrap in a while loop
 overall = while_schedule(cycle, curr -> nparts(curr,:Wolf) >= 0) |> F2
-view_sched(overall; names=F2(N))
+# view_sched(overall; names=F2(N))
 X = initialize(3, .25, .25)
 res, = apply_schedule(overall, X; steps=50);
 
-# Run these lines to view the trajectory
-using Luxor
-view_traj(overall, res, view_LV; agent=true, names=F2(N))
+# Run this lines to view the trajectory
+# view_traj(overall, res, view_LV; agent=true, names=F2(N))
 
 end # module
