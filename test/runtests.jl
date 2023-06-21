@@ -1,41 +1,75 @@
 using Test
 
+# Test package extensions
 using AlgebraicRewriting
 @test length(methods(view_traj)) == 1
-using Interact
-@test length(methods(view_traj)) == 2
+using Luxor
+@test length(methods(view_traj)) > 1
 
-include("../docs/src/lotka_volterra.jl") # this shouldn't crash
+# Demos
+#######
 
-
-@testset "Variables" begin
-  include("Variables.jl")
+@testset "Lotka Volterra" begin
+  include("../docs/src/lotka_volterra.jl") 
 end
 
-@testset "Schedule" begin
-  include("Schedule.jl")
+@testset "Game of Life" begin
+  include("../docs/src/GameOfLife.jl") 
 end
+
+
+# Background 
+############
 
 @testset "StructuredCospans" begin
-  include("StructuredCospans.jl")
+  include("categorical_algebra/StructuredCospans.jl")
 end
 
 @testset "CSets" begin
-  include("CSets.jl")
+  include("categorical_algebra/CSets.jl")
 end
 
 @testset "FinSets" begin
-  include("FinSets.jl")
+  include("categorical_algebra/FinSets.jl")
 end
 
 @testset "PartialMap" begin
-  include("PartialMap.jl")
+  include("categorical_algebra/PartialMap.jl")
 end
 
-@testset "Rewrite" begin
-  include("Rewrite.jl")
+@testset "Constraints" begin
+  include("rewrite/Constraints.jl")
 end
 
-@testset "Search" begin
-  include("Search.jl")
+# Rewriting flavors
+###################
+@testset "DPO" begin
+  include("rewrite/DPO.jl")
+end
+
+@testset "SPO" begin
+  include("rewrite/SPO.jl")
+end
+
+@testset "SqPO" begin
+  include("rewrite/SqPO.jl")
+end
+
+@testset "PBPO" begin
+  include("rewrite/PBPO.jl")
+end
+
+@testset "Representable" begin
+  include("rewrite/Representable.jl")
+end
+
+# Schedules 
+##########
+
+@testset "Schedules" begin
+  include("schedules/Poly.jl")
+end
+
+@testset "Schedules" begin
+  include("schedules/Eval.jl")
 end

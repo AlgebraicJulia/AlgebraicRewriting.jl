@@ -1,9 +1,11 @@
 [deps]
-AlgebraicPetri = "4f99eebe-17bf-4e98-b6a1-2c4f205a959b"
+ACSets = "227ef7b5-1206-438b-ac65-934d6da304b8"
 AlgebraicRewriting = "725a01d3-f174-5bbd-84e1-b9417bad95d9"
 CairoMakie = "13f3f980-e62b-5c42-98c6-ff1f3baf88f0"
 Catlab = "134e5e36-593f-5add-ad60-77f754baafbe"
-CombinatorialSpaces = "b1c52339-7909-45ad-8b6a-6e388f7c67f2"
 Documenter = "e30172f5-a6a5-5a46-863b-614d45cd2de4"
 GeometryBasics = "5c1252a2-5f33-56bf-86c9-59e7332b4326"
 LiveServer = "16fef848-5104-11e9-1b77-fb7a48bbb589"
+Luxor = "ae8d54c2-7ccd-5906-9d76-62fc9837b5bc"
+Revise = "295af30f-e4ad-537b-8983-00126c2a3abe"
+StructEquality = "6ec83bb0-ed9f-11e9-3b4c-2b04cb4e219c"

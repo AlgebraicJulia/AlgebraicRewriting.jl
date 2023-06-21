@@ -1,25 +1,14 @@
 module AlgebraicRewriting
 using Reexport
 
-include("Variables.jl")
-include("FinSets.jl")
-include("Search.jl")
-include("CSets.jl")
-include("StructuredCospans.jl")
-include("PartialMap.jl")
-include("Rewrite.jl")
-include("Schedules.jl")
-include("Visuals.jl")
+include("categorical_algebra/CategoricalAlgebra.jl")
+include("rewrite/Rewrite.jl")
+include("schedules/Schedules.jl")
+include("analysis/Processes.jl")
 
-@reexport using .Variables
-@reexport using .FinSets
-@reexport using .Search
-@reexport using .CSets
-@reexport using .StructuredCospans
-@reexport using .PartialMap
+@reexport using .CategoricalAlgebra
 @reexport using .Rewrite
 @reexport using .Schedules
-@reexport using .Visuals
 
 
 

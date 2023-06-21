@@ -4,8 +4,8 @@ export StructuredMultiCospanHom, StructuredMulticospan, openrule, can_open_pusho
 
 using Catlab, Catlab.CategoricalAlgebra, Catlab.Theories
 import Catlab.Theories: dom, codom, compose, ⋅, id
-using ..CSets: invert_hom, can_pushout_complement, pushout_complement
-import ..Search: homomorphisms
+import Catlab.CategoricalAlgebra: homomorphisms
+using ..CSets
 
 # Maps between structured multicospans
 ######################################
@@ -270,9 +270,9 @@ function open_pushout_complement(
   ik_γ = [pushout_complement(λᵢ,μᵢ) for (λᵢ, μᵢ) in zip(λ.maps, μ.maps)];
   rh_η = [legs(pushout(ρᵢ,ikᵢ)) for (ρᵢ, (ikᵢ, _)) in zip(ρ.maps, ik_γ)];
   rh, ik = rh_η[1][1], ik_γ[1][1]
-  k = [compose(invert_hom(ikᵢ, ob), iᵢ, ik) for (iᵢ, (ikᵢ, _))
+  k = [compose(invert_iso(ikᵢ, [ob]), iᵢ, ik) for (iᵢ, (ikᵢ, _))
        in zip(legs(I), ik_γ[2:end])]
-  h = [compose(invert_hom(rhᵢ, ob), r₍, rh) for (r₍, (rhᵢ, _))
+  h = [compose(invert_iso(rhᵢ, [ob]), r₍, rh) for (r₍, (rhᵢ, _))
        in zip(legs(R), rh_η[2:end])]
 
   # Reassemble resulting data into span of multicospans

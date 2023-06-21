@@ -5,3 +5,10 @@
 
 Manifest.toml
 .vscode/
+
+traj/
+cache/
+
+*.cov
+
+lcov.info

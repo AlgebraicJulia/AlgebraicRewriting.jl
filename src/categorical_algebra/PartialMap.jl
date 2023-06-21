@@ -2,8 +2,40 @@ module PartialMap
 export partial_map_classifier_universal_property, partial_map_functor_hom,
       partial_map_classifier_eta
 using DataStructures
-using Catlab, Catlab.CategoricalAlgebra, Catlab.Schemas
+using Catlab, Catlab.CategoricalAlgebra, Catlab.Graphs
 using ..CSets
+
+# TODO: with the recent additions of subobject enumeration in catlab, we should 
+# be able to massively clean this up / remove the restriction of DAG schemas. 
+
+"""Get topological sort of objects of a schema. Fail if cyclic."""
+function topo_obs(S)::Vector{Symbol}
+  G = Graph(length(ob(S)))
+  for (_, s, t) in homs(S)
+    add_edge!(G, findfirst(==(s),ob(S)), findfirst(==(t),ob(S)))
+  end
+  return [ob(S)[i] for i in reverse(topological_sort(G))]
+end
+
+"""Confirm a C-Set satisfies its equational axioms"""
+function check_eqs(x::StructACSet, pres::Presentation, o::Symbol, i::Int)::Bool
+  for (p1,p2) in filter(e->only(e[1].type_args[1].args) == o, pres.equations)
+    eval_path(x, p1, i) == eval_path(x,p2, i) || return false
+  end
+  return true
+end
+
+"""
+Take a GATExpr (an id morphism, a generator, or a composite) and evaluate,
+starting at a particular point.
+"""
+function eval_path(x::StructACSet, h, i::Int)::Int
+  val = i
+  for e in h.args
+    val = x[val, e]
+  end
+  return val
+end
 
 """
 A functor T, playing the role of Maybe in Set, but generalized to C-Sets.
@@ -38,9 +70,10 @@ In general, T(X) ≅ |X| + ∏ₕ(|T(codom(h))|) for each outgoing morphism h::X
 - This recursive formula means we require the schema of the C-set to be acyclic
   otherwise the size is infinite (assumes schema is free).
 """
-function partial_map_functor_ob(x::StructCSet{S};
+function partial_map_functor_ob(x::StructCSet;
     pres::Union{Nothing, Presentation}=nothing
-    )::Pair{StructCSet, Dict{Symbol,Dict{Vector{Int},Int}}} where {S}
+    )::Pair{StructCSet, Dict{Symbol,Dict{Vector{Int},Int}}}
+  S = acset_schema(x)
   res = deepcopy(x)
 
   # dict which identifies added elements (of some part o) by the values of its
@@ -77,9 +110,10 @@ the same data for a morphism lifted from X⟶Y to T(X)⟶T(Y).
 However, we still need to map the extra stuff in T(X) to the proper extra stuff
 in T(Y).
 """
-function partial_map_functor_hom(f::CSetTransformation{S};
-    pres::Union{Nothing, Presentation}=nothing)::CSetTransformation where S
+function partial_map_functor_hom(f::CSetTransformation;
+    pres::Union{Nothing, Presentation}=nothing)::CSetTransformation
   X, Y = dom(f), codom(f)
+  S = acset_schema(X)
   (d, _), (cd, cddict) = [partial_map_functor_ob(x; pres=pres) for x in [X,Y]]
   comps, mapping = Dict{Symbol,Vector{Int}}(), Dict()
   hdata = collect(homs(S))
@@ -105,8 +139,9 @@ end
 The natural injection from X ⟶ T(X)
 When evaluated on the terminal object, this gives the subobject classfier.
 """
-function partial_map_classifier_eta(x::StructCSet{S};
-    pres::Union{Nothing, Presentation}=nothing)::CSetTransformation where {S}
+function partial_map_classifier_eta(x::StructCSet;
+    pres::Union{Nothing, Presentation}=nothing)::CSetTransformation
+  S = acset_schema(x)
   codom = partial_map_functor_ob(x; pres=pres)[1]
   d = Dict([k=>collect(v) for (k,v) in pairs(id(x).components)])
   return CSetTransformation(x, codom; d...)
@@ -130,9 +165,10 @@ the subobject picked out by X. When A is 'deleted', it picks out the right
 element of the additional data added by T(B).
 """
 function partial_map_classifier_universal_property(
-    m::CSetTransformation{S}, f::CSetTransformation{S};
+    m::CSetTransformation, f::CSetTransformation;
     pres::Union{Nothing, Presentation}=nothing, check=false
-    )::CSetTransformation where {S}
+    )::CSetTransformation
+  S = acset_schema(dom(m))
   hdata   = collect(homs(S))
   A, B    = codom(m), codom(f)
   ηB      = partial_map_classifier_eta(B;pres=pres)
@@ -168,4 +204,5 @@ function partial_map_classifier_universal_property(
   end
   return ϕ
 end
+
 end # module

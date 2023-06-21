@@ -8,7 +8,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        julia-version: ['1.8']
+        julia-version: ['1.9']
         os: [ubuntu-latest]
 
     steps:
@@ -17,5 +17,6 @@ jobs:
         uses: julia-actions/setup-julia@latest
         with:
           version: ${{ matrix.julia-version }}
+          include-all-prereleases: true
       - name: "Run tests"
         uses: julia-actions/julia-runtest@master
