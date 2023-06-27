@@ -50,7 +50,7 @@ function view_life(f::ACSetTransformation, pth=tempname())
   v = collect(f[:V])
   view_life(codom(f), pth; star=isempty(v) ? nothing : only(v))
 end
-function view_life(X::Life; star=nothing)
+function view_life(X::Life, pth=tempname(); star=nothing)
   pg = PropertyGraph{Any}(; prog = "neato", graph = Dict(),
   node = Dict(:shape => "circle", :style=>"filled", :margin => "0"), 
   edge = Dict(:dir=>"none",:minlen=>"1"))
@@ -65,7 +65,11 @@ function view_life(X::Life; star=nothing)
   for e in filter(e->X[e,:inv] > e, edges(X))
     add_edge!(pg, X[e,:src], X[e,:tgt])
   end
-  to_graphviz(pg)
+  G = to_graphviz(pg)
+  open(pth, "w") do io 
+    show(io,"image/svg+xml",G) 
+  end
+  G
 end
 function view_life(X::LifeCoords, pth=tempname(); star=nothing)
   n = Int(sqrt(nparts(X,:V)))
@@ -126,7 +130,6 @@ function make_grid(curr::AbstractMatrix, next=nothing)
 end
 make_grid(n::Int, random=false) = make_grid((random ? rand : zeros)(Bool, (n,n)))
 
-make_grid(5) |> view_life
 # Rules 
 #######
 
