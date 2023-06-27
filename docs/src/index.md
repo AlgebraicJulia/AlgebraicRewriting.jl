@@ -7,6 +7,6 @@ of AlgebraicRewriting by checking out
   of AlgebraicRewriting.
 - [Lotka Volterra example](lotka_volterra.jl): a model based 
   on NetLogo's [wolf-sheep predation](http://ccl.northwestern.edu/netlogo/models/WolfSheepPredation) agent-based model demo.
-- [Game of Life example](GameOfLife.jl): an implementation of Conway's 
+- [Game of Life example]([GameOfLife.jl](https://nbviewer.org/github/AlgebraicJulia/AlgebraicRewriting.jl/blob/main/docs/src/GameOfLife.ipynb)): an implementation of Conway's 
   [game of life](https://en.wikipedia.org/wiki/Conway%27s_Game_of_Life) on an 
   arbitrary graph (with the grid-structure as a special case).
