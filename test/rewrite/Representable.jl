@@ -3,7 +3,7 @@ using Test
 using AlgebraicRewriting
 using Catlab.Graphs, Catlab.CategoricalAlgebra, Catlab.Programs
 
-yWG = yoneda_cache(WeightedGraph{Float64});
+yWG = yoneda_cache(WeightedGraph{Float64}; clear=true);
 
 
 """ 

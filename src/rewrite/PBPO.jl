@@ -136,7 +136,7 @@ function get_matches(rule::PBPORule, G::ACSet;  initial=nothing,
                       random=random) do m
     m_seen = false # keeps track if α_unique is violated for each new m
     if all(ac->apply_constraint(ac, m), rule.acs)
-      @info "m:  $([k=>collect(v) for (k,v) in pairs(components(m))])"
+      @debug "m:  $([k=>collect(v) for (k,v) in pairs(components(m))])"
       # Construct abtract version of G. ab: A->G 
       ab = abstract_attributes(G)
       A = dom(ab) # not completely abstract: fill in where L has concrete attrs
@@ -165,7 +165,7 @@ function get_matches(rule::PBPORule, G::ACSet;  initial=nothing,
         else 
           # Search for adherence morphisms.
           backtracking_search(codom(a), codom(rule.tl); initial=init, kw...) do α
-            @info "\tα: ", [k=>collect(v) for (k,v) in pairs(components(α))] 
+            @debug "\tα: ", [k=>collect(v) for (k,v) in pairs(components(α))] 
             strong_match = all(ob(S)) do o 
               all(parts(A,o)) do i 
                 p1 = preimage(rule.tl[o],α[o](i))
@@ -176,12 +176,12 @@ function get_matches(rule::PBPORule, G::ACSet;  initial=nothing,
             if strong_match && all(lc -> apply_constraint(lc, α), rule.lcs)
               all(is_natural, [m,a,ab,α]) || error("Unnatural match")
               if m_seen  error("Multiple α for a single match $m") end 
-              @info "\tSUCCESS"
+              @debug "\tSUCCESS"
               push!(res, deepcopy((m,a,ab,α)))
               m_seen |= α_unique
               return length(res) == n
             else
-              @info "\tFAILURE (strong $strong_match)"
+              @debug "\tFAILURE (strong $strong_match)"
               return false
             end
           end

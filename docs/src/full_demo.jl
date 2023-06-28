@@ -80,7 +80,7 @@ We can also specify the rule via a colimit-of-representables (i.e. generators
 and relations) syntax. As your schema gets bigger, this becomes more and more 
 convenient. Assigning temporary names to the C-Set elements can also be helpful.
 """
-yG = yoneda_cache(Graph); # compute representables
+yG = yoneda_cache(Graph, clear=true); # compute representables
 
 rule2 = Rule(@migration(SchRulel, SchGraph, begin
           L => @join begin e::E end
@@ -313,7 +313,7 @@ equipped with a finite set of "variables" which can be mapped to any concrete
 value (or another variable).
 """
 
-yWG = yoneda_cache(WeightedGraph{Int});
+yWG = yoneda_cache(WeightedGraph{Int}; clear=true);
 L = @acset_colim yWG begin (e1,e2)::E
   src(e1)==src(e2); tgt(e1)==tgt(e2) 
 end

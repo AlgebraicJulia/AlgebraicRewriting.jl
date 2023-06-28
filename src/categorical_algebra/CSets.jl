@@ -143,14 +143,14 @@ pullback of f and g produces (Y,π₁,π₂), where Y is isomorphic to X and
 i⋅f_ = π₁ & i⋅g_ = π₂.
 """
 function check_pb(f,g,f_,g_)
-  @info "checking pb with f $f\ng $g\nf_ $f_\ng_ $g_"
+  @debug "checking pb with f $f\ng $g\nf_ $f_\ng_ $g_"
   codom(f)==codom(g) || error("f,g must be cospan")
   dom(f_)==dom(g_)   || error("f_,g_ must be span")
   codom(f_)==dom(f)  || error("f_,f must compose")
   codom(g_)==dom(g)  || error("g_,g must compose")
 
   pb_check = limit(Cospan(f, g))
-  @info "apex(pb_check) $(apex(pb_check))"
+  @debug "apex(pb_check) $(apex(pb_check))"
   isos = isomorphisms(apex(pb_check), dom(f_))
   return any(isos) do i
     all(zip(force.(legs(pb_check)), [f_, g_])) do (leg, h)
@@ -312,26 +312,6 @@ end
 
 # Subobjects
 ############
-
-function predicate(A::Subobject{VarSet{T}}) where T
-  f = hom(A)
-  pred = falses(length(codom(f)))
-  for x in dom(f)
-    pred[f(x)] = true
-  end
-  pred
-end
-
-"""Modification of `Subobject` to have proper behavior with variables"""
-function subobj(X::ACSet, d)
-  S = acset_schema(X)
-  sX = Subobject(X; d...) |> hom |> dom # has no variables 
-  for d in attrtypes(S) 
-    add_parts!(sX, d, nparts(X,d))
-  end
-  sX′, _ = remove_freevars(sX)
-  return only(homomorphisms(sX′, X; initial=d))
-end
 
 """Recursively include anything, e.g. and edge includes its vertices """
 function complete_subobj(X::ACSet, sub)

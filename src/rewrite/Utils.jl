@@ -188,7 +188,7 @@ function get_matches(r::Rule{T}, G::ACSet; initial=nothing,
       push!(hs, deepcopy(h))
       return length(hs) == n # we stop the search Hom(L,G) when this holds
     else
-      @info "$([k => collect(v) for (k,v) in pairs(components(h))]): $cm"
+      @debug "$([k => collect(v) for (k,v) in pairs(components(h))]): $cm"
       return false
     end
   end 

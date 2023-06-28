@@ -161,7 +161,7 @@ function apply_schedule(w_::WiringDiagram,g::Any,t::PMonad=Maybe;
     if steps == 0 
       if length(results) == 1 
         push!(results[1], traj)
-        @info "TIMEOUT"
+        @debug "TIMEOUT"
         continue
       else 
         error("timeout! multiple possible outputs") 
@@ -173,9 +173,9 @@ function apply_schedule(w_::WiringDiagram,g::Any,t::PMonad=Maybe;
       push!(results[wi.target.port], traj)
     else 
       # info 
-      @info "Step $counter (Box#$(b).$(wi.target.port): $(box(w,b).value.f.name))" 
+      @debug "Step $counter (Box#$(b).$(wi.target.port): $(box(w,b).value.f.name))" 
       if steps > 0 "($steps STEPS REMAINING )" end
-      if length(squeue) > 0 @info "($(length(squeue)) queued)" end
+      if length(squeue) > 0 @debug "($(length(squeue)) queued)" end
         prepend!(squeue, apply_traj_step(w, traj, wi;)) # DFS
     end
   end 

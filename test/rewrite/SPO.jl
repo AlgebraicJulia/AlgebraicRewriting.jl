@@ -97,8 +97,7 @@ m = homomorphism(Tri, quadrangle)
 #-------------------
 WG = WeightedGraph{Int}
 r = Rule{:SPO}(create(WG(1)), id(WG()))
-G = @acset WeightedGraph{Int} begin V=4; E=3; Weight=2; src=[1,2,3]; tgt=[2,3,4]; 
-                                    weight=[3,4, 5] end
+G = @acset WG begin V=4; E=3; Weight=2; src=[1,2,3]; tgt=[2,3,4]; weight=[3,4,5] end
 @test only(rewrite(r,G; initial=(V=[2],))[:weight]) == 5
 @test only(rewrite(r,G; initial=(V=[3],))[:weight]) == 3
 

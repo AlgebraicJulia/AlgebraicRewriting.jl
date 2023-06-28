@@ -2,7 +2,7 @@ module SPO
 
 using Catlab, Catlab.CategoricalAlgebra
 
-using ...CategoricalAlgebra.CSets: var_pullback, subobj, cascade_subobj
+using ...CategoricalAlgebra.CSets: var_pullback, cascade_subobj
 using ..Utils
 import ..Utils: rewrite_match_maps
 
@@ -28,43 +28,48 @@ C ↩ Cfg -> D
 Implementation of Construction 6 in Löwe's 
 "Algebraic approach to SPO graph transformation"
 """
-function partial_pushout(f::Span,g::Span)
+function partial_pushout(f::Span, g::Span)
   AfA, AfB = f
   AgA, AgC = g 
-  A, B, A_, C = codom.([AfA,AfB,AgA,AgC])
+  A, B, A_, C = codom.([AfA, AfB, AgA, AgC])
   A == A_ || error("f and g do not share common domain")
-  all(is_monic, [AfA,AgA]) || error("f and g must be *partial* maps")
+  all(is_monic, [AfA, AgA]) || error("f and g must be *partial* maps")
   S = acset_schema(A)
-
+  ι(o) = (o ∈ ob(S) ? identity : AttrVar)
+  κ(o) = vs -> o ∈ ob(S) ? vs : Set([v.val for v in vs if v isa AttrVar])
   # Create f ∇ g 
   #-------------
   # Step 1: compute Af ∩ Ag
-  glue = Dict(map(ob(S)) do o 
-    o => intersect(Set.(collect.([AfA[o],AgA[o]]))...)
+  glue = Dict{Symbol,Set{Int}}(map(types(S)) do o 
+    o => κ(o)(intersect(Set.(collect.([AfA[o],AgA[o]]))...))
   end)
+
   # Step 2: add any elements which are mapped to the same elems by f or g 
   for (mono,ϕ) in [f,g]
-    for o in ob(S)
-      glue_img = Set(collect(ϕ[o](vcat([preimage(mono[o],go) for go in glue[o]]...))))
+    for o in types(S)
+      xs = vcat(Vector{Int}[preimage(mono[o],go) for go in glue[o]]...)
+      glue_img = Set(ϕ[o].(ι(o).(xs)))
       for i in parts(dom(ϕ),o)
-        if ϕ[o](i) ∈ glue_img
+        if ϕ[o](ι(o)(i)) ∈ glue_img
           push!(glue[o],mono[o](i)) 
         end 
       end
     end 
   end
-  fg_A = subobj(A, Dict([k=>collect(v) for (k,v) in collect(glue)])) # f ∇ g ↪ A
+  comps = NamedTuple(Dict([k=>collect(v) for (k,v) in collect(glue)]))
+  fg_A = Subobject(A, comps) |> hom # f ∇ g ↪ A
   fg = dom(fg_A) # f ∇ g
   # Construct scopes Bgf ⊆ B and Cfg ⊆ C
   #---------------------------
   Bgf_B, Cfg_C = map([f,g]) do (mono, ϕ) 
-    sub = Dict{Symbol,Vector{Int}}(map(ob(S)) do o 
+    sub = Dict{Symbol,Vector{Int}}(map(types(S)) do o 
       x1 = setdiff(parts(codom(ϕ),o),collect(ϕ[o])) # e.g. C - g(A)
       pre = [preimage(mono[o], fg_A[o](i)) for i in parts(fg,o)]
-      x2 = Set(collect(ϕ[o](vcat(pre...))))  # e.g. g(f ∇ g)
+      x2 = Set(collect(ϕ[o].(vcat(pre...))))  # e.g. g(f ∇ g)
       o => sort(collect(x1 ∪ x2))
     end)
-    subobj(codom(ϕ), cascade_subobj(codom(ϕ), sub))
+
+    hom(Subobject(codom(ϕ), NamedTuple(cascade_subobj(codom(ϕ), sub))))
   end
   codom(Cfg_C) == C || error("Not C ")
   codom(Bgf_B) == B || error("Not B ") 
