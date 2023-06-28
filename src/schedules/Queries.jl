@@ -120,12 +120,12 @@ function update(q::Query, p::PMonad=Maybe)#instate::Traj, ::Nothing)
       ms = filter(h->apply_constraint(q.constraint, h, traj_agent(w.val)),
                   homomorphisms(q.subagent, traj_res(w.val)))
       msg *= "Found $(length(ms)) agents"
-      @info "Found $(length(ms)) agents"
+      @debug "Found $(length(ms)) agents"
       QueryState(length(w.val), ms)
     end 
   
     if isempty(curr_boxstate) # END
-      @info "No more subagents"
+      @debug "No more subagents"
       old_agent = get_agent(w.val,curr_boxstate.enter_time)
       new_agent = update_agent(w.val, curr_boxstate.enter_time, old_agent)
       if isnothing(new_agent) # original agent gone
@@ -140,10 +140,10 @@ function update(q::Query, p::PMonad=Maybe)#instate::Traj, ::Nothing)
         return MealyRes(curr_boxstate,[(nothing,wv)], msg)
       end 
     else # CONTINUE 
-      @info "Updating agents"
+      @debug "Updating agents"
       new_agent = update_agent(w.val, curr_boxstate.enter_time, pop!(curr_boxstate))
       if isnothing(new_agent)
-        @info "WARNING: Queued agent no longer exists"
+        @debug "WARNING: Queued agent no longer exists"
         return update_query(curr_boxstate, w; kw...)
       end
       msg *= "\nContinuing ($(length(curr_boxstate)) queued) with \n" * str_hom(new_agent)

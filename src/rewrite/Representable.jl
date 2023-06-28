@@ -48,7 +48,7 @@ function yoneda_cache(T::Type,S=nothing; clear=false, cache="cache")
     name => if !clear && isfile(path)
       read_json_acset(T, path)
     else 
-      @info "Computing representable $name"
+      @debug "Computing representable $name"
       rep = representable(T, S, name)
       write_json_acset(rep, path)
       rep

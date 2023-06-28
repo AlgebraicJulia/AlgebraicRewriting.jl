@@ -239,20 +239,20 @@ end
 function eval_boolexpr(q::Quantifier, g::CGraph, curr::Assgn)
   d, cd = [get_ob(g,x,curr) for x in [g[q.e, :src], g[q.e, :tgt]]]
   cands = []
-  @info "$(q.kind) ($(q.e))"
+  @debug "$(q.kind) ($(q.e))"
   for h in homomorphisms(d, cd; monic=q.monic)
     x = deepcopy(curr)
     x[q.e] = h 
-    @info "candidate morphism $(components(h))"
+    @debug "candidate morphism $(components(h))"
     if eval_boolexpr(q.st, g, x)
-      @info "successful candidate!"
+      @debug "successful candidate!"
       push!(cands, x)
     end
   end 
   n = length(cands)
   suc = [eval_boolexpr(q.expr, g, cand) for cand in cands]
   n_success = sum([0, suc...])
-  @info "$(q.kind) ($(q.e)) n $n success $suc"
+  @debug "$(q.kind) ($(q.e)) n $n success $suc"
   if     q.kind == :Exists  return n_success > 0
   elseif q.kind == :Exists! return n_success == 1
   elseif q.kind == :Forall  return n_success == n
