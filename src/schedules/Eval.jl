@@ -59,11 +59,11 @@ get_agent(t::Traj, i::Int) = i == 0 ? t.initial : t[i].world
 traj_res(s::Traj) = codom(traj_agent(s))
 traj_agent(t::Traj) = isempty(t.steps) ? t.initial : last(t).world
 nochange(t::Traj) = add_step(t,
-  TrajStep(traj_agent(t), id_pmap(traj_res(t))))
+                             TrajStep(traj_agent(t), id_pmap(traj_res(t))))
 add_step(t::Traj,ts::TrajStep) = Traj(t.initial, vcat(t.steps,[ts]))
 
 disjoint(t::Traj, new_agent::ACSetTransformation) = add_step(t, 
-  TrajStep(new_agent, no_pmap(traj_res(t),codom(new_agent))))
+                                                             TrajStep(new_agent, no_pmap(traj_res(t),codom(new_agent))))
 
 """
 Take a morphism (pointing at world state #i) and push forward to current time.
@@ -140,37 +140,37 @@ rewrite_schedule(s::Schedule, G; kw...) =
 
 # interpret a wiring diagram, with each box updating its state in place
 function interpret(wd::WiringDiagram, g)
-    ws = wires(wd)
-    bs = boxes(wd)
-    targets = Dict((w.source.box,w.source.port) => (w.target.box,w.target.port) for w in ws)
-    boxstates = [Ref{Any}(initial_state(bs[i].value)) for i in 1:length(bs)]
-    b = -2
-    p = 1
-    while true
-        (nextb, inport) = targets[(b, p)]
-        if nextb == -1
-            return g
-        end
-        box = bs[nextb]
-        g, p = update!(boxstates[nextb], box.value, g, inport)
-        b = nextb
+  ws = wires(wd)
+  bs = boxes(wd)
+  targets = Dict((w.source.box,w.source.port) => (w.target.box,w.target.port) for w in ws)
+  boxstates = [Ref{Any}(initial_state(bs[i].value)) for i in 1:length(bs)]
+  b = -2
+  p = 1
+  while true
+    (nextb, inport) = targets[(b, p)]
+    if nextb == -1
+      return g
     end
+    box = bs[nextb]
+    g, p = update!(boxstates[nextb], box.value, g, inport)
+    b = nextb
+  end
 end
 
 function update!(state::Ref, boxdata::Conditional, g, inport)
-    inport == 1 || error("Conditionals have exactly 1 input")
-    c = boxdata
-    dist = c.prob(g, state[])
-    outdoor = findfirst(q -> q > rand(), cumsum(dist) ./ sum(dist))
-    newstate = isnothing(c.update) ? nothing : c.update(g, state[])
-    state[] = newstate
-    return g, outdoor
+  inport == 1 || error("Conditionals have exactly 1 input")
+  c = boxdata
+  dist = c.prob(g, state[])
+  outdoor = findfirst(q -> q > rand(), cumsum(dist) ./ sum(dist))
+  newstate = isnothing(c.update) ? nothing : c.update(g, state[])
+  state[] = newstate
+  return g, outdoor
 end
 
-function update!(state::Ref, boxdata, g, inport)
-    # TODO
-    println(typeof(boxdata))
-    return nothing, 1
+function update!(state::Ref, boxdata, _cache, g, inport)
+  # TODO
+  println(typeof(boxdata))
+  return nothing, 1
 end
 
 end # module 

@@ -56,7 +56,9 @@ initial_state(::RuleApp) = nothing
 (F::Migrate)(a::RuleApp) = 
   RuleApp(a.name,F(a.rule), F(a.in_agent), F(a.out_agent))
 
-#
+function update!(state::Ref, boxdata::RuleApp, g::ACSetTransformation, inport)
+
+end
 
 function update(r::RuleApp, ::PMonad=Maybe)#, ::Int, instate::Traj, ::Nothing)
   function update_ruleapp(::Nothing, w::WireVal; kw...)
