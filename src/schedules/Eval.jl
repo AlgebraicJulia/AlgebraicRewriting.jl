@@ -135,5 +135,42 @@ rewrite_schedule(s::Schedule, G; kw...) =
   traj_res(apply_schedule(s, G; kw...))
 
 
+# In-place interpreter
+######################
+
+# interpret a wiring diagram, with each box updating its state in place
+function interpret(wd::WiringDiagram, g)
+    ws = wires(wd)
+    bs = boxes(wd)
+    targets = Dict((w.source.box,w.source.port) => (w.target.box,w.target.port) for w in ws)
+    boxstates = [Ref{Any}(initial_state(bs[i].value)) for i in 1:length(bs)]
+    b = -2
+    p = 1
+    while true
+        (nextb, inport) = targets[(b, p)]
+        if nextb == -1
+            return g
+        end
+        box = bs[nextb]
+        g, p = update!(boxstates[nextb], box.value, g, inport)
+        b = nextb
+    end
+end
+
+function update!(state::Ref, boxdata::Conditional, g, inport)
+    inport == 1 || error("Conditionals have exactly 1 input")
+    c = boxdata
+    dist = c.prob(g, state[])
+    outdoor = findfirst(q -> q > rand(), cumsum(dist) ./ sum(dist))
+    newstate = isnothing(c.update) ? nothing : c.update(g, state[])
+    state[] = newstate
+    return g, outdoor
+end
+
+function update!(state::Ref, boxdata, g, inport)
+    # TODO
+    println(typeof(boxdata))
+    return nothing, 1
+end
 
 end # module 
