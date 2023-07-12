@@ -10,6 +10,7 @@ include("SPO.jl")
 include("SqPO.jl")
 include("PBPO.jl")
 include("Migration.jl")
+include("Inplace.jl")
 
 @reexport using .Constraints
 @reexport using .Utils
@@ -18,6 +19,7 @@ include("Migration.jl")
 @reexport using .SPO
 @reexport using .SqPO
 @reexport using .PBPO
+@reexport using .Inplace
 @reexport using .Migration
 
 
