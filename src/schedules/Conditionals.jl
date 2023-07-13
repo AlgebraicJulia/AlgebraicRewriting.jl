@@ -54,6 +54,16 @@ catch e
   end
 end
 
+function update!(state::Ref, boxdata::Conditional, g, inport)
+  inport == 1 || error("Conditionals have exactly 1 input")
+  c = boxdata
+  dist = c.prob(g, state[])
+  outdoor = findfirst(q -> q > rand(), cumsum(dist) ./ sum(dist))
+  newstate = isnothing(c.update) ? nothing : c.update(g, state[])
+  state[] = newstate
+  return g, outdoor
+end
+
 function update(c::Conditional, p::PMonad=Maybe)#, ::Int, instate::Traj, ::Nothing)
   p ∈ [Maybe, List, Dist] || error("Unexpected monad $p")
   function update_conditional(S, w::WireVal; kw...)

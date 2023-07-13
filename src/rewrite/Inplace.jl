@@ -55,12 +55,17 @@ Base.getindex(m::Machine, r::AttrReg) = m.attr_regvals[r.idx]
 Base.setindex!(m::Machine, i::Int, r::Reg) = (m.regvals[r.idx] = i)
 Base.setindex!(m::Machine, x::Any, r::AttrReg) = (m.attr_regvals[r.idx] = x)
 
-function lookup(m::Machine, hom::NamedTuple, r::Reference)
+const Referable = Union{Reference, AttrReg}
+
+function lookup(m::Machine, hom::NamedTuple, r::Referable)
   @match r begin
     Reg(_) => m[r]
+    AttrReg(_) => m[r]
     HomValue(type, i) => hom[type](i)
   end
 end
+
+const Assignment = Dict{Tuple{Symbol, Int}, Referable}
 
 struct RewriteProgram
   regs::Int
@@ -70,6 +75,7 @@ struct RewriteProgram
   set_homs::Vector{SetHom}
   set_attrs::Vector{SetAttr}
   dels::Vector{Del}
+  hom_template::Vector{Tuple{Symbol, Dict{Int, Referable}}}
 end
 
 function interp_program!(
@@ -103,14 +109,15 @@ function interp_program!(
   for inst in prog.dels
     rem_part!(state, inst.part.type, hom[inst.part.type](inst.part.idx))
   end
+  NamedTuple([x => Dict(i => lookup(m, hom, r) for (i, r) in d) for (x, d) in prog.hom_template])
 end
 
 struct Compiler
   next_reg::Ref{Int}
   next_attr_reg::Ref{Int}
-  assignment::Dict{Tuple{Symbol, Int}, Union{Reference, AttrVal}}
+  assignment::Assignment
   function Compiler()
-    new(Ref(1), Ref(1), Dict{Tuple{Symbol, Int}, Union{Reference, AttrVal}}())
+    new(Ref(1), Ref(1), Assignment())
   end
 end
 
@@ -219,7 +226,21 @@ function compile_rewrite(r::Rule{:DPO})
         if !(i ∈ L_hit[ob])
           ]
 
-  RewriteProgram(c.next_reg[], c.next_attr_reg[], adds, inits, set_homs, set_attrs, dels)
+  template = [
+    (x, Dict(i => c.assignment[(x,i)] for i in parts(codom(r.R), x)))
+    for x in [objects(schema); attrtypes(schema)]
+      ]
+
+  RewriteProgram(
+    c.next_reg[],
+    c.next_attr_reg[],
+    adds,
+    inits,
+    set_homs,
+    set_attrs,
+    dels,
+    template
+  )
 end
 
 end
