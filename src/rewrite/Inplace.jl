@@ -93,7 +93,7 @@ function interp_program!(
   for inst in prog.inits
     m[inst.reg] = @match inst.value begin
       Fresh() => AttrVar(add_part!(state, inst.attrtype))
-      Compute(f) => f(hom[inst.attrtype].fun.func)
+      Compute(f) => f(collect(hom[inst.attrtype]))
     end
   end
   for inst in prog.set_homs
@@ -109,7 +109,8 @@ function interp_program!(
   for inst in prog.dels
     rem_part!(state, inst.part.type, hom[inst.part.type](inst.part.idx))
   end
-  NamedTuple([x => [lookup(m, hom, r) for r in v] for (x, v) in prog.hom_template])
+  NamedTuple([x => Dict(r.idx => lookup(m, hom, r) for r in v) 
+              for (x, v) in prog.hom_template])
 end
 
 struct Compiler
