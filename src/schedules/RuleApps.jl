@@ -30,6 +30,7 @@ identical to I, take the id map, otherwise take the unique morphism into I).
   rule::AbsRule 
   in_agent::ACSetTransformation  # map A --> L 
   out_agent::ACSetTransformation # map A --> R
+  prog::RewriteProgram
   """Give the data explicitly"""
   function RuleApp(n,r::AbsRule, i::ACSetTransformation, o::ACSetTransformation) 
     codom(i) == codom(left(r)) || error("Bad i for ruleapp $n")
@@ -56,8 +57,15 @@ initial_state(::RuleApp) = nothing
 (F::Migrate)(a::RuleApp) = 
   RuleApp(a.name,F(a.rule), F(a.in_agent), F(a.out_agent))
 
-function update!(state::Ref, boxdata::RuleApp, g::ACSetTransformation, inport)
-
+function update!(state::Ref, r::RuleApp, g::ACSetTransformation, inport)
+  m = update_match(r, g)
+  if isnothing(m)
+    return (g, 2)
+  else
+    rmap_components = interp_program!(g.prog, m, codom(g))
+    rmap = ACSetTransformation(codom(r.rule.R), codom(g), rmap_components)
+    return (compose(r.out_agent, rmap), 1)
+  end
 end
 
 function update(r::RuleApp, ::PMonad=Maybe)#, ::Int, instate::Traj, ::Nothing)

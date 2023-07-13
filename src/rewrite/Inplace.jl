@@ -75,7 +75,7 @@ struct RewriteProgram
   set_homs::Vector{SetHom}
   set_attrs::Vector{SetAttr}
   dels::Vector{Del}
-  hom_template::Vector{Tuple{Symbol, Dict{Int, Referable}}}
+  hom_template::Vector{Tuple{Symbol, Vector{Referable}}}
 end
 
 function interp_program!(
@@ -109,7 +109,7 @@ function interp_program!(
   for inst in prog.dels
     rem_part!(state, inst.part.type, hom[inst.part.type](inst.part.idx))
   end
-  NamedTuple([x => Dict(i => lookup(m, hom, r) for (i, r) in d) for (x, d) in prog.hom_template])
+  NamedTuple([x => [lookup(m, hom, r) for r in v] for (x, v) in prog.hom_template])
 end
 
 struct Compiler
@@ -227,7 +227,7 @@ function compile_rewrite(r::Rule{:DPO})
           ]
 
   template = [
-    (x, Dict(i => c.assignment[(x,i)] for i in parts(codom(r.R), x)))
+    (x, [c.assignment[(x,i)] for i in parts(codom(r.R), x)])
     for x in [objects(schema); attrtypes(schema)]
       ]
 
