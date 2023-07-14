@@ -10,6 +10,7 @@ using ..Wiring, ..Poly
 using ..Wiring: AgentBox
 import ..Wiring: input_ports, output_ports, initial_state, color, update
 using ..Eval: Traj, id_pmap, traj_res, nochange, traj_agent
+import ..Eval: update!
 
 """
 A primitive box in a NestedDWD which does not change the state but redirects it 
@@ -56,10 +57,9 @@ end
 
 function update!(state::Ref, boxdata::Conditional, g, inport)
   inport == 1 || error("Conditionals have exactly 1 input")
-  c = boxdata
-  dist = c.prob(g, state[])
+  dist = apply_prob(boxdata, g, state[])
   outdoor = findfirst(q -> q > rand(), cumsum(dist) ./ sum(dist))
-  newstate = isnothing(c.update) ? nothing : c.update(g, state[])
+  newstate = isnothing(boxdata.update) ? nothing : boxdata.update(g, state[])
   state[] = newstate
   return g, outdoor
 end

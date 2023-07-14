@@ -11,7 +11,7 @@ using ..Basic: Fail
 using ..Wiring, ..Poly, ..Eval
 using ..Wiring: AgentBox,  str_hom
 import ..Wiring: input_ports, output_ports, initial_state, color, update
-import ..Eval: Traj, update_agent, id_pmap, get_agent, traj_res, traj_agent, add_step
+import ..Eval: Traj, update_agent, id_pmap, get_agent, traj_res, traj_agent, add_step, update!
 
 
 
@@ -154,6 +154,30 @@ function update(q::Query, p::PMonad=Maybe)#instate::Traj, ::Nothing)
     end 
   end
 end
+
+function update!(state::Ref, boxdata::Query, g::ACSetTransformation, inport::Int)
+  if inport == 1
+    state[] = (g,filter(h->apply_constraint(boxdata.constraint, h, g),
+                     homomorphisms(boxdata.subagent, codom(g))))
+  else 
+    inport == 2 || error("bad inport $inport")
+  end
+  if isempty(state[][2]) 
+    if in_bounds(state[][1])
+      return state[][1], 1
+    else 
+      return create(codom(g)), 3
+    end
+  else
+    new_agent = pop!(state[][2])
+    if in_bounds(new_agent)
+      return new_agent, 2
+    else 
+      return update!(state, boxdata, g, 2)
+    end
+  end
+end
+
 
 
 const ATypes = Union{Span,ACSetTransformation,StructACSet,Nothing}

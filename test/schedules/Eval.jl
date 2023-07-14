@@ -114,6 +114,17 @@ res, = apply_schedule(sched, arr_start);
 # view_traj(sched, res, view_graph; agent=false)
 # view_traj(sched, res, view_graph; agent=true, names=N)
 
+# Inplace version of the above
+##############################
+@acset_type Grph(SchGraph, part_type=BitSetParts, index=[:src,:tgt]) <: AbstractGraph
+G = @acset Grph begin V=5; E=4; src=[1,2,2,5];tgt=[2,3,4,2] end
+arr_start = homomorphism(ar, G; initial=(V=[1,2],))
+
+res, = apply_schedule(sched, arr_start);
+# view_traj(sched, res, view_graph; agent=true, names=N)
+resG = codom(res.steps[end].edge.o.val.steps[end].world)
+res2 = interpret(sched, arr_start)
+
 
 # For-loop: add 3 loops
 #######################

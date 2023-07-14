@@ -13,6 +13,7 @@ using ..Wiring: str_hom, mk_sched
 import ..Wiring: AgentBox, input_ports, output_ports, initial_state, color, update
 using ..Conditionals
 using ..Eval: Traj, traj_agent, id_pmap, add_step, nochange
+import ..Eval: update!
 
 
 """
@@ -57,7 +58,8 @@ initial_state(::RuleApp) = nothing
 (F::Migrate)(a::RuleApp) = 
   RuleApp(a.name,F(a.rule), F(a.in_agent), F(a.out_agent))
 
-function update!(state::Ref, r::RuleApp, g::ACSetTransformation, inport)
+function update!(::Ref, r::RuleApp, g::ACSetTransformation, inport::Int)
+  inport == 1 || error("Rule app has only one in port")
   m = update_match(r, g)
   if isnothing(m)
     return (g, 2)

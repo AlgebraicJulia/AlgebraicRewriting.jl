@@ -9,7 +9,7 @@ using ...CategoricalAlgebra.CSets: Migrate
 using ..Poly
 using ..Wiring: AgentBox
 import ..Wiring: input_ports, output_ports, initial_state, color, update
-using ..Eval: Traj, TrajStep, traj_agent, id_pmap, tot_pmap, traj_res, add_step
+using ..Eval: Traj, TrajStep, traj_agent, id_pmap, tot_pmap, traj_res, add_step, update!
 
 """
 Change the agent to a subset of the current agent without changing the world
@@ -30,6 +30,11 @@ function update(r::Weaken, p::PMonad=Maybe)
     wv = WireVal(1, add_step(w.val,ts))
    return  MealyRes(nothing,[(p==Maybe ? nothing : 1, wv)],"")
   end
+end
+
+function update!(::Ref, boxdata::Weaken, g, inport::Int)
+  inport == 1 || error("Weaken has exactly 1 input")
+  return boxdata.agent ⋅ g, 1
 end
 
 
@@ -56,6 +61,11 @@ function update(r::Strengthen, t::PMonad)
   end
 end 
 
+function update!(::Ref, boxdata::Strengthen, g, inport::Int)
+  inport == 1 || error("Strengthen has exactly 1 input")
+  _, new_agent = pushout(last_step, boxdata.agent) # need this be in-place?
+  return new_agent, 1
+end
 
 """
 A box that spits out a constant ACSet with an empty agent above it. Possibly, 
@@ -77,6 +87,10 @@ function update(i::Initialize, t::PMonad)
     (t == Maybe ? nothing : 1, WireVal(1,disjoint(w.val, create(i.state))))], "")
 end 
 
+function update!(::Ref, boxdata::Initialize, ::ACSetTransformation, inport::Int)
+  inport == 1 || error("Initialize has exactly 1 input")
+  return create(i.state), 1
+end
 
 @struct_hash_equal struct Fail <: AgentBox
   agent::ACSet
@@ -93,5 +107,9 @@ color(::Fail) = "red"
 function update(f::Fail, ::PMonad=Maybe)
   update_f(::Nothing,w; kw...) = f.silent ? MealyRes(nothing,[],"fail") : error("$S $w")
 end
+
+update!(::Ref, boxdata::Fail, ::ACSetTransformation, inport::Int) = error("Fail")
+
+
 
 end # module 

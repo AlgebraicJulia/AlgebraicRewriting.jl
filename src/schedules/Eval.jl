@@ -1,5 +1,6 @@
 module Eval 
-export Traj, TrajStep, apply_schedule, rewrite_schedule, traj_res
+export Traj, TrajStep, apply_schedule, rewrite_schedule, traj_res, 
+       interpret, interpret!
 
 using Catlab, Catlab.CategoricalAlgebra, Catlab.WiringDiagrams
 
@@ -138,8 +139,13 @@ rewrite_schedule(s::Schedule, G; kw...) =
 # In-place interpreter
 ######################
 
+interpret(s::Schedule, g) = interpret(s.d, g)
+interpret!(s::Schedule, g) = interpret!(s.d, g)
+
+interpret(wd::WiringDiagram, g) = interpret!(wd, deepcopy(g))
 # interpret a wiring diagram, with each box updating its state in place
-function interpret(wd::WiringDiagram, g)
+interpret!(wd::WiringDiagram, g::ACSet) = interpret!(wd, create(g))
+function interpret!(wd::WiringDiagram, g::ACSetTransformation)
   ws = wires(wd)
   bs = boxes(wd)
   targets = Dict((w.source.box,w.source.port) => (w.target.box,w.target.port) for w in ws)
@@ -158,10 +164,7 @@ function interpret(wd::WiringDiagram, g)
 end
 
 
-function update!(state::Ref, boxdata, _cache, g, inport)
-  # TODO
-  println(typeof(boxdata))
-  return nothing, 1
-end
+update!(::Ref, boxdata, g, inport) = 
+  error("update! $(typeof(boxdata)) not supported yet")
 
 end # module 
