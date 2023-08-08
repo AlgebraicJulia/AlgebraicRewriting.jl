@@ -46,7 +46,7 @@ function yoneda_cache(T::Type,S=nothing; clear=false, cache="cache")
     cache_dir = mkpath(joinpath(cache, "$tname"))
     path, ipath = joinpath.(cache_dir, ["$name.json", "_id_$name.json"])
     name => if !clear && isfile(path)
-      (read_json_acset(T, path), open(io->read(io, Int), ipath))
+      (read_json_acset(T, path), parse(Int,open(io->read(io, String), ipath)))
     else 
       @debug "Computing representable $name"
       rep, i = representable(T, S, name; return_unit_id=true)

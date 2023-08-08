@@ -195,6 +195,8 @@ i1 = initialize(2,.5,.5)
 # RULES
 #######
 yLV = yoneda_cache(LV; clear=true);
+yLV = yoneda_cache(LV; clear=false);
+
 # Empty agent type
 I = LV()
 # Generic sheep agent
