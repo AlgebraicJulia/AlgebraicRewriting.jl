@@ -117,21 +117,16 @@ end
 # Graphs with attributes
 ########################
 
-@present TheoryDecGraph(FreeSchema) begin
-  E::Ob
-  V::Ob
-  src::Hom(E,V)
-  tgt::Hom(E,V)
-
+@present SchDecGraph <: SchGraph begin
   X::AttrType
   dec::Attr(E,X)
 end
 
-@present TheoryLabeledDecGraph <: TheoryDecGraph begin
+@present SchLabeledDecGraph <: SchDecGraph begin
   label::Attr(V,X)
 end
 
-@acset_type LabeledDecGraph(TheoryLabeledDecGraph, index=[:src,:tgt])
+@acset_type LabeledDecGraph(SchLabeledDecGraph, index=[:src,:tgt])
 
 aI2 = @acset LabeledDecGraph{String} begin
   V = 2;  label = ["a","b"]

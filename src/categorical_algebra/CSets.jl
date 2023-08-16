@@ -217,6 +217,7 @@ end
 function can_pushout_complement(pair::ComposablePair{<:ACSet})
   S = acset_schema(dom(pair))
   Ts = datatypes(dom(pair))
+  all(is_natural, pair) || error("Unnatural inputs")
 
   all(can_pushout_complement, unpack_diagram(pair; S=S, Ts=Ts)) &&
     isempty(dangling_condition(pair))
