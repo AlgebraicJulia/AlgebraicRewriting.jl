@@ -47,6 +47,10 @@ end
   include("rewrite/DPO.jl")
 end
 
+@testset "CoNeg" begin
+  include("rewrite/CoNeg.jl")
+end
+
 @testset "SPO" begin
   include("rewrite/SPO.jl")
 end

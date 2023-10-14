@@ -11,8 +11,6 @@ This is a regular julia file that can be run interactively.
 Importantly: 
  - use Julia 1.9 (not yet official released)
  - ]activate the environment in AlgebraicRewriting.jl/docs 
- - check (via ]status) that Catlab branch "varacsets4" is used
- - check that AlgebraicRewriting.jl branch "compat_varacsets" is used
  - check that graphviz is installed locally (test via "which dot" in terminal)
 
 Table of contents:
