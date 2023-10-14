@@ -1,6 +1,6 @@
 module TestConstraints 
 using AlgebraicRewriting
-using Catlab, Catlab.CategoricalAlgebra, Catlab.Graphs
+using Catlab
 using Test 
 
 # Testing arity 2 constraints
@@ -12,6 +12,7 @@ c = Constraint(cg, ∃(3, Commutes([1],[2,3])))
 h1, hid, hnot, _ = homomorphisms(Graph.([2,2])...)
 @test !apply_constraint(c, hid, h1)
 @test apply_constraint(c, hid, hnot)
+@test arity(c) == 2
 
 # AppCond 
 #########
@@ -33,6 +34,7 @@ f = homomorphism(p2, G)
 
 @test apply_constraint(constr, f)
 @test !apply_constraint(constr, id(p2))
+to_graphviz(constr)
 
 # LiftCond
 ##########
@@ -78,6 +80,7 @@ h1,h2,h3,h4 = homomorphisms(G, loop_csp; initial=(V=Dict(1=>1),))
 @test !apply_constraint(constr,h2)
 @test !apply_constraint(constr,h3)
 @test apply_constraint(constr,h4)
+to_graphviz(constr)
 
 # Combining constraints
 #######################
@@ -89,5 +92,6 @@ three_loops = @acset Graph begin V=1; E=3; src=1; tgt=1 end
 c2 = AppCond(homomorphism(Graph(1), two_loops); monic=true)
 c3 = AppCond(homomorphism(Graph(1), three_loops); monic=true)
 constr = c2 ⊕ c3
+to_graphviz(constr)
 
 end # module

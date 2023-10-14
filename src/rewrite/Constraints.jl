@@ -2,9 +2,10 @@ module Constraints
 export apply_constraint, Constraint, CGraph, arity,
        ∀, ∃, ∃!, True, False, Commutes,
        AppCond, LiftCond, Trivial
-using Catlab, Catlab.CategoricalAlgebra, Catlab.Graphs
+using Catlab
 import Catlab.Theories: ⊗, ⊕
 import Catlab.CategoricalAlgebra: ¬
+import Catlab.Graphics: to_graphviz
 using StructEquality
 import ...CategoricalAlgebra.CSets: Migrate
 
@@ -43,7 +44,7 @@ end
 Ints are explicit arguments provided when apply_constraint is called
 """
 const CGraph = VELabeledGraph{Union{Nothing, ACSet},
-                              Union{Nothing,Int, ACSetTransformation}}
+                              Union{Nothing, Int, ACSetTransformation}}
 
 """Number of variables in a constraint graph"""
 arity(g::CGraph) = maximum(filter(v->v isa Int, g[:elabel]); init=0) 
@@ -113,6 +114,7 @@ end
 # Interpreter for boolean algebra
 #################################
 const Assgn = Vector{Union{Nothing, <:ACSetTransformation}} # partial assignment
+paren(x) = "($x)" 
 
 """Something that, in a context, can be evaluated to a bool"""
 abstract type BoolExpr end 
@@ -120,6 +122,7 @@ check_expr(::CGraph, ::BoolExpr) = error("Method undefined")
 bound(::BoolExpr) = error("Method undefined")
 eval_boolexpr(::BoolExpr, ::CGraph, ::Assgn) = error("Method undefined")
 map_edges(f,c::BoolExpr) = error("Method undefined")
+subexprs(::BoolExpr) = error("Method undefined")
 
 """
 A commutative diagram with multiple parallel paths, asserted to either 
@@ -134,10 +137,17 @@ commute or to not commute
   end
 end
 
+subexprs(::Commutes) = BoolExpr[]
+Base.show(io::IO, c::Commutes) =
+  join(io, [join(p, "⋅") for p in c.pths], c.commutes ? " = " : " ≠ ")
+
 """Constant, independent of context"""
 @struct_hash_equal struct BoolConst <: BoolExpr 
   val::Bool
 end 
+Base.show(io::IO, c::BoolConst) = print(io, c.val ? "⊤" : "⊥")
+subexprs(::BoolConst) = BoolExpr[]
+
 const True = BoolConst(true)
 const False = BoolConst(false)
 
@@ -159,6 +169,27 @@ monic - restrict domain of quanitification to only monic matches
     k ∈ [:Exists,:Forall,:Exists!] ? new(e,k,x,st,monic) : error("$k not supported")
 end
 
+quantifier_symbol(c::Quantifier) = if     c.kind == :Exists  "∃"
+                                   elseif c.kind == :Forall  "∀"
+                                   elseif c.kind == :Exists! "∃!"
+                                   end
+
+function Base.show(io::IO, c::Quantifier)
+  q = quantifier_symbol(c)
+  m = if c.monic isa AbstractVector
+    "monic{$(join(c.monic, ","))}, "
+  elseif c.monic 
+    "monic, "
+  else
+    ""
+  end
+  st = c.st == True ? "" : paren(c.st)
+  mst = isempty(m*st) ? "" : " $(paren(m*st))"
+  x = c.expr == True && c.kind ∈ [:Exists, :Exists!] ? "" : ": $(paren(c.expr))"
+  print(io, join([q,c.e,mst,x]))
+end
+subexprs(q::Quantifier) = [q.expr, q.st]
+
 Exists!(e,x;st=True,monic=false) = Quantifier(e,:Exists,x;st=st,monic=monic)
 Forall(e,x;st=True,monic=false) = Quantifier(e,:Forall,x;st=st,monic=monic)
 Exists(e,x;st=True,monic=false) = Quantifier(e,:Exists,x;st=st,monic=monic)
@@ -169,16 +200,33 @@ Exists(e,x;st=True,monic=false) = Quantifier(e,:Exists,x;st=st,monic=monic)
 """Disjunction of multiple expressions"""
 @struct_hash_equal struct BoolOr <: BoolExpr 
   exprs::Vector{BoolExpr}
-  BoolOr(x...) = new(collect(x))
-end 
+  BoolOr(x...) = new(collect(filter(!=(False),x)))
+end
+
+Base.show(io::IO, b::BoolOr) = 
+  if isempty(b.exprs) 
+    print(io, False)
+  else 
+    join(io, paren.(b.exprs), " ∨ ")
+  end
+
+subexprs(b::BoolOr) = b.exprs
 
 ⊕(xs::BoolExpr...) = BoolOr(xs...)
 
 """Conjunction of multiple expressions"""
 @struct_hash_equal struct BoolAnd <: BoolExpr 
   exprs::Vector{BoolExpr}
-  BoolAnd(x...) = new(collect(x))
-end 
+  BoolAnd(x...) = new(collect(filter(!=(True),x)))
+end
+
+Base.show(io::IO, b::BoolAnd) = 
+  if isempty(b.exprs) 
+    show(io, True)
+  else 
+    join(io, paren.(b.exprs), " ∧ ")
+  end
+subexprs(b::BoolAnd) = b.exprs
 
 ⊗(xs::BoolExpr...) = BoolAnd(xs...) 
 
@@ -186,6 +234,8 @@ end
 @struct_hash_equal struct BoolNot <: BoolExpr 
   expr::BoolExpr
 end 
+subexprs(b::BoolNot) = [b.expr]
+Base.show(io::IO, b::BoolNot) = print(io, "¬$(b.expr isa Quantifier ? b.expr : paren(b.expr))") 
 
 ¬(x::BoolExpr) = BoolNot(x)
 
@@ -340,10 +390,11 @@ function ⊕(c1::Constraint,c2::Constraint)
   end  
   new_g = merge_graphs(c1.g, c2.g)
   l1, l2 = legs(new_g)
-  Constraint(apex(new_g), map_edges(l1,c1.d) ⊕ map_edges(l2,c2.d))
+  new_d = map_edges(l1,c1.d) ⊕ map_edges(l2,c2.d)
+  Constraint(apex(new_g), new_d)
 end
 
-⊕(cs::Constraint...) = reduce(⊗, cs; init=Trivial′) 
+⊕(cs::Constraint...) = reduce(⊕, cs; init=Trivial′) 
 
 ¬(c::Constraint) = Constraint(c.g, ¬c.d)
 
@@ -421,4 +472,35 @@ function LiftCond(vertical::ACSetTransformation, bottom::ACSetTransformation;
   return Constraint(cg, expr)
 end
 
-end 
+# Visualize constraints
+#######################
+
+function to_graphviz(c::Constraint)
+  pg = to_graphviz_property_graph(c.g; node_labels=true,
+                                  graph_attrs=Dict(:label=>sprint(show, c.d)))
+
+  for v in vertices(c.g)
+    x = isnothing(c.g[v, :vlabel]) ? "λ" : ""
+    set_vprop!(pg, v, :label, "$x$v")
+  end
+
+  for e in edges(c.g)
+    x = if     c.g[e, :elabel] isa Int    "(λ$(c.g[e, :elabel]))"
+        elseif isnothing(c.g[e, :elabel]) getquantifier(c.d, e)
+        else                              ""
+    end 
+    set_eprop!(pg, e, :label, "$x$e")
+  end
+  to_graphviz(pg)
+end
+
+function getquantifier(d::BoolExpr, e::Int)
+  if d isa Quantifier && d.e == e
+    quantifier_symbol(d)
+  else 
+    qs = collect(filter(!isnothing, getquantifier.(subexprs(d), Ref(e))))
+    isempty(qs) ? nothing : only(qs)
+  end
+end
+
+end # module

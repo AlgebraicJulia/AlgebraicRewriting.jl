@@ -376,27 +376,6 @@ function sub_vars(X::ACSet, subs::AbstractDict)
   return first(legs(pushout(ox, oc)))
 end 
 
-# """
-# For any ACSet, X, a canonical map A→X where A has distinct variables for all
-# subparts.
-# """
-# function abstract(X::StructACSet{S,Ts}; check::Bool=false) where {S,Ts} 
-#   A = deepcopy(X); 
-#   comps = Dict{Any,Any}(map(attrtypes(S)) do at
-#     rem_parts!(A, at, parts(A,at))
-#     comp = Union{AttrVar,attrtype_instantiation(S,Ts,at)}[]
-#     for (f, d, _) in attrs(S; to=at)
-#       append!(comp, A[f])
-#       A[f] = AttrVar.(add_parts!(A, at, nparts(A,d)))
-#     end 
-#     at => comp
-#   end)
-#   for o in ob(S) comps[o]=parts(X,o) end
-#   res = ACSetTransformation(A,X; comps...)
-#   !check || is_natural(res) || error("bad abstract $comps")
-#   return res
-# end 
-
 
 """
 Take an ACSet pullback combinatorially and freely add variables for all 
