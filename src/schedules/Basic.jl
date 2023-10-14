@@ -63,7 +63,7 @@ struct Initialize <: AgentBox
   name::Symbol
   state::StructACSet 
   in_agent::Union{Nothing,StructACSet}
-  Initialize(s, in_agent=nothing, n="") = new(n,s,in_agent)
+  Initialize(s, in_agent=nothing, n=Symbol("")) = new(n,s,in_agent)
 end
 input_ports(r::Initialize) = isnothing(r.in_agent) ? [] : [r.in_agent] 
 output_ports(r::Initialize) = [typeof(r.state)()]

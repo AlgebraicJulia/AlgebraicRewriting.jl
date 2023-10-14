@@ -41,7 +41,7 @@ end
 function yoneda_cache(T::Type,S=nothing; clear=false, cache="cache")
   S = isnothing(S) ? Presentation(T) : S
   tname = nameof(T) |> string
-  cache_dict = Dict{Symbol,Tuple{T,Int}}(Iterators.map(generators(S, :Ob)) do ob
+  cache_dict = Dict{Symbol,Tuple{T,Int}}(map(generators(S, :Ob)) do ob
     name = nameof(ob)
     cache_dir = mkpath(joinpath(cache, "$tname"))
     path, ipath = joinpath.(cache_dir, ["$name.json", "_id_$name.json"])

@@ -2,7 +2,28 @@ module TestPBPO
 
 using Test
 using AlgebraicRewriting
-using Catlab, Catlab.CategoricalAlgebra, Catlab.Graphs, Catlab.Graphics
+using Catlab
+
+using AlgebraicRewriting.Rewrite.PBPO: partial_abstract
+
+# Partial abstract
+##################
+const WG = WeightedGraph{Float64}
+
+L = @acset WG begin 
+  V=1; E=4; Weight=2; src=1; tgt=1; weight=[4.2, AttrVar.([1,1,2])...] 
+end
+G = @acset WG begin V=1; E=5; src=1; tgt=1; weight=[3.1,3.1, 4.2, 6.3, 7.4] end
+lg = homomorphism(L,G; initial=(E=[3,2,1,4],))
+abs,pabs = partial_abstract(lg);
+
+@test all(is_natural, [abs,pabs])
+@test dom(abs) == L
+@test codom(pabs) == G
+# Test partially-expected result: two variables merged
+@test is_isomorphic(codom(abs), @acset(WG, begin 
+  V=1; E=5; Weight=3; src=1; tgt=1; weight=[4.2, AttrVar.([1,1,2,3])...] 
+end))
 
 # Example from Fig. 7 of "A PBPO+ Graph Rewriting Tutorial"
 ###########################################################
@@ -187,7 +208,6 @@ expected = @acset Graph begin V=3; E=4; src=[1,2,1,2]; tgt=[1,2,2,3] end
 
 # Attributed problem
 ####################
-const WG = WeightedGraph{Float64}
 
 L = @acset WG begin V=2; E=1; Weight=1; src=1; tgt=2; weight=[AttrVar(1)] end
 K = WG(2)

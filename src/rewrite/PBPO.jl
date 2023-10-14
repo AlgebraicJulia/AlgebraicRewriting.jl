@@ -6,7 +6,9 @@ import Catlab.CategoricalAlgebra: left, right
 using Catlab.CategoricalAlgebra.CSets: backtracking_search, abstract_attributes
 
 using StructEquality
+using DataStructures: DefaultDict
 
+using ACSets.DenseACSets: types, attrtype_type
 using ..Utils
 import ..Utils: 
   rewrite_match_maps, get_matches, get_expr_binding_map, AbsRule, ruletype
@@ -89,9 +91,9 @@ function canon(l,r,tl,tk,l′)::PBPORule
 end
 
 """
-PBPO matches consist of *two* morphisms. First, a match L → G and secondly 
+PBPO matches consist of *two* morphisms. First, a match m: L → G, and secondly 
 a typing G → L′. With attributes, it is not so simple because G has concrete 
-values for attributes and L′ may have variables. Therefore, we actually the 
+values for attributes and L′ may have variables. Therefore, we actually change the 
 typing to map out of A, an abstracted version of G (with its attributes replaced 
 by variables). So we lift matches L->G to matches L->A, then search α∈Hom(A,L′).
 
@@ -104,9 +106,9 @@ is set to true.
   L  ⟶ L′
      tl
 
-     ∀m
+     m
    L ⟶ G 
-tl ↓ ↘a ↑ (abstraction)
+tl ↓ ↘a ↑ (abs = partial abstraction. Note `a` is `Labs` in the code.)
    L′⟵ A 
       α
 
@@ -117,7 +119,7 @@ we can deduce precisely what m is by looking at α.
 function get_matches(rule::PBPORule, G::ACSet;  initial=nothing, 
                      α_unique=true, random=false, n=-1, kw...)
   S = acset_schema(G)
-  res = [] # Pairs of (m,α)
+  res = [] # Quadruples of of (m, Labs, abs, α)
   L = codom(left(rule))
 
   # Process the initial constraints for match morphism and typing morphism
@@ -137,53 +139,47 @@ function get_matches(rule::PBPORule, G::ACSet;  initial=nothing,
     m_seen = false # keeps track if α_unique is violated for each new m
     if all(ac->apply_constraint(ac, m), rule.acs)
       @debug "m:  $([k=>collect(v) for (k,v) in pairs(components(m))])"
-      # Construct abtract version of G. ab: A->G 
-      ab = abstract_attributes(G)
-      A = dom(ab) # not completely abstract: fill in where L has concrete attrs
-      for (a, cd, _) in attrs(S)
-        for (v, fv) in filter(v_->!(v_[2] isa AttrVar),collect(enumerate(L[a])))
-          A[m[cd](v), a] = fv
+      
+      # Construct partially-abtract version of G. Labs: L->A and abs: A->G 
+      Labs, abs = partial_abstract(m)
+      A = codom(Labs)
+      
+      # If we have a built in function to deduce the adherence from the match
+      if !isnothing(rule.adherence)
+        init = rule.adherence(m)
+        # Return nothing if failure
+        if !isnothing(init)
+          αs = homomorphisms(A, codom(rule.tl); initial=init)
+          # Also return nothing if the result is not unique
+          if length(αs) ==1 
+            push!(res, deepcopy((m, Labs, abs, only(αs))))
+          end 
         end
-      end
-      ab = remove_freevars(ab)
-      A = dom(ab) # now with free variables removed
-      # Construct a:L->A such that m = a;ab
-      ainit = NamedTuple(Dict(o=>collect(m[o]) for o in ob(S)))
-      a = only(homomorphisms(L, A; initial=ainit))
-      # Search for maps α: A -> L′ such that a;α=tl 
-      init = combine_dicts!(extend_morphism_constraints(rule.tl,a), typinit)
-      if !isnothing(init) 
-        # If we have a built in function to deduce the adherence from the match
-        if !isnothing(rule.adherence)
-          init = rule.adherence(m) # return nothing if failure
-          if !isnothing(init)
-            αs = homomorphisms(codom(a), codom(rule.tl); initial=init)
-            if length(αs) ==1 
-              push!(res, deepcopy((m,a,ab,only(αs)))) 
-            end 
+      else 
+        # Search for adherence morphisms: A -> L′
+        init = extend_morphism_constraints(rule.tl, Labs)
+        backtracking_search(A, codom(rule.tl); initial=init, kw...) do α
+          @debug "\tα: ", [k=>collect(v) for (k,v) in pairs(components(α))] 
+
+          # Check strong match condition
+          strong_match = all(types(S)) do o
+            prt = o ∈ ob(S) ? identity : AttrVar
+            all(prt.(parts(A,o))) do i 
+              p1 = preimage(rule.tl[o],α[o](i))
+              p2 = preimage(Labs[o], i)
+              p1 == p2
+            end
           end
-        else 
-          # Search for adherence morphisms.
-          backtracking_search(codom(a), codom(rule.tl); initial=init, kw...) do α
-            @debug "\tα: ", [k=>collect(v) for (k,v) in pairs(components(α))] 
-            strong_match = all(ob(S)) do o 
-              all(parts(A,o)) do i 
-                p1 = preimage(rule.tl[o],α[o](i))
-                p2 = preimage(a[o], i)
-                sort(p1) == sort(p2)
-              end
-            end
-            if strong_match && all(lc -> apply_constraint(lc, α), rule.lcs)
-              all(is_natural, [m,a,ab,α]) || error("Unnatural match")
-              if m_seen  error("Multiple α for a single match $m") end 
-              @debug "\tSUCCESS"
-              push!(res, deepcopy((m,a,ab,α)))
-              m_seen |= α_unique
-              return length(res) == n
-            else
-              @debug "\tFAILURE (strong $strong_match)"
-              return false
-            end
+          if strong_match && all(lc -> apply_constraint(lc, α), rule.lcs)
+            all(is_natural, [m, Labs, abs, α]) || error("Unnatural match")
+            if m_seen  error("Multiple α for a single match $m") end 
+            @debug "\tSUCCESS"
+            push!(res, deepcopy((m, Labs, abs, α)))
+            m_seen |= α_unique
+            return length(res) == n
+          else
+            @debug "\tFAILURE (strong $strong_match)"
+            return false
           end
         end
       end
@@ -191,6 +187,105 @@ function get_matches(rule::PBPORule, G::ACSet;  initial=nothing,
     return length(res) == n
   end 
   return res
+end
+
+
+"""
+This construction addresses the following problem: ideally when we 'abstract' 
+an ACSet from X to A->X, maps *into* X, say B->X, can be canonically pulled back 
+to maps B->A which commute. However, A won't do 
+here, because there may not even exist any maps B->A. If B has concrete 
+attributes, then those cannot be sent to an AttrVar in A. Furthermore, if B 
+has multiple 'references' to an AttrVar (two different edges, each with 
+AttrVar(1), sent to two different edges with the same atttribute value in X), 
+then there is no longer a *canonical* place to send AttrVar(1) to in A, as there 
+is a distinct AttrVar for every single part+attr in X. So we need a construction 
+which does two things to A->X, starting with a map B->X. 1.) replaces exactly the 
+variables we need with concrete values in order to allow a map B->A, 2.) quotients 
+variables in A so that there is exactly one choice for where to send attrvars in 
+B such that the triangle commutes.
+
+
+Starting with a map L -> G (where G has no AttrVars), 
+we want the analogous map into a "partially abstracted" version of G that 
+has concrete attributes replaced with AttrVars *EXCEPT* for those attributes 
+which are mapped to by concrete attributes of L. Likewise, multiple occurences 
+of the same variable in L correspond to AttrVars which should be merged in the 
+partially-abstracted G.
+
+For example, for a schema with a single Ob and Attr (where all combinatorial 
+maps are just {1↦1, 2↦2}):
+
+- L = [AttrVar(1), :foo]
+- G = [:bar, :foo, :baz]
+- abs(G) = [AttrVar(1), AttrVar(2), AttrVar(3)]
+- expected result: [AttrVar(1), :foo, AttrVar(2)]
+
+   L  -> Partial_abs(G)
+   ↓          ↑
+   G  <-   abs(G)
+
+This function computes the top arrow of this diagram starting with the left 
+arrow. The bottom arrow is computed by `abstract_attributes` and the right 
+arrow by `sub_vars`. Furthermore, a map from Partial_abs(G) to G is provided.
+
+This is the factorization system arising from a coreflective subcategory.
+
+(see https://ncatlab.org/nlab/show/reflective+factorization+system
+ and https://blog.algebraicjulia.org/post/2023/06/varacsets/)
+
+"""
+function partial_abstract(lg::ACSetTransformation)
+  L, G = dom(lg), codom(lg)
+  S = acset_schema(L)
+  abs_G = abstract_attributes(G)
+  A = dom(abs_G)
+
+  # Construct partially-abstracted G 
+  #---------------------------------
+  subs = Dict{Symbol,Dict{Int}}()
+  merges = Dict{Symbol,Vector{Vector{Int}}}()
+  for at in attrtypes(S)
+    subdict = Dict{Int, Any}()
+    mergelist = DefaultDict{Int,Vector{Int}}(()->Int[])
+    for (f, o, _) in attrs(S; to=at)
+      for iₒ in parts(L, o)
+        var = A[lg[o](iₒ), f].val
+        val = L[iₒ, f]
+        if val isa AttrVar
+          push!(mergelist[val.val], var)
+        else
+          subdict[var] = val
+        end
+      end
+    end
+    subs[at] = subdict
+    merges[at] = collect(filter(l->!isempty(l), collect(values(mergelist))))
+  end
+  pabs_G = sub_vars(dom(abs_G), subs, merges)
+  
+  # Construct maps 
+  #---------------
+  prt(o) = o ∈ ob(S) ? identity : AttrVar
+  T(o) = o ∈ ob(S) ? Int : Union{AttrVar,attrtype_type(L, o)}
+
+  # The quotienting via `sub_vars` means L->PA determined purely by ob components
+  to_pabs_init = Dict{Symbol,Vector{Int}}(map(ob(S)) do o
+    o => map(prt(o).(collect(lg[o]))) do i 
+      pabs_G[o](only(preimage(abs_G[o], i)))
+    end
+  end)
+
+  from_pabs_comps = Dict(map(types(S)) do o
+    comp = Vector{T(o)}(map(prt(o).(parts(codom(pabs_G), o))) do Pᵢ
+      only(unique([abs_G[o](prt(o)(pi)) for pi in preimage(pabs_G[o], Pᵢ)]))
+    end)
+    o => comp 
+  end)
+
+  to_pabs = only(homomorphisms(L, codom(pabs_G); initial=to_pabs_init))
+  from_pabs = ACSetTransformation(codom(pabs_G), codom(lg); from_pabs_comps...)
+  ComposablePair(to_pabs, from_pabs)
 end
 
 """ 
