@@ -35,7 +35,8 @@ Names(;kw...) = Names(Dict([string(k)=>v for (k,v) in pairs(kw)]))
 Base.getindex(n::Names,s::String) = n.from_name[s]
 Base.getindex(n::Names,s::Symbol) = n[string(s)]
 Base.getindex(n::Names,x)::String = get(n.to_name,x,"?")
-function Base.setindex(n::Names, x::String, y) 
+Base.length(n::Names) = length(n.from_name)
+function Base.setindex!(n::Names{T}, y::T, x::String) where T 
   n.from_name[x] = y 
   n.to_name[y] = x
 end
@@ -49,11 +50,11 @@ Make a wiring diagram with ob/hom generators using @program macro
 
 TODO double check that this does not introduce any wire splitting.
 """
-function mk_sched(t_args::NamedTuple,args::NamedTuple,names::Names,
-                  kw::Union{NamedTuple,AbstractDict}, wd::Expr)
+function mk_sched(t_args::NamedTuple,args::NamedTuple,names::Names{T},
+                  kw::Union{NamedTuple,AbstractDict}, wd::Expr) where T
   n_trace=length(t_args)
-  os = Dict(Symbol(k)=>v for (k,v) in collect(names.from_name))
-  hs = Dict(Symbol(k)=>v isa AgentBox ? singleton(v) : v for (k,v) in pairs(kw))
+  os = Dict{Symbol, T}(Symbol(k)=>v for (k,v) in collect(names.from_name))
+  hs = Dict{Symbol, Schedule}(Symbol(k)=>v isa AgentBox ? singleton(v) : v for (k,v) in pairs(kw))
   P = Presentation(TM)
   os_ = Dict(v=>add_generator!(P, Ob(TM,k)) for (k,v) in collect(os))
 
@@ -65,7 +66,6 @@ function mk_sched(t_args::NamedTuple,args::NamedTuple,names::Names,
     add_generator!(P, Hom(k, i, o))
   end
   args_ = Expr(:tuple,[Expr(Symbol("::"), k,v) for (k,v) in pairs(merge(t_args,args))]...)
-
   tmp = parse_wiring_diagram(P, args_, wd)
   Xports = Ports{ThTracedMonoidalWithBidiagonals}(input_ports(tmp)[1:n_trace])
   newer_x = Ob(TM,Xports) # arbitrary gatexpr
@@ -95,7 +95,7 @@ function mk_sched(t_args::NamedTuple,args::NamedTuple,names::Names,
   end 
 
   new_d = trace(Xports, tmp)
-  sub = ocompose(new_d, [hs[Symbol(b.value)].d for b in boxes(new_d)])
+  sub = ocompose(new_d, WiringDiagram[hs[Symbol(b.value)].d for b in boxes(new_d)])
   sub.diagram[:wire_value] = nothing
   for x in Symbol.(["$(x)_port_type" for x in [:outer_in,:outer_out,]])
     sub.diagram[:,x] = [names[v] for v in sub.diagram[x]]
@@ -240,4 +240,4 @@ merge_wires(agent::StructACSet, n::Int=2)::Schedule =
 id(agents::AbstractVector{<:StructACSet}) = id(SPorts(Ports(agents)))
 
 
-end # module 
+end # module
