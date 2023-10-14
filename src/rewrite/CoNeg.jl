@@ -31,7 +31,7 @@ match morphism isn't monic, if it satisfies the identification condition.
 Supporting this is not yet implemented.
 
 Match morphisms which bind attribute variables are not monic, hence we this 
-form of rewriting doesn't support VarACSets. Intuitively it feels like this 
+form of rewriting doesn't support VarACSets. Intuitively, it feels like this 
 restriction could be relaxed.
 """
 function rewrite_match_maps(r::Rule{:CoNeg}, m; check::Bool=false)
