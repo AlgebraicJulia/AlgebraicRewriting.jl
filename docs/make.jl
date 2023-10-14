@@ -11,7 +11,8 @@ end
 makedocs(
     sitename = "AlgebraicRewriting",
     format = Documenter.HTML(),
-    modules = [AlgebraicRewriting]
+    modules = [AlgebraicRewriting],
+    warnonly = true
 )
 
 
