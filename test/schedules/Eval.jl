@@ -35,7 +35,9 @@ end
 
 z, g1, ar, loop = Graph(), Graph(1), path_graph(Graph, 2), apex(terminal(Graph))
 
-N=Names(Dict("Z"=>z,"•"=>g1,"•→•"=>ar))
+N=Names(Dict("Z"=>z,"•"=>g1))
+@test length(N) == 2
+N["•→•"] = ar
 Dot, A = Symbol.([N[g1],N[ar]]) 
 
 av = RuleApp(:add_vertex, Rule(id(z), create(g1)))

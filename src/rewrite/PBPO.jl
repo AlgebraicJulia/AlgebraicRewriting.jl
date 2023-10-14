@@ -14,10 +14,7 @@ import ..Utils:
   rewrite_match_maps, get_matches, get_expr_binding_map, AbsRule, ruletype
 using ..Constraints
 using ...CategoricalAlgebra
-using ...CategoricalAlgebra.CSets: 
-  extend_morphism_constraints, var_pullback, remove_freevars, 
-  combine_dicts!
-  
+using ...CategoricalAlgebra.CSets: extend_morphism_constraints, var_pullback  
 
 """
       l    r 
