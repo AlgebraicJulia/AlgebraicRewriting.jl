@@ -132,7 +132,7 @@ function get_matches(rule::PBPORule, G::ACSet;  initial=nothing,
 
   # Search for each match morphism
   backtracking_search(L, G; monic=rule.monic, initial=NamedTuple(matchinit),
-                      random=random) do m
+                      random) do m
     m_seen = false # keeps track if α_unique is violated for each new m
     if all(ac->apply_constraint(ac, m), rule.acs)
       @debug "m:  $([k=>collect(v) for (k,v) in pairs(components(m))])"

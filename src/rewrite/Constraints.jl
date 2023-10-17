@@ -190,12 +190,12 @@ function Base.show(io::IO, c::Quantifier)
 end
 subexprs(q::Quantifier) = [q.expr, q.st]
 
-Exists!(e,x;st=True,monic=false) = Quantifier(e,:Exists,x;st=st,monic=monic)
-Forall(e,x;st=True,monic=false) = Quantifier(e,:Forall,x;st=st,monic=monic)
-Exists(e,x;st=True,monic=false) = Quantifier(e,:Exists,x;st=st,monic=monic)
-∀(args...;kwargs...) = Forall(args...;kwargs...)
-∃(args...;kwargs...) = Exists(args...;kwargs...)
-∃!(args...;kwargs...) = Exists!(args...;kwargs...)
+Exists!(e,x; st=True, monic=false) = Quantifier(e,:Exists,x; st, monic)
+Forall(e, x; st=True, monic=false) = Quantifier(e,:Forall,x; st, monic)
+Exists(e, x; st=True, monic=false) = Quantifier(e,:Exists,x; st, monic)
+∀(args...; kwargs...) = Forall(args...; kwargs...)
+∃(args...; kwargs...) = Exists(args...; kwargs...)
+∃!(args...; kwargs...) = Exists!(args...; kwargs...)
 
 """Disjunction of multiple expressions"""
 @struct_hash_equal struct BoolOr <: BoolExpr 
@@ -290,7 +290,8 @@ function eval_boolexpr(q::Quantifier, g::CGraph, curr::Assgn)
   d, cd = [get_ob(g,x,curr) for x in [g[q.e, :src], g[q.e, :tgt]]]
   cands = []
   @debug "$(q.kind) ($(q.e))"
-  for h in homomorphisms(d, cd; monic=q.monic)
+  monic = q.monic == true ? ob(acset_schema(d)) : q.monic
+  for h in homomorphisms(d, cd; monic)
     x = deepcopy(curr)
     x[q.e] = h 
     @debug "candidate morphism $(components(h))"

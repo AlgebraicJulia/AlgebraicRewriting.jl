@@ -61,7 +61,7 @@ condition(s)
     else 
       exprs = Dict(map(attrtypes(acset_schema(dom(L)))) do o
         binding = Dict()
-        for r_var in parts(codom(R),o)
+        for r_var in parts(codom(R), o)
           # User explicitly provides a function to evaluate for this variable
           if !isnothing(expr) && haskey(expr, o) && r_var ∈ keys(expr[o])
             binding[r_var] = expr[o][r_var]
@@ -112,7 +112,7 @@ get_result(sem::Symbol, maps) = codom(get_rmap(sem, maps))
 """Extract the partial map (derived rule) from full output data"""
 function get_pmap(sem::Symbol, maps)
   if isnothing(maps)  nothing
-  elseif sem ∈ DPO′  Span(maps[:kg], maps[:kh])
+  elseif sem ∈ DPO′   Span(maps[:kg], maps[:kh])
   elseif sem == :SPO  Span(maps[:gmono], maps[:gmap])
   elseif sem == :SqPO Span(maps[:i], maps[:o])
   elseif sem == :PBPO Span(maps[:gl], maps[:gr])
@@ -125,10 +125,10 @@ end
 check_initial(vs::Vector{Int}, f::Vector{Int}) =
   [(i, vs[i], f[i]) for i in length(f) if vs[i]!=f[i]]
 check_initial(vs::Vector{Pair{Int,Int}}, f::Vector{Int}) =
-  [(i,f[i],v) for (i,v) in vs if f[i]!=v]
+  [(i, f[i], v) for (i, v) in vs if f[i]!=v]
 
 # Check if a component is included in a monic constraint
-has_comp(monic::Bool, c::Symbol) = monic
+has_comp(monic::Bool, ::Symbol) = monic
 has_comp(monic::Vector{Symbol}, c::Symbol) = c ∈ monic
 
 """
@@ -138,14 +138,14 @@ rule, otherwise returns the reason why it should be rejected
 function can_match(r::Rule{T}, m; initial=Dict()) where T
   S = acset_schema(dom(m))
   for k in ob(S)
-    if has_comp(r.monic,k) && !is_monic(m[k])
+    if has_comp(r.monic, k) && !is_monic(m[k])
       return ("Match is not injective", k, m[k])
     end
   end
   for (k, vs) in collect(initial)
     errs = check_initial(vs, collect(m[k]))
     if !isempty(errs)
-      return ("Initial condition violated",k, errs)
+      return ("Initial condition violated", k, errs)
     end
   end
 
@@ -183,8 +183,8 @@ function get_matches(r::Rule{T}, G::ACSet; initial=nothing,
 
   hs = []
   backtracking_search(codom(r.L), G; monic=r.monic, initial=NamedTuple(initial), 
-                      random=random) do h 
-    cm = can_match(r,h)
+                      random) do h 
+    cm = can_match(r, h)
     if isnothing(cm)
       push!(hs, deepcopy(h))
       return length(hs) == n # we stop the search Hom(L,G) when this holds
@@ -200,7 +200,7 @@ end
 function get_matches(r::Rule{T}, G; initial=nothing, random=false, n=-1) where T 
   initial = isnothing(initial) ? Dict() : initial
   ms = homomorphisms(codom(left(r)), G; monic=r.monic, 
-                     initial=NamedTuple(initial), random=random)
+                     initial=NamedTuple(initial), random)
   res = []
   for m in ms 
     if (n < 0 || length(res) < n) && isnothing(can_match(r, m))
@@ -258,7 +258,7 @@ function rewrite_match_maps end  # to be implemented for each T
 Perform a rewrite (automatically finding an arbitrary match) and return result.
 """
 function rewrite(r::AbsRule, G; initial=nothing, random=false, kw...)
-  m = get_match(r, G; initial=initial, random=random)
+  m = get_match(r, G; initial=initial, random)
   return isnothing(m) ? nothing : rewrite_match(r, m; kw...)
 end
 
@@ -279,7 +279,7 @@ Perform a rewrite (automatically finding an arbitrary match) and return a tuple:
 function rewrite_full_output(r::AbsRule, G; initial=nothing, random=false,
                              n=-1, kw...) 
   T = ruletype(r)
-  ms = get_matches(r,G,initial=initial, random=random, n=n)
+  ms = get_matches(r, G; initial, random, n)
   if isempty(ms)
     return nothing
   elseif random
