@@ -131,11 +131,9 @@ function compute_overlaps(L::ACSet, as::Vector{<:ACSetTransformation}
   map(as) do I_R
     overlaps = Span[]
     for subobj in hom.(subobject_graph(L)[2][1 : end-1]) # skip empty SubACSet
-      if true # length(connected_acset_components(dom(subobj))[1]) == 1
-        for h in homomorphisms(dom(subobj), codom(I_R))
-          if !all(((k,v),) -> collect(v) ⊆ collect(I_R[k]), pairs(components(h)))
-            push!(overlaps, Span(subobj, h))
-          end
+      for h in homomorphisms(dom(subobj), codom(I_R))
+        if !all(((k,v),) -> collect(v) ⊆ collect(I_R[k]), pairs(components(h)))
+          push!(overlaps, Span(subobj, h))
         end
       end
     end
@@ -152,8 +150,10 @@ Add to `matches` based on an addition #i specified via a pushout (rmap, update)
                                     rmap ⌞ ↑ update
                                           X_old
 
-However, we only want maps L → X whose *boundary* is completely outside of the 
-image of Rᵢ. This is to avoid double-counting with a slightly bigger 
+However, we only want maps L → X where *boundary elements* of L are all sent to
+X elements which outside of the image of rmap.
+
+This is to avoid double-counting with a slightly bigger 
 overlap which has already been calculated between L and Rᵢ.
 """
 function addition!(hset::IncCCHomSet, i::Int, rmap::ACSetTransformation, 
@@ -163,31 +163,18 @@ function addition!(hset::IncCCHomSet, i::Int, rmap::ACSetTransformation,
   old_matches = [m ⋅ update for m in hset.matches]  # Push forward old matches
   old_stuff = Dict(o => setdiff(parts(X,o), collect(rmap[o])) for o in ob(S))
   seen_constraints = Set() # if match is non-monic, different subobjects can be 
-  for (DEBUG, (subL, mapR)) in enumerate(hset.overlaps[i])
-    #println("OVERLAP $DEBUG")
+  for (subL, mapR) in hset.overlaps[i]
     initial = Dict(map(ob(S)) do o  # initialize based on overlap btw L and R
       o => Dict(map(parts(dom(subL), o)) do idx
         subL[o](idx) => rmap[o](mapR[o](idx))  # make square commute
       end)
     end)
-    #println("\tinitial $initial")
     if initial ∉ seen_constraints
       push!(seen_constraints, initial)
       L_image = Dict(o => Set(collect(subL[o])) for o in ob(S))
-      boundary = Dict(k => setdiff(collect(v), L_image[k]) 
-                      for (k, v) in pairs(components(~(¬Subobject(subL)))))
-      # boundary = Dict(map(ob(S)) do o 
-      #   o => filter(parts(X, o)) do p 
-      #     p ∈ old_stuff[o] && any(homs(S; from=o)) do (f, _, o′)
-      #       X[p ,f] ∉ old_stuff[o′]
-      #     end
-      #   end
-      # end) 
-      #println("\tboundary (old way) $boundary′\n\tboundary $boundary")
+      boundary = Dict(k => setdiff(parts(L,k), L_image[k]) for k in ob(S))
       valid = Dict(o => Dict(pₒ => old_stuff[o] for pₒ in boundary[o]) for o in ob(S))
-      #println("\tvalid $valid")
       for h in homomorphisms(L, X; initial, valid)
-        #h ∈ new_matches || println("\tMATCH $h")
         h ∈ new_matches ? error("Duplicating work $h") : push!(new_matches, h)
       end
     end
@@ -248,8 +235,8 @@ function validate(hset::IncSumHomSet)::Bool
   fst = first(hset.ihs)
   all(==(additions(fst)), additions.(hset.ihs)) || error("Addns don't agree")
   all(==(state(fst)), state.(hset.ihs)) || error("States don't agree")
-  dom(hset.iso) == apex(hset.coprod) || error("Bad iso domain")
-  codom(hset.iso) == hset.pattern || error("Bad iso codomain")
+  codom(hset.iso) == apex(hset.coprod) || error("Bad iso codomain")
+  dom(hset.iso) == hset.pattern || error("Bad iso domain")
   is_epic(hset.iso) && is_monic(hset.iso) || error("Iso not an iso")
   length(hset.ihs) == length(hset.coprod) || error("len(IHS) != len(CCS)")
   for (i, (h, hs)) in enumerate(zip(hset.coprod, hset.ihs))

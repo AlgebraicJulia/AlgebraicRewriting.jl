@@ -8,6 +8,7 @@ using AlgebraicRewriting.Incremental: validate, connected_acset_components,
 using AlgebraicRewriting.Rewrite.Utils: get_result, get_rmap, get_pmap
 using Random
 
+Random.seed!(100)
 # test valid constraint
 #----------------------
 g1, g2 = path_graph.(Graph, [3,2])
@@ -60,59 +61,51 @@ DDS(phi::Vector{Int}) = @acset DDS begin X=(length(phi)); Φ=phi end
 
 p2 = DDS([2,2])
 p22 = p2 ⊕ p2
-R = DDS([2,2,4,4,4])
-r = homomorphism(p22, R; monic=true)
+r = homomorphism(p22, DDS([2,2,4,4,4]); monic=true)
 hset = IncHomSet(p22, [r], p22);
 rewrite!(hset, Rule(id(p22), r), id(p22))
 @test validate(hset)
 
-
 I = DDS([1,2,1])
-R = DDS([1,2,1,1])
-r = ACSetTransformation(I, R; X=[1, 2, 3])
-pattern = DDS([1,1,1])
+r = ACSetTransformation(I, DDS([1,2,1,1]); X=[1, 2, 3])
 start = DDS([1])
 m = homomorphism(I, start)
-hset = IncHomSet(pattern, [r], start);
+hset = IncHomSet(DDS([1,1,1]), [r], start);
 rewrite!(hset, Rule(id(I), r), m)
 @test validate(hset)
 
 # Benchmark 
 ###########
 
-# for xxx in 1:100
-#   println("XXX $xxx")
-# erdos_renyi(Graph, 3, 3)
-start =  @acset Graph begin V=3; E=3; src=[1,1,2]; tgt=[2,3,3] end
-m = homomorphisms(e, start; monic=true)[2] # problem if  this is [2], not [1]
+all_graph(rng) = [cycle_graph.(Graph,rng); star_graph.(Graph, rng);
+                  path_graph.(Graph, rng)]
+rand_graph(rng) = rand(all_graph(rng))
 
-res = rewrite_match_maps(A_rule, m);
-(pl, pr), rmap = get_pmap(:DPO, res), get_rmap(:DPO, res);
+while true
+  L, R = rand_graph(3:5), rand_graph(3:5)
+  I = rand(path_graph.(Graph, 2:4))
+  NV=200
+  start = erdos_renyi(Graph, NV, 2*NV)
+  l = homomorphism(I, L; monic=true)
+  r = homomorphism(I, R; monic=true)
+  isnothing(r) && continue
+  m = homomorphism(I, start)
+  isnothing(m) && continue
+  res = rewrite_match_maps(Rule(id(I), r), m);
+  (pl, pr), rmap = get_pmap(:DPO, res), get_rmap(:DPO, res);
+  @test collect(pl[:V]) == 1:NV
 
-pattern = path_graph(Graph, 4) # path_graph(Graph,3)
-
-# @time begin 
-#   new_matches = homomorphisms(pattern, codom(rmap))
-# end;
-hset = IncHomSet(pattern, [A_rule.R], start);
-@time begin 
-  deletion!(hset, pl)
-  addition!(hset, 1, rmap, pr)
-end;
-
-# 225 vs 318
-
-o = hset.overlaps[1];
-apex(o[225])
-left(o[225])
-right(o[225])
-apex(o[318])
-left(o[318])
-right(o[318])
-
-# end
-
-@test Set(new_matches) == hset.matches
+  @time begin 
+    new_matches = homomorphisms(L, codom(rmap))
+  end;
+  hset = IncHomSet(L, [r], start);
+  @time begin 
+    deletion!(hset, pl);
+    addition!(hset, 1, rmap, pr);
+  end 
+  validate(hset)
+  break
+end
 
 # DDS 
 #----
@@ -130,7 +123,6 @@ while true
 
   start, pattern = DDS(2000), DDS(5)
   m = homomorphism(codom(l), start)
-  println("HERE")
   (!isnothing(m) && isnothing(can_match(rand_rule, m))) || continue 
 
   res = rewrite_match_maps(rand_rule, m)
