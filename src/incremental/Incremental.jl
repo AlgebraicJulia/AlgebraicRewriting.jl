@@ -150,8 +150,8 @@ Add to `matches` based on an addition #i specified via a pushout (rmap, update)
                                     rmap ⌞ ↑ update
                                           X_old
 
-However, we only want maps L → X where *boundary elements* of L are all sent to
-X elements which outside of the image of rmap.
+However, we only want maps L → X where elements not in the image of L are all 
+sent to X elements which outside of the image of rmap.
 
 This is to avoid double-counting with a slightly bigger 
 overlap which has already been calculated between L and Rᵢ.

@@ -87,3 +87,10 @@ end
 @testset "Schedules" begin
   include("schedules/Eval.jl")
 end
+
+# Incremental hom search
+########################
+
+@testset "Schedules" begin
+  include("incremental/Incremental.jl")
+end

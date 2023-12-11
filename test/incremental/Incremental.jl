@@ -9,6 +9,7 @@ using AlgebraicRewriting.Rewrite.Utils: get_result, get_rmap, get_pmap
 using Random
 
 Random.seed!(100)
+
 # test valid constraint
 #----------------------
 g1, g2 = path_graph.(Graph, [3,2])
