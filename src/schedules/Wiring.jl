@@ -196,8 +196,11 @@ function (F::Migrate)(wd_::Schedule)
                     Symbol.(["$(x)wire_value" for x in ["",:in_,:out_]])...]
     wd.diagram[:,x] = F.(wd.diagram[x])
   end 
-  return Schedule(wd,wd_.x)
+  Schedule(wd, F(wd_.x))
 end 
+
+(F::Migrate)(x::T) where {T<:TM.Ob} = T(F.(x.args), F.(x.type_args))
+(F::Migrate)(x::T) where {T<:TM.Hom} = T(F.(x.args), F.(x.type_args))
 
 const wnames = [
   # Begin   End          Val            BeginType             EndType

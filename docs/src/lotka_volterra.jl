@@ -72,9 +72,8 @@ F2 = Migrate(
   Dict(x=>x for x in Symbol.(TheoryLV.generators[:Hom])), LV′; delta=false)
 
 """
-Create a nxn grid with periodic boundary conditions. Edges in each cardinal
+Create an n × n grid with periodic boundary conditions. Edges in each cardinal
 direction originate at every point
-
 
 (i,j+1) -> (i+1,j+1) -> ...
   ↑          ↑
@@ -408,6 +407,7 @@ cycle = ( agent(sheep; n=:sheep,  ret=I)
 # wrap in a while loop
 overall = while_schedule(cycle, curr -> nparts(curr,:Wolf) >= 0) |> F2
 # view_sched(overall; names=F2(N))
+
 X = initialize(3, .25, .25)
 res, = apply_schedule(overall, X; steps=50);
 
