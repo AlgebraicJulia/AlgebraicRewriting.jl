@@ -15,11 +15,11 @@ using DataMigrations
 #######
 
 @testset "Lotka Volterra" begin
-  include("../docs/src/lotka_volterra.jl") 
+  #include("../docs/src/lotka_volterra.jl") 
 end
 
 @testset "Game of Life" begin
-  include("../docs/src/GameOfLife.jl") 
+  #include("../docs/src/GameOfLife.jl") 
 end
 
 

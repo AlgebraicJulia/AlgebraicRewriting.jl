@@ -1,6 +1,4 @@
-using AlgebraicRewriting
-using Catlab, Catlab.CategoricalAlgebra, Catlab.Graphics, Catlab.Graphs, Catlab.Programs
-import AlgebraicPetri
+using AlgebraicRewriting, Catlab, AlgebraicPetri, DataMigrations
 using Test
 
 
@@ -9,7 +7,7 @@ This is a self-contained walkthrough of the main features of AlgebraicRewriting.
 This is a regular julia file that can be run interactively.
 
 Importantly: 
- - use Julia 1.9 (not yet official released)
+ - use Julia 1.10
  - ]activate the environment in AlgebraicRewriting.jl/docs 
  - check that graphviz is installed locally (test via "which dot" in terminal)
 
@@ -60,8 +58,8 @@ R = @acset Graph begin
   src = 1
   tgt = 1
 end # •↺
-l = CSetTransformation(I, L; V=[1]) # graph homomorphism data
-r = CSetTransformation(I, R; V=[1])
+l = ACSetTransformation(I, L; V=[1]) # graph homomorphism data
+r = ACSetTransformation(I, R; V=[1])
 
 rule = Rule(l, r)
 G = path_graph(Graph, 5)  # • → • → • → • → •
@@ -159,7 +157,7 @@ rule_sqpo = Rule{:SqPO}(l, r) # same data as before)
 G = star_graph(Graph, 6) # a 5-pointed star
 to_graphviz(G; prog="neato") # changing "prog" can sometimes make it look better
 
-m = CSetTransformation(Graph(1), G; V=[6]) # point at the center
+m = ACSetTransformation(Graph(1), G; V=[6]) # point at the center
 res = rewrite_match(rule_sqpo, m)
 to_graphviz(res; prog="neato")
 
@@ -186,7 +184,7 @@ L′ = @acset Graph begin
   src = [1, 1, 1, 2, 3, 3]
   tgt = [1, 2, 3, 3, 3, 1]
 end
-tl = CSetTransformation(L, L′; V=[2]) # 2 is the matched vertex
+tl = ACSetTransformation(L, L′; V=[2]) # 2 is the matched vertex
 to_graphviz(L′; node_labels=true)
 
 # The outneighbors of the matched vertex are duplicated (an edge connects the 
@@ -199,7 +197,7 @@ K′ = @acset Graph begin
   src = [1, 1, 1, 2, 3, 3, 3, 4, 5]
   tgt = [1, 2, 3, 3, 3, 1, 5, 5, 5]
 end
-tk = CSetTransformation(K, K′; V=[2, 4])
+tk = ACSetTransformation(K, K′; V=[2, 4])
 to_graphviz(K′; node_labels=true)
 
 l′ = homomorphism(K′, L′; initial=(V=[1, 2, 3, 2, 3],))
@@ -243,7 +241,7 @@ function graph_slice(s::Slice)
   (S, T), (I, O) = [[findall(==(i), X) for i in 1:2] for X in [V, E]]
   nS, nT, nI, nO = length.([S, T, I, O])
   findS, findT = [x -> findfirst(==(x), X) for X in [S, T]]
-  AlgebraicPetri.Graph(@acset AlgebraicPetri.PetriNet begin
+  to_graphviz(@acset AlgebraicPetri.PetriNet begin
     S = nS
     T = nT
     I = nI
