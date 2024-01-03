@@ -26,8 +26,8 @@ add_edge!(B, 2, 2);
 C = path_graph(Graph, 4);
 add_edge!(C, 1, 3);
 ka = path_graph(Graph, 2);
-ka, kb = [CSetTransformation(K, x, V=[1,2], E=[1]) for x in [A,B]];
-ac = CSetTransformation(A, C, V=[1,2,3], E=[1,2]);
+ka, kb = [ACSetTransformation(K, x, V=[1,2], E=[1]) for x in [A,B]];
+ac = ACSetTransformation(A, C, V=[1,2,3], E=[1,2]);
 
 """
 Delete the third vertex of • → • → • → • and add a loop to the second vertex.

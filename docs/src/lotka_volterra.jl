@@ -1,8 +1,6 @@
 module LotkaVolterra 
 
-using Catlab, Catlab.Theories, Catlab.CategoricalAlgebra, Catlab.Graphs, 
-      Catlab.Graphics, Catlab.WiringDiagrams, Catlab.Programs
-using AlgebraicRewriting
+using Catlab, DataMigrations, AlgebraicRewriting
 using Random, Test, StructEquality
 using Luxor
 

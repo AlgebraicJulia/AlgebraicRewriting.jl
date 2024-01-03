@@ -110,8 +110,8 @@ the same data for a morphism lifted from X⟶Y to T(X)⟶T(Y).
 However, we still need to map the extra stuff in T(X) to the proper extra stuff
 in T(Y).
 """
-function partial_map_functor_hom(f::CSetTransformation;
-    pres::Union{Nothing, Presentation}=nothing)::CSetTransformation
+function partial_map_functor_hom(f::ACSetTransformation;
+    pres::Union{Nothing, Presentation}=nothing)::ACSetTransformation
   X, Y = dom(f), codom(f)
   S = acset_schema(X)
   (d, _), (cd, cddict) = [partial_map_functor_ob(x; pres=pres) for x in [X,Y]]
@@ -132,7 +132,7 @@ function partial_map_functor_hom(f::CSetTransformation;
       end
     end
   end
-  return CSetTransformation(d,cd;comps...)
+  ACSetTransformation(d, cd; comps...)
 end
 
 """
@@ -140,11 +140,11 @@ The natural injection from X ⟶ T(X)
 When evaluated on the terminal object, this gives the subobject classfier.
 """
 function partial_map_classifier_eta(x::StructCSet;
-    pres::Union{Nothing, Presentation}=nothing)::CSetTransformation
+    pres::Union{Nothing, Presentation}=nothing)::ACSetTransformation
   S = acset_schema(x)
   codom = partial_map_functor_ob(x; pres=pres)[1]
   d = Dict([k=>collect(v) for (k,v) in pairs(id(x).components)])
-  return CSetTransformation(x, codom; d...)
+  ACSetTransformation(x, codom; d...)
 end
 
 
@@ -165,9 +165,9 @@ the subobject picked out by X. When A is 'deleted', it picks out the right
 element of the additional data added by T(B).
 """
 function partial_map_classifier_universal_property(
-    m::CSetTransformation, f::CSetTransformation;
+    m::ACSetTransformation, f::ACSetTransformation;
     pres::Union{Nothing, Presentation}=nothing, check=false
-    )::CSetTransformation
+    )::ACSetTransformation
   S = acset_schema(dom(m))
   hdata   = collect(homs(S))
   A, B    = codom(m), codom(f)
@@ -196,7 +196,7 @@ function partial_map_classifier_universal_property(
       end
     end
   end
-  ϕ = CSetTransformation(A, TB; res...)
+  ϕ = ACSetTransformation(A, TB; res...)
   if check
     is_natural(ηB) || error("ηB not natural $ηB")
     is_natural(ϕ) || error("ϕ not natural $ϕ")

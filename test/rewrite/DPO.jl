@@ -35,14 +35,14 @@ add_edges!(squarediag, [1,1,2,3,4],[2,4,4,2,3])
 span_w_arrow = Graph(3)
 add_edges!(span_w_arrow,[1,1,2],[2,3,1])
 
-L = CSetTransformation(I2, arr, V=[1,2])
-R = CSetTransformation(I2, biarr, V=[1,2])
-m = CSetTransformation(arr, span, V=[2,1], E=[1])
+L = ACSetTransformation(I2, arr, V=[1,2])
+R = ACSetTransformation(I2, biarr, V=[1,2])
+m = ACSetTransformation(arr, span, V=[2,1], E=[1])
 @test is_isomorphic(span_w_arrow, rewrite_match(Rule(L, R), m))
 
 # Remove apex of a subspan (top left corner of squarediag, leaves the triangle behind)
-L = CSetTransformation(I2, span, V=[1,3])
-m = CSetTransformation(span, squarediag, V=[2,1,4], E=[1,2])
+L = ACSetTransformation(I2, span, V=[1,3])
+m = ACSetTransformation(span, squarediag, V=[2,1,4], E=[1,2])
 @test is_isomorphic(tri, rewrite_match(Rule(L,id(I2)),m))
 
 # Remove self-edge using a *non-monic* match morphism
@@ -51,8 +51,8 @@ add_edges!(two_loops,[1,2],[1,2]) # ↻1   2↺
 one_loop = Graph(2)
 add_edges!(one_loop,[2],[2]) # 1   2↺
 
-L = CSetTransformation(I2, arr, V=[1,2])
-m = CSetTransformation(arr, two_loops, V=[1, 1], E=[1])
+L = ACSetTransformation(I2, arr, V=[1,2])
+m = ACSetTransformation(arr, two_loops, V=[1, 1], E=[1])
 @test is_isomorphic(one_loop, rewrite_match(Rule(L,id(I2)),m))
 
 # Non-discrete interface graph. Non-monic matching
@@ -61,31 +61,31 @@ arrarr = @acset Graph begin V=2; E=2; src=[1,1]; tgt=[2,2] end #  1⇉2
 arrarr_loop = @acset Graph begin V=2; E=3; src=[1,1,2]; tgt=[2,2,2] end # 1⇉2↺
 arr_looploop = @acset Graph begin V=2;E=3; src= [1,2,2]; tgt=[2,2,2]end # 1-> ↻2↺
 
-L = CSetTransformation(arr, arr, V=[1,2],E=[1]) # identity
-R = CSetTransformation(arr, arrarr, V=[1,2], E=[1])
-m = CSetTransformation(arr, arr_loop, V=[2,2], E=[2]) # NOT MONIC
+L = ACSetTransformation(arr, arr, V=[1,2],E=[1]) # identity
+R = ACSetTransformation(arr, arrarr, V=[1,2], E=[1])
+m = ACSetTransformation(arr, arr_loop, V=[2,2], E=[2]) # NOT MONIC
 @test is_isomorphic(arr_looploop, rewrite_match(Rule(L,R),m))
 
 # only one monic match
 @test is_isomorphic(arrarr_loop, rewrite(Rule(L, R; monic=true), arr_loop))
 
 # two possible morphisms L -> squarediag, but both violate dangling condition
-L = CSetTransformation(arr, span, V=[1,2], E=[1]);
-m = CSetTransformation(span, squarediag, V=[2,1,4], E=[1,2]);
+L = ACSetTransformation(arr, span, V=[1,2], E=[1]);
+m = ACSetTransformation(span, squarediag, V=[2,1,4], E=[1,2]);
 @test (:src, 5, 4) in dangling_condition(ComposablePair(L,m))
 @test_throws ErrorException Rule(L, id(arr)) # unnatural morphism
 
 # violate id condition because two orphans map to same point
-L = CSetTransformation(I2, biarr, V=[1,2]); # delete both arrows
-m = CSetTransformation(biarr, arr_loop, V=[2,2], E=[2,2]);
+L = ACSetTransformation(I2, biarr, V=[1,2]); # delete both arrows
+m = ACSetTransformation(biarr, arr_loop, V=[2,2], E=[2,2]);
 @test (1, 2) in id_condition(ComposablePair(L[:E],m[:E]))[2]
-L = CSetTransformation(arr, biarr, V=[1,2], E=[1]); # delete one arrow
+L = ACSetTransformation(arr, biarr, V=[1,2], E=[1]); # delete one arrow
 @test 1 in id_condition(ComposablePair(L[:E],m[:E]))[1]
 
 span_triangle = @acset Graph begin V=3; E=3; src=[1,1,2];tgt= [2,3,3]end;# 2 <- 1 -> 3 (with edge 2->3)
 
-L = CSetTransformation(arr, tri, V=[1,2], E=[1]);
-m = CSetTransformation(tri, squarediag, V=[2,4,3], E=[3,5,4]);
+L = ACSetTransformation(arr, tri, V=[1,2], E=[1]);
+m = ACSetTransformation(tri, squarediag, V=[2,4,3], E=[3,5,4]);
 @test is_isomorphic(span_triangle, rewrite_match(Rule(L,id(arr)),m))
 
 k, g = pushout_complement(ComposablePair(L, m)); # get PO complement to do further tests
@@ -198,10 +198,10 @@ I = UndirectedBipartiteGraph()
 add_vertices₁!(I, 1)
 add_vertices₂!(I, 2)
 
-L = CSetTransformation(I, Lspan, V₁=[1], V₂=[1,2])
-R = CSetTransformation(I, line, V₁=[1], V₂=[1,2])
-m1 = CSetTransformation(Lspan, z_, V₁=[1], V₂=[1,2], E=[1, 2])
-m2 = CSetTransformation(Lspan, z_, V₁=[1], V₂=[2,1], E=[2, 1])
+L = ACSetTransformation(I, Lspan, V₁=[1], V₂=[1,2])
+R = ACSetTransformation(I, line, V₁=[1], V₂=[1,2])
+m1 = ACSetTransformation(Lspan, z_, V₁=[1], V₂=[1,2], E=[1, 2])
+m2 = ACSetTransformation(Lspan, z_, V₁=[1], V₂=[2,1], E=[2, 1])
 
 @test is_isomorphic(parallel, rewrite_match(Rule(L, R), m1))
 @test is_isomorphic(merge, rewrite_match(Rule(L, R), m2))

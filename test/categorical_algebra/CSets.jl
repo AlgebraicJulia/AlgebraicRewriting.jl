@@ -14,8 +14,8 @@ end
 @acset_type FinSetType(TheoryFinSet)
 
 I, L, G = [@acset FinSetType begin X=i end for i in [2,1,1]]
-l = CSetTransformation(I, L, X=[1,1])
-m = CSetTransformation(L, G, X=[1])
+l = ACSetTransformation(I, L, X=[1,1])
+m = ACSetTransformation(L, G, X=[1])
 @test can_pushout_complement(ComposablePair(l,m))
 ik, kg = pushout_complement(ComposablePair(l,m))
 # There are 3 functions `ik` that make this a valid P.C.

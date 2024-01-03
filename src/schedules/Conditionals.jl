@@ -1,6 +1,8 @@
 module Conditionals 
 export Conditional, const_cond, if_cond, uniform, while_schedule, for_schedule
 
+using StructEquality
+
 using Catlab.CategoricalAlgebra, Catlab.WiringDiagrams
 
 using ...CategoricalAlgebra.CSets: Migrate
@@ -19,7 +21,7 @@ ACSet.
 
 The state and update function are by default trivial.
 """
-struct Conditional <: AgentBox
+@struct_hash_equal struct Conditional <: AgentBox
   name::Symbol 
   prob::Function                  # ACSetTransformation (x S) -> ℝⁿ
   update::Union{Nothing,Function} # ACSetTransformation x S -> S

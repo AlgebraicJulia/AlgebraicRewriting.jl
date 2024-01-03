@@ -37,12 +37,12 @@ adding elements, and edge redirection.
 L = @acset Graph begin V=3;E=2;src=[1,3];tgt=[2,2] end 
 K = Graph(5)
 R = @acset Graph begin V=4;E=1;src=4;tgt=4 end
-l = CSetTransformation(K,L;V=[1,2,2,3,1])
-r = CSetTransformation(K,R;V=[1,2,4,1,4])
+l = ACSetTransformation(K,L;V=[1,2,2,3,1])
+r = ACSetTransformation(K,R;V=[1,2,4,1,4])
 L′ = @acset Graph begin V=4;E=7;src=[1,1,2,2,3,4,4];tgt=[2,4,1,3,2,3,4] end
 K′ = @acset Graph begin V=6;E=5;src=[1,2,3,5,6];tgt=[5,1,4,5,5] end
 tl = homomorphism(L,L′; initial=(V=[1,2,3],))
-tk = CSetTransformation(K,K′; V=[1,2,3,4,6])
+tk = ACSetTransformation(K,K′; V=[1,2,3,4,6])
 l′ = homomorphism(K′,L′; initial=(V=[1,2,2,3,4,1],))
 rule = PBPORule(l,r,tl,tk,l′)
 
@@ -54,6 +54,7 @@ res = rewrite(rule,G; initial=(V=[1,2,3],)=>(V=[1,2,3,4,4],))
 expected = @acset Graph begin V=6;E=10;
   src=[1,3,3,4,5,6,6,6,6,6];tgt=[3,4,5,5,5,3,3,4,5,6] 
 end
+
 @test is_isomorphic(res, expected) && is_isomorphic(res, rewrite(rule, G))
 @test only(get_matches(rule, G)) == get_match(rule, G)
 
@@ -68,12 +69,12 @@ patch edges can be duplicated.
 L = path_graph(Graph, 2)
 K = Graph(3)
 R = @acset Graph begin V=3;E=1;src=2;tgt=2 end
-l = CSetTransformation(K,L; V=[1,1,2])
-r = CSetTransformation(K,R; V=[1,2,1])
+l = ACSetTransformation(K,L; V=[1,1,2])
+r = ACSetTransformation(K,R; V=[1,2,1])
 L′ = @acset Graph begin V=3;E=5; src=[1,2,2,3,3];tgt=[2,1,3,1,3] end
 K′ = @acset Graph begin V=4;E=4;src=[3,3,4,4];tgt=[2,2,1,4] end
 tl = homomorphism(L,L′; initial=(V=[1,2],))
-tk = CSetTransformation(K,K′; V=[1,2,3])
+tk = ACSetTransformation(K,K′; V=[1,2,3])
 l′ = homomorphism(K′,L′; initial=(V=[1,1,2,3],));
 rule = PBPORule(l,r,tl,tk,l′)
 
@@ -197,7 +198,7 @@ r = homomorphism(K,R)
 L′ = @acset Graph begin V=2; E=3; src=[1,2,2]; tgt=[1,2,1] end 
 K′ = @acset Graph begin V=2; E=2; src=[2,2]; tgt=[2,1] end 
 tl = homomorphism(L,L′)
-tk = CSetTransformation(K,K′; V=[1])
+tk = ACSetTransformation(K,K′; V=[1])
 l′ = homomorphism(K′,L′; initial=(V=[1,2],))
 rule = PBPORule(l,r,tl,tk,l′)
 
@@ -236,23 +237,27 @@ ac = AppCond(homomorphism(L,loop), false) # cannot bind pattern to loop
            [   •    ]
 
 """
-lc = LiftCond(homomorphism(R,L), # vertical
-              homomorphism(L,L′;initial=(E=[4],)))
+lc = LiftCond(homomorphism(R, L), # vertical
+              homomorphism(L, L′; initial=(E=[4],)))
 
 kx = Any[fill(nothing, 9)...]
 kx[3] =  ((x,vs))->x*vs[1]
-rule = PBPORule(l,r,tl,tk,l′; k_expr=(Weight=kx,),acs=[ac], lcs=[lc])
+rule = PBPORule(l, r, tl, tk, l′; k_expr=(Weight=kx,),acs=[ac], lcs=[lc])
 
 G = @acset WG begin V=5; E=7; src=[1,3,4,3,3,4,5]; tgt=[2,1,1,4,5,2,2]; 
-  weight=[2.,3.,4.,5.,6.,7.,9.] 
+  weight=[2., 3., 4., 5., 6., 7., 9.] 
 end
 expected = @acset WG begin V=4; E=6; src=[2,2,2,3,3,4]; tgt=[1,3,4,1,1,1]; 
-  weight=[6.,5.,6.,8.,7.,9.]
+  weight=[6., 5., 6., 8., 7., 9.]
 end
 
-init = Dict(:V=>[1,2])=>Dict()
-@test only(get_matches(rule, G;initial=init)) == get_match(rule, G;initial=init)
-@test is_isomorphic(expected, rewrite(rule,G;initial=init))
+init = Dict(:V => [1, 2]) => Dict()
+
+get_matches(rule, G; initial=init)
+homomorphisms(codom(left(rule)), G; monic=true)
+
+@test only(get_matches(rule, G; initial=init)) == get_match(rule, G;initial=init)
+@test is_isomorphic(expected, rewrite(rule, G; initial=init))
 
 # Test canonization: TODO
 

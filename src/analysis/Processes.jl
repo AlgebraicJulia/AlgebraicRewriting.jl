@@ -1,7 +1,8 @@
 module Processes 
 export find_deps 
 
-using Catlab.CategoricalAlgebra, Catlab.Graphs
+using Catlab
+using Catlab.Theories: ⋅
 
 using ..Rewrite.Utils
 
