@@ -1,30 +1,32 @@
 module Theories
 
-using Catlab, Catlab.Theories, Catlab.WiringDiagrams
-import Catlab.Theories: Ob,Hom,id, create, compose, otimes, ⋅, ⊗, ∇,□, trace, munit, braid, dom, codom, mmerge
+using Catlab
+import Catlab.Theories: Ob,Hom,id, create, compose, otimes, ⋅, ⊗, ∇, □, trace, 
+                        munit, braid, dom, codom, mmerge
 using Catlab.WiringDiagrams.MonoidalDirectedWiringDiagrams: implicit_mmerge
 
 
-@signature ThTracedMonoidalWithBidiagonals{Ob,Hom} <: ThTracedMonoidalCategory{Ob,Hom} begin
+@signature ThTracedMonoidalWithBidiagonals <: ThTracedMonoidalCategory begin
   mmerge(A::Ob)::((A ⊗ A) → A)
   @op (∇) := mmerge
   create(A::Ob)::(munit() → A)
   @op (□) := create
 end
 
-@syntax TM{ObExpr,HomExpr} ThTracedMonoidalWithBidiagonals begin
-  otimes(A::Ob, B::Ob) = associate_unit(new(A,B), mzero)
+@symbolic_model TM{ObExpr,HomExpr} ThTracedMonoidalWithBidiagonals begin
+  function otimes(A::Ob, B::Ob) 
+    associate_unit(new(A,B), munit)
+  end
   otimes(f::Hom, g::Hom) = associate(new(f,g))
-  function compose(f, g)
+  function compose(f::Hom, g::Hom)
     cf = codom(f); dg = dom(g) 
-    if cf != dg println("$cf\n$dg") end 
+    cf == dg || error("cannot compose \n$cf\nwith \n$dg")
     associate_unit(new(f,g; strict=true), id)
   end
 end
-# compose(f::TM.Hom{S}, g::TM.Hom{T}) where {S,T} = compose(TM.Hom(f),TM.Hom(g))
 
-mmerge(A::Ports{ThTracedMonoidalWithBidiagonals}, n::Int) = implicit_mmerge(A, n)
-trace(X::Ports{ThTracedMonoidalWithBidiagonals}, A::Ports{ThTracedMonoidalWithBidiagonals},
-  B::Ports{ThTracedMonoidalWithBidiagonals}, f::WiringDiagram{ThTracedMonoidalWithBidiagonals}) = trace(X, f)
+mmerge(A::Ports{ThTracedMonoidalWithBidiagonals.Meta.T}, n::Int) = implicit_mmerge(A, n)
+trace(X::Ports{ThTracedMonoidalWithBidiagonals.Meta.T}, A::Ports{ThTracedMonoidalWithBidiagonals.Meta.T},
+  B::Ports{ThTracedMonoidalWithBidiagonals.Meta.T}, f::WiringDiagram{ThTracedMonoidalWithBidiagonals.Meta.T}) = trace(X, f)
 
 end # module 

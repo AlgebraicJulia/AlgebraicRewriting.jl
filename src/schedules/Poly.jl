@@ -109,7 +109,7 @@ end
 
 # General polynomial simulations 
 ################################
-struct SimStep 
+@struct_hash_equal struct SimStep 
   desc::String
   edge::BTreeEdge
   inwire::Union{Nothing,Wire}
@@ -117,7 +117,7 @@ struct SimStep
 end
 
 """ToDO: no 'initial' needed; just use η to get first simstep"""
-struct Sim
+@struct_hash_equal struct Sim
   steps::Vector{SimStep}
 end 
 Sim(w::Wire, i::Any, v::Any) = 

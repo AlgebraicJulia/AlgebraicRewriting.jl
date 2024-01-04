@@ -1,6 +1,7 @@
 module TestRepresentable 
+
 using Test
-using AlgebraicRewriting
+using AlgebraicRewriting, DataMigrations
 using Catlab.Graphs, Catlab.CategoricalAlgebra, Catlab.Programs
 
 yWG = yoneda_cache(WeightedGraph{Float64}; clear=true);
@@ -36,7 +37,7 @@ d = @migration(SchRuler,SchWeightedGraph, begin
     end
 end)
 
-r = Rule(d, yWG; semantics=:SPO, expr=(Weight=[vs->0.],),monic=true)
+r = Rule(d, yWG; semantics=:SPO, expr=(Weight=[vs->0.],), monic=true)
 
 G = path_graph(WeightedGraph{Float64}, 2)
 add_edges!(G, [2,2], [2,2])
@@ -44,7 +45,7 @@ G[:weight] = [-1.,10,10]
 m = get_match(r, G)
 expected = @acset WeightedGraph{Float64} begin 
   V=3; E=2; src=[1,2]; tgt=[2,3]; weight=[-1.,0.] 
-end 
+end
 @test is_isomorphic(rewrite(r, G), expected)
 
 end # module 

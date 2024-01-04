@@ -1,6 +1,8 @@
 module RuleApps
 export RuleApp, loop_rule, tryrule, succeed
 
+using StructEquality
+
 using Catlab.CategoricalAlgebra, Catlab.Theories
 
 using ...Rewrite
@@ -23,7 +25,7 @@ via a Span, or implicitly as a homomorphism into "I" of the rewrite
 rule, and alternatively just from the shape of the agent alone (if it is 
 identical to I, take the id map, otherwise take the unique morphism into I).
 """
-struct RuleApp <: AgentBox
+@struct_hash_equal struct RuleApp <: AgentBox
   name::Symbol 
   rule::AbsRule 
   in_agent::ACSetTransformation  # map A --> L 
@@ -56,7 +58,7 @@ initial_state(::RuleApp) = nothing
 
 #
 
-function update(r::RuleApp, p::PMonad=Maybe)#, ::Int, instate::Traj, ::Nothing)
+function update(r::RuleApp, ::PMonad=Maybe)#, ::Int, instate::Traj, ::Nothing)
   function update_ruleapp(::Nothing, w::WireVal; kw...)
     w.wire_id == 1 || error("RuleApps have exactly 1 input")
     last_step = traj_agent(w.val) # A -> X 

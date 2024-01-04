@@ -5,7 +5,7 @@ export Rule, ruletype,rewrite, rewrite_match, rewrite_full_output,
 
 using Catlab, Catlab.Theories
 using Catlab.CategoricalAlgebra
-using Catlab.CategoricalAlgebra.CSets: backtracking_search
+using Catlab.CategoricalAlgebra.HomSearch: backtracking_search
 import Catlab.CategoricalAlgebra: left, right
 
 using Random
@@ -40,6 +40,8 @@ condition(s)
   exprs::Dict{Symbol, Dict{Int,Union{Nothing,Function}}}
 
   function Rule{T}(L, R; ac=nothing, monic=false, expr=nothing, freevar=false) where {T}
+    S = acset_schema(dom(L))
+    monic = monic === true ? collect(ob(S)) : monic
     dom(L) == dom(R) || error("L<->R not a span")
     ACs = isnothing(ac) ? [] : ac
     exprs = isnothing(expr) ? Dict() : Dict(pairs(expr))
@@ -59,7 +61,7 @@ condition(s)
     if !(dom(L) isa ACSet)
       exprs = Dict()
     else 
-      exprs = Dict(map(attrtypes(acset_schema(dom(L)))) do o
+      exprs = Dict(map(attrtypes(S)) do o
         binding = Dict()
         for r_var in parts(codom(R), o)
           # User explicitly provides a function to evaluate for this variable
