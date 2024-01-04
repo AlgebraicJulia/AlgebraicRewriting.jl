@@ -24,6 +24,7 @@ AlgebraicRewritingDataMigrationsExt = "DataMigrations"
 [compat]
 ACSets = "0.2.9"
 Catlab = "0.16.1"
+DataMigrations = "0.0.2"
 DataStructures = "0.17, 0.18"
 Reexport = "^1"
 StructEquality = "2.1"
