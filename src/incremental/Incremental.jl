@@ -8,7 +8,8 @@ using ..CategoricalAlgebra.CSets: invert_iso
 
 using StructEquality
 using Catlab
-using Catlab.CategoricalAlgebra.CSets: total_parts, ACSetColimit
+using Catlab.CategoricalAlgebra.CSets: ACSetColimit
+using Catlab.CategoricalAlgebra.HomSearch: total_parts
 
 # Data Structures 
 #################
@@ -44,6 +45,9 @@ new content added.
 This is currently designed to work with DenseParts ACSets but could be 
 straightforwardly modified to work with MarkAsDeleted ACSets, which would be 
 even more efficient.
+
+TODO: there should be a data structure for just a single addition and then 
+a structure for multiple additions (which share the same pattern).
 """
 struct IncCCHomSet <: IncHomSet
   pattern::ACSet
@@ -53,7 +57,7 @@ struct IncCCHomSet <: IncHomSet
   state::Ref{<:ACSet}
   function IncCCHomSet(L, as, X)
     all(is_monic, as) || error("Nonmonic addition") # TODO: relax this condition
-    new(L, as, compute_overlaps(L, as), Set(homomorphisms(L, X)), Ref(X))
+    new(L, as, compute_overlaps.(Ref(L), as), Set(homomorphisms(L, X)), Ref(X))
   end
 end
 
@@ -65,7 +69,6 @@ function reset_matches!(hset::IncCCHomSet, xs...)
   empty!(hset.matches)
   union!(hset.matches, xs...)
 end
-
 
 """An incremental Hom Set for a pattern made of distinct connected components"""
 struct IncSumHomSet <: IncHomSet
@@ -123,22 +126,45 @@ function connected_acset_components(X::ACSet)
 end
 
 """
-Find all overlaps between the pattern and each addition, restricting to only 
-overlaps where a nonempty portion of the pattern intersects newly added material.
+Find all partial maps from the pattern to the addition, with some restrictions:
+1. Something must be mapped into the newly added material.
+2. Anything in L incident to a part mapped onto newly added material must be 
+   mapped to newly added material
+
+
+Pruning with restriction #2 doesn't work for DDS, when matches are not monic.
 """
-function compute_overlaps(L::ACSet, as::Vector{<:ACSetTransformation}
-                         )::Vector{Vector{Span}}
-  map(as) do I_R
-    overlaps = Span[]
-    for subobj in hom.(subobject_graph(L)[2][1 : end-1]) # skip empty SubACSet
-      for h in homomorphisms(dom(subobj), codom(I_R))
-        if !all(((k,v),) -> collect(v) ⊆ collect(I_R[k]), pairs(components(h)))
-          push!(overlaps, Span(subobj, h))
-        end
+function compute_overlaps(L::ACSet, I_R::ACSetTransformation)::Vector{Span}
+  overlaps = Span[]
+  for subobj in hom.(subobject_graph(L)[2])
+    for h in homomorphisms(dom(subobj), codom(I_R))
+      good_overlap(subobj, h, I_R) && push!(overlaps, Span(subobj, h))
+    end
+  end
+  overlaps
+end
+
+function good_overlap(subobj, h, I_R)
+  S = acset_schema(dom(h))
+  L = codom(subobj)
+  new_mat = Dict(k=>Set{Int}() for k in ob(S))
+  for (k, v) in pairs(components(h))
+    for (i, fᵢ) in enumerate(collect(v))
+      if fᵢ ∉ collect(I_R[k])
+        push!(new_mat[k], subobj[k](i))
       end
     end
-    overlaps
   end
+  all(isempty, values(new_mat)) && return false # fail condition 1
+  for k in ob(S)
+    for p in setdiff(parts(L, k), collect(subobj[k]))
+      for (f, _, cd) in homs(S; from=k)
+        cd == k && continue # see comment in docstring about DDS
+        L[p, f] ∈ new_mat[cd] && return false # fail condition 2
+      end
+    end
+  end
+  true
 end
 
 """
@@ -175,7 +201,12 @@ function addition!(hset::IncCCHomSet, i::Int, rmap::ACSetTransformation,
       boundary = Dict(k => setdiff(parts(L,k), L_image[k]) for k in ob(S))
       valid = Dict(o => Dict(pₒ => old_stuff[o] for pₒ in boundary[o]) for o in ob(S))
       for h in homomorphisms(L, X; initial, valid)
-        h ∈ new_matches ? error("Duplicating work $h") : push!(new_matches, h)
+        if h ∈ new_matches 
+          error("Duplicating work $h") 
+        else 
+          push!(new_matches, h) # @info "NEW from $subL\n$mapR"
+
+        end
       end
     end
   end
@@ -214,11 +245,22 @@ function rewrite!(hset::IncCCHomSet, r::Rule{T}, match::ACSetTransformation) whe
   addition!(hset, i, get_rmap(T, res), pr)
 end
 
+"""Perform a pushout addition given a match morphism from the domain."""
+addition!(hset, i::Int, omap::ACSetTransformation) =
+  addition!(hset, i, pushout(hset.additions[i], omap)...)
+
+# Extending mutation methods to sums of connected components 
+#-----------------------------------------------------------
 deletion!(hset::IncSumHomSet, f) = deletion!.(hset.ihs, Ref(f))
-addition!(hset, i, rmap, pr) = addition!.(hset.ihs, i, Ref(rmap), Ref(pr))
+
+addition!(hset::IncSumHomSet, i::Int, rmap::ACSetTransformation, pr::ACSetTransformation) = 
+  addition!.(hset.ihs, i, Ref(rmap), Ref(pr))
+
 rewrite!(hset::IncSumHomSet, r::Rule, match::ACSetTransformation) =
   rewrite!.(hset.ihs, Ref(r), Ref(match))
 
+# Validation
+############
 
 """Determine if an IncCCHomSet is invalid. Throw error if so."""
 function validate(hset::IncCCHomSet)::Bool

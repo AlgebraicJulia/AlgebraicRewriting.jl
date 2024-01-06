@@ -25,6 +25,7 @@ ccs, iso = connected_acset_components(g1⊕g2);
 @test is_monic(iso) && is_epic(iso)
 @test collect(first(ccs.cocone)[:V]) == [1,2,3] 
 
+
 # Graph incremental hom search
 #-----------------------------
                                                                   #  • ⇉ •
@@ -52,6 +53,14 @@ rewrite!(hset, A_rule, homomorphisms(e, start)[2])
 rewrite!(hset, A_rule)
 @test validate(hset)
 @test Set(matches(hset)) == Set(homomorphisms(ee ⊕ e, state(hset)))
+
+# Blog example
+tri = @acset Graph begin V=3;E=3;src=[1,1,2];tgt=[3,2,3]end
+X = @acset Graph begin V=2; E=2; src=[1,2]; tgt=[2,2] end
+omap = homomorphism(e, X)
+hset = IncHomSet(ee, [homomorphism(e, tri)], X);
+addition!(hset, 1, omap)
+@test validate(hset)
 
 ## DDS 
 #-----
