@@ -3,7 +3,8 @@ export PBPORule
 
 using Catlab, Catlab.CategoricalAlgebra
 import Catlab.CategoricalAlgebra: left, right
-using Catlab.CategoricalAlgebra.CSets: backtracking_search, abstract_attributes
+using Catlab.CategoricalAlgebra.CSets: abstract_attributes
+using Catlab.CategoricalAlgebra.HomSearch: backtracking_search
 
 using StructEquality
 using DataStructures: DefaultDict
@@ -42,10 +43,12 @@ function of the match morphism.
   exprs::Dict 
   k_exprs::Dict
   adherence::Union{Nothing, Function}
-  function PBPORule(l,r,tl,tk,l′; monic=true, acs=[], lcs=[], 
+  function PBPORule(l,r,tl,tk,l′; monic=false, acs=[], lcs=[], 
                     expr=nothing,k_expr=nothing, adherence=nothing)
     # check things match up
     S = acset_schema(dom(l))
+    monic = monic === true ? collect(ob(S)) : monic
+
     all(is_natural, [l,r,tl,tk,l′]) || error("Unnatural")
     dom(l) == dom(r) == dom(tk) || error("bad K")
     codom(l) == dom(tl) || error("bad L")
@@ -121,14 +124,14 @@ function get_matches(rule::PBPORule, G::ACSet;  initial=nothing,
 
   # Process the initial constraints for match morphism and typing morphism
   if isnothing(initial)
-    matchinit, typinit = Dict(), Dict()
+    matchinit, typinit = (;), (;)
   elseif initial isa Union{NamedTuple,AbstractDict}
-    matchinit, typinit = Dict(pairs(initial)), Dict()
+    matchinit, typinit = Dict(pairs(initial)), (;)
   elseif length(initial)==2
     matchinit, typinit = [Dict(pairs(x)) for x in initial]
   else 
     error("Unexpected type for `initial` keyword: $initial")
-  end 
+  end  
 
   # Search for each match morphism
   backtracking_search(L, G; monic=rule.monic, initial=NamedTuple(matchinit),
@@ -155,6 +158,7 @@ function get_matches(rule::PBPORule, G::ACSet;  initial=nothing,
       else 
         # Search for adherence morphisms: A -> L′
         init = extend_morphism_constraints(rule.tl, Labs)
+        isnothing(init) && return false
         backtracking_search(A, codom(rule.tl); initial=init, kw...) do α
           @debug "\tα: ", [k=>collect(v) for (k,v) in pairs(components(α))] 
 

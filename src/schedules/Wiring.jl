@@ -137,16 +137,16 @@ function singleton(b::AgentBox)::Schedule
 end
 
 
-const WD = WiringDiagram{ThTracedMonoidalWithBidiagonals, StructACSet,
+const WD = WiringDiagram{ThTracedMonoidalWithBidiagonals.Meta.T, StructACSet,
                          StructACSet, AgentBox}
 
 # It would be nice if ⊗ and ⋅ preserved the type of WDs, then we could more
 # strongly type our code.
 struct Schedule 
-  d::WiringDiagram{<:ThTracedMonoidalWithBidiagonals}
+  d::WiringDiagram{<:ThTracedMonoidalWithBidiagonals.Meta.T}
   x::GATExpr
-  function Schedule(d,x) 
-    wd = WiringDiagram{ThTracedMonoidalWithBidiagonals,Any,Any,Any}([],[])
+  function Schedule(d, x) 
+    wd = WiringDiagram{ThTracedMonoidalWithBidiagonals.Meta.T,Any,Any,Any}([],[])
     copy_parts!(wd.diagram, d.diagram)
     return new(wd, x)
   end
@@ -196,8 +196,11 @@ function (F::Migrate)(wd_::Schedule)
                     Symbol.(["$(x)wire_value" for x in ["",:in_,:out_]])...]
     wd.diagram[:,x] = F.(wd.diagram[x])
   end 
-  return Schedule(wd,wd_.x)
+  Schedule(wd, F(wd_.x))
 end 
+
+(F::Migrate)(x::T) where {T<:TM.Ob} = T(F.(x.args), F.(x.type_args))
+(F::Migrate)(x::T) where {T<:TM.Hom} = T(F.(x.args), F.(x.type_args))
 
 const wnames = [
   # Begin   End          Val            BeginType             EndType

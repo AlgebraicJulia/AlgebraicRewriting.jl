@@ -408,6 +408,7 @@ end
 (F::Migrate)(d::Dict{V,<:ACSet}) where V = Dict([k=>F(v) for (k,v) in collect(d)])
 (F::Migrate)(d::Dict{<:ACSet,V}) where V = Dict([F(k)=>v for (k,v) in collect(d)])
 (m::Migrate)(::Nothing) = nothing
+(m::Migrate)(s::Union{String,Symbol}) = s
 function (m::Migrate)(Y::ACSet)
   if m.delta
      typeof(Y) <: m.T1 || error("Cannot Δ migrate a $(typeof(Y))")

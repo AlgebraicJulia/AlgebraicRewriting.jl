@@ -1,6 +1,8 @@
 module Basic 
 export Weaken, Strengthen, Initialize, Fail
 
+using StructEquality
+
 using Catlab.CategoricalAlgebra, Catlab.Theories
 
 using ...CategoricalAlgebra.CSets: Migrate
@@ -12,7 +14,7 @@ using ..Eval: Traj, TrajStep, traj_agent, id_pmap, tot_pmap, traj_res, add_step
 """
 Change the agent to a subset of the current agent without changing the world
 """
-struct Weaken <: AgentBox
+@struct_hash_equal struct Weaken <: AgentBox
   name::Symbol 
   agent::ACSetTransformation # map A₂ -> A₁
 end  
@@ -34,7 +36,7 @@ end
 """
 Adds to both agent and the state of the world via a pushout.
 """
-struct Strengthen <: AgentBox
+@struct_hash_equal struct Strengthen <: AgentBox
   name::Symbol 
   agent::ACSetTransformation # map A₁ -> A₂
 end  
@@ -59,7 +61,7 @@ end
 A box that spits out a constant ACSet with an empty agent above it. Possibly, 
 it does not take any inputs, so it can act as a comonoid counit.
 """
-struct Initialize <: AgentBox
+@struct_hash_equal struct Initialize <: AgentBox
   name::Symbol
   state::StructACSet 
   in_agent::Union{Nothing,StructACSet}
@@ -76,7 +78,7 @@ function update(i::Initialize, t::PMonad)
 end 
 
 
-struct Fail <: AgentBox
+@struct_hash_equal struct Fail <: AgentBox
   agent::ACSet
   silent::Bool
   name::String

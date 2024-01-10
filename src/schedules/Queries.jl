@@ -1,6 +1,8 @@
 module Queries 
 export Query, agent
 
+using StructEquality
+
 using Catlab, Catlab.CategoricalAlgebra, Catlab.WiringDiagrams
 
 using ...Rewrite
@@ -36,7 +38,7 @@ A constraint optionally will be applied to (1) the A->W<-B cospan of old agent
 and purported new agent. (the new agent is the first argument to the constraint) 
 
 """
-struct Query <: AgentBox
+@struct_hash_equal struct Query <: AgentBox
   name::Symbol
   agent::StructACSet
   subagent::StructACSet

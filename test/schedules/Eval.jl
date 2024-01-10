@@ -68,17 +68,18 @@ end);
 
 
 sched = mk_sched((o=Dot,), (i=:Z,), N, Dict(:rule=>al, :query=>q), 
-quote 
-  q1,q2,q3 = query(i,o)
-  trace = rule(q2)
-  out = [q1,q3]
-  return trace, out
-end)
+  quote 
+    q1,q2,q3 = query(i,o)
+    trace = rule(q2)
+    out = [q1,q3]
+    return trace, out
+  end
+);
 
 typecheck(sched)
 
 # view_sched(sched; names=N)
-res, = apply_schedule(sched, Graph(3))
+res, = apply_schedule(sched, Graph(3));
 # view_traj(sched, res, view_graph; agent=true, names=N)
 
 

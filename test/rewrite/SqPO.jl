@@ -14,8 +14,8 @@ using AlgebraicRewriting.Rewrite.SqPO: final_pullback_complement
 A = star_graph(Graph, 4)
 X = path_graph(Graph, 2)
 B = @acset Graph begin V = 1; E = 1; src=[1]; tgt=[1] end
-m = CSetTransformation(X,A,V=[4,1],E=[1])
-f = CSetTransformation(X,B,V=[1,1],E=[1])
+m = ACSetTransformation(X,A,V=[4,1],E=[1])
+f = ACSetTransformation(X,B,V=[1,1],E=[1])
 phi = partial_map_classifier_universal_property(m,f)
 
 # check pullback property
@@ -24,7 +24,7 @@ m_, f_ = pullback(phi, partial_map_classifier_eta(B)).cone
 # This is isomorphic, but it's a particular implementation detail which
 # isomorphism is produced. At the time of writing this test, it turns out we get
 # an identical span if we reverse the arrow of the apex X
-iso = CSetTransformation(X,X;V=[2,1], E=[1])
+iso = ACSetTransformation(X,X;V=[2,1], E=[1])
 @test force(compose(iso, m_)) == m
 @test force(compose(iso, f_)) == f
 
@@ -36,8 +36,8 @@ fromLoop = @acset Graph begin
   V=2; E=2; src=[1,1]; tgt=[2,1] end
 toLoop = @acset Graph begin
   V=2; E=2; src=[1,2]; tgt=[2,2] end
-f = CSetTransformation(loop, fromLoop, V=[1],E=[2])
-m = CSetTransformation(loop, toLoop, V=[2],E=[2])
+f = ACSetTransformation(loop, fromLoop, V=[1],E=[2])
+m = ACSetTransformation(loop, toLoop, V=[2],E=[2])
 u = partial_map_classifier_universal_property(m,f)
 m_,f_ = pullback(u, partial_map_classifier_eta(codom(f))).cone
 @test force.([m_,f_]) == [m,f]
@@ -46,8 +46,8 @@ m_,f_ = pullback(u, partial_map_classifier_eta(codom(f))).cone
 # Final pullback complement test
 ################################
 A, B, C = Graph(2), Graph(1), path_graph(Graph, 2)
-f = CSetTransformation(A,B;V=[1,1])
-m = CSetTransformation(B,C; V=[2])
+f = ACSetTransformation(A,B;V=[1,1])
+m = ACSetTransformation(B,C; V=[2])
 
 fpc = final_pullback_complement(ComposablePair(f,m))
 
@@ -60,8 +60,8 @@ fpc = final_pullback_complement(ComposablePair(f,m))
 #----------------------------------------------------------
 L, I, R = Graph.([1,2,2])
 G = @acset Graph begin V=3; E=2; src=1; tgt=[2,3] end
-m = CSetTransformation(L, G; V=[1])
-l = CSetTransformation(I, L; V=[1,1])
+m = ACSetTransformation(L, G; V=[1])
+l = ACSetTransformation(I, L; V=[1,1])
 r = id(I)
 
 rw = rewrite_match(Rule{:SqPO}(l, r), m)
@@ -74,8 +74,8 @@ rw = rewrite_match(Rule{:SqPO}(l, r), m)
 # reflecting edges: but this l morphism is not regular.
 L, I, R = path_graph(Graph, 2), Graph(2), Graph(2)
 G = @acset Graph begin V=3; E=3; src=1; tgt=[2,2,3] end
-l, r = CSetTransformation(I, L; V=[1,2]), id(I)
-m = CSetTransformation(L, G; V=[1,2], E=[1])
+l, r = ACSetTransformation(I, L; V=[1,2]), id(I)
+m = ACSetTransformation(L, G; V=[1,2], E=[1])
 rw = rewrite_match(Rule{:SqPO}(l,r), m)
 @test is_isomorphic(rw, @acset Graph begin V=3; E=2; src=1; tgt=[2,3] end)
 
@@ -83,8 +83,8 @@ rw = rewrite_match(Rule{:SqPO}(l,r), m)
 # However, SqPO deletes greedily
 G= @acset Graph begin V=4; E=3; src=[1,3,3]; tgt=[2,2,4] end
 L,I,R = Graph.([1,0,0])
-l, r = CSetTransformation(I,L), CSetTransformation(I,R)
-m = CSetTransformation(L, G; V=[3])
+l, r = ACSetTransformation(I,L), ACSetTransformation(I,R)
+m = ACSetTransformation(L, G; V=[3])
 rw = rewrite_match(Rule{:SqPO}(l,r), m)
 @test is_isomorphic(rw, @acset Graph begin V=3; E=1; src=1; tgt=2 end)
 
@@ -111,7 +111,7 @@ end
 L = @acset SSet begin V=1 end
 I = @acset SSet begin V=2 end
 r =Rule{:SqPO}(homomorphism(I,L),id(I))
-m = CSetTransformation(L, Tri, V=[1]);
+m = ACSetTransformation(L, Tri, V=[1]);
 # We get 4 'triangles' when we ignore equations
 @test nparts(rewrite_match(r, m), :T) == 4
 

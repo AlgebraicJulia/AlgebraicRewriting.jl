@@ -1,5 +1,5 @@
 using AlgebraicRewriting
-using Catlab, Catlab.CategoricalAlgebra, Catlab.Graphics, Catlab.Graphs, Catlab.Programs, Catlab.Theories
+using Catlab, Catlab.CategoricalAlgebra, Catlab.Graphics, Catlab.Graphs, Catlab.Programs
 import AlgebraicPetri
 using Test
 
@@ -243,7 +243,7 @@ function graph_slice(s::Slice)
   (S, T), (I, O) = [[findall(==(i), X) for i in 1:2] for X in [V, E]]
   nS, nT, nI, nO = length.([S, T, I, O])
   findS, findT = [x -> findfirst(==(x), X) for X in [S, T]]
-  to_graphviz(@acset AlgebraicPetri.PetriNet begin
+  AlgebraicPetri.Graph(@acset AlgebraicPetri.PetriNet begin
     S = nS
     T = nT
     I = nI
@@ -443,27 +443,28 @@ CM3 = create(G1)
 Pmap3 = Span(ACSetTransformation(G1, G2; V=[2]), id(G1))
 RS3 = RWStep(Rule1, Pmap3, M3, CM3)
 
+
 steps = [RS1, RS2, RS3]
 
-# g = find_deps(steps)
-# to_graphviz(g; node_labels=true)
+g = find_deps(steps)
+to_graphviz(g; node_labels=true)
 
-# expected = @acset Graph begin
-#   V = 3
-#   E = 1
-#   src = 1
-#   tgt = 2
-# end
-# @test expected == g
+expected = @acset Graph begin
+  V = 3
+  E = 1
+  src = 1
+  tgt = 2
+end
+@test expected == g
 
-# # Interface that just uses rules and match morphisms:
-# # The matches needed to be updated to reflect the particular isomorph that DPO
-# # rewriting produces when applying the rule.
-# σ₂ = ACSetTransformation(G2, G2; V=[2, 1])
-# σ₃ = ACSetTransformation(G3, G3; V=[3, 1, 2])
+# Interface that just uses rules and match morphisms:
+# The matches needed to be updated to reflect the particular isomorph that DPO
+# rewriting produces when applying the rule.
+σ₂ = ACSetTransformation(G2, G2; V=[2, 1])
+σ₃ = ACSetTransformation(G3, G3; V=[3, 1, 2])
 
-# g′ = find_deps([R3 => M1, R2 => M2 ⋅ σ₃, R1 => M3 ⋅ σ₂])
-# @test g′ == g
+g′ = find_deps([R3 => M1, R2 => M2 ⋅ σ₃, R1 => M3 ⋅ σ₂])
+@test g′ == g
 
 ###################################
 # 10. General purpose programming #
