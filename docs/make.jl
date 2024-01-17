@@ -24,9 +24,9 @@ if !no_literate
       f, l = splitext(file)
       if l == ".jl" && !startswith(f, "_")
         Literate.markdown(joinpath(root, file), out_dir;
-          config=config, documenter=true, credit=false)
+          config=config, documenter=true, credit=false, mdstrings=true)
         Literate.notebook(joinpath(root, file), out_dir;
-          execute=true, documenter=true, credit=false)
+          execute=true, documenter=true, credit=false, mdstrings=true)
       end
     end
   end
@@ -36,7 +36,7 @@ end
 makedocs(
   modules=[AlgebraicRewriting],
   format=Documenter.HTML(
-    size_threshold=300000,       # in bytes
+    size_threshold=600000000,    # in bytes
     size_threshold_warn=150000   # in bytes
   ),
   sitename="AlgebraicRewriting.jl",
@@ -45,14 +45,12 @@ makedocs(
   warnonly=true,
   pages=Any[
     "AlgebraicRewriting.jl"=>"index.md",
-    # "Examples"=>Any[
-    #   "generated/full_demo.md",
-    #   "generated/game_of_life.md",
-    #   "generated/lotka_volterra.md",
-    #   "generated/mesh.md",
-    #   "generated/petri_to_abm.md",
-    #   "generated/ptg_simple.md"
-    # ],
+    "Examples"=>Any[
+      "generated/full_demo.md",
+      "generated/game_of_life.md",
+      "generated/lotka_volterra.md",
+      "generated/ptg_simple.md"
+    ],
     "Library Reference"=>"api.md",
   ]
 )
@@ -62,7 +60,7 @@ deploydocs(
   target="build",
   repo="github.com/AlgebraicJulia/AlgebraicRewriting.jl.git",
   branch="gh-pages",
-  devbranch="main"
+  devbranch="dev"
 )
 
 @info "Done!"

@@ -1,3 +1,6 @@
+# # Conway's Game of Life
+
+
 using AlgebraicRewriting
 using Catlab, Catlab.Graphs, Catlab.CategoricalAlgebra, Catlab.Theories
 import Catlab.Graphics: to_graphviz
@@ -5,25 +8,19 @@ using Catlab.Graphics.Graphviz: Attributes, Statement, Node, Edge, Digraph
 using PrettyTables
 using Luxor
 
-"""
-The game of life has two rules: one which turns living things dead, and one 
-that brings dead things to life. We model the terrain as a symmetric graph:
-cells are vertices. Neighboring cells have edges between them.
+#=
+The game of life has two rules: one which turns living things dead, and one that brings dead things to life. We model the terrain as a symmetric graph: cells are vertices. Neighboring cells have edges between them.
 
-Implementationwise, if we are going to update 
-cells one at a time, we must keep track of two bits of information (the cell's 
-living status for the *current* timestep and whether it will be alive in the 
-*next* timestep). Thus we need helper rule to overwrite the "current" 
-life status with the "next" life status at the end of each timestep.
-"""
+Implementation wise, if we are going to update cells one at a time, we must keep track of two bits of information (the cell's living status for the *current* timestep and whether it will be alive in the *next* timestep). Thus we need helper rule to overwrite the "current" life status with the "next" life status at the end of each timestep.
+=#
 
-# Schema 
-########
+# # Schema 
 
-"""
+#=
 `curr` and `next` pick out subsets of V which are marked as currently alive or 
 to be alive in the next timestep.
-"""
+=#
+
 @present SchLife <: SchSymmetricGraph begin
   (Curr, Next)::Ob
   curr::Hom(Curr, V)
@@ -40,10 +37,9 @@ F = Migrate(
   Dict(x => x for x in Symbol.(generators(SchLife, :Ob))),
   Dict(x => x for x in Symbol.(generators(SchLife, :Hom))), LifeCoords; delta=false)
 
-# Helper 
-########
+# # Helper 
 
-# Visualization 
+# ## Visualization 
 function view_life(f::ACSetTransformation, pth=tempname())
   v = collect(f[:V])
   view_life(codom(f), pth; star=isempty(v) ? nothing : only(v))
@@ -86,7 +82,7 @@ function view_life(X::LifeCoords, pth=tempname(); star=nothing)
   return mat
 end
 
-# Constructions for Life ACSets / maps between them
+# ## Constructions for Life ACSets / maps between them
 Next() = @acset Life begin
   V = 1
   Next = 1
@@ -114,7 +110,7 @@ function living_neighbors(n::Int; alive=false)
   return X
 end
 
-# Initialization of LifeCoords
+# ## Initialization of LifeCoords
 function make_grid(curr::AbstractMatrix, next=nothing)
   n, m = size(curr)
   n == m || error("Must be square")
@@ -150,11 +146,10 @@ function make_grid(curr::AbstractMatrix, next=nothing)
 end
 make_grid(n::Int, random=false) = make_grid((random ? rand : zeros)(Bool, (n, n)))
 
-# Rules 
-#######
+# # Rules 
 
 # A dead cell becomes alive iff exactly 3 living neighbors
-#---------------------------------------------------------
+
 BirthP1 = living_neighbors(3) # must have 3 neighbors
 BirthN1 = living_neighbors(4) # forbid the cell to have 4 neighbors
 BirthN2 = Curr() # forbid the cell to be alive (i.e. it's currently dead)
@@ -163,7 +158,6 @@ bac = [AppCond(BP1; monic=true), AppCond.([BN1, BN2], false; monic=true)...]
 Birth = Rule(id(Life(1)), to_next(); ac=bac)
 
 # A living cell stays alive iff 2 or 3 living neighbors
-#------------------------------------------------------
 PersistR = @acset Life begin
   V = 1
   Curr = 1
@@ -183,8 +177,8 @@ CopyNext = Rule(to_next(), to_curr())   # Copy "Next" to "Curr"
 
 rules = [:Birth => Birth, :Persist => Persist, :ClearCurr => ClearCurr,
   :ClearNext => ClearNext, :CopyNext => CopyNext]
-# Schedule
-##########
+
+# # Schedule
 
 # All rules have interface of a single distinguished cell.
 # Never distinguish control flow of successful vs unsuccessful application
@@ -194,13 +188,13 @@ rBirth, rPersist, rClearCurr, rClearNext, rCopyNext =
 update_next = agent(rBirth ⋅ rPersist, Life(1); n=:Cell)
 next_step = agent(compose(rClearCurr, rCopyNext, rClearNext), Life(1); n=:Cell)
 life(n::Int) = for_schedule(update_next ⋅ next_step, n) |> F
-const L = life(1)
+const L1 = life(1)
 
 G = make_grid([1 0 1 0 1; 0 1 0 1 0; 0 1 0 1 0; 1 0 1 0 1; 1 0 1 0 1])
 
-res, = apply_schedule(L, G; steps=1000)
+res, = apply_schedule(L1, G; steps=1000)
 traj = last(res).edge.o.val
 
 view_life(i, traj) = view_life(traj.steps[i].world)
 
-# view_traj(L, res, view_life; agent=true)
+# view_traj(L1, res, view_life; agent=true)

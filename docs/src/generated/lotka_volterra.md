@@ -2,14 +2,14 @@
 EditURL = "../../literate/lotka_volterra.jl"
 ```
 
+# Lotka Volterra
+
 ````@example lotka_volterra
-using Catlab, Catlab.Theories, Catlab.CategoricalAlgebra, Catlab.Graphs,
-  Catlab.Graphics, Catlab.WiringDiagrams, Catlab.Programs
-using AlgebraicRewriting
+using Catlab, DataMigrations, AlgebraicRewriting
 using Random, Test, StructEquality
 using Luxor
 
-Random.seed!(123);
+Random.seed!(123)
 
 using Catlab.Graphics.Graphviz: Attributes, Statement, Node
 using Catlab.Graphics.Graphviz
@@ -38,16 +38,15 @@ function left(s::Symbol)
     return :S
   end
 end
+````
 
-"""
-Grass = 0 means alive grass, whereas grass > 0 represent a counter of time until
-the grass is alive.
+Grass = 0 means alive grass, whereas grass > 0 represent a counter of time until the grass is alive.
 
-Sheeps and wolves have position and direction, so we assign each an *edge*. We
-assume a convention where the location of the something is the edge SOURCE.
+Sheeps and wolves have position and direction, so we assign each an *edge*. We assume a convention where the location of the something is the edge SOURCE.
 
 Dir is an attribute which can take values :N, :E, :W, and :S.
-"""
+
+````@example lotka_volterra
 @present TheoryLV <: SchGraph begin
   (Sheep, Wolf)::Ob
   sheep_loc::Hom(Sheep, V)
@@ -83,21 +82,20 @@ F = Migrate(
 F2 = Migrate(
   Dict(x => x for x in Symbol.(TheoryLV.generators[:Ob])),
   Dict(x => x for x in Symbol.(TheoryLV.generators[:Hom])), LV′; delta=false)
+````
 
-"""
-Create a nxn grid with periodic boundary conditions. Edges in each cardinal
+Create an n × n grid with periodic boundary conditions. Edges in each cardinal
 direction originate at every point
-
 
 (i,j+1) -> (i+1,j+1) -> ...
   ↑          ↑
 (i,j)   -> (i+1,j)   -> ...
 
-"""
+````@example lotka_volterra
 function create_grid(n::Int)
   lv = LV′()
   coords = Dict()
-  for i in 0:n-1
+  for i in 0:n-1  # Initialize grass 50% green, 50% uniformly between 0-30
     for j in 0:n-1
       coords[i=>j] = add_part!(lv, :V; grass_eng=max(0, rand(-30:30)), coord=(i, j))
     end
@@ -114,13 +112,13 @@ function create_grid(n::Int)
 end
 
 g = create_grid(2)
+````
 
-
-"""
 `n` is the length of the grid.
 `sheep` and `wolves` are the fraction of spaces that are
 populated with that animal
-"""
+
+````@example lotka_volterra
 function initialize(n::Int, sheep::Float64, wolves::Float64)::LV′
   grid = create_grid(n)
   args = [(sheep, :Sheep, :sheep_loc, :sheep_eng, :sheep_dir),
@@ -141,8 +139,11 @@ supscript_d = Dict([
   '9' => '⁹', '0' => '⁰', 'x' => 'ˣ', 'y' => 'ʸ', 'z' => 'ᶻ', 'a' => 'ᵃ', 'b' => 'ᵇ', 'c' => 'ᶜ',
   'd' => 'ᵈ'])
 supscript(x::String) = join([get(supscript_d, c, c) for c in x])
+````
 
-"""Visualize a LV"""
+Visualize a LV
+
+````@example lotka_volterra
 function view_LV(p::ACSetTransformation, pth=tempname(); name="G", title="")
   if nparts(dom(p), :Wolf) == 1
     star = :Wolf => p[:Wolf](1)
@@ -202,12 +203,9 @@ end
 i1 = initialize(2, 0.5, 0.5)
 ````
 
-view_LV(i1)
-
-RULES
+# Rules
 
 ````@example lotka_volterra
-#######
 yLV = yoneda_cache(LV; clear=true);
 yLV = yoneda_cache(LV; clear=false);
 nothing #hide
@@ -240,10 +238,11 @@ G = @acset_colim yLV begin
   v::V
 end
 
-N = Names(Dict("W" => W, "S" => S, "G" => G, "" => I))
+N = Names(Dict("W" => W, "S" => S, "G" => G, "" => I));
+nothing #hide
 ````
 
-Rotating
+## Rotating
 
 ````@example lotka_volterra
 rl = Rule(id(S), id(S); expr=(Dir=[xs -> left(only(xs))],))
@@ -253,21 +252,12 @@ sheep_rotate_l = tryrule(RuleApp(:turn_left, rl, S))
 sheep_rotate_r = tryrule(RuleApp(:turn_right, rr, S))
 ````
 
-we can imagine executing these rules in sequence or in parallel
+We can imagine executing these rules in sequence or in parallel
 
 ````@example lotka_volterra
 seq_sched = (sheep_rotate_l ⋅ sheep_rotate_r)
-````
-
-view_sched(seq_sched; names=N)
-
-````@example lotka_volterra
 par_sched = (sheep_rotate_l ⊗ sheep_rotate_r)
-````
 
-view_sched(par_sched; names=N)
-
-````@example lotka_volterra
 begin
   ex = @acset_colim yLV begin
     e::E
@@ -281,7 +271,7 @@ begin
 end
 ````
 
-Moving forward
+## Moving forward
 
 ````@example lotka_volterra
 s_fwd_l = @acset_colim yLV begin
@@ -339,7 +329,6 @@ end
 ````
 
 Eat grass + 4eng
-
 Grass is at 0 - meaning it's ready to be eaten
 
 ````@example lotka_volterra
@@ -385,39 +374,41 @@ end
 
 we_rule = Rule(homomorphism(W, w_eat_l), id(W); expr=(Eng=[vs -> vs[3] + 20, vs -> vs[1]],))
 wolf_eat = tryrule(RuleApp(:Wolf_eat, we_rule, W))
+````
 
-begin # test
-  ex = @acset LV begin
-    Sheep = 1
-    Wolf = 1
-    V = 3
-    E = 2
-    src = [1, 2]
-    tgt = [2, 3]
-    sheep_loc = 2
-    sheep_eng = [3]
-    grass_eng = [9, 10, 11]
-    dir = fill(:N, 2)
-    sheep_dir = [:N]
-    wolf_loc = [2]
-    wolf_eng = [16]
-    wolf_dir = [:S]
-  end
-  expected = @acset LV begin
-    Wolf = 1
-    V = 3
-    E = 2
-    src = [1, 2]
-    tgt = [2, 3]
-    grass_eng = [9, 10, 11]
-    dir = fill(:N, 2)
-    sheep_dir = [:N]
-    wolf_loc = [2]
-    wolf_eng = [36]
-    wolf_dir = [:S]
-  end
-  @test is_isomorphic(rewrite(we_rule, ex), expected)
+### A test
+
+````@example lotka_volterra
+ex = @acset LV begin
+  Sheep = 1
+  Wolf = 1
+  V = 3
+  E = 2
+  src = [1, 2]
+  tgt = [2, 3]
+  sheep_loc = 2
+  sheep_eng = [3]
+  grass_eng = [9, 10, 11]
+  dir = fill(:N, 2)
+  sheep_dir = [:N]
+  wolf_loc = [2]
+  wolf_eng = [16]
+  wolf_dir = [:S]
 end
+expected = @acset LV begin
+  Wolf = 1
+  V = 3
+  E = 2
+  src = [1, 2]
+  tgt = [2, 3]
+  grass_eng = [9, 10, 11]
+  dir = fill(:N, 2)
+  sheep_dir = [:N]
+  wolf_loc = [2]
+  wolf_eng = [36]
+  wolf_dir = [:S]
+end
+@test is_isomorphic(rewrite(we_rule, ex), expected)
 ````
 
 Die if 0 eng
@@ -441,7 +432,7 @@ begin # test
 end
 ````
 
-reproduction
+Reproduction
 
 ````@example lotka_volterra
 s_reprod_r = @acset_colim yLV begin
@@ -480,7 +471,7 @@ Grass increment
 
 ````@example lotka_volterra
 g_inc_n = deepcopy(G)
-set_subpart!(g_inc_n, 1, :grass_eng, 0);
+set_subpart!(g_inc_n, 1, :grass_eng, 0)
 rem_part!(g_inc_n, :Eng, 1)
 
 g_inc_rule = Rule(id(G), id(G);
@@ -489,44 +480,34 @@ g_inc_rule = Rule(id(G), id(G);
 g_inc = RuleApp(:GrassIncrements, g_inc_rule, G) |> tryrule
 
 
-begin # test
-  ex = @acset LV begin
-    Sheep = 1
-    V = 3
-    E = 2
-    src = [1, 2]
-    tgt = [2, 3]
-    sheep_loc = 2
-    sheep_eng = [3]
-    grass_eng = [1, 10, 2]
-    dir = fill(:N, 2)
-    sheep_dir = [:N]
-  end
-  expected = @acset LV begin
-    Sheep = 1
-    V = 3
-    E = 2
-    src = [1, 2]
-    tgt = [2, 3]
-    sheep_loc = 2
-    sheep_eng = [3]
-    grass_eng = [0, 10, 2]
-    dir = fill(:N, 2)
-    sheep_dir = [:N]
-  end
-  @test is_isomorphic(rewrite(g_inc_rule, ex), expected)
+ex = @acset LV begin
+  Sheep = 1
+  V = 3
+  E = 2
+  src = [1, 2]
+  tgt = [2, 3]
+  sheep_loc = 2
+  sheep_eng = [3]
+  grass_eng = [1, 10, 2]
+  dir = fill(:N, 2)
+  sheep_dir = [:N]
 end
+expected = @acset LV begin
+  Sheep = 1
+  V = 3
+  E = 2
+  src = [1, 2]
+  tgt = [2, 3]
+  sheep_loc = 2
+  sheep_eng = [3]
+  grass_eng = [0, 10, 2]
+  dir = fill(:N, 2)
+  sheep_dir = [:N]
+end
+@test is_isomorphic(rewrite(g_inc_rule, ex), expected)
 ````
 
 Scheduling Rules
-
-````@example lotka_volterra
-##################
-````
-
-Stuff that happens once per sheep
-
-25% chance of left turn, 25% chance of right turn, 50% stay in same direction
 
 ````@example lotka_volterra
 general = mk_sched((;), (init=:S,), N, (
@@ -544,8 +525,9 @@ general = mk_sched((;), (init=:S,), N, (
     return starve([repro(out_repro), out_no_repro])
   end)
 
-sheep = sheep_eat ⋅ general   # once per sheep
-wolf = wolf_eat ⋅ F(general)  # once per wolf
+sheep = sheep_eat ⋅ general;   # once per sheep
+wolf = wolf_eat ⋅ F(general);  # once per wolf
+nothing #hide
 ````
 
 Do all sheep, then all wolves, then all daily operations
@@ -556,22 +538,11 @@ cycle = (agent(sheep; n=:sheep, ret=I)
          agent(wolf; n=:wolves, ret=I)
          ⋅
          agent(g_inc; n=:grass))
-````
 
-wrap in a while loop
+overall = while_schedule(cycle, curr -> nparts(curr, :Wolf) >= 0) |> F2  # wrap in a while loop
 
-````@example lotka_volterra
-overall = while_schedule(cycle, curr -> nparts(curr, :Wolf) >= 0) |> F2
-````
-
-view_sched(overall; names=F2(N))
-
-````@example lotka_volterra
-X = initialize(3, 0.25, 0.25)
+X = initialize(3, 0.25, 0.25);
 res, = apply_schedule(overall, X; steps=50);
 nothing #hide
 ````
-
-Run this lines to view the trajectory
-view_traj(overall, res, view_LV; agent=true, names=F2(N))
 

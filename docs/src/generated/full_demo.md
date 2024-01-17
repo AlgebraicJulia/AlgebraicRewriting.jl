@@ -2,20 +2,19 @@
 EditURL = "../../literate/full_demo.jl"
 ```
 
+# Full Demo
+
 ````@example full_demo
-using AlgebraicRewriting
-using Catlab, Catlab.CategoricalAlgebra, Catlab.Graphics, Catlab.Graphs, Catlab.Programs, Catlab.Theories
-import AlgebraicPetri
+using AlgebraicRewriting, Catlab, AlgebraicPetri, DataMigrations
 using Test
+````
 
-
-"""
 This is a self-contained walkthrough of the main features of AlgebraicRewriting.
 This is a regular julia file that can be run interactively.
 
 Importantly:
- - use Julia 1.9 (not yet official released)
- - ]activate the environment in AlgebraicRewriting.jl/docs
+ - use Julia 1.10
+ - activate the environment in AlgebraicRewriting.jl/docs
  - check that graphviz is installed locally (test via "which dot" in terminal)
 
 Table of contents:
@@ -41,50 +40,45 @@ that is not available, your options are to
 2.) use the following `to_svg` function, which will write a graphviz output to
     a SVG file and can be viewed in a browser. The Julia pipe syntax |> allows
     you to easily append " |> to_svg " to a line with a visualization.
-"""
+
+````@example full_demo
 to_svg(G, filename="tmp.svg") =
   open(filename, "w") do io
     show(io, "image/svg+xml", G)
   end
 
-to_graphviz(path_graph(Graph, 3)) # |> to_svg
-
-##########
+to_graphviz(path_graph(Graph, 3))
 ````
 
-1. DPO #
+# 1. DPO
+
+We construct a rule by providing a span, L ← I → R
 
 ````@example full_demo
-##########
-
-"""
-We construct a rule by providing a span, L ← I → R
-"""
-
-L = path_graph(Graph, 2)                         # • → •
-I = Graph(1)                                      # •
+L = path_graph(Graph, 2)  # • → •
+I = Graph(1) # •
 R = @acset Graph begin
   V = 1
   E = 1
   src = 1
   tgt = 1
 end # •↺
-l = CSetTransformation(I, L; V=[1]) # graph homomorphism data
-r = CSetTransformation(I, R; V=[1])
-
+l = ACSetTransformation(I, L; V=[1]) # graph homomorphism data
+r = ACSetTransformation(I, R; V=[1])
 rule = Rule(l, r)
+
 G = path_graph(Graph, 5)  # • → • → • → • → •
-
 m = only(get_matches(rule, G)) # only one match which satisfies dangling condition
+````
 
-"""We can rewrite with a specific match"""
+Provided a specific match (`m`), we can use the `rule` to rewrite the graph (`G`) using `rewrite_match(rule, m)`.
 
+````@example full_demo
 res = rewrite_match(rule, m) # • → • → • → •↺
 to_graphviz(res; node_labels=true)
 ````
 
-Note that C-Sets are morally regarded up to isomorphism - in particular,
-limits and colimits may modify the orderings of edges/vertices
+Note that C-Sets are morally regarded up to isomorphism - in particular, limits and colimits may modify the orderings of edges/vertices
 
 ````@example full_demo
 expected = @acset Graph begin
@@ -94,12 +88,11 @@ expected = @acset Graph begin
   tgt = [2, 3, 4, 4]
 end
 @test is_isomorphic(expected, res)
+````
 
-"""
-We can also specify the rule via a colimit-of-representables (i.e. generators
-and relations) syntax. As your schema gets bigger, this becomes more and more
-convenient. Assigning temporary names to the C-Set elements can also be helpful.
-"""
+We can also specify the rule via a colimit-of-representables (i.e. generators and relations) syntax. As your schema gets bigger, this becomes more and more convenient. Assigning temporary tags, e.g. `e`, `v`, `eᵣ` to the C-Set elements can also be helpful.
+
+````@example full_demo
 yG = yoneda_cache(Graph, clear=true); # compute representables
 
 rule2 = Rule(@migration(SchRulel, SchGraph, begin
@@ -117,25 +110,20 @@ rule2 = Rule(@migration(SchRulel, SchGraph, begin
       v => src(e)
     end
   end), yG)
-
-"""We can rewrite without a match (and let it pick an arbitrary match)"""
-
-@test res == rewrite(rule, G)
-
-##########
 ````
 
-2. SPO #
+We can also rewrite without a match (and let it pick an arbitrary match).
 
 ````@example full_demo
-##########
+@test res == rewrite(rule, G)
+````
 
-"""
-Rules are by default DPO, but if we specify a type parameter we can change
-the semantics
-"""
+# 2. SPO
 
-rule_spo = Rule{:SPO}(l, r) # (same data as before)
+Rules are by default DPO, but if we specify a type parameter we can change the semantics
+
+````@example full_demo
+rule_spo = Rule{:SPO}(l, r)  # (same data as before)
 
 @test length(get_matches(rule_spo, G)) == 4 # there are now four matches
 res = rewrite(rule_spo, G)
@@ -143,35 +131,28 @@ to_graphviz(res)
 @test is_isomorphic(res, path_graph(Graph, 3) ⊕ R)
 ````
 
-note that ⊕ and ⊗ are shorthand for (co)products
-Julia lets you easily write unicode symbols via "\" followed by a LaTeX name
+**Note**: ⊕ and ⊗ are shorthand for (co)products
+_Tip: Julia lets you easily write unicode symbols via "\" followed by a LaTeX name, then hit "Tab" to convert the symbol_
+
+# 3. SqPO
+
+If we duplicate a vertex with an incident edge, it will duplicate the edge
 
 ````@example full_demo
-###########
-````
-
-3. SqPO #
-
-````@example full_demo
-###########
-
-"""If we duplicate a vertex with an incident edge, it will duplicate the edge"""
-
 L = Graph(1)
 I = Graph(2)
 R = path_graph(Graph, 2)
+````
 
-"""
-We can use automated homomorphism search to reduce the tedium of specifying
-data manually. In this case, there is a unique option
-"""
+We can use automated homomorphism search to reduce the tedium of specifying data manually. In this case, there is a unique option.
 
+````@example full_demo
 l = homomorphism(I, L)
+````
 
-"""
 There are many constraints we can put on the search, such as being monic.
-"""
 
+````@example full_demo
 r = homomorphism(I, R; monic=true)
 
 rule_sqpo = Rule{:SqPO}(l, r) # same data as before)
@@ -180,24 +161,16 @@ rule_sqpo = Rule{:SqPO}(l, r) # same data as before)
 G = star_graph(Graph, 6) # a 5-pointed star
 to_graphviz(G; prog="neato") # changing "prog" can sometimes make it look better
 
-m = CSetTransformation(Graph(1), G; V=[6]) # point at the center
+m = ACSetTransformation(Graph(1), G; V=[6]) # point at the center
 res = rewrite_match(rule_sqpo, m)
 to_graphviz(res; prog="neato")
-
-############
 ````
 
-4. PBPO+ #
+# 4. PBPO+
+
+PBPO+ requires not merely a span but also additional data for L and K which can be thought of as type graphs. The graph G that we rewrite will be typed over the L' type graph to determine how it is rewritten.
 
 ````@example full_demo
-############
-
-"""
-PBPO+ requires not merely a span but also additional data for L and K which can
-be thought of as type graphs. The graph G that we rewrite will be typed over
-the L' type graph to determine how it is rewritten.
-"""
-
 L = Graph(1)
 K = Graph(2)
 l = homomorphism(K, L)
@@ -214,7 +187,7 @@ L′ = @acset Graph begin
   src = [1, 1, 1, 2, 3, 3]
   tgt = [1, 2, 3, 3, 3, 1]
 end
-tl = CSetTransformation(L, L′; V=[2]) # 2 is the matched vertex
+tl = ACSetTransformation(L, L′; V=[2]) # 2 is the matched vertex
 to_graphviz(L′; node_labels=true)
 ````
 
@@ -229,7 +202,7 @@ K′ = @acset Graph begin
   src = [1, 1, 1, 2, 3, 3, 3, 4, 5]
   tgt = [1, 2, 3, 3, 3, 1, 5, 5, 5]
 end
-tk = CSetTransformation(K, K′; V=[2, 4])
+tk = ACSetTransformation(K, K′; V=[2, 4])
 to_graphviz(K′; node_labels=true)
 
 l′ = homomorphism(K′, L′; initial=(V=[1, 2, 3, 2, 3],))
@@ -257,26 +230,15 @@ V1 is copied to V2. Outneighbor V5 (w/ loop) is copied to V6, creating an edge
 
 ````@example full_demo
 to_graphviz(res; node_labels=true)
-
-##########################
 ````
 
-5. Generalizing Graphs #
+# 5. Generalizing Graphs
+
+Any data structure which implements the required functions we need can, in principle, be used for rewriting. Importantly this includes pushout_complement, pushout, and homomorphism search. These are all implemented generically for any C-Set schema (allowing us to rewrite Petri nets, Semisimplicial sets, etc.)
+
+Here we'll do rewriting in graphs sliced over •⇆•, which is isomorphic to the category of (whole-grain) Petri nets, with States and Transitions.
 
 ````@example full_demo
-##########################
-
-"""
-Any data structure which implements the required functions we need can, in
-principle, be used for rewriting. Importantly this includes pushout_complement,
-pushout, and homomorphism search. These are all implemented generically for
-any C-Set schema (allowing us to rewrite Petri nets, Semisimplicial sets, etc.)
-
-Here we'll do rewriting in graphs sliced over •⇆•, which is isomorphic to the
-category of (whole-grain) Petri nets, with States and Transitions.
-"""
-
-
 function graph_slice(s::Slice)
   h = s.slice
   V, E = collect.([h[:V], h[:E]])
@@ -295,18 +257,23 @@ function graph_slice(s::Slice)
     os = findS.(g[O, :tgt])
   end)
 end;
+nothing #hide
+````
 
-""" this is the graph we are slicing over """
+This is the graph we are slicing over.
 
+````@example full_demo
 two = @acset Graph begin
   V = 2
   E = 2
   src = [1, 2]
   tgt = [2, 1]
 end
+````
 
-""" Define a rule which deletes a [T] -> S edge"""
+Define a rule which deletes a [T] -> S edge
 
+````@example full_demo
 L_ = path_graph(Graph, 2)
 L = Slice(ACSetTransformation(L_, two, V=[2, 1], E=[2])) # [T] ⟶ (S)
 graph_slice(L)
@@ -315,9 +282,11 @@ I_ = Graph(1)
 I = Slice(ACSetTransformation(I_, two, V=[2])) # [T]
 R_ = Graph(2)
 R = Slice(ACSetTransformation(R_, two, V=[2, 1])) # [T]  (S)
+````
 
-"""Using homomorphism search in the slice category"""
+Using homomorphism search in the slice category
 
+````@example full_demo
 rule = Rule(homomorphism(I, L), homomorphism(I, R))
 
 G_ = path_graph(Graph, 3)
@@ -326,27 +295,13 @@ graph_slice(G)
 
 res = rewrite(rule, G) # (S) ⟶ [T]  (S)
 graph_slice(res)
-
-"""
-While the vast majority of functionality is focused on ACSets at the present
-moment, but there is nothing in principle which limits this.
-"""
-
-#############################
 ````
 
-6. Application conditions #
+While the vast majority of functionality is focused on ACSets at the present moment, but there is nothing in principle which limits this.
 
-````@example full_demo
-#############################
+# 6. Application conditions
 
-"""
-We can construct commutative diagrams with certain edges left unspecified or
-marked with ∀ or ∃. If only one edge is left free, we can treat the diagram as
-a boolean function which tests whether the morphism makes the specified paths
-commute (or not commute). This generalizes positive/negative application
-conditions and lifting conditions, but because those are most common there are
-constructors AppCond and LiftCond to make these directly.
+We can construct commutative diagrams with certain edges left unspecified or marked with ∀ or ∃. If only one edge is left free, we can treat the diagram as a boolean function which tests whether the morphism makes the specified paths commute (or not commute). This generalizes positive/negative application conditions and lifting conditions, but because those are most common there are constructors AppCond and LiftCond to make these directly.
 
          ∀
   [↻•]   →  ?
@@ -354,7 +309,8 @@ constructors AppCond and LiftCond to make these directly.
   [↻•⟶•]  → [↻•⟶•⟵•↺]
 
 Every vertex with a loop also has a map to the vertex marked by the bottom map.
-"""
+
+````@example full_demo
 t = terminal(Graph) |> apex
 looparr = @acset_colim yG begin
   (e1, e2)::E
@@ -374,9 +330,9 @@ constr = LiftCond(v, b)
 
 @test !apply_constraint(constr, homomorphism(t, loop_csp))
 @test apply_constraint(constr, b)
-
-"""We can combining constraints with logical combinators"""
 ````
+
+We can combining constraints with logical combinators.
 
 match vertex iff it has 2 or 3 self loops
 
@@ -397,16 +353,10 @@ rule = Rule(id(Graph(1)), id(Graph(1)); ac=[constr])
 G = two ⊕ three ⊕ two ⊕ four ⊕ five ⊕ one
 
 @test length(get_matches(rule, G)) == 3
-
-##########################
 ````
 
-7. Attribute variables #
+# 7. Attribute variables
 
-````@example full_demo
-##########################
-
-"""
 Normally ACSet morphisms must match attribute values exactly, i.e. a weighted
 graph edge of 8.3 can only be mapped to another edge weighted at 8.3. This
 becomes very restricted, especially when we want to do some simple computations
@@ -415,8 +365,8 @@ with attribute values (e.g. when merging two edges, add their values together)
 A recent extension of ACSets makes this possible - each attribute type comes
 equipped with a finite set of "variables" which can be mapped to any concrete
 value (or another variable).
-"""
 
+````@example full_demo
 yWG = yoneda_cache(WeightedGraph{Int}; clear=true);
 L = @acset_colim yWG begin
   (e1, e2)::E
@@ -452,21 +402,15 @@ end
   tgt = 1
   weight = [30, 100]
 end
-
-######################
 ````
 
-8. Graph processes #
+# 8. Graph processes
 
-````@example full_demo
-######################
-
-"""
 A sequence of rewrite applications can be given a poset structure where α ≤ β
 means that the rule application α needed to occur before β.  This is computed
 via analyzing the colimit of all the partial maps induced by the rewrites.
-"""
 
+````@example full_demo
 using AlgebraicRewriting.Processes: RWStep, find_deps
 
 G0, G1, G2, G3 = Graph.([0, 1, 2, 3])
@@ -492,11 +436,11 @@ Add a node
 Rule3 = Span(id(G0), create(G1))
 
 R1, R2, R3 = [Rule(l, r) for (l, r) in [Rule1, Rule2, Rule3]]
-
-### Trajectory
 ````
 
-step 1: add node #3 to G2
+# 9. Trajectory
+
+Step 1: add node 3 to G2
 
 ````@example full_demo
 M1 = create(G2)
@@ -522,8 +466,8 @@ CM3 = create(G1)
 Pmap3 = Span(ACSetTransformation(G1, G2; V=[2]), id(G1))
 RS3 = RWStep(Rule1, Pmap3, M3, CM3)
 
+
 steps = [RS1, RS2, RS3]
-````
 
 g = find_deps(steps)
 to_graphviz(g; node_labels=true)
@@ -535,25 +479,17 @@ expected = @acset Graph begin
   tgt = 2
 end
 @test expected == g
+````
 
-# Interface that just uses rules and match morphisms:
-# The matches needed to be updated to reflect the particular isomorph that DPO
-# rewriting produces when applying the rule.
+Interface that just uses rules and match morphisms:
+The matches needed to be updated to reflect the particular isomorph that DPO
+rewriting produces when applying the rule.
+
+````@example full_demo
 σ₂ = ACSetTransformation(G2, G2; V=[2, 1])
 σ₃ = ACSetTransformation(G3, G3; V=[3, 1, 2])
 
 g′ = find_deps([R3 => M1, R2 => M2 ⋅ σ₃, R1 => M3 ⋅ σ₂])
 @test g′ == g
-
-````@example full_demo
-###################################
-````
-
-10. General purpose programming #
-
-````@example full_demo
-###################################
-
-"""see lotka_volterra.jl"""
 ````
 

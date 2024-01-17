@@ -2,17 +2,13 @@
 EditURL = "../../literate/ptg_simple.jl"
 ```
 
+# Slice Bread
+
 ````@example ptg_simple
-using Pkg
-cd("/Users/aguinam1/Documents/Git/aaguinal.github.io/assets/slides/aaai-symposiumtalk-2023/julia")  # use this environment to avoid `constructor` error
-Pkg.activate(".")
-Pkg.instantiate()
 using PrettyTables
 
 using Catlab
 using AlgebraicRewriting
-
-############################### SCHEMA ###############################
 ````
 
 Create an ontology by defining a finite presentation of a freely generated category using @present macro
@@ -46,17 +42,15 @@ Make the ontology an acset type
 
 ````@example ptg_simple
 @acset_type BreadWorld(OntBreadWorld)
-
-############################### RULE ###############################
 ````
 
 Construct rule by defining a span in the category of ACSets
 
 Use the @acset macro to define an ACSet functor. The LHS refers to a type (or object) in our ontology and the RHS defines the set assignment using FinFunctions. For this, you need to completely specify the ACSet functor, i.e. every object and morphism in the index category must be specified.
 
-About the rule: This rule moves a breadloaf from a countertop to a stool.
+**About the rule:** This rule moves a breadloaf from a countertop to a stool.
 
-Left ACSet
+### Left ACSet
 
 ````@example ptg_simple
 L = @acset BreadWorld begin
@@ -75,7 +69,7 @@ L = @acset BreadWorld begin
 end
 ````
 
-Middle/Keep ACSet
+### Middle/Keep ACSet
 The Thing, Breadloaf, Countertop, and Stool types should be held constant. The InOn type will change because we are changing the underlying set function.
 
 ````@example ptg_simple
@@ -87,7 +81,7 @@ K = @acset BreadWorld begin
 end
 ````
 
-Right ACSet
+### Right ACSet
 
 ````@example ptg_simple
 R = @acset BreadWorld begin
@@ -106,13 +100,13 @@ R = @acset BreadWorld begin
 end
 ````
 
-Left leg of span
+### Left leg of span
 
 ````@example ptg_simple
 l = ACSetTransformation(K, L, Thing=[1, 2, 3], BreadLoaf=[1], Countertop=[1], Stool=[1])
 ````
 
-Right leg of span
+### Right leg of span
 
 ````@example ptg_simple
 r = ACSetTransformation(K, R, Thing=[1, 2, 3], BreadLoaf=[1], Countertop=[1], Stool=[1])
@@ -122,13 +116,12 @@ Use AlgebraicRewriting.Rule wrapper to add a rule interface
 
 ````@example ptg_simple
 moveBreadRule = Rule(l, r)
-
-############################### WORLD STATE ###############################
 ````
 
+## WORLD STATE
 Define a world state using the @acset macro. This is the ACSet way of specifying an ACSet. For this, you need to completely specify the ACSet functor, i.e. every object and morphism in the index category must be specified. The ACSets must be specified in terms of FinFunctions.
 
-About the world state: In this world state, there are two countertops, one stool, and one breadloaf. All of these amount to four things. The breadloaf is on the first countertop.
+**About the world state:** In this world state, there are two countertops, one stool, and one breadloaf. All of these amount to four things. The breadloaf is on the first countertop.
 
 ````@example ptg_simple
 state = @acset BreadWorld begin
@@ -145,10 +138,9 @@ state = @acset BreadWorld begin
   inOn_l = [1]  # breadloaf is on the countertop 1
   inOn_r = [2]
 end
-
-############################### APPLY RULE ###############################
 ````
 
+## Apply Rule
 Use the AlgebraicRewriting.get_matches(::Rule{T}, ::ACSet) utility function to find matches between the rule and the state.
 
 ````@example ptg_simple

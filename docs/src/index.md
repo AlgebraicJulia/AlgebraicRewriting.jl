@@ -4,14 +4,9 @@
 CurrentModule = AlgebraicRewriting
 ```
 
-```@autodocs
-Modules = [AlgebraicRewriting.Rewrites]
-Private = true
-```
+Algebraic rewriting is a context-aware find-and-replace operation that is useful for maintaining structure in various scenarios. This package provides tools for such operations in Julia, ensuring that rewrite rules adhere to structures defined using ACSets (see [ACSets.jl](https://github.com/AlgebraicJulia/ACSets.jl) and [Catlab.jl](https://github.com/AlgebraicJulia/Catlab.jl)).
 
-Algebraic rewriting is a context-aware find-and-replace operation, crucial for maintaining integrity and structure in various scenarios. This package provides tools for such operations in Julia, ensuring that replacements adhere to predefined rules or structures.
-
-# Creating and applying rules
+This page will provide you with a gentle overview of how to design and apply rewrite rules for a simple ACSet. **More sophisticated examples** can be found in the side-bar.
 
 ## Setup Environment
 To begin, set up your environment by importing necessary packages.
@@ -24,10 +19,11 @@ using AlgebraicRewriting
 ## Design a rewrite rule
 The general process for designing a rewrite rule is as follows:
 
-1. Define your schema. This is done by defining a [finite presentation of a generalized algebraic theory model]() using generators, `Ob` and `Hom`.
+### 1. Define your schema 
+A schema defined by a finite presentation of a generalized algebraic theory model using generators, `Ob`, `Hom`, `AttrType`, and `Attr`.
 
 ```julia
-@present OntTeam(FreeSchema) begin
+@present SchTeam(FreeSchema) begin
   Player::Ob
   Team::Ob
   IsMemberOf::Hom(Player, Team)
@@ -37,34 +33,36 @@ The general process for designing a rewrite rule is as follows:
 end
 ```
 
-2. Create the schema type. Data for rules are stored in data structures called an ACSet. ACSets can be completely instantiated (straightforward way) using `StructACSet()` type constructor or dynamically instantiated (advanced way) using `DynamicACSet()` type constructor. To create the schema type, you can choose to follow the straightforward way or the advanced way.
+### 2. Create the schema type 
+Data for rules are stored in a data structure called an ACSet. 
 
-For the **straightforward way**:
 ```julia
-const TeamStraightforward = StructACSet("Team", OntTeam)
+@acset_type Team(SchTeam)
 ```
 
-For the **advanced way**:
-```julia
-const TeamAdvanced = DynamicACSet("Team", OntTeam)
-```
-
-3. Define rule parts. A rewrite rule consists of a span of ACSets (`L <-l- K -r-> R`), namely three ACSets (`L`, `K`, `R`) and two natural transformations (`l`, `r`):
+### 3. Define rule parts
+A rewrite rule consists of a span of ACSets (`L <-l- K -r-> R`), namely three ACSets (`L`, `K`, `R`) and two natural transformations (`l`, `r`):
 
 - Left ACSet, `L`, is the pre-condition for the rule to be applied.
 - Keep ACSet, `K`, is the data for the part of the state that remain consistent when the rule is applied.
 - Right ACSet, `R`, is the effect of the rule.
-- Left transformation, `l`, aligns `K` to `L`.
-- Right transformation, `r`, aligns `K` to `R`.
+- Left transformation, `l`, embeds `K` in `L`.
+- Right transformation, `r`, embed `K` in `R`.
 
 To define a rule, all five parts need to be defined. 
 
-If using the **straightforward way**, you must fully specify the ACSet functors and natural transformation. In this example, the rule swaps player between two teams. 
+It is possible to insert data according to the schema using a **static** approach _or_ the **colimit-of-representables** approach.
+
+#### Static Instantiation (`@acset`)
+If using the **static** approach, you must fully specify the ACSet functors and natural transformation. Here is a rule that defines the ACSet statically. 
+
+In this example, the rule swaps player between two teams. 
+
 ```julia
-L = @acset TeamStraightforward begin 
-		Player = 4  
-		Team = 2
-		IsMemberOf = [1, 1, 2, 2]
+L = @acset TeamStatic begin 
+    Player = 4  
+    Team = 2
+    IsMemberOf = [1, 1, 2, 2]
     
     TeamName = ["Home", "Away"]
     HasName = [1, 2]
@@ -72,10 +70,10 @@ end
 K = @acset X begin 
     TeamName = ["Home", "Away"]
 end
-R = @acset TeamStraightforward begin 
-		Player = 4  
-		Team = 2
-		IsMemberOf = [1, 2, 1, 2]
+R = @acset TeamStatic begin 
+    Player = 4  
+    Team = 2
+    IsMemberOf = [1, 2, 1, 2]
 
     TeamName = ["Home", "Away"]
     HasName = [1, 2]
@@ -84,64 +82,59 @@ l = ACSetTransformation(K, L, TeamName=[1, 2])
 r = ACSetTransformation(K, R, TeamName=[1, 2])
 ```
 
-If using the **advanced way**, you only need to specify relevant objects and morphism parts. The `K` part is empty because all the parts specified in `L` and `R` change. (Note: `SchRule` is from `AlgebraicRewriting`)
+#### Colimit-of-representables instantiation (`@acset_colim``)
+If using the **colimit-of-representables** approach, you only need to specify relevant objects and morphism parts. The `K` part is empty because we want all the parts specified in `L` to be rewritten. You can use `homomorphisms` to automatically define the maps `l` and `r`.
+
 ```julia
-diagram = @migration(SchRule, OntTeam,
-  begin
-    L => @join begin
+yTeam = yoneda(Team)
+L = @acset_colim yTeam begin
       (p1, p2)::Player
       (team1, team2)::Team
       IsMemberOf(p1) == team1
       IsMemberOf(p2) == team2
     end
-    K => @join begin end
-    R => @join begin 
+K = @acset_colim yTeam begin end
+R = @acset_colim yTeam begin
       (p1, p2)::Player
       (team1, team2)::Team
       IsMemberOf(p1) == team2
       IsMemberOf(p2) == team1
     end
-  end)
+l = only(homomorphisms(K, L))
+r = only(homomorphisms(K, R))
 ```
 
-4. Construct the rule. Use the `AlgebraicRewriting.Rule` constructor to create the rule. This assumes that a double-pushout (DPO) rewrite rule is being constructed. You may also construct an single-pushout (SPO), sesqui-pushout (SqPO), or pullback-pushout (PBPO) rule.
-
-If using the **straightforward way**, package the rule in terms of maps, l and r, using the `AlgebraicRewriting.Rule` constructor directly. 
-```julia
-rule = Rule{:DPO}(l, r)
-```
-
-If using the **advanced way**, you have to (1) compute the colimit of representables in order to obtain the fully-specified ACSets for L, K, and R; (2) infer the maps l and r, and (3) package the rule using the AlgebraicRewriting.Rule constructor.
+### 4. Construct the rule
+Use the `AlgebraicRewriting.Rule` constructor to create the rule. This assumes that a double-pushout (DPO) rewrite rule is being constructed. You may also construct an single-pushout (SPO), sesqui-pushout (SqPO), or pullback-pushout (PBPO) rule.
 
 ```julia
-yTeam = yoneda(TeamAdvanced)
-rule = colimit_representables(diagram, yTeam)
-l = rule_hom_map(rule, :l, rule_ob_map(rule, Symbol(K), rule_ob_map(rule, Symbol(L))
-r = rule_hom_map(rule, :r, rule_ob_map(rule, Symbol(K), rule_ob_map(rule, Symbol(R))
 rule = Rule{:DPO}(l, r)
 ```
 
 ## Apply the rule
-1. Define the initial state. 
+### 5. Define the initial state. 
+Similarly, you can choose to define the acset using the static approach or the colimit-of-representable approach.
 
-If using the **straightforward way**, you must fully specify the ACSet for the initial state.
-```
+- If using the **static approach**, you must fully specify the ACSet for the initial state.
+
+```julia
 state = @acset TeamStraightforward begin 
-		Player = 10  
-		Team = 2
-		IsMemberOf = [1, 1, 1, 1, 1, 2, 2, 2, 2, 2]
+    Player = 10  
+    Team = 2
+    IsMemberOf = [1, 1, 1, 1, 1, 2, 2, 2, 2, 2]
     
     TeamName = ["Home", "Away"]
     HasName = [1, 2]
 end
 ```
 
-If using the **advanced way**, you only need to specify relevant objects and morphism parts.
-```
+- If using the **colimit-of-representable approach**, you only need to specify relevant objects and morphism parts.
+
+```julia
 state = @acset_colim yTeam begin
-	(p1, p2, p3, p4, p5, p6, p7, p8, p9, p10)::Player
-	(team1, team2)::Team
-	IsMemberOf(p1) == team1
+  (p1, p2, p3, p4, p5, p6, p7, p8, p9, p10)::Player
+  (team1, team2)::Team
+  IsMemberOf(p1) == team1
   IsMemberOf(p2) == team1
   IsMemberOf(p3) == team1
   IsMemberOf(p4) == team1
@@ -154,36 +147,27 @@ state = @acset_colim yTeam begin
 end
 ```
 
+### 6. Identify the match from the rule to the state
+This can be done manually or automatically. 
 
-2. Identify the match from the rule to the state. This can be done manually or automatically. 
+- To **manually** identify the match, fully-specify an ACSet transformation. For this example, we would like to rule to swap `p5::Player` and `p6::Player`
 
-To **manually** identify the match, fully-specify an ACSet transformation. For this example, we would like to rule to swap `p5::Player` and `p6::Player`
 ```julia
 match = ACSetTransformation(L, state, Player=[5, 6], Team=[1, 2], TeamName=[1, 2])
 ```
 
-To **automatically** identify the match, use the backtracking search algorithm provided by AlgebraicRewriting. This may returm multiple matches, so you can provide logic for deciding which match to select. 
+- To **automatically** identify the match, use the backtracking search algorithm provided by AlgebraicRewriting. This may returm multiple matches, so you can provide logic for deciding which match to select. 
+
 ```julia
 matches = get_matches(rule, state)
 # insert logic to decide best match
 ```
 
-3. Apply the rewrite rule. This executes the rewrite process using using the defined rule and match.
+### 7. Apply the rewrite rule 
+This executes the rewrite process using using the defined rule and match.
 
-```
+```julia
 result = rewrite_match(rule, match)
 ```
 
 This documentation provides a basic guide to using the AlgebraicRewriting package in Julia. 
-
-# Examples
-
-You may visit these pages to view more elaborate applications of AlgebraicRewriting.jl:
-
-- [full demo](https://github.com/AlgebraicJulia/AlgebraicRewriting.jl/blob/main/docs/src/full_demo.jl): a small demonstration of most of the major features 
-  of AlgebraicRewriting.
-- [Lotka Volterra example](https://github.com/AlgebraicJulia/AlgebraicRewriting.jl/blob/main/docs/src/lotka_volterra.jl): a model based 
-  on NetLogo's [wolf-sheep predation](http://ccl.northwestern.edu/netlogo/models/WolfSheepPredation) agent-based model demo.
-- [Game of Life example](https://github.com/AlgebraicJulia/AlgebraicRewriting.jl/blob/main/docs/src/GameOfLife.ipynb): an implementation of Conway's 
-  [game of life](https://en.wikipedia.org/wiki/Conway%27s_Game_of_Life) on an 
-  arbitrary graph (with the grid-structure as a special case).
