@@ -4,7 +4,7 @@
 CurrentModule = AlgebraicRewriting
 ```
 
-Algebraic rewriting is a context-aware find-and-replace operation that is useful for maintaining structure in various scenarios. This package provides tools for such operations in Julia, ensuring that rewrite rules adhere to structures defined using ACSets (see [ACSets.jl](https://github.com/AlgebraicJulia/ACSets.jl) and [Catlab.jl](https://github.com/AlgebraicJulia/Catlab.jl)).
+Algebraic rewriting is a context-aware find-and-replace operation that is useful for maintaining structure in various scenarios. This package provides tools for such operations in Julia, ensuring that rewrite rules adhere to structures defined using ACSets (see [ACSets.jl](https://github.com/AlgebraicJulia/ACSets.jl) and [Catlab.jl](https://github.com/AlgebraicJulia/Catlab.jl)). This documentation provides a basic guide to using the AlgebraicRewriting package in Julia. 
 
 This page will provide you with a gentle overview of how to design and apply rewrite rules for a simple ACSet. **More sophisticated examples** can be found in the side-bar.
 
@@ -56,7 +56,7 @@ It is possible to insert data according to the schema using a **static** approac
 #### Static Instantiation (`@acset`)
 If using the **static** approach, you must fully specify the ACSet functors and natural transformation. Here is a rule that defines the ACSet statically. 
 
-In this example, the rule swaps player between two teams. 
+In this example, the rule trades players, one from each team. 
 
 ```julia
 L = @acset TeamStatic begin 
@@ -82,7 +82,7 @@ l = ACSetTransformation(K, L, TeamName=[1, 2])
 r = ACSetTransformation(K, R, TeamName=[1, 2])
 ```
 
-#### Colimit-of-representables instantiation (`@acset_colim``)
+#### Colimit-of-representables instantiation (`@acset_colim`)
 If using the **colimit-of-representables** approach, you only need to specify relevant objects and morphism parts. The `K` part is empty because we want all the parts specified in `L` to be rewritten. You can use `homomorphisms` to automatically define the maps `l` and `r`.
 
 ```julia
@@ -169,5 +169,3 @@ This executes the rewrite process using using the defined rule and match.
 ```julia
 result = rewrite_match(rule, match)
 ```
-
-This documentation provides a basic guide to using the AlgebraicRewriting package in Julia. 
