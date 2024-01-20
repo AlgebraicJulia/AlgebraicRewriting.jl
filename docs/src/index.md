@@ -14,6 +14,7 @@ To begin, set up your environment by importing necessary packages.
 ```julia
 using Catlab
 using AlgebraicRewriting
+using DataMigrations
 ```
 
 ## Design a rewrite rule
@@ -23,21 +24,23 @@ The general process for designing a rewrite rule is as follows:
 A schema defined by a finite presentation of a generalized algebraic theory model using generators, `Ob`, `Hom`, `AttrType`, and `Attr`.
 
 ```julia
-@present SchTeam(FreeSchema) begin
+@present SchSportsTeam(FreeSchema) begin
   Player::Ob
   Team::Ob
   IsMemberOf::Hom(Player, Team)
 
-  TeamName::AttrType
-  HasName::Attr(Team, TeamName)
+  Name::AttrType
+  PlayerHasName::Attr(Player, Name)
+  TeamHasName::Attr(Team, Name)
 end
+to_graphviz(SchSportsTeam)
 ```
 
 ### 2. Create the schema type 
 Data for rules are stored in a data structure called an ACSet. 
 
 ```julia
-@acset_type Team(SchTeam)
+@acset_type SportsTeam(SchSportsTeam)
 ```
 
 ### 3. Define rule parts
@@ -56,52 +59,55 @@ It is possible to insert data according to the schema using a **static** approac
 #### Static Instantiation (`@acset`)
 If using the **static** approach, you must fully specify the ACSet functors and natural transformation. Here is a rule that defines the ACSet statically. 
 
-In this example, the rule trades players, one from each team. 
+In this example, the rule swaps players, one from each team. `AttrVar.(1:2)`, or `[AttrVar(1), AttrVar(2)]`, are used as variable placeholders for the names of the players. This allows the rule to be applied independent of player names, as long as two players are specified from opposing teams. Contrastingly, `["Home", "Away"]`, are specified explicitly and, therefore, this rule can only be applied to teams whose names are "Home" and "Away"
 
 ```julia
-L = @acset TeamStatic begin 
-    Player = 4  
-    Team = 2
-    IsMemberOf = [1, 1, 2, 2]
-    
-    TeamName = ["Home", "Away"]
-    HasName = [1, 2]
+L = @acset SportsTeam{String} begin
+  Player = 2
+  Team = 2
+  Name = 2
+  IsMemberOf = [1, 2]
+  PlayerHasName = AttrVar.(1:2)
+  TeamHasName = ["Home", "Away"]
 end
-K = @acset X begin 
-    TeamName = ["Home", "Away"]
+K = @acset SportsTeam{String} begin
+  Team = 2
+  Name = 2
+  TeamHasName = ["Home", "Away"]
 end
-R = @acset TeamStatic begin 
-    Player = 4  
-    Team = 2
-    IsMemberOf = [1, 2, 1, 2]
-
-    TeamName = ["Home", "Away"]
-    HasName = [1, 2]
+R = @acset SportsTeam{String} begin
+  Player = 2
+  Team = 2
+  Name = 2
+  IsMemberOf = [2, 1]
+  PlayerHasName = AttrVar.(1:2)
+  TeamHasName = ["Home", "Away"]
 end
-l = ACSetTransformation(K, L, TeamName=[1, 2])
-r = ACSetTransformation(K, R, TeamName=[1, 2])
+l = ACSetTransformation(K, L, Team=[1, 2], Name=AttrVar.(1:2))
+r = ACSetTransformation(K, R, Team=[1, 2], Name=AttrVar.(1:2))
 ```
 
 #### Colimit-of-representables instantiation (`@acset_colim`)
-If using the **colimit-of-representables** approach, you only need to specify relevant objects and morphism parts. The `K` part is empty because we want all the parts specified in `L` to be rewritten. You can use `homomorphisms` to automatically define the maps `l` and `r`.
+If using the **colimit-of-representables** approach, you only need to specify relevant objects and morphism parts. Shown here is the translation of the above rule using `@acset_colim`.
 
 ```julia
-yTeam = yoneda(Team)
-L = @acset_colim yTeam begin
-      (p1, p2)::Player
-      (team1, team2)::Team
-      IsMemberOf(p1) == team1
-      IsMemberOf(p2) == team2
-    end
-K = @acset_colim yTeam begin end
-R = @acset_colim yTeam begin
-      (p1, p2)::Player
-      (team1, team2)::Team
-      IsMemberOf(p1) == team2
-      IsMemberOf(p2) == team1
-    end
-l = only(homomorphisms(K, L))
-r = only(homomorphisms(K, R))
+ySportsTeam = yoneda(SportsTeam{String})
+L = R = @acset_colim ySportsTeam begin
+  (p1, p2)::Player
+  (t1, t2)::Team
+  IsMemberOf(p1) == t1
+  IsMemberOf(p2) == t2
+  TeamHasName(t1) == "Home"
+  TeamHasName(t2) == "Away"
+end
+K = @acset_colim ySportsTeam begin
+  (t1, t2)::Team
+  (n1, n2)::Name
+  TeamHasName(t1) == "Home"
+  TeamHasName(t2) == "Away"
+end
+l = ACSetTransformation(K, L, Team=[1, 2], Name=AttrVar.([1, 2]))
+r = ACSetTransformation(K, R, Team=[1, 2], Name=AttrVar.([1, 2]))
 ```
 
 ### 4. Construct the rule
@@ -118,45 +124,45 @@ Similarly, you can choose to define the acset using the static approach or the c
 - If using the **static approach**, you must fully specify the ACSet for the initial state.
 
 ```julia
-state = @acset TeamStraightforward begin 
-    Player = 10  
-    Team = 2
-    IsMemberOf = [1, 1, 1, 1, 1, 2, 2, 2, 2, 2]
-    
-    TeamName = ["Home", "Away"]
-    HasName = [1, 2]
+state = @acset SportsTeam{String} begin
+  Player = 4
+  Team = 2
+  Name = 6
+  IsMemberOf = [1, 1, 2, 2]
+  TeamHasName = ["Home", "Away"]
+  PlayerHasName = ["Jordan", "Alex", "Casey", "Taylor"]
 end
 ```
 
 - If using the **colimit-of-representable approach**, you only need to specify relevant objects and morphism parts.
 
 ```julia
-state = @acset_colim yTeam begin
-  (p1, p2, p3, p4, p5, p6, p7, p8, p9, p10)::Player
-  (team1, team2)::Team
-  IsMemberOf(p1) == team1
-  IsMemberOf(p2) == team1
-  IsMemberOf(p3) == team1
-  IsMemberOf(p4) == team1
-  IsMemberOf(p5) == team1
-  IsMemberOf(p6) == team2
-  IsMemberOf(p7) == team2
-  IsMemberOf(p8) == team2
-  IsMemberOf(p9) == team2
-  IsMemberOf(p10) == team2
+state = @acset_colim ySportsTeam begin
+  (p1, p2, p3, p4)::Player
+  (t1, t2)::Team
+  IsMemberOf(p1) == t1
+  IsMemberOf(p2) == t1
+  IsMemberOf(p3) == t2
+  IsMemberOf(p4) == t2
+  PlayerHasName(p1) == "Jordan"
+  PlayerHasName(p2) == "Alex"
+  PlayerHasName(p3) == "Casey"
+  PlayerHasName(p4) == "Taylor"
+  TeamHasName(t1) == "Home"
+  TeamHasName(t2) == "Away"
 end
 ```
 
 ### 6. Identify the match from the rule to the state
 This can be done manually or automatically. 
 
-- To **manually** identify the match, fully-specify an ACSet transformation. For this example, we would like to rule to swap `p5::Player` and `p6::Player`
+- To **manually** identify the match, fully-specify an ACSet transformation. For this example, we would like to rule to swap `p2::Player` and `p3::Player`
 
 ```julia
-match = ACSetTransformation(L, state, Player=[5, 6], Team=[1, 2], TeamName=[1, 2])
+match = ACSetTransformation(L, state, Player=[2, 3], Team=[1, 2], Name=["Alex", "Casey"])
 ```
 
-- To **automatically** identify the match, use the backtracking search algorithm provided by AlgebraicRewriting. This may returm multiple matches, so you can provide logic for deciding which match to select. 
+- To **automatically** identify the match, use the backtracking search algorithm provided by AlgebraicRewriting. This may return multiple matches, so you can provide logic for deciding which match to select. 
 
 ```julia
 matches = get_matches(rule, state)
