@@ -1,0 +1,949 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/><title>Lotka Volterra · AlgebraicRewriting.jl</title><meta name="title" content="Lotka Volterra · AlgebraicRewriting.jl"/><meta property="og:title" content="Lotka Volterra · AlgebraicRewriting.jl"/><meta property="twitter:title" content="Lotka Volterra · AlgebraicRewriting.jl"/><meta name="description" content="Documentation for AlgebraicRewriting.jl."/><meta property="og:description" content="Documentation for AlgebraicRewriting.jl."/><meta property="twitter:description" content="Documentation for AlgebraicRewriting.jl."/><script data-outdated-warner src="../../assets/warner.js"></script><link href="https://cdnjs.cloudflare.com/ajax/libs/lato-font/3.0.0/css/lato-font.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/juliamono/0.050/juliamono.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/fontawesome.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/solid.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/brands.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.8/katex.min.css" rel="stylesheet" type="text/css"/><script>documenterBaseURL="../.."</script><script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.6/require.min.js" data-main="../../assets/documenter.js"></script><script src="../../search_index.js"></script><script src="../../siteinfo.js"></script><script src="../../../versions.js"></script><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/documenter-dark.css" data-theme-name="documenter-dark" data-theme-primary-dark/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/documenter-light.css" data-theme-name="documenter-light" data-theme-primary/><script src="../../assets/themeswap.js"></script></head><body><div id="documenter"><nav class="docs-sidebar"><a class="docs-logo" href="../../"><img src="../../assets/logo.png" alt="AlgebraicRewriting.jl logo"/></a><div class="docs-package-name"><span class="docs-autofit"><a href="../../">AlgebraicRewriting.jl</a></span></div><button class="docs-search-query input is-rounded is-small is-clickable my-2 mx-auto py-1 px-2" id="documenter-search-query">Search docs (Ctrl + /)</button><ul class="docs-menu"><li><a class="tocitem" href="../../">AlgebraicRewriting.jl</a></li><li><span class="tocitem">Examples</span><ul><li><a class="tocitem" href="../full_demo/">Full Demo</a></li><li><a class="tocitem" href="../game_of_life/">Conway&#39;s Game of Life</a></li><li class="is-active"><a class="tocitem" href>Lotka Volterra</a><ul class="internal"><li class="toplevel"><a class="tocitem" href="#Rules"><span>Rules</span></a></li><li><a class="tocitem" href="#Rotating"><span>Rotating</span></a></li><li><a class="tocitem" href="#Moving-forward"><span>Moving forward</span></a></li></ul></li><li><a class="tocitem" href="../ptg_simple/">Slice Bread</a></li></ul></li><li><a class="tocitem" href="../../api/">Library Reference</a></li></ul><div class="docs-version-selector field has-addons"><div class="control"><span class="docs-label button is-static is-size-7">Version</span></div><div class="docs-selector control is-expanded"><div class="select is-fullwidth is-size-7"><select id="documenter-version-selector"></select></div></div></div></nav><div class="docs-main"><header class="docs-navbar"><a class="docs-sidebar-button docs-navbar-link fa-solid fa-bars is-hidden-desktop" id="documenter-sidebar-button" href="#"></a><nav class="breadcrumb"><ul class="is-hidden-mobile"><li><a class="is-disabled">Examples</a></li><li class="is-active"><a href>Lotka Volterra</a></li></ul><ul class="is-hidden-tablet"><li class="is-active"><a href>Lotka Volterra</a></li></ul></nav><div class="docs-right"><a class="docs-navbar-link" href="https://github.com/AlgebraicJulia/AlgebraicRewriting.jl" title="View the repository on GitHub"><span class="docs-icon fa-brands"></span><span class="docs-label is-hidden-touch">GitHub</span></a><a class="docs-navbar-link" href="https://github.com/AlgebraicJulia/AlgebraicRewriting.jl/blob/main/docs/literate/lotka_volterra.jl" title="Edit source on GitHub"><span class="docs-icon fa-solid"></span></a><a class="docs-settings-button docs-navbar-link fa-solid fa-gear" id="documenter-settings-button" href="#" title="Settings"></a><a class="docs-article-toggle-button fa-solid fa-chevron-up" id="documenter-article-toggle-button" href="javascript:;" title="Collapse all docstrings"></a></div></header><article class="content" id="documenter-page"><h1 id="Lotka-Volterra"><a class="docs-heading-anchor" href="#Lotka-Volterra">Lotka Volterra</a><a id="Lotka-Volterra-1"></a><a class="docs-heading-anchor-permalink" href="#Lotka-Volterra" title="Permalink"></a></h1><pre><code class="language-julia hljs">using Catlab, DataMigrations, AlgebraicRewriting
+using Random, Test, StructEquality
+using Luxor
+
+Random.seed!(123)
+
+using Catlab.Graphics.Graphviz: Attributes, Statement, Node
+using Catlab.Graphics.Graphviz
+
+import Catlab.CategoricalAlgebra: left, right
+
+function right(s::Symbol)
+  if s == :N
+    return :E
+  elseif s == :S
+    return :W
+  elseif s == :E
+    return :S
+  elseif s == :W
+    return :N
+  end
+end
+function left(s::Symbol)
+  if s == :N
+    return :W
+  elseif s == :S
+    return :E
+  elseif s == :E
+    return :N
+  elseif s == :W
+    return :S
+  end
+end</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">left (generic function with 7 methods)</code></pre><p>Grass = 0 means alive grass, whereas grass &gt; 0 represent a counter of time until the grass is alive.</p><p>Sheeps and wolves have position and direction, so we assign each an <em>edge</em>. We assume a convention where the location of the something is the edge SOURCE.</p><p>Dir is an attribute which can take values :N, :E, :W, and :S.</p><pre><code class="language-julia hljs">@present TheoryLV &lt;: SchGraph begin
+  (Sheep, Wolf)::Ob
+  sheep_loc::Hom(Sheep, V)
+  wolf_loc::Hom(Wolf, V)
+
+  (Dir, Eng)::AttrType
+  grass_eng::Attr(V, Eng)
+  sheep_eng::Attr(Sheep, Eng)
+  wolf_eng::Attr(Wolf, Eng)
+  sheep_dir::Attr(Sheep, Dir)
+  wolf_dir::Attr(Wolf, Dir)
+  dir::Attr(E, Dir)
+end
+
+@present TheoryLV′ &lt;: TheoryLV begin
+  Coord::AttrType
+  coord::Attr(V, Coord)
+end
+
+to_graphviz(TheoryLV; prog=&quot;dot&quot;)
+
+@acset_type LV_Generic(TheoryLV) &lt;: HasGraph
+const LV = LV_Generic{Symbol,Int}
+
+@acset_type LV′_Generic(TheoryLV′) &lt;: HasGraph
+const LV′ = LV′_Generic{Symbol,Int,Tuple{Int,Int}}
+
+F = Migrate(
+  Dict(:Sheep =&gt; :Wolf, :Wolf =&gt; :Sheep),
+  Dict([:sheep_loc =&gt; :wolf_loc, :wolf_loc =&gt; :sheep_loc,
+    :sheep_eng =&gt; :wolf_eng, :wolf_eng =&gt; :sheep_eng, :grass_eng =&gt; :grass_eng,
+    :sheep_dir =&gt; :wolf_dir, :wolf_dir =&gt; :sheep_dir,]), LV)
+F2 = Migrate(
+  Dict(x =&gt; x for x in Symbol.(TheoryLV.generators[:Ob])),
+  Dict(x =&gt; x for x in Symbol.(TheoryLV.generators[:Hom])), LV′; delta=false)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">Migrate(Dict(:Wolf =&gt; :Wolf, :V =&gt; :V, :Sheep =&gt; :Sheep, :E =&gt; :E), Dict(:wolf_loc =&gt; :wolf_loc, :src =&gt; :src, :sheep_loc =&gt; :sheep_loc, :tgt =&gt; :tgt), Main.LV′_Generic{Symbol, Int64, Tuple{Int64, Int64}}, Main.LV′_Generic{Symbol, Int64, Tuple{Int64, Int64}}, false)</code></pre><p>Create an n × n grid with periodic boundary conditions. Edges in each cardinal direction originate at every point</p><p>(i,j+1) -&gt; (i+1,j+1) -&gt; ...   ↑          ↑ (i,j)   -&gt; (i+1,j)   -&gt; ...</p><pre><code class="language-julia hljs">function create_grid(n::Int)
+  lv = LV′()
+  coords = Dict()
+  for i in 0:n-1  # Initialize grass 50% green, 50% uniformly between 0-30
+    for j in 0:n-1
+      coords[i=&gt;j] = add_part!(lv, :V; grass_eng=max(0, rand(-30:30)), coord=(i, j))
+    end
+  end
+  for i in 0:n-1
+    for j in 0:n-1
+      add_part!(lv, :E; src=coords[i=&gt;j], tgt=coords[mod(i + 1, n)=&gt;j], dir=:E)
+      add_part!(lv, :E; src=coords[i=&gt;j], tgt=coords[mod(i - 1, n)=&gt;j], dir=:W)
+      add_part!(lv, :E; src=coords[i=&gt;j], tgt=coords[i=&gt;mod(j + 1, n)], dir=:N)
+      add_part!(lv, :E; src=coords[i=&gt;j], tgt=coords[i=&gt;mod(j - 1, n)], dir=:S)
+    end
+  end
+  return lv
+end
+
+g = create_grid(2)</code></pre><div class="c-set">
+<span class="c-set-summary">Main.__atexample__named__lotka_volterra.LV′_Generic{Symbol, Int64, Tuple{Int64, Int64}} {V:4, E:16, Sheep:0, Wolf:0, Dir:0, Eng:0, Coord:0}</span>
+<table>
+  <thead>
+    <tr class = "header headerLastRow">
+      <th class = "rowLabel" style = "font-weight: bold; text-align: right;">V</th>
+      <th style = "text-align: right;">grass_eng</th>
+      <th style = "text-align: right;">coord</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td class = "rowLabel" style = "font-weight: bold; text-align: right;">1</td>
+      <td style = "text-align: right;">1</td>
+      <td style = "text-align: right;">(0, 0)</td>
+    </tr>
+    <tr>
+      <td class = "rowLabel" style = "font-weight: bold; text-align: right;">2</td>
+      <td style = "text-align: right;">5</td>
+      <td style = "text-align: right;">(0, 1)</td>
+    </tr>
+    <tr>
+      <td class = "rowLabel" style = "font-weight: bold; text-align: right;">3</td>
+      <td style = "text-align: right;">24</td>
+      <td style = "text-align: right;">(1, 0)</td>
+    </tr>
+    <tr>
+      <td class = "rowLabel" style = "font-weight: bold; text-align: right;">4</td>
+      <td style = "text-align: right;">0</td>
+      <td style = "text-align: right;">(1, 1)</td>
+    </tr>
+  </tbody>
+</table>
+<table>
+  <thead>
+    <tr class = "header headerLastRow">
+      <th class = "rowLabel" style = "font-weight: bold; text-align: right;">E</th>
+      <th style = "text-align: right;">src</th>
+      <th style = "text-align: right;">tgt</th>
+      <th style = "text-align: right;">dir</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td class = "rowLabel" style = "font-weight: bold; text-align: right;">1</td>
+      <td style = "text-align: right;">1</td>
+      <td style = "text-align: right;">3</td>
+      <td style = "text-align: right;">E</td>
+    </tr>
+    <tr>
+      <td class = "rowLabel" style = "font-weight: bold; text-align: right;">2</td>
+      <td style = "text-align: right;">1</td>
+      <td style = "text-align: right;">3</td>
+      <td style = "text-align: right;">W</td>
+    </tr>
+    <tr>
+      <td class = "rowLabel" style = "font-weight: bold; text-align: right;">3</td>
+      <td style = "text-align: right;">1</td>
+      <td style = "text-align: right;">2</td>
+      <td style = "text-align: right;">N</td>
+    </tr>
+    <tr>
+      <td class = "rowLabel" style = "font-weight: bold; text-align: right;">4</td>
+      <td style = "text-align: right;">1</td>
+      <td style = "text-align: right;">2</td>
+      <td style = "text-align: right;">S</td>
+    </tr>
+    <tr>
+      <td class = "rowLabel" style = "font-weight: bold; text-align: right;">5</td>
+      <td style = "text-align: right;">2</td>
+      <td style = "text-align: right;">4</td>
+      <td style = "text-align: right;">E</td>
+    </tr>
+    <tr>
+      <td class = "rowLabel" style = "font-weight: bold; text-align: right;">6</td>
+      <td style = "text-align: right;">2</td>
+      <td style = "text-align: right;">4</td>
+      <td style = "text-align: right;">W</td>
+    </tr>
+    <tr>
+      <td class = "rowLabel" style = "font-weight: bold; text-align: right;">7</td>
+      <td style = "text-align: right;">2</td>
+      <td style = "text-align: right;">1</td>
+      <td style = "text-align: right;">N</td>
+    </tr>
+    <tr>
+      <td class = "rowLabel" style = "font-weight: bold; text-align: right;">8</td>
+      <td style = "text-align: right;">2</td>
+      <td style = "text-align: right;">1</td>
+      <td style = "text-align: right;">S</td>
+    </tr>
+    <tr>
+      <td class = "rowLabel" style = "font-weight: bold; text-align: right;">9</td>
+      <td style = "text-align: right;">3</td>
+      <td style = "text-align: right;">1</td>
+      <td style = "text-align: right;">E</td>
+    </tr>
+    <tr>
+      <td class = "rowLabel" style = "font-weight: bold; text-align: right;">10</td>
+      <td style = "text-align: right;">3</td>
+      <td style = "text-align: right;">1</td>
+      <td style = "text-align: right;">W</td>
+    </tr>
+    <tr>
+      <td class = "rowLabel" style = "font-weight: bold; text-align: right;">11</td>
+      <td style = "text-align: right;">3</td>
+      <td style = "text-align: right;">4</td>
+      <td style = "text-align: right;">N</td>
+    </tr>
+    <tr>
+      <td class = "rowLabel" style = "font-weight: bold; text-align: right;">12</td>
+      <td style = "text-align: right;">3</td>
+      <td style = "text-align: right;">4</td>
+      <td style = "text-align: right;">S</td>
+    </tr>
+    <tr>
+      <td class = "rowLabel" style = "font-weight: bold; text-align: right;">13</td>
+      <td style = "text-align: right;">4</td>
+      <td style = "text-align: right;">2</td>
+      <td style = "text-align: right;">E</td>
+    </tr>
+    <tr>
+      <td class = "rowLabel" style = "font-weight: bold; text-align: right;">14</td>
+      <td style = "text-align: right;">4</td>
+      <td style = "text-align: right;">2</td>
+      <td style = "text-align: right;">W</td>
+    </tr>
+    <tr>
+      <td class = "rowLabel" style = "font-weight: bold; text-align: right;">15</td>
+      <td style = "text-align: right;">4</td>
+      <td style = "text-align: right;">3</td>
+      <td style = "text-align: right;">N</td>
+    </tr>
+    <tr>
+      <td class = "rowLabel" style = "font-weight: bold; text-align: right;">16</td>
+      <td style = "text-align: right;">4</td>
+      <td style = "text-align: right;">3</td>
+      <td style = "text-align: right;">S</td>
+    </tr>
+  </tbody>
+</table>
+</div>
+<p><code>n</code> is the length of the grid. <code>sheep</code> and <code>wolves</code> are the fraction of spaces that are populated with that animal</p><pre><code class="language-julia hljs">function initialize(n::Int, sheep::Float64, wolves::Float64)::LV′
+  grid = create_grid(n)
+  args = [(sheep, :Sheep, :sheep_loc, :sheep_eng, :sheep_dir),
+    (wolves, :Wolf, :wolf_loc, :wolf_eng, :wolf_dir)]
+  for (n_, name, loc, eng, d) in args
+    for _ in 1:round(Int, n_ * n^2)
+      dic = Dict([eng =&gt; 5, loc =&gt; rand(vertices(grid)),
+        d =&gt; rand([:N, :E, :S, :W])])
+      add_part!(grid, name; dic...)
+    end
+  end
+  return grid
+end
+
+
+supscript_d = Dict([
+  &#39;1&#39; =&gt; &#39;¹&#39;, &#39;2&#39; =&gt; &#39;²&#39;, &#39;3&#39; =&gt; &#39;³&#39;, &#39;4&#39; =&gt; &#39;⁴&#39;, &#39;5&#39; =&gt; &#39;⁵&#39;, &#39;6&#39; =&gt; &#39;⁶&#39;, &#39;7&#39; =&gt; &#39;⁷&#39;, &#39;8&#39; =&gt; &#39;⁸&#39;,
+  &#39;9&#39; =&gt; &#39;⁹&#39;, &#39;0&#39; =&gt; &#39;⁰&#39;, &#39;x&#39; =&gt; &#39;ˣ&#39;, &#39;y&#39; =&gt; &#39;ʸ&#39;, &#39;z&#39; =&gt; &#39;ᶻ&#39;, &#39;a&#39; =&gt; &#39;ᵃ&#39;, &#39;b&#39; =&gt; &#39;ᵇ&#39;, &#39;c&#39; =&gt; &#39;ᶜ&#39;,
+  &#39;d&#39; =&gt; &#39;ᵈ&#39;])
+supscript(x::String) = join([get(supscript_d, c, c) for c in x])</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">supscript (generic function with 1 method)</code></pre><p>Visualize a LV</p><pre><code class="language-julia hljs">function view_LV(p::ACSetTransformation, pth=tempname(); name=&quot;G&quot;, title=&quot;&quot;)
+  if nparts(dom(p), :Wolf) == 1
+    star = :Wolf =&gt; p[:Wolf](1)
+  elseif nparts(dom(p), :Sheep) == 1
+    star = :Sheep =&gt; p[:Sheep](1)
+  elseif nparts(dom(p), :V) == 1
+    star = :V =&gt; p[:V](1)
+  else
+    star = nothing
+  end
+  view_LV(codom(p), pth; name=name, title=title, star=star)
+end
+function view_LV(p::LV′, pth=tempname(); name=&quot;G&quot;, title=&quot;&quot;, star=nothing)
+  pstr = [&quot;$(i),$(j)!&quot; for (i, j) in p[:coord]]
+  stmts = Statement[]
+  for s in 1:nv(p)
+    st = (star == (:V =&gt; s)) ? &quot;*&quot; : &quot;&quot;
+    gv = p[s, :grass_eng]
+    col = gv == 0 ? &quot;lightgreen&quot; : &quot;tan&quot;
+    push!(stmts, Node(&quot;v$s&quot;, Attributes(
+      :label =&gt; gv == 0 ? &quot;&quot; : string(gv) * st,
+      :shape =&gt; &quot;circle&quot;,
+      :color =&gt; col, :pos =&gt; pstr[s])))
+  end
+  d = Dict([:E =&gt; (1, 0), :N =&gt; (0, 1), :S =&gt; (0, -1), :W =&gt; (-1, 0),])
+
+  args = [(:true, :Wolf, :wolf_loc, :wolf_eng, :wolf_dir),
+    (false, :Sheep, :sheep_loc, :sheep_eng, :sheep_dir)]
+
+  for (is_wolf, prt, loc, eng, dr) in args
+    for w in parts(p, prt)
+      st = (star == ((is_wolf ? :Wolf : :Sheep) =&gt; w)) ? &quot;*&quot; : &quot;&quot;
+      e = only(incident(p, p[w, loc], :src) ∩ incident(p, p[w, dr], :dir))
+      s = src(p, e)
+      dx, dy = d[p[e, :dir]]
+      (sx, sy) = p[s, :coord]
+
+      L, R = 0.25, 0.1
+      wx = sx + L * dx + R * rand()
+      wy = sy + L * dy + R * rand()
+      ID = &quot;$(is_wolf ? :w : :s)$w&quot;
+      append!(stmts, [Node(ID, Attributes(
+        :label =&gt; &quot;$w&quot; * supscript(&quot;$(p[w,eng])&quot;) * st,
+        :shape =&gt; &quot;square&quot;, :width =&gt; &quot;0.3px&quot;, :height =&gt; &quot;0.3px&quot;, :fixedsize =&gt; &quot;true&quot;,
+        :pos =&gt; &quot;$(wx),$(wy)!&quot;, :color =&gt; is_wolf ? &quot;red&quot; : &quot;lightblue&quot;))])
+    end
+  end
+
+  g = Graphviz.Digraph(name, Statement[stmts...]; prog=&quot;neato&quot;,
+    graph_attrs=Attributes(:label =&gt; title, :labelloc =&gt; &quot;t&quot;),
+    node_attrs=Attributes(:shape =&gt; &quot;plain&quot;, :style =&gt; &quot;filled&quot;))
+  open(pth, &quot;w&quot;) do io
+    show(io, &quot;image/svg+xml&quot;, g)
+  end
+end
+
+i1 = initialize(2, 0.5, 0.5)</code></pre><div class="c-set">
+<span class="c-set-summary">Main.__atexample__named__lotka_volterra.LV′_Generic{Symbol, Int64, Tuple{Int64, Int64}} {V:4, E:16, Sheep:2, Wolf:2, Dir:0, Eng:0, Coord:0}</span>
+<table>
+  <thead>
+    <tr class = "header headerLastRow">
+      <th class = "rowLabel" style = "font-weight: bold; text-align: right;">V</th>
+      <th style = "text-align: right;">grass_eng</th>
+      <th style = "text-align: right;">coord</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td class = "rowLabel" style = "font-weight: bold; text-align: right;">1</td>
+      <td style = "text-align: right;">2</td>
+      <td style = "text-align: right;">(0, 0)</td>
+    </tr>
+    <tr>
+      <td class = "rowLabel" style = "font-weight: bold; text-align: right;">2</td>
+      <td style = "text-align: right;">0</td>
+      <td style = "text-align: right;">(0, 1)</td>
+    </tr>
+    <tr>
+      <td class = "rowLabel" style = "font-weight: bold; text-align: right;">3</td>
+      <td style = "text-align: right;">0</td>
+      <td style = "text-align: right;">(1, 0)</td>
+    </tr>
+    <tr>
+      <td class = "rowLabel" style = "font-weight: bold; text-align: right;">4</td>
+      <td style = "text-align: right;">26</td>
+      <td style = "text-align: right;">(1, 1)</td>
+    </tr>
+  </tbody>
+</table>
+<table>
+  <thead>
+    <tr class = "header headerLastRow">
+      <th class = "rowLabel" style = "font-weight: bold; text-align: right;">E</th>
+      <th style = "text-align: right;">src</th>
+      <th style = "text-align: right;">tgt</th>
+      <th style = "text-align: right;">dir</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td class = "rowLabel" style = "font-weight: bold; text-align: right;">1</td>
+      <td style = "text-align: right;">1</td>
+      <td style = "text-align: right;">3</td>
+      <td style = "text-align: right;">E</td>
+    </tr>
+    <tr>
+      <td class = "rowLabel" style = "font-weight: bold; text-align: right;">2</td>
+      <td style = "text-align: right;">1</td>
+      <td style = "text-align: right;">3</td>
+      <td style = "text-align: right;">W</td>
+    </tr>
+    <tr>
+      <td class = "rowLabel" style = "font-weight: bold; text-align: right;">3</td>
+      <td style = "text-align: right;">1</td>
+      <td style = "text-align: right;">2</td>
+      <td style = "text-align: right;">N</td>
+    </tr>
+    <tr>
+      <td class = "rowLabel" style = "font-weight: bold; text-align: right;">4</td>
+      <td style = "text-align: right;">1</td>
+      <td style = "text-align: right;">2</td>
+      <td style = "text-align: right;">S</td>
+    </tr>
+    <tr>
+      <td class = "rowLabel" style = "font-weight: bold; text-align: right;">5</td>
+      <td style = "text-align: right;">2</td>
+      <td style = "text-align: right;">4</td>
+      <td style = "text-align: right;">E</td>
+    </tr>
+    <tr>
+      <td class = "rowLabel" style = "font-weight: bold; text-align: right;">6</td>
+      <td style = "text-align: right;">2</td>
+      <td style = "text-align: right;">4</td>
+      <td style = "text-align: right;">W</td>
+    </tr>
+    <tr>
+      <td class = "rowLabel" style = "font-weight: bold; text-align: right;">7</td>
+      <td style = "text-align: right;">2</td>
+      <td style = "text-align: right;">1</td>
+      <td style = "text-align: right;">N</td>
+    </tr>
+    <tr>
+      <td class = "rowLabel" style = "font-weight: bold; text-align: right;">8</td>
+      <td style = "text-align: right;">2</td>
+      <td style = "text-align: right;">1</td>
+      <td style = "text-align: right;">S</td>
+    </tr>
+    <tr>
+      <td class = "rowLabel" style = "font-weight: bold; text-align: right;">9</td>
+      <td style = "text-align: right;">3</td>
+      <td style = "text-align: right;">1</td>
+      <td style = "text-align: right;">E</td>
+    </tr>
+    <tr>
+      <td class = "rowLabel" style = "font-weight: bold; text-align: right;">10</td>
+      <td style = "text-align: right;">3</td>
+      <td style = "text-align: right;">1</td>
+      <td style = "text-align: right;">W</td>
+    </tr>
+    <tr>
+      <td class = "rowLabel" style = "font-weight: bold; text-align: right;">11</td>
+      <td style = "text-align: right;">3</td>
+      <td style = "text-align: right;">4</td>
+      <td style = "text-align: right;">N</td>
+    </tr>
+    <tr>
+      <td class = "rowLabel" style = "font-weight: bold; text-align: right;">12</td>
+      <td style = "text-align: right;">3</td>
+      <td style = "text-align: right;">4</td>
+      <td style = "text-align: right;">S</td>
+    </tr>
+    <tr>
+      <td class = "rowLabel" style = "font-weight: bold; text-align: right;">13</td>
+      <td style = "text-align: right;">4</td>
+      <td style = "text-align: right;">2</td>
+      <td style = "text-align: right;">E</td>
+    </tr>
+    <tr>
+      <td class = "rowLabel" style = "font-weight: bold; text-align: right;">14</td>
+      <td style = "text-align: right;">4</td>
+      <td style = "text-align: right;">2</td>
+      <td style = "text-align: right;">W</td>
+    </tr>
+    <tr>
+      <td class = "rowLabel" style = "font-weight: bold; text-align: right;">15</td>
+      <td style = "text-align: right;">4</td>
+      <td style = "text-align: right;">3</td>
+      <td style = "text-align: right;">N</td>
+    </tr>
+    <tr>
+      <td class = "rowLabel" style = "font-weight: bold; text-align: right;">16</td>
+      <td style = "text-align: right;">4</td>
+      <td style = "text-align: right;">3</td>
+      <td style = "text-align: right;">S</td>
+    </tr>
+  </tbody>
+</table>
+<table>
+  <thead>
+    <tr class = "header headerLastRow">
+      <th class = "rowLabel" style = "font-weight: bold; text-align: right;">Sheep</th>
+      <th style = "text-align: right;">sheep_loc</th>
+      <th style = "text-align: right;">sheep_eng</th>
+      <th style = "text-align: right;">sheep_dir</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td class = "rowLabel" style = "font-weight: bold; text-align: right;">1</td>
+      <td style = "text-align: right;">3</td>
+      <td style = "text-align: right;">5</td>
+      <td style = "text-align: right;">E</td>
+    </tr>
+    <tr>
+      <td class = "rowLabel" style = "font-weight: bold; text-align: right;">2</td>
+      <td style = "text-align: right;">3</td>
+      <td style = "text-align: right;">5</td>
+      <td style = "text-align: right;">W</td>
+    </tr>
+  </tbody>
+</table>
+<table>
+  <thead>
+    <tr class = "header headerLastRow">
+      <th class = "rowLabel" style = "font-weight: bold; text-align: right;">Wolf</th>
+      <th style = "text-align: right;">wolf_loc</th>
+      <th style = "text-align: right;">wolf_eng</th>
+      <th style = "text-align: right;">wolf_dir</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td class = "rowLabel" style = "font-weight: bold; text-align: right;">1</td>
+      <td style = "text-align: right;">1</td>
+      <td style = "text-align: right;">5</td>
+      <td style = "text-align: right;">E</td>
+    </tr>
+    <tr>
+      <td class = "rowLabel" style = "font-weight: bold; text-align: right;">2</td>
+      <td style = "text-align: right;">2</td>
+      <td style = "text-align: right;">5</td>
+      <td style = "text-align: right;">N</td>
+    </tr>
+  </tbody>
+</table>
+</div>
+<h1 id="Rules"><a class="docs-heading-anchor" href="#Rules">Rules</a><a id="Rules-1"></a><a class="docs-heading-anchor-permalink" href="#Rules" title="Permalink"></a></h1><pre><code class="language-julia hljs">yLV = yoneda_cache(LV; clear=true);
+yLV = yoneda_cache(LV; clear=false);</code></pre><p>Empty agent type</p><pre><code class="language-julia hljs">I = LV()</code></pre><div class="c-set">
+<span class="c-set-summary">Main.__atexample__named__lotka_volterra.LV_Generic{Symbol, Int64} {V:0, E:0, Sheep:0, Wolf:0, Dir:0, Eng:0}</span>
+</div>
+<p>Generic sheep agent</p><pre><code class="language-julia hljs">S = @acset_colim yLV begin
+  s::Sheep
+end</code></pre><div class="c-set">
+<span class="c-set-summary">Main.__atexample__named__lotka_volterra.LV_Generic{Symbol, Int64} {V:1, E:0, Sheep:1, Wolf:0, Dir:1, Eng:2}</span>
+<table>
+  <thead>
+    <tr class = "header headerLastRow">
+      <th class = "rowLabel" style = "font-weight: bold; text-align: right;">V</th>
+      <th style = "text-align: right;">grass_eng</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td class = "rowLabel" style = "font-weight: bold; text-align: right;">1</td>
+      <td style = "text-align: right;">AttrVar(2)</td>
+    </tr>
+  </tbody>
+</table>
+<table>
+  <thead>
+    <tr class = "header headerLastRow">
+      <th class = "rowLabel" style = "font-weight: bold; text-align: right;">Sheep</th>
+      <th style = "text-align: right;">sheep_loc</th>
+      <th style = "text-align: right;">sheep_eng</th>
+      <th style = "text-align: right;">sheep_dir</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td class = "rowLabel" style = "font-weight: bold; text-align: right;">1</td>
+      <td style = "text-align: right;">1</td>
+      <td style = "text-align: right;">AttrVar(1)</td>
+      <td style = "text-align: right;">AttrVar(1)</td>
+    </tr>
+  </tbody>
+</table>
+</div>
+<p>Generic wolf agent</p><pre><code class="language-julia hljs">W = F(S)</code></pre><div class="c-set">
+<span class="c-set-summary">Main.__atexample__named__lotka_volterra.LV_Generic{Symbol, Int64} {V:1, E:0, Sheep:0, Wolf:1, Dir:1, Eng:2}</span>
+<table>
+  <thead>
+    <tr class = "header headerLastRow">
+      <th class = "rowLabel" style = "font-weight: bold; text-align: right;">V</th>
+      <th style = "text-align: right;">grass_eng</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td class = "rowLabel" style = "font-weight: bold; text-align: right;">1</td>
+      <td style = "text-align: right;">AttrVar(2)</td>
+    </tr>
+  </tbody>
+</table>
+<table>
+  <thead>
+    <tr class = "header headerLastRow">
+      <th class = "rowLabel" style = "font-weight: bold; text-align: right;">Wolf</th>
+      <th style = "text-align: right;">wolf_loc</th>
+      <th style = "text-align: right;">wolf_eng</th>
+      <th style = "text-align: right;">wolf_dir</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td class = "rowLabel" style = "font-weight: bold; text-align: right;">1</td>
+      <td style = "text-align: right;">1</td>
+      <td style = "text-align: right;">AttrVar(1)</td>
+      <td style = "text-align: right;">AttrVar(1)</td>
+    </tr>
+  </tbody>
+</table>
+</div>
+<p>Generic grass agent</p><pre><code class="language-julia hljs">G = @acset_colim yLV begin
+  v::V
+end
+
+N = Names(Dict(&quot;W&quot; =&gt; W, &quot;S&quot; =&gt; S, &quot;G&quot; =&gt; G, &quot;&quot; =&gt; I));</code></pre><h2 id="Rotating"><a class="docs-heading-anchor" href="#Rotating">Rotating</a><a id="Rotating-1"></a><a class="docs-heading-anchor-permalink" href="#Rotating" title="Permalink"></a></h2><pre><code class="language-julia hljs">rl = Rule(id(S), id(S); expr=(Dir=[xs -&gt; left(only(xs))],))
+rr = Rule(id(S), id(S); expr=(Dir=[xs -&gt; right(only(xs))],))
+
+sheep_rotate_l = tryrule(RuleApp(:turn_left, rl, S))
+sheep_rotate_r = tryrule(RuleApp(:turn_right, rr, S))</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">Schedule(WiringDiagram{AlgebraicRewriting.Schedules.Theories.ThTracedMonoidalWithBidiagonals.Meta.T}([Main.LV_Generic{Symbol, Int64} {V:1, E:0, Sheep:1, Wolf:0, Dir:1, Eng:2}], [Main.LV_Generic{Symbol, Int64} {V:1, E:0, Sheep:1, Wolf:0, Dir:1, Eng:2}], 
+[ -2 =&gt; {inputs},
+  -1 =&gt; {outputs},
+  1 =&gt; Box(&quot;turn_right&quot;, [Main.LV_Generic{Symbol, Int64}:
+  V = 1:1
+  E = 1:0
+  Sheep = 1:1
+  Wolf = 1:0
+  Dir = 1:1
+  Eng = 1:2
+  src : E → V = Int64[]
+  tgt : E → V = Int64[]
+  sheep_loc : Sheep → V = [1]
+  wolf_loc : Wolf → V = Int64[]
+  grass_eng : V → Eng = ACSets.ColumnImplementations.AttrVar[ACSets.ColumnImplementations.AttrVar(2)]
+  sheep_eng : Sheep → Eng = ACSets.ColumnImplementations.AttrVar[ACSets.ColumnImplementations.AttrVar(1)]
+  wolf_eng : Wolf → Eng = Int64[]
+  sheep_dir : Sheep → Dir = ACSets.ColumnImplementations.AttrVar[ACSets.ColumnImplementations.AttrVar(1)]
+  wolf_dir : Wolf → Dir = Symbol[]
+  dir : E → Dir = Symbol[]], [Main.LV_Generic{Symbol, Int64}:
+  V = 1:1
+  E = 1:0
+  Sheep = 1:1
+  Wolf = 1:0
+  Dir = 1:1
+  Eng = 1:2
+  src : E → V = Int64[]
+  tgt : E → V = Int64[]
+  sheep_loc : Sheep → V = [1]
+  wolf_loc : Wolf → V = Int64[]
+  grass_eng : V → Eng = ACSets.ColumnImplementations.AttrVar[ACSets.ColumnImplementations.AttrVar(2)]
+  sheep_eng : Sheep → Eng = ACSets.ColumnImplementations.AttrVar[ACSets.ColumnImplementations.AttrVar(1)]
+  wolf_eng : Wolf → Eng = Int64[]
+  sheep_dir : Sheep → Dir = ACSets.ColumnImplementations.AttrVar[ACSets.ColumnImplementations.AttrVar(1)]
+  wolf_dir : Wolf → Dir = Symbol[]
+  dir : E → Dir = Symbol[],Main.LV_Generic{Symbol, Int64}:
+  V = 1:1
+  E = 1:0
+  Sheep = 1:1
+  Wolf = 1:0
+  Dir = 1:1
+  Eng = 1:2
+  src : E → V = Int64[]
+  tgt : E → V = Int64[]
+  sheep_loc : Sheep → V = [1]
+  wolf_loc : Wolf → V = Int64[]
+  grass_eng : V → Eng = ACSets.ColumnImplementations.AttrVar[ACSets.ColumnImplementations.AttrVar(2)]
+  sheep_eng : Sheep → Eng = ACSets.ColumnImplementations.AttrVar[ACSets.ColumnImplementations.AttrVar(1)]
+  wolf_eng : Wolf → Eng = Int64[]
+  sheep_dir : Sheep → Dir = ACSets.ColumnImplementations.AttrVar[ACSets.ColumnImplementations.AttrVar(1)]
+  wolf_dir : Wolf → Dir = Symbol[]
+  dir : E → Dir = Symbol[]]) ],
+[ Wire((-2,1) =&gt; (1,1)),
+  Wire((1,1) =&gt; (-1,1)),
+  Wire((1,2) =&gt; (-1,1)) ]), compose(turn_right,mmerge(Main.LV_Generic{Symbol, Int64}:
+  V = 1:1
+  E = 1:0
+  Sheep = 1:1
+  Wolf = 1:0
+  Dir = 1:1
+  Eng = 1:2
+  src : E → V = Int64[]
+  tgt : E → V = Int64[]
+  sheep_loc : Sheep → V = [1]
+  wolf_loc : Wolf → V = Int64[]
+  grass_eng : V → Eng = ACSets.ColumnImplementations.AttrVar[ACSets.ColumnImplementations.AttrVar(2)]
+  sheep_eng : Sheep → Eng = ACSets.ColumnImplementations.AttrVar[ACSets.ColumnImplementations.AttrVar(1)]
+  wolf_eng : Wolf → Eng = Int64[]
+  sheep_dir : Sheep → Dir = ACSets.ColumnImplementations.AttrVar[ACSets.ColumnImplementations.AttrVar(1)]
+  wolf_dir : Wolf → Dir = Symbol[]
+  dir : E → Dir = Symbol[])))</code></pre><p>We can imagine executing these rules in sequence or in parallel</p><pre><code class="language-julia hljs">seq_sched = (sheep_rotate_l ⋅ sheep_rotate_r)
+par_sched = (sheep_rotate_l ⊗ sheep_rotate_r)
+
+begin
+  ex = @acset_colim yLV begin
+    e::E
+    s::Sheep
+    sheep_loc(s) == src(e)
+    sheep_dir(s) == :N
+  end
+  expected = copy(ex)
+  expected[:sheep_dir] = :W
+  @test is_isomorphic(rewrite(rl, ex), expected)
+end</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi"><span class="sgr32"><span class="sgr1">Test Passed</span></span></code></pre><h2 id="Moving-forward"><a class="docs-heading-anchor" href="#Moving-forward">Moving forward</a><a id="Moving-forward-1"></a><a class="docs-heading-anchor-permalink" href="#Moving-forward" title="Permalink"></a></h2><pre><code class="language-julia hljs">s_fwd_l = @acset_colim yLV begin
+  e::E
+  s::Sheep
+  sheep_loc(s) == src(e)
+end
+s_fwd_i = @acset_colim yLV begin
+  e::E
+end
+s_fwd_r = @acset_colim yLV begin
+  e::E
+  s::Sheep
+  sheep_loc(s) == tgt(e)
+end
+s_n = @acset_colim yLV begin
+  e::E
+  s::Sheep
+  sheep_loc(s) == src(e)
+  sheep_eng(s) == 0
+end
+
+sheep_fwd_rule = Rule(
+  homomorphism(s_fwd_i, s_fwd_l; monic=true),
+  homomorphism(s_fwd_i, s_fwd_r; monic=true),
+  ac=[AppCond(homomorphism(s_fwd_l, s_n), false)],
+  expr=(Eng=Dict(3 =&gt; vs -&gt; vs[3] - 1), Dir=Dict(2 =&gt; vs -&gt; vs[2]))
+)
+
+sheep_fwd = tryrule(RuleApp(:move_fwd, sheep_fwd_rule,
+  homomorphism(S, s_fwd_l), homomorphism(S, s_fwd_r)))
+
+
+sheep_fwd_rule.L |&gt; codom
+
+begin # test
+  ex = @acset_colim yLV begin
+    (e1, e2)::E
+    s::Sheep
+    sheep_loc(s) == tgt(e1)
+    tgt(e1) == src(e2)
+    sheep_dir(s) == :N
+    sheep_eng(s) == 10
+  end
+  expected = @acset_colim yLV begin
+    (e1, e2)::E
+    s::Sheep
+    sheep_loc(s) == tgt(e2)
+    tgt(e1) == src(e2)
+    sheep_dir(s) == :N
+    sheep_eng(s) == 9
+  end
+  @test is_isomorphic(expected, rewrite(sheep_fwd_rule, ex))
+end</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi"><span class="sgr32"><span class="sgr1">Test Passed</span></span></code></pre><p>Eat grass + 4eng Grass is at 0 - meaning it&#39;s ready to be eaten</p><pre><code class="language-julia hljs">s_eat_pac = @acset_colim yLV begin
+  s::Sheep
+  grass_eng(sheep_loc(s)) == 0
+end
+
+se_rule = Rule(id(S), id(S); expr=(Eng=[vs -&gt; vs[1] + 4, vs -&gt; 30],),
+  ac=[AppCond(homomorphism(S, s_eat_pac))])
+sheep_eat = tryrule(RuleApp(:Sheep_eat, se_rule, S))
+
+begin # test
+  ex = @acset_colim yLV begin
+    s::Sheep
+    e::E
+    sheep_loc(s) == tgt(e)
+    sheep_eng(s) == 3
+    grass_eng(tgt(e)) == 0
+    grass_eng(src(e)) == 10
+  end
+  expected = @acset_colim yLV begin
+    s::Sheep
+    e::E
+    sheep_loc(s) == tgt(e)
+    sheep_eng(s) == 7
+    grass_eng(tgt(e)) == 30
+    grass_eng(src(e)) == 10
+  end
+
+  @test is_isomorphic(expected, rewrite(se_rule, ex))
+end</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi"><span class="sgr32"><span class="sgr1">Test Passed</span></span></code></pre><p>Eat sheep + 20 eng</p><pre><code class="language-julia hljs">w_eat_l = @acset_colim yLV begin
+  s::Sheep
+  w::Wolf
+  sheep_loc(s) == wolf_loc(w)
+end
+
+we_rule = Rule(homomorphism(W, w_eat_l), id(W); expr=(Eng=[vs -&gt; vs[3] + 20, vs -&gt; vs[1]],))
+wolf_eat = tryrule(RuleApp(:Wolf_eat, we_rule, W))</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">Schedule(WiringDiagram{AlgebraicRewriting.Schedules.Theories.ThTracedMonoidalWithBidiagonals.Meta.T}([Main.LV_Generic{Symbol, Int64} {V:1, E:0, Sheep:0, Wolf:1, Dir:1, Eng:2}], [Main.LV_Generic{Symbol, Int64} {V:1, E:0, Sheep:0, Wolf:1, Dir:1, Eng:2}], 
+[ -2 =&gt; {inputs},
+  -1 =&gt; {outputs},
+  1 =&gt; Box(&quot;Wolf_eat&quot;, [Main.LV_Generic{Symbol, Int64}:
+  V = 1:1
+  E = 1:0
+  Sheep = 1:0
+  Wolf = 1:1
+  Dir = 1:1
+  Eng = 1:2
+  src : E → V = Int64[]
+  tgt : E → V = Int64[]
+  sheep_loc : Sheep → V = Int64[]
+  wolf_loc : Wolf → V = [1]
+  grass_eng : V → Eng = ACSets.ColumnImplementations.AttrVar[ACSets.ColumnImplementations.AttrVar(2)]
+  sheep_eng : Sheep → Eng = Int64[]
+  wolf_eng : Wolf → Eng = ACSets.ColumnImplementations.AttrVar[ACSets.ColumnImplementations.AttrVar(1)]
+  sheep_dir : Sheep → Dir = Symbol[]
+  wolf_dir : Wolf → Dir = ACSets.ColumnImplementations.AttrVar[ACSets.ColumnImplementations.AttrVar(1)]
+  dir : E → Dir = Symbol[]], [Main.LV_Generic{Symbol, Int64}:
+  V = 1:1
+  E = 1:0
+  Sheep = 1:0
+  Wolf = 1:1
+  Dir = 1:1
+  Eng = 1:2
+  src : E → V = Int64[]
+  tgt : E → V = Int64[]
+  sheep_loc : Sheep → V = Int64[]
+  wolf_loc : Wolf → V = [1]
+  grass_eng : V → Eng = ACSets.ColumnImplementations.AttrVar[ACSets.ColumnImplementations.AttrVar(2)]
+  sheep_eng : Sheep → Eng = Int64[]
+  wolf_eng : Wolf → Eng = ACSets.ColumnImplementations.AttrVar[ACSets.ColumnImplementations.AttrVar(1)]
+  sheep_dir : Sheep → Dir = Symbol[]
+  wolf_dir : Wolf → Dir = ACSets.ColumnImplementations.AttrVar[ACSets.ColumnImplementations.AttrVar(1)]
+  dir : E → Dir = Symbol[],Main.LV_Generic{Symbol, Int64}:
+  V = 1:1
+  E = 1:0
+  Sheep = 1:0
+  Wolf = 1:1
+  Dir = 1:1
+  Eng = 1:2
+  src : E → V = Int64[]
+  tgt : E → V = Int64[]
+  sheep_loc : Sheep → V = Int64[]
+  wolf_loc : Wolf → V = [1]
+  grass_eng : V → Eng = ACSets.ColumnImplementations.AttrVar[ACSets.ColumnImplementations.AttrVar(2)]
+  sheep_eng : Sheep → Eng = Int64[]
+  wolf_eng : Wolf → Eng = ACSets.ColumnImplementations.AttrVar[ACSets.ColumnImplementations.AttrVar(1)]
+  sheep_dir : Sheep → Dir = Symbol[]
+  wolf_dir : Wolf → Dir = ACSets.ColumnImplementations.AttrVar[ACSets.ColumnImplementations.AttrVar(1)]
+  dir : E → Dir = Symbol[]]) ],
+[ Wire((-2,1) =&gt; (1,1)),
+  Wire((1,1) =&gt; (-1,1)),
+  Wire((1,2) =&gt; (-1,1)) ]), compose(Wolf_eat,mmerge(Main.LV_Generic{Symbol, Int64}:
+  V = 1:1
+  E = 1:0
+  Sheep = 1:0
+  Wolf = 1:1
+  Dir = 1:1
+  Eng = 1:2
+  src : E → V = Int64[]
+  tgt : E → V = Int64[]
+  sheep_loc : Sheep → V = Int64[]
+  wolf_loc : Wolf → V = [1]
+  grass_eng : V → Eng = ACSets.ColumnImplementations.AttrVar[ACSets.ColumnImplementations.AttrVar(2)]
+  sheep_eng : Sheep → Eng = Int64[]
+  wolf_eng : Wolf → Eng = ACSets.ColumnImplementations.AttrVar[ACSets.ColumnImplementations.AttrVar(1)]
+  sheep_dir : Sheep → Dir = Symbol[]
+  wolf_dir : Wolf → Dir = ACSets.ColumnImplementations.AttrVar[ACSets.ColumnImplementations.AttrVar(1)]
+  dir : E → Dir = Symbol[])))</code></pre><h3 id="A-test"><a class="docs-heading-anchor" href="#A-test">A test</a><a id="A-test-1"></a><a class="docs-heading-anchor-permalink" href="#A-test" title="Permalink"></a></h3><pre><code class="language-julia hljs">ex = @acset LV begin
+  Sheep = 1
+  Wolf = 1
+  V = 3
+  E = 2
+  src = [1, 2]
+  tgt = [2, 3]
+  sheep_loc = 2
+  sheep_eng = [3]
+  grass_eng = [9, 10, 11]
+  dir = fill(:N, 2)
+  sheep_dir = [:N]
+  wolf_loc = [2]
+  wolf_eng = [16]
+  wolf_dir = [:S]
+end
+expected = @acset LV begin
+  Wolf = 1
+  V = 3
+  E = 2
+  src = [1, 2]
+  tgt = [2, 3]
+  grass_eng = [9, 10, 11]
+  dir = fill(:N, 2)
+  sheep_dir = [:N]
+  wolf_loc = [2]
+  wolf_eng = [36]
+  wolf_dir = [:S]
+end
+@test is_isomorphic(rewrite(we_rule, ex), expected)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi"><span class="sgr32"><span class="sgr1">Test Passed</span></span></code></pre><p>Die if 0 eng</p><pre><code class="language-julia hljs">s_die_l = @acset_colim yLV begin
+  s::Sheep
+  sheep_eng(s) == 0
+end
+
+sheep_die_rule = Rule(homomorphism(G, s_die_l), id(G))
+sheep_starve = (RuleApp(:starve, sheep_die_rule,
+  homomorphism(S, s_die_l), create(G))
+                ⋅
+                (id([I]) ⊗ Weaken(create(S))) ⋅ merge_wires(I))
+
+begin # test
+  ex = s_die_l ⊕ W
+  expected = G ⊕ W
+  @test is_isomorphic(rewrite(sheep_die_rule, ex), expected)
+end</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi"><span class="sgr32"><span class="sgr1">Test Passed</span></span></code></pre><p>Reproduction</p><pre><code class="language-julia hljs">s_reprod_r = @acset_colim yLV begin
+  (x, y)::Sheep
+  sheep_loc(x) == sheep_loc(y)
+end
+
+sheep_reprod_rule = Rule(
+  homomorphism(G, S),
+  homomorphism(G, s_reprod_r);
+  expr=(Dir=[vs -&gt; vs[1], vs -&gt; vs[1]], Eng=[vs -&gt; vs[2],
+    fill(vs -&gt; round(Int, vs[1] / 2, RoundUp), 2)...],)
+)
+
+sheep_reprod = RuleApp(:reproduce, sheep_reprod_rule,
+  id(S), homomorphism(S, s_reprod_r)) |&gt; tryrule
+
+begin # test
+  ex = @acset_colim yLV begin
+    s::Sheep
+    w::Wolf
+    sheep_eng(s) == 10
+  end
+  expected = @acset_colim yLV begin
+    (s1, s2)::Sheep
+    w::Wolf
+    sheep_loc(s1) == sheep_loc(s2)
+    sheep_eng(s1) == 5
+    sheep_eng(s2) == 5
+  end
+  @test is_isomorphic(rewrite(sheep_reprod_rule, ex), expected)
+end</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi"><span class="sgr32"><span class="sgr1">Test Passed</span></span></code></pre><p>Grass increment</p><pre><code class="language-julia hljs">g_inc_n = deepcopy(G)
+set_subpart!(g_inc_n, 1, :grass_eng, 0)
+rem_part!(g_inc_n, :Eng, 1)
+
+g_inc_rule = Rule(id(G), id(G);
+  ac=[AppCond(homomorphism(G, g_inc_n), false)],
+  expr=(Eng=[vs -&gt; only(vs) - 1],))
+g_inc = RuleApp(:GrassIncrements, g_inc_rule, G) |&gt; tryrule
+
+
+ex = @acset LV begin
+  Sheep = 1
+  V = 3
+  E = 2
+  src = [1, 2]
+  tgt = [2, 3]
+  sheep_loc = 2
+  sheep_eng = [3]
+  grass_eng = [1, 10, 2]
+  dir = fill(:N, 2)
+  sheep_dir = [:N]
+end
+expected = @acset LV begin
+  Sheep = 1
+  V = 3
+  E = 2
+  src = [1, 2]
+  tgt = [2, 3]
+  sheep_loc = 2
+  sheep_eng = [3]
+  grass_eng = [0, 10, 2]
+  dir = fill(:N, 2)
+  sheep_dir = [:N]
+end
+@test is_isomorphic(rewrite(g_inc_rule, ex), expected)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi"><span class="sgr32"><span class="sgr1">Test Passed</span></span></code></pre><p>Scheduling Rules</p><pre><code class="language-julia hljs">general = mk_sched((;), (init=:S,), N, (
+    turn=const_cond([1.0, 2.0, 1.0], S; name=:turn),
+    maybe=const_cond([0.1, 0.9], S; name=:reprod),
+    lft=sheep_rotate_l,
+    rght=sheep_rotate_r,
+    fwd=sheep_fwd,
+    repro=sheep_reprod,
+    starve=sheep_starve),
+  quote
+    out_l, out_str, out_r = turn(init)
+    moved = fwd([lft(out_l), out_str, rght(out_r)])
+    out_repro, out_no_repro = maybe(moved)
+    return starve([repro(out_repro), out_no_repro])
+  end)
+
+sheep = sheep_eat ⋅ general;   # once per sheep
+wolf = wolf_eat ⋅ F(general);  # once per wolf</code></pre><p>Do all sheep, then all wolves, then all daily operations</p><pre><code class="language-julia hljs">cycle = (agent(sheep; n=:sheep, ret=I)
+         ⋅
+         agent(wolf; n=:wolves, ret=I)
+         ⋅
+         agent(g_inc; n=:grass))
+
+overall = while_schedule(cycle, curr -&gt; nparts(curr, :Wolf) &gt;= 0) |&gt; F2  # wrap in a while loop
+
+X = initialize(3, 0.25, 0.25);
+res, = apply_schedule(overall, X; steps=50);</code></pre></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../game_of_life/">« Conway&#39;s Game of Life</a><a class="docs-footer-nextpage" href="../ptg_simple/">Slice Bread »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option><option value="auto">Automatic (OS)</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 1.2.1 on <span class="colophon-date" title="Tuesday 23 January 2024 20:57">Tuesday 23 January 2024</span>. Using Julia version 1.10.0.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
