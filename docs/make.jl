@@ -60,7 +60,7 @@ deploydocs(
   target="build",
   repo="github.com/AlgebraicJulia/AlgebraicRewriting.jl.git",
   branch="gh-pages",
-  devbranch="dev"
+  devbranch="main"
 )
 
 @info "Done!"
