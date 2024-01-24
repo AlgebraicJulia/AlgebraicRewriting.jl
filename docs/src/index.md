@@ -175,3 +175,7 @@ This executes the rewrite process using using the defined rule and match.
 ```julia
 result = rewrite_match(rule, match)
 ```
+
+# Authors
+
+This documentation is maintained by [Angeline Aguinaldo](https://angelineaguinaldo.com/) and [Kristopher Brown](https://www.krisb.org/).
