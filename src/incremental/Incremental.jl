@@ -5,6 +5,7 @@ export IncHomSet, IncHomSets, rewrite!, matches
 using ..Rewrite
 using ..Rewrite.Utils: get_result, get_rmap, get_pmap
 using ..CategoricalAlgebra.CSets: invert_iso
+import ..Rewrite: rewrite!
 
 using StructEquality
 using Catlab
@@ -199,8 +200,8 @@ function addition!(hset::IncCCHomSet, i::Int, rmap::ACSetTransformation,
       push!(seen_constraints, initial)
       L_image = Dict(o => Set(collect(subL[o])) for o in ob(S))
       boundary = Dict(k => setdiff(parts(L,k), L_image[k]) for k in ob(S))
-      valid = Dict(o => Dict(pₒ => old_stuff[o] for pₒ in boundary[o]) for o in ob(S))
-      for h in homomorphisms(L, X; initial, valid)
+      predicates = Dict(o => Dict(pₒ => old_stuff[o] for pₒ in boundary[o]) for o in ob(S))
+      for h in homomorphisms(L, X; initial, predicates)
         if h ∈ new_matches 
           error("Duplicating work $h") 
         else 

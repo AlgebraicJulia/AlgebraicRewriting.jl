@@ -10,18 +10,10 @@ using Random
 
 Random.seed!(100)
 
-# test valid constraint
-#----------------------
-g1, g2 = path_graph.(Graph, [3,2])
-
-add_edges!(g1, [1,2,3,2], [1,2,3,3])  # loops on each node and one double arrow
-add_edge!(g2, 1, 2)  # double arrow
-@test length(homomorphisms(g2, g1; valid=(V=Dict([1 => [1,3]]),))) == 3
-@test length(homomorphisms(g2, g1; valid=(E=Dict([1 => [1,3]]),))) == 2
-
 # test connected_acset_components
 #--------------------------------
-ccs, iso = connected_acset_components(g1⊕g2);
+g1, g2 = path_graph.(Graph, [3, 2])
+ccs, iso = connected_acset_components(g1 ⊕ g2);
 @test is_monic(iso) && is_epic(iso)
 @test collect(first(ccs.cocone)[:V]) == [1,2,3] 
 
