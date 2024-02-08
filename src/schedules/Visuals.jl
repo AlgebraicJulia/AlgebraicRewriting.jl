@@ -29,7 +29,9 @@ function view_sched(sched_::Schedule; name="",source=nothing, target=nothing, na
     else 
       sched.diagram[out_port_id(sched, source), :out_port_type] *= " (in)"
     end
-    sched.diagram[out_port_id(sched, target), :out_port_type] *= " (out)"
+    if !isnothing(target)
+      sched.diagram[out_port_id(sched, target), :out_port_type] *= " (out)"
+    end
   end
   return to_graphviz(sched; labels=true, 
     graph_attrs=Dict(:label=>name, :labelloc=>"t"),

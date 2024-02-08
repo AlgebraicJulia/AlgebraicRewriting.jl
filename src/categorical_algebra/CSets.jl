@@ -4,8 +4,9 @@ export extend_morphism, pushout_complement,
        gluing_conditions, extend_morphisms, sub_vars,
        Migrate, invert_iso, deattr, var_pullback
 
-using Catlab, Catlab.Theories
-using Catlab.CategoricalAlgebra
+using CompTime
+
+using Catlab
 using Catlab.CategoricalAlgebra.FinSets: IdentityFunction, VarSet
 using Catlab.CategoricalAlgebra.Chase: extend_morphism, extend_morphism_constraints
 using Catlab.CategoricalAlgebra.CSets: unpack_diagram, type_components, abstract_attributes
@@ -16,7 +17,7 @@ import Catlab.CategoricalAlgebra: is_natural, Slice, SliceHom, components,
                                   LooseACSetTransformation, homomorphisms, 
                                   homomorphism
 using ACSets.DenseACSets: attrtype_type, datatypes, constructor
-
+import ACSets: sparsify
 import Base: getindex
 using DataStructures: OrderedSet
 using StructEquality
@@ -194,12 +195,12 @@ in the underlying category.
       g′
 
 """
-function pushout_complement(fg::ComposablePair{Slice})
-    f, g = fg
-    f′, g′ = pushout_complement(ComposablePair(f.f, g.f))
-    D = codom(g)
-    C = Slice(compose(g′, D.slice))
-    return SliceHom(dom(f), C, f′) => SliceHom(C, D, g′)
+function pushout_complement(fg::ComposablePair{<:Slice})
+  f, g = fg
+  f′, g′ = pushout_complement(ComposablePair(f.f, g.f))
+  D = codom(g)
+  C = Slice(compose(g′, D.slice))
+  return SliceHom(dom(f), C, f′) => SliceHom(C, D, g′)
 end
 
 """ Pushout complement: extend composable pair to a pushout square.
@@ -227,29 +228,48 @@ v1 --> v2
 
 if e1 is not matched but either v1 or v2 are deleted, then e1 is dangling.
 """
-function dangling_condition(pair::ComposablePair{<:ACSet})
-  S = acset_schema(dom(pair))
+
+dangling_condition(pair::ComposablePair{<:StructACSet{S}}) where S = 
+  _dangling_condition(pair, Val{S}, Val{Tuple(ob(S))})
+
+dangling_condition(pair::ComposablePair{<:DynamicACSet}) = let S = acset_schema(first(pair)); 
+  runtime(_dangling_condition, pair, S, Tuple(ob(S))) end
+
+@ct_enable function _dangling_condition(pair::ComposablePair{<:ACSet}, @ct(S), @ct(obs))
   l, m = pair
-  orphans = Dict(map(ob(S)) do o
-    l_comp,m_comp = l[o], m[o]
-    image = Set(collect(l_comp))
-    o=>Set([ m_comp(x) for x in codom(l_comp) if x ∉ image ])
-  end)
-  # check that for all morphisms in C, we do not map to an orphan
+  L, G = codom(l), codom(m)
+  del_vector = Set{Int}[]
+  @ct_ctrl for o in obs
+    image = Set(collect(l[@ct o])) # SMALL
+    dels = Set{Int}()
+    for pL in parts(L,@ct(o))
+      if pL ∉ image push!(dels, m[@ct o](pL)) end 
+    end
+    push!(del_vector, Set(dels))
+  end 
+  dels = NamedTuple{obs}(del_vector)
   results = Tuple{Symbol,Int,Int}[]
-  for (morph, src_obj, tgt_obj) in homs(S)
-    n_src = parts(codom(m), src_obj)
-    unmatched_vals = setdiff(n_src, collect(m[src_obj]))
-    unmatched_tgt = map(x -> codom(m)[x,morph], collect(unmatched_vals))
-    for unmatched_val in setdiff(n_src, collect(m[src_obj]))  # G/m(L) src
-      unmatched_tgt = codom(m)[unmatched_val,morph]
-      if unmatched_tgt in orphans[tgt_obj]
-        push!(results, (morph, unmatched_val, unmatched_tgt))
+  @ct_ctrl for (morph, src_obj, tgt_obj) in homs(S)
+    for tgt_del in dels[@ct tgt_obj]
+      for inc_del in incident(G, tgt_del, @ct(morph))
+        if inc_del ∉ dels[@ct src_obj]
+          push!(results, (@ct(morph), inc_del, G[inc_del,@ct(morph)]))
+        end
       end
     end
   end
   results
 end
+
+# n_src = parts(codom(m), @ct(src_obj)) # BIG
+# unmatched_vals = setdiff(n_src, collect(m[@ct(src_obj)]))
+# unmatched_tgt = [codom(m)[x,@ct(morph)] for x in unmatched_vals]
+# for unmatched_val in setdiff(n_src, collect(m[@ct(src_obj)]))  # G/m(L) src
+#   unmatched_tgt = codom(m)[unmatched_val,@ct morph]
+#   if unmatched_tgt in dels[@ct(tgt_obj)]
+#     push!(results, (@ct(morph), unmatched_val, unmatched_tgt))
+#   end
+# end
 
 # Subobjects
 ############
@@ -318,9 +338,6 @@ function sub_vars(X::ACSet, subs::AbstractDict=Dict(), merge::AbstractDict=Dict(
   oc = ACSetTransformation(O,C; oc_...)
   return first(legs(pushout(ox, oc)))
 end 
-
-
-# TODO replace with CSetTransformation limit when Catlab 0.16 is released
 
 """
 Take an ACSet pullback combinatorially and freely add variables for all 
@@ -404,6 +421,10 @@ end
   Migrate(o,h,t1,t2=nothing; delta::Bool=true) = new(
     Dict(collect(pairs(o))),Dict(collect(pairs(h))),t1,isnothing(t2) ? t1 : t2, delta)
 end 
+
+sparsify(d::Dict{V,<:ACSet}) where V = Dict([k=>sparsify(v) for (k,v) in collect(d)])
+sparsify(d::Dict{<:ACSet,V}) where V = Dict([sparsify(k)=>v for (k,v) in collect(d)])
+sparsify(::Nothing) = nothing
 
 (F::Migrate)(d::Dict{V,<:ACSet}) where V = Dict([k=>F(v) for (k,v) in collect(d)])
 (F::Migrate)(d::Dict{<:ACSet,V}) where V = Dict([F(k)=>v for (k,v) in collect(d)])

@@ -1,11 +1,13 @@
 module Wiring
 export Schedule, Names, mk_sched, typecheck, merge_wires, 
-       singleton, traj_res, traj_agent
+       singleton, traj_res
 
 using Catlab, Catlab.CategoricalAlgebra, Catlab.WiringDiagrams, Catlab.Programs,
       Catlab.Theories
 import Catlab.WiringDiagrams.DirectedWiringDiagrams: input_ports,output_ports
-import Catlab.Theories: Ob,Hom,id, create, compose, otimes, ⋅, ⊗, ∇,□, trace, munit, braid, dom, codom, mmerge
+import Catlab.Theories: Ob,Hom,id, create, compose, otimes, ⋅, ⊗, ∇,□, trace, 
+                        munit, braid, dom, codom, mmerge
+import ACSets: sparsify
 using ..Theories: TM, ThTracedMonoidalWithBidiagonals
 using ...CategoricalAlgebra.CSets
 using ..Poly
@@ -41,6 +43,7 @@ function Base.setindex!(n::Names{T}, y::T, x::String) where T
   n.to_name[y] = x
 end
 (F::Migrate)(n::Names) = Names(F(n.from_name))
+sparsify(n::Names) = Names(sparsify(n.from_name))
 
 # General wiring diagram utilities
 ###################################
@@ -116,12 +119,9 @@ Base.show(io::IO, c::AgentBox) = show(io, string(c))
 Base.string(c::AgentBox) = string(name(c))
 name(a::AgentBox) = a.name
 
-input_ports(::AgentBox)::Vector{StructACSet} = error("Not yet defined")
-output_ports(::AgentBox)::Vector{StructACSet} = error("Not yet defined")
-initial_state(::AgentBox) = error("Not yet defined") 
-color(::AgentBox) = error("Not yet defined") 
-(::Migrate)(::AgentBox) = error("Not yet defined")
-update(::AgentBox, p::PMonad) = error("Not yet defined")
+function initial_state end
+function update! end
+function color end
 
 """Make a wiring diagram around a box"""
 function singleton(b::AgentBox)::Schedule
@@ -199,6 +199,16 @@ function (F::Migrate)(wd_::Schedule)
   Schedule(wd, F(wd_.x))
 end 
 
+"""Map sparisfication over the data of a schedule"""
+function sparsify(wd_::Schedule)
+  wd = deepcopy(wd_.d)
+  for x in [:value, Symbol.(["$(x)_port_type" for x in 
+                            [:outer_in,:outer_out,:out,:in]])...,
+            Symbol.(["$(x)wire_value" for x in ["",:in_,:out_]])...]
+    wd.diagram[:,x] = sparsify.(wd.diagram[x])
+  end 
+  return Schedule(wd,wd_.x)
+end
 (F::Migrate)(x::T) where {T<:TM.Ob} = T(F.(x.args), F.(x.type_args))
 (F::Migrate)(x::T) where {T<:TM.Hom} = T(F.(x.args), F.(x.type_args))
 

@@ -22,7 +22,7 @@ function rewrite_match_maps(r::Rule{:DPO}, m; check::Bool=false)
   end
   ik, kg = pushout_complement(r.L, m)  
   rh, kh = pushout(r.R, ik) 
-  return Dict(:ik=>ik, :kg=>kg, :rh=>rh, :kh=>kh)
+  Dict(:ik=>ik, :kg=>kg, :rh=>rh, :kh=>kh)
 end
 
 end # module 

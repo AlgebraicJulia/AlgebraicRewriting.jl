@@ -1,6 +1,5 @@
 module AlgebraicRewritingLuxorExt 
-using AlgebraicRewriting
-using Catlab.WiringDiagrams, Catlab.Graphics, Catlab.CategoricalAlgebra
+using AlgebraicRewriting, Catlab
 using Catlab.Graphics.Graphviz: Graph, Subgraph, Statement, pprint, Node, Edge, NodeID
 using AlgebraicRewriting.Wiring: color 
 using Luxor
@@ -13,7 +12,7 @@ the schedule, and the other showing the world state.
 
 Viewer must be a function which accepts a path and writes an image to it.
 """
-function AlgebraicRewriting.view_traj(sched_::Schedule, rG::Sim, viewer; 
+function AlgebraicRewriting.view_traj(sched_::Schedule, rG::AbstractVector, viewer; 
                                       out="traj", agent=false, names=nothing)
   if isdir(out) # clear old dir
     for fi in filter(x->length(x)>4 && x[end-3:end] == ".png",  readdir(out))
@@ -22,34 +21,34 @@ function AlgebraicRewriting.view_traj(sched_::Schedule, rG::Sim, viewer;
   else
     mkdir(out)
   end
-  for n in 1:length(rG)-1
-    view_traj(sched_,rG, viewer, n; out=out, agent=agent,names=names)
+  expanded = []
+  for (k, vs) in rG, (b, p, m) in vs 
+    push!(expanded, (k, Port(b, OutputPort, p), m))
+  end
+  for n in 1:length(expanded)-1
+    view_traj(sched_, expanded, viewer, n; out=out, agent=agent,names=names)
   end
 end
 
+const SPACE = 10
+ 
 """
 If `agent` is true, then the viewer function should operate on 
 ACSetTransformations, rather than ACSets.
 """
-function view_traj(sched_::Schedule, rG::Sim, viewer, n::Int; out="traj", agent=false, names=nothing)
-  traj = last(rG).edge.o.val
-  length(traj)+1 == length(rG) || error("Traj length doesn't match sim length")
-  step = rG[n+1]
-
+function view_traj(sched_::Schedule, traj::AbstractVector, viewer, n::Int; 
+                   out="traj", agent=false, names=nothing)
+  (Gₙ, portₙ, _), (Gₙ′, portₙ′, name) = traj[n], traj[n+1]
   f = tempname()
-  sched = view_sched(sched_; name=step.desc, source=step.inwire.source, 
-                     target=step.outwire.source, names=names)
+  sched = view_sched(sched_; name, source=portₙ, target=portₙ′, names=names)
   open(f, "w") do io
     show(io,"image/svg+xml",sched)
   end
   svgs = Any[readsvg(f)]
 
-  start_world = n==1 ? traj.initial : traj[n-1].world
-  end_world = traj[n].world
-  for g in (agent ? identity : codom).([start_world, end_world])
-    f = tempname()
+  for g in (agent ? identity : codom).([Gₙ, Gₙ′])
+    img, f = 1, tempname()
     viewer(g, f) # write graph to file
-    img = 1
     try 
       img = readsvg(f)
     catch _
@@ -58,14 +57,12 @@ function view_traj(sched_::Schedule, rG::Sim, viewer, n::Int; out="traj", agent=
         background("white")
         settext(str; markup=false)
       end
-      
     end 
     push!(svgs, img) # TODO replace this to work with png and ASCII
   end
   # Constants
-  SPACE = 10
-  heights=[x.height for x in svgs]; width=maximum([x.width for x in svgs])
-  height=sum(heights)
+  heights = [x.height for x in svgs]; width=maximum([x.width for x in svgs])
+  height = sum(heights)
   # Helper functions
   p(h) = Point(width/2,h)
   hline(h) = line(Point(0,h),Point(width,h), :stroke)
@@ -76,7 +73,7 @@ function view_traj(sched_::Schedule, rG::Sim, viewer, n::Int; out="traj", agent=
   hline(heights[1])
   pimg(2,heights[1] + SPACE + heights[2]/2)
   hline(sum(heights[1:2])+SPACE)
-  pimg(3,2*SPACE + height - heights[3]/2)
+  pimg(3, 2*SPACE + height - heights[3]/2)
   finish()
 end
 

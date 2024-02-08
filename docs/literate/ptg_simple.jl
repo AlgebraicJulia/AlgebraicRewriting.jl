@@ -65,6 +65,9 @@ K = @acset BreadWorld begin
   BreadLoaf = 1
   Countertop = 1
   Stool = 1
+  BreadLoafIsThing = [1]
+  CountertopIsThing = [2]
+  StoolIsThing = [3]
 end
 
 # ### Right ACSet

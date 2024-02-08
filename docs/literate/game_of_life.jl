@@ -30,8 +30,8 @@ end
   Coords::AttrType
   coords::Attr(V, Coords)
 end
-@acset_type Life(SchLife) <: AbstractSymmetricGraph
-@acset_type AbsLifeCoords(SchLifeCoords) <: AbstractSymmetricGraph
+@acset_type Life(SchLife, part_type=BitSetParts) <: AbstractSymmetricGraph
+@acset_type AbsLifeCoords(SchLifeCoords, part_type=BitSetParts) <: AbstractSymmetricGraph
 const LifeCoords = AbsLifeCoords{Tuple{Int,Int}}
 F = Migrate(
   Dict(x => x for x in Symbol.(generators(SchLife, :Ob))),
@@ -188,13 +188,9 @@ rBirth, rPersist, rClearCurr, rClearNext, rCopyNext =
 update_next = agent(rBirth ⋅ rPersist, Life(1); n=:Cell)
 next_step = agent(compose(rClearCurr, rCopyNext, rClearNext), Life(1); n=:Cell)
 life(n::Int) = for_schedule(update_next ⋅ next_step, n) |> F
-const L1 = life(1)
+const L = life(1)
 
 G = make_grid([1 0 1 0 1; 0 1 0 1 0; 0 1 0 1 0; 1 0 1 0 1; 1 0 1 0 1])
 
-res, = apply_schedule(L1, G; steps=1000)
-traj = last(res).edge.o.val
-
-view_life(i, traj) = view_life(traj.steps[i].world)
-
-# view_traj(L1, res, view_life; agent=true)
+res = interpret(L, G; maxstep=100);
+view_traj(L, res[1:10], view_life; agent=true)

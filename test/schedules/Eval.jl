@@ -1,20 +1,21 @@
 module TestEval
 
 using Test
-using Catlab, Catlab.Theories, Catlab.WiringDiagrams, Catlab.Graphics
-using Catlab.Graphs, Catlab.CategoricalAlgebra
+
+using Catlab, AlgebraicRewriting
 using Catlab.Graphics: to_graphviz_property_graph
 
-using AlgebraicRewriting
 using Luxor
 using PrettyTables
 
 
 # Graph + agent viewer 
 ######################
-view_graph(a::Graph, path=tempname()) = view_graph(create(a), path)
+@acset_type Grph(SchGraph, part_type=BitSetParts, index=[:src,:tgt]) <: AbstractGraph
 
-function view_graph(a::ACSetTransformation, path=tempname())
+view_graph(a::Grph, path=tempname()) = view_graph(create(a), path)
+
+function view_graph(a::ACSetTransformation{Grph}, path=tempname())
   g = codom(a)
   pg = to_graphviz_property_graph(g)
   for v in collect(a[:V])
@@ -33,7 +34,7 @@ end
 # Simple workflow with control and rewriting 
 ############################################
 
-z, g1, ar, loop = Graph(), Graph(1), path_graph(Graph, 2), apex(terminal(Graph))
+(z, g1, g2), ar, loop = Grph.(0:2), path_graph(Grph, 2), apex(terminal(Grph))
 
 N=Names(Dict("Z"=>z,"•"=>g1))
 @test length(N) == 2
@@ -41,22 +42,26 @@ N["•→•"] = ar
 Dot, A = Symbol.([N[g1],N[ar]]) 
 
 av = RuleApp(:add_vertex, Rule(id(z), create(g1)))
-g2 = homomorphism(Graph(2), ar; monic=true)
-de = loop_rule(RuleApp(:del_edge, Rule(g2, id(Graph(2)))))
+g2ar = homomorphism(g2, ar; monic=true)
+de = loop_rule(RuleApp(:del_edge, Rule(g2ar, id(g2))))
 coin = uniform(2, z)
 sched = coin ⋅ (tryrule(av) ⊗ id([z])) ⋅ merge_wires(z) ⋅ de
 
-# view_sched(sched, name="Simple schedule", names=N)
-G = path_graph(Graph, 4)
-res, = apply_schedule(sched, G);
-# view_traj(sched, res, view_graph; agent=true, names=N)
+view_sched(sched, name="Simple schedule", names=N)
+G = path_graph(Grph, 2)
+
+@test interpret!(sched, G) isa ACSetTransformation
+@test ne(G) == 0
+
+res = interpret(sched, path_graph(Grph, 2))
+view_traj(sched, res, view_graph; agent=true, names=N)
 
 # Query workflow (add loop to each vertex)
 ##########################################
-al = succeed(RuleApp(:add_loop, Rule(id(g1), homomorphism(g1,loop)), g1))
+al = succeed(RuleApp(:add_loop, Rule(id(g1), homomorphism(g1,loop)), g1));
 q = Query(:Vertex, g1)
 
-bad_sched =mk_sched((trace_arg=Dot,), (i=:Z,), N, (rule=al, query=q), quote 
+bad_sched = mk_sched((trace_arg=Dot,), (i=:Z,), N, (rule=al, query=q), quote 
     q1,q2,q3 = query(i,trace_arg)
     trace = rule([q1,q2])
     out = [q3]
@@ -78,15 +83,15 @@ sched = mk_sched((o=Dot,), (i=:Z,), N, Dict(:rule=>al, :query=>q),
 
 typecheck(sched)
 
-# view_sched(sched; names=N)
-res, = apply_schedule(sched, Graph(3));
-# view_traj(sched, res, view_graph; agent=true, names=N)
+view_sched(sched; names=N)
+res = interpret(sched, Grph(3));
+view_traj(sched, res, view_graph; agent=true, names=N)
 
 
 # Dependent query workflow 
 # (flip to add loop to each vertex downstream of tgt, then add edge out of src)
 ##############################################################################
-s_hom, t_hom = [ACSetTransformation(g1,ar; V=[i]) for i in 1:2]
+s_hom, t_hom = [ACSetTransformation(g1, ar; V=[i]) for i in 1:2]
 
 q2 = Query(Span(t_hom,s_hom), :OutEdges, g1)
 ws = Weaken(:Switch_to_src, s_hom)
@@ -106,20 +111,19 @@ quote
   return [trace1, trace2], out
 end);
 
-# view_sched(sched; names=N)
+view_sched(sched; names=N)
 
-G = @acset Graph begin V=5; E=4; src=[1,2,2,5];tgt=[2,3,4,2] end
+G = @acset Grph begin V=5; E=4; src=[1,2,2,5];tgt=[2,3,4,2] end
 arr_start = homomorphism(ar, G; initial=(V=[1,2],))
-res, = apply_schedule(sched, arr_start);
-# view_traj(sched, res, view_graph; agent=false)
-# view_traj(sched, res, view_graph; agent=true, names=N)
-
+res = interpret(sched, arr_start);
+view_traj(sched, res, view_graph; agent=true, names=N)
+@test interpret!(sched, arr_start) isa ACSetTransformation
 
 # For-loop: add 3 loops
 #######################
-sched = for_schedule(maybe_add_loop ⋅ merge_wires(g1), 3)
-res, = apply_schedule(sched, id(g1));
-# view_sched(sched; names=N)
+sched = for_schedule(maybe_add_loop ⋅ merge_wires(g1), 3);
+view_sched(sched)
+interpret!(sched, id(g1)) |> codom
 
 
 # Simple game of life 
@@ -131,7 +135,7 @@ res, = apply_schedule(sched, id(g1));
   live::Attr(Cell, Life)
   eng::Attr(Cell, Eng)
 end
-@acset_type AbsLifeGraph(SchLifeGraph)
+@acset_type AbsLifeGraph(SchLifeGraph, part_type=BitSetParts)
 const LG = AbsLifeGraph{Bool,Int}
 
 """
@@ -189,8 +193,8 @@ inc_E_ = @acset LG begin Cell=2; V=6; E=7; Life=1; Eng=2
   cell_W=[2,4]; cell_E=[4,5]; cell_S=[1,3]; cell_N=[6,7]
   live=[true,AttrVar(1)]; eng=AttrVar.(1:2)
 end
-inc_E = Rule(id(inc_E_),id(inc_E_); expr=(Eng=[es->es[1],es->es[2]+1],))
-inc_E_rule = RuleApp(:incE,inc_E,homomorphism(Cell,inc_E_)) |> tryrule
+inc_E = Rule(id(inc_E_), id(inc_E_); expr=(Eng=[es->es[1],es->es[2]+1],))
+inc_E_rule = RuleApp(:incE, inc_E, homomorphism(Cell, inc_E_)) |> tryrule
 
 # Assemble a schedule 
 sched = agent(inc_E_rule, Cell, ret=Cell)
@@ -204,13 +208,13 @@ G = @acset LG begin Cell=4; V=9; E=12
   live=[true,false,true,false]; eng=[1,10,100,1000]
 end
 
-res, = apply_schedule(sched, G)
+traj = interpret(sched, G)
+view_traj(sched, traj, view_life; agent=false)
 
+res = codom(last(traj)[1])
 expected = deepcopy(G)
 expected[:eng] = [1,11,100,1001] # the dead cells get +1
 
-@test is_isomorphic(traj_res(traj_res(res)), expected)
-
-# view_traj(sched, res, view_life; agent=false)
+@test is_isomorphic(res, expected)
 
 end # module

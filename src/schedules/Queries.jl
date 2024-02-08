@@ -10,8 +10,8 @@ using ...CategoricalAlgebra.CSets: Migrate
 using ..Basic: Fail
 using ..Wiring, ..Poly, ..Eval
 using ..Wiring: AgentBox,  str_hom
-import ..Wiring: input_ports, output_ports, initial_state, color, update
-import ..Eval: Traj, update_agent, id_pmap, get_agent, traj_res, traj_agent, add_step
+import ACSets: sparsify
+import ..Wiring: input_ports, output_ports, initial_state, color, update!
 
 
 
@@ -92,71 +92,60 @@ and purported new agent. (the new agent is the first argument to the constraint)
   end
 end
 
-"""
-Data structure maintaining the state of a Query primitive box.
-We need to know when we first entered the box as well as the remaining homs 
-that need to be processed.
-"""
-mutable struct QueryState 
-  enter_time::Int 
-  homs::Vector{ACSetTransformation}
-end
-Base.isempty(q::QueryState) = isempty(q.homs)
-Base.pop!(q::QueryState) = deepcopy(pop!(q.homs))
-Base.length(q::QueryState) = length(q.homs)
+# """
+# Data structure maintaining the state of a Query primitive box.
+# We need to know when we first entered the box as well as the remaining homs 
+# that need to be processed.
+# """
+# mutable struct QueryState 
+#   enter_time::Int 
+#   homs::Vector{ACSetTransformation}
+# end
+# Base.isempty(q::QueryState) = isempty(q.homs)
+# Base.pop!(q::QueryState) = deepcopy(pop!(q.homs))
+# Base.length(q::QueryState) = length(q.homs)
+
 Base.string(c::Query) = "Query $(c.name)"
 color(::Query) = "yellow"
 input_ports(c::Query) = [c.agent, c.return_type] 
 output_ports(c::Query) = [c.agent, c.subagent, typeof(c.agent)()]
-initial_state(::Query) = QueryState(-1, ACSetTransformation[])
+initial_state(c::Query) = (constructor(c.agent)(), ACSetTransformation[])
 (F::Migrate)(a::Query) =  Query(F(a.subagent), F(a.agent), a.name, 
                                 F(a.return_type); constraint=F(a.constraint))
+sparsify(q::Query) = Query(q.name, sparsify.([q.subagent,q.agent,q.return_type])...; 
+                           constraint=sparsify(q.constraint))
 
-#
-
-function update(q::Query, p::PMonad=Maybe)#instate::Traj, ::Nothing)
-  function update_query(S,w::WireVal; kw...)
-    idp = id_pmap(traj_res(w.val)) 
-    msg = ""
-    curr_boxstate = (w.wire_id != 1) ? S : begin 
-      ms = filter(h->apply_constraint(q.constraint, h, traj_agent(w.val)),
-                  homomorphisms(q.subagent, traj_res(w.val)))
-      msg *= "Found $(length(ms)) agents"
-      @debug "Found $(length(ms)) agents"
-      QueryState(length(w.val), ms)
-    end 
-  
-    if isempty(curr_boxstate) # END
-      @debug "No more subagents"
-      old_agent = get_agent(w.val,curr_boxstate.enter_time)
-      new_agent = update_agent(w.val, curr_boxstate.enter_time, old_agent)
-      if isnothing(new_agent) # original agent gone
-        msg *= "\nCannot recover original agent."
-        curr_boxstate.enter_time = -1
-        wv = WireVal(3, add_step(w.val, TrajStep(create(traj_res(w.val)), idp)))
-        return MealyRes(curr_boxstate, [(nothing,wv)], msg)
-      else # original agent recovered
-        msg *= "\nExiting with original agent."
-        curr_boxstate.enter_time = -1
-        wv = WireVal(1,add_step(w.val, TrajStep(new_agent, idp)))
-        return MealyRes(curr_boxstate,[(nothing,wv)], msg)
-      end 
-    else # CONTINUE 
-      @debug "Updating agents"
-      new_agent = update_agent(w.val, curr_boxstate.enter_time, pop!(curr_boxstate))
-      if isnothing(new_agent)
-        @debug "WARNING: Queued agent no longer exists"
-        return update_query(curr_boxstate, w; kw...)
-      end
-      msg *= "\nContinuing ($(length(curr_boxstate)) queued) with \n" * str_hom(new_agent)
-      wv = WireVal(2, add_step(w.val, TrajStep(new_agent, idp)))
-      return MealyRes(curr_boxstate, [(nothing, wv)] ,msg)
-    end 
+function update!(state::Ref, boxdata::Query, g::ACSetTransformation, inport::Int; 
+                 n_invalid=0)
+  msg = ""
+  if inport == 1
+    state[] = (g,filter(h->apply_constraint(boxdata.constraint, h, g),
+                     homomorphisms(boxdata.subagent, codom(g))))
+    msg *= "Found $(length(state[][2])) agents"
+  else 
+    inport == 2 || error("bad inport $inport")
+  end
+  if isempty(state[][2])
+    msg *= "\nNo more queued agents"
+    if in_bounds(state[][1]) 
+      return (state[][1], 1, msg) 
+    else 
+      return (create(codom(g)), 3, "Original agent invalidated. Exit with empty agent.")
+    end
+  else
+    new_agent = pop!(state[][2])
+    inval_msg = n_invalid == 0 ? ")" : "$n_invalid invalid)"
+    msg *= "\nNew agent ($(length(state[][2])) remaining "*inval_msg
+    if in_bounds(new_agent) 
+      return (new_agent, 2, msg)
+    else 
+      return update!(state, boxdata, g, 2; n_invalid = n_invalid+1)
+    end
   end
 end
 
-
 const ATypes = Union{Span,ACSetTransformation,StructACSet,Nothing}
+
 function agent(s::Schedule, in_agent::ATypes=nothing;
                n=:agent, ret=nothing, constraint=Trivial)
   subagent = only(input_ports(s))

@@ -63,10 +63,10 @@ end
 
 to_graphviz(TheoryLV; prog="dot")
 
-@acset_type LV_Generic(TheoryLV) <: HasGraph
+@acset_type LV_Generic(TheoryLV, part_type=BitSetParts) <: HasGraph
 const LV = LV_Generic{Symbol,Int}
 
-@acset_type LV′_Generic(TheoryLV′) <: HasGraph
+@acset_type LV′_Generic(TheoryLV′, part_type=BitSetParts) <: HasGraph
 const LV′ = LV′_Generic{Symbol,Int,Tuple{Int,Int}}
 
 F = Migrate(
@@ -191,6 +191,7 @@ function view_LV(p::LV′, pth=tempname(); name="G", title="", star=nothing)
   open(pth, "w") do io
     show(io, "image/svg+xml", g)
   end
+  g
 end
 
 i1 = initialize(2, 0.5, 0.5)
@@ -230,15 +231,18 @@ par_sched = (sheep_rotate_l ⊗ sheep_rotate_r)
 #src view_sched(par_sched; names=N)
 
 begin
-  ex = @acset_colim yLV begin
+  ex = @acset_colim yLV begin 
     e::E
     s::Sheep
     sheep_loc(s) == src(e)
     sheep_dir(s) == :N
-  end
-  expected = copy(ex)
+  end;
+
+  expected = copy(ex); 
   expected[:sheep_dir] = :W
   @test is_isomorphic(rewrite(rl, ex), expected)
+  rewrite!(rl, ex)
+  @test is_isomorphic(ex, expected)
 end
 
 # ## Moving forward
@@ -293,6 +297,8 @@ begin # test
     sheep_eng(s) == 9
   end
   @test is_isomorphic(expected, rewrite(sheep_fwd_rule, ex))
+  rewrite!(sheep_fwd_rule, ex)
+  @test is_isomorphic(ex, expected)
 end
 
 #=
@@ -328,6 +334,8 @@ begin # test
   end
 
   @test is_isomorphic(expected, rewrite(se_rule, ex))
+  rewrite!(se_rule, ex)
+  @test is_isomorphic(ex, expected)
 end
 
 #=
@@ -344,36 +352,35 @@ we_rule = Rule(homomorphism(W, w_eat_l), id(W); expr=(Eng=[vs -> vs[3] + 20, vs 
 wolf_eat = tryrule(RuleApp(:Wolf_eat, we_rule, W))
 
 # ### A test
-ex = @acset LV begin
-  Sheep = 1
-  Wolf = 1
-  V = 3
-  E = 2
-  src = [1, 2]
-  tgt = [2, 3]
-  sheep_loc = 2
-  sheep_eng = [3]
-  grass_eng = [9, 10, 11]
-  dir = fill(:N, 2)
-  sheep_dir = [:N]
-  wolf_loc = [2]
-  wolf_eng = [16]
-  wolf_dir = [:S]
+begin # test
+  ex = @acset LV begin 
+    Sheep=1; Wolf=1; V=3; E=2; 
+    src=[1,2]; 
+    tgt=[2,3];
+    sheep_loc=2
+    sheep_eng=[3]; 
+    grass_eng=[9,10,11]; 
+    dir=[:N,:N]; 
+    sheep_dir=[:N]
+    wolf_loc=[2]; 
+    wolf_eng=[16]; 
+    wolf_dir=[:S]
+  end
+  expected = @acset LV begin 
+    Wolf=1; V=3; E=2; 
+    src=[1,2]; 
+    tgt=[2,3]; 
+    grass_eng=[9,10,11]; 
+    dir=[:N,:N]; 
+    sheep_dir=[:N]
+    wolf_loc=[2]; 
+    wolf_eng=[36]; 
+    wolf_dir=[:S]
+  end
+  @test is_isomorphic(rewrite(we_rule,ex), expected)
+  rewrite!(we_rule, ex)
+  @test is_isomorphic(ex,expected)
 end
-expected = @acset LV begin
-  Wolf = 1
-  V = 3
-  E = 2
-  src = [1, 2]
-  tgt = [2, 3]
-  grass_eng = [9, 10, 11]
-  dir = fill(:N, 2)
-  sheep_dir = [:N]
-  wolf_loc = [2]
-  wolf_eng = [36]
-  wolf_dir = [:S]
-end
-@test is_isomorphic(rewrite(we_rule, ex), expected)
 
 # Die if 0 eng
 s_die_l = @acset_colim yLV begin
@@ -387,12 +394,18 @@ sheep_starve = (RuleApp(:starve, sheep_die_rule,
                 ⋅
                 (id([I]) ⊗ Weaken(create(S))) ⋅ merge_wires(I))
 
-begin # test 
-  ex = s_die_l ⊕ W
-  expected = G ⊕ W
-  @test is_isomorphic(rewrite(sheep_die_rule, ex), expected)
+begin # test
+  compile_rewrite(sheep_die_rule)
+  ex = @acset_colim yLV begin 
+    s::Sheep; w::Wolf
+    sheep_eng(s) == 0; sheep_dir(s) == :W
+  end
+  expected = @acset_colim yLV begin v::V; w::Wolf end
+  @test is_isomorphic(rewrite(sheep_die_rule,ex), expected)
+  rewrite!(sheep_die_rule,ex)
+  @test is_isomorphic(ex, expected)
 end
-
+                
 # Reproduction
 
 s_reprod_r = @acset_colim yLV begin
@@ -410,22 +423,22 @@ sheep_reprod_rule = Rule(
 sheep_reprod = RuleApp(:reproduce, sheep_reprod_rule,
   id(S), homomorphism(S, s_reprod_r)) |> tryrule
 
-begin # test 
-  ex = @acset_colim yLV begin
-    s::Sheep
-    w::Wolf
-    sheep_eng(s) == 10
+begin # test
+  ex = @acset_colim yLV begin 
+    s::Sheep; w::Wolf; sheep_eng(s) == 10; sheep_dir(s) == :W 
   end
-  expected = @acset_colim yLV begin
-    (s1, s2)::Sheep
-    w::Wolf
+  expected = @acset_colim yLV  begin 
+    (s1,s2)::Sheep; w::Wolf;
     sheep_loc(s1) == sheep_loc(s2)
-    sheep_eng(s1) == 5
-    sheep_eng(s2) == 5
+    sheep_dir(s1) == sheep_dir(s2)
+    sheep_eng(s1) == sheep_eng(s2)
+    sheep_dir(s1) == :W; sheep_eng(s1) == 5;
   end
-  @test is_isomorphic(rewrite(sheep_reprod_rule, ex), expected)
+  @test is_isomorphic(rewrite(sheep_reprod_rule,ex),expected)
+  rewrite!(sheep_reprod_rule,ex)
+  @test is_isomorphic(ex, expected)
 end
-
+  
 # Grass increment
 
 g_inc_n = deepcopy(G)
@@ -437,33 +450,35 @@ g_inc_rule = Rule(id(G), id(G);
   expr=(Eng=[vs -> only(vs) - 1],))
 g_inc = RuleApp(:GrassIncrements, g_inc_rule, G) |> tryrule
 
-
-ex = @acset LV begin
-  Sheep = 1
-  V = 3
-  E = 2
-  src = [1, 2]
-  tgt = [2, 3]
-  sheep_loc = 2
-  sheep_eng = [3]
-  grass_eng = [1, 10, 2]
-  dir = fill(:N, 2)
-  sheep_dir = [:N]
+begin
+  ex = @acset LV begin
+    Sheep = 1
+    V = 3
+    E = 2
+    src = [1, 2]
+    tgt = [2, 3]
+    sheep_loc = 2
+    sheep_eng = [3]
+    grass_eng = [1, 10, 2]
+    dir = fill(:N, 2)
+    sheep_dir = [:N]
+  end
+  expected = @acset LV begin
+    Sheep = 1
+    V = 3
+    E = 2
+    src = [1, 2]
+    tgt = [2, 3]
+    sheep_loc = 2
+    sheep_eng = [3]
+    grass_eng = [0, 10, 2]
+    dir = fill(:N, 2)
+    sheep_dir = [:N]
+  end
+  @test is_isomorphic(rewrite(g_inc_rule, ex), expected)
+  rewrite!(g_inc_rule, ex)
+  @test is_isomorphic(ex, expected)
 end
-expected = @acset LV begin
-  Sheep = 1
-  V = 3
-  E = 2
-  src = [1, 2]
-  tgt = [2, 3]
-  sheep_loc = 2
-  sheep_eng = [3]
-  grass_eng = [0, 10, 2]
-  dir = fill(:N, 2)
-  sheep_dir = [:N]
-end
-@test is_isomorphic(rewrite(g_inc_rule, ex), expected)
-
 
 # Scheduling Rules
 
@@ -495,4 +510,11 @@ cycle = (agent(sheep; n=:sheep, ret=I)
 overall = while_schedule(cycle, curr -> nparts(curr, :Wolf) >= 0) |> F2  # wrap in a while loop
 
 X = initialize(3, 0.25, 0.25);
-res, = apply_schedule(overall, X; steps=50);
+# Force something exciting to happen
+X[1, :wolf_loc] = X[1, :sheep_loc]
+X[1, :wolf_dir] = X[1, :sheep_dir]
+
+res = interpret(overall, X; maxstep=100);
+
+# Run this line to view the trajectory
+view_traj(overall, res[1:10], view_LV; agent=true, names=F2(N))

@@ -8,6 +8,7 @@ import Catlab.CategoricalAlgebra: ¬
 import Catlab.Graphics: to_graphviz
 using StructEquality
 import ...CategoricalAlgebra.CSets: Migrate
+import ACSets: sparsify
 
 """
 The general form of a constraint is a diagram in C-Set:
@@ -54,6 +55,12 @@ function (F::Migrate)(c::CGraph)
   c = deepcopy(c)
   c[:vlabel] = [x isa ACSet ? F(x) : x for x in c[:vlabel]]
   c[:elabel] = [x isa ACSetTransformation ? F(x) : x for x in c[:elabel]]
+  return c
+end
+function sparsify(c::CGraph)
+  c = deepcopy(c)
+  c[:vlabel] = [x isa ACSet ? sparsify(x) : x for x in c[:vlabel]]
+  c[:elabel] = [x isa ACSetTransformation ? sparsify(x) : x for x in c[:elabel]]
   return c
 end
 
@@ -279,11 +286,18 @@ eval_boolexpr(c::BoolAnd, g::CGraph, m::Assgn) =
 eval_boolexpr(c::BoolOr, g::CGraph, m::Assgn) = 
   any(eval_boolexpr(x, g, m) for x in c.exprs)
 
+"""Check whether homs are equal by looping over domain."""
 function eval_boolexpr(c::Commutes, ::CGraph, ms::Assgn)
-  maps = map(c.pths) do p 
-    force(length(p)==1 ? ms[p[1]] : compose(ms[p]...))
-  end 
-  return c.commutes == (all(m->m==maps[1],maps))
+  paths = [length(p)==1 ? ms[p[1]] : compose(ms[p]...) for p in c.pths]
+  doms = dom.(paths)
+  allequal(doms) || error("Paths should all have same domain")
+  d, S = first(doms), acset_schema(first(doms))
+  c.commutes == all(types(S)) do o
+    f = o ∈ ob(S) ? identity : AttrVar
+    all(parts(d, o)) do p 
+      allequal([pth[o](f(p)) for pth in paths])
+    end
+  end
 end 
 
 function eval_boolexpr(q::Quantifier, g::CGraph, curr::Assgn)
@@ -332,13 +346,6 @@ map_edges(f,c::Quantifier) = Quantifier(f[:E](c.e),c.kind,map_edges(f,c.expr);
     for (eind, (s, t, h)) in enumerate(zip(g[:src], g[:tgt], g[:elabel]))
       sv, tv = [g[x,:vlabel] for x in [s,t]]
       if h isa ACSetTransformation 
-        if dom(h) != sv 
-          println("e $eind s $s ");show(stdout,"text/plain",dom(h)); show(stdout,"text/plain",sv) 
-        end 
-        if codom(h) != tv 
-          println("e $eind s $s ");show(stdout,"text/plain",codom(h)); show(stdout,"text/plain",tv) 
-        end 
-
         dom(h) == sv && codom(h) == tv || error("Diagram not functorial: edge $eind")
       elseif isnothing(h) # h is filled by a quantifier. Src/Tgt must be defined
         for (i,v) in [(s,sv),(t,tv)]
@@ -360,6 +367,7 @@ end
 arity(g::Constraint) = arity(g.g)
 
 (F::Migrate)(c::Constraint) = Constraint(F(c.g),c.d)
+sparsify(c::Constraint) = Constraint(sparsify(c.g), c.d)
 const Trivial = Constraint(CGraph(), True)
 const Trivial′ = Constraint(CGraph(), False)
 
