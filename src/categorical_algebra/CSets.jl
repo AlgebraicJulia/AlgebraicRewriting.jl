@@ -456,7 +456,6 @@ function (m::Migrate)(Y::ACSet)
 end 
 
 function (F::Migrate)(f::ACSetTransformation)
-  S = acset_schema(dom(f))
   d = Dict(map(collect(pairs(components(f)))) do (k,v)
     get(F.obs,k,k) => collect(v)
   end)
