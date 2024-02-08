@@ -52,10 +52,10 @@ end
 
 to_graphviz(TheoryLV; prog=&quot;dot&quot;)
 
-@acset_type LV_Generic(TheoryLV) &lt;: HasGraph
+@acset_type LV_Generic(TheoryLV, part_type=BitSetParts) &lt;: HasGraph
 const LV = LV_Generic{Symbol,Int}
 
-@acset_type LV′_Generic(TheoryLV′) &lt;: HasGraph
+@acset_type LV′_Generic(TheoryLV′, part_type=BitSetParts) &lt;: HasGraph
 const LV′ = LV′_Generic{Symbol,Int,Tuple{Int,Int}}
 
 F = Migrate(
@@ -299,6 +299,7 @@ function view_LV(p::LV′, pth=tempname(); name=&quot;G&quot;, title=&quot;&quot
   open(pth, &quot;w&quot;) do io
     show(io, &quot;image/svg+xml&quot;, g)
   end
+  g
 end
 
 i1 = initialize(2, 0.5, 0.5)</code></pre><div class="c-set">
@@ -579,12 +580,12 @@ sheep_rotate_r = tryrule(RuleApp(:turn_right, rr, S))</code></pre><pre class="do
 [ -2 =&gt; {inputs},
   -1 =&gt; {outputs},
   1 =&gt; Box(&quot;turn_right&quot;, [Main.LV_Generic{Symbol, Int64}:
-  V = 1:1
-  E = 1:0
-  Sheep = 1:1
-  Wolf = 1:0
-  Dir = 1:1
-  Eng = 1:2
+  V = [1]
+  E = Int64[]
+  Sheep = [1]
+  Wolf = Int64[]
+  Dir = [1]
+  Eng = [1, 2]
   src : E → V = Int64[]
   tgt : E → V = Int64[]
   sheep_loc : Sheep → V = [1]
@@ -595,12 +596,12 @@ sheep_rotate_r = tryrule(RuleApp(:turn_right, rr, S))</code></pre><pre class="do
   sheep_dir : Sheep → Dir = ACSets.ColumnImplementations.AttrVar[ACSets.ColumnImplementations.AttrVar(1)]
   wolf_dir : Wolf → Dir = Symbol[]
   dir : E → Dir = Symbol[]], [Main.LV_Generic{Symbol, Int64}:
-  V = 1:1
-  E = 1:0
-  Sheep = 1:1
-  Wolf = 1:0
-  Dir = 1:1
-  Eng = 1:2
+  V = [1]
+  E = Int64[]
+  Sheep = [1]
+  Wolf = Int64[]
+  Dir = [1]
+  Eng = [1, 2]
   src : E → V = Int64[]
   tgt : E → V = Int64[]
   sheep_loc : Sheep → V = [1]
@@ -611,12 +612,12 @@ sheep_rotate_r = tryrule(RuleApp(:turn_right, rr, S))</code></pre><pre class="do
   sheep_dir : Sheep → Dir = ACSets.ColumnImplementations.AttrVar[ACSets.ColumnImplementations.AttrVar(1)]
   wolf_dir : Wolf → Dir = Symbol[]
   dir : E → Dir = Symbol[],Main.LV_Generic{Symbol, Int64}:
-  V = 1:1
-  E = 1:0
-  Sheep = 1:1
-  Wolf = 1:0
-  Dir = 1:1
-  Eng = 1:2
+  V = [1]
+  E = Int64[]
+  Sheep = [1]
+  Wolf = Int64[]
+  Dir = [1]
+  Eng = [1, 2]
   src : E → V = Int64[]
   tgt : E → V = Int64[]
   sheep_loc : Sheep → V = [1]
@@ -630,12 +631,12 @@ sheep_rotate_r = tryrule(RuleApp(:turn_right, rr, S))</code></pre><pre class="do
 [ Wire((-2,1) =&gt; (1,1)),
   Wire((1,1) =&gt; (-1,1)),
   Wire((1,2) =&gt; (-1,1)) ]), compose(turn_right,mmerge(Main.LV_Generic{Symbol, Int64}:
-  V = 1:1
-  E = 1:0
-  Sheep = 1:1
-  Wolf = 1:0
-  Dir = 1:1
-  Eng = 1:2
+  V = [1]
+  E = Int64[]
+  Sheep = [1]
+  Wolf = Int64[]
+  Dir = [1]
+  Eng = [1, 2]
   src : E → V = Int64[]
   tgt : E → V = Int64[]
   sheep_loc : Sheep → V = [1]
@@ -654,10 +655,13 @@ begin
     s::Sheep
     sheep_loc(s) == src(e)
     sheep_dir(s) == :N
-  end
-  expected = copy(ex)
+  end;
+
+  expected = copy(ex);
   expected[:sheep_dir] = :W
   @test is_isomorphic(rewrite(rl, ex), expected)
+  rewrite!(rl, ex)
+  @test is_isomorphic(ex, expected)
 end</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi"><span class="sgr32"><span class="sgr1">Test Passed</span></span></code></pre><h2 id="Moving-forward"><a class="docs-heading-anchor" href="#Moving-forward">Moving forward</a><a id="Moving-forward-1"></a><a class="docs-heading-anchor-permalink" href="#Moving-forward" title="Permalink"></a></h2><pre><code class="language-julia hljs">s_fwd_l = @acset_colim yLV begin
   e::E
   s::Sheep
@@ -709,6 +713,8 @@ begin # test
     sheep_eng(s) == 9
   end
   @test is_isomorphic(expected, rewrite(sheep_fwd_rule, ex))
+  rewrite!(sheep_fwd_rule, ex)
+  @test is_isomorphic(ex, expected)
 end</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi"><span class="sgr32"><span class="sgr1">Test Passed</span></span></code></pre><p>Eat grass + 4eng Grass is at 0 - meaning it&#39;s ready to be eaten</p><pre><code class="language-julia hljs">s_eat_pac = @acset_colim yLV begin
   s::Sheep
   grass_eng(sheep_loc(s)) == 0
@@ -737,6 +743,8 @@ begin # test
   end
 
   @test is_isomorphic(expected, rewrite(se_rule, ex))
+  rewrite!(se_rule, ex)
+  @test is_isomorphic(ex, expected)
 end</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi"><span class="sgr32"><span class="sgr1">Test Passed</span></span></code></pre><p>Eat sheep + 20 eng</p><pre><code class="language-julia hljs">w_eat_l = @acset_colim yLV begin
   s::Sheep
   w::Wolf
@@ -748,12 +756,12 @@ wolf_eat = tryrule(RuleApp(:Wolf_eat, we_rule, W))</code></pre><pre class="docum
 [ -2 =&gt; {inputs},
   -1 =&gt; {outputs},
   1 =&gt; Box(&quot;Wolf_eat&quot;, [Main.LV_Generic{Symbol, Int64}:
-  V = 1:1
-  E = 1:0
-  Sheep = 1:0
-  Wolf = 1:1
-  Dir = 1:1
-  Eng = 1:2
+  V = [1]
+  E = Int64[]
+  Sheep = Int64[]
+  Wolf = [1]
+  Dir = [1]
+  Eng = [1, 2]
   src : E → V = Int64[]
   tgt : E → V = Int64[]
   sheep_loc : Sheep → V = Int64[]
@@ -764,12 +772,12 @@ wolf_eat = tryrule(RuleApp(:Wolf_eat, we_rule, W))</code></pre><pre class="docum
   sheep_dir : Sheep → Dir = Symbol[]
   wolf_dir : Wolf → Dir = ACSets.ColumnImplementations.AttrVar[ACSets.ColumnImplementations.AttrVar(1)]
   dir : E → Dir = Symbol[]], [Main.LV_Generic{Symbol, Int64}:
-  V = 1:1
-  E = 1:0
-  Sheep = 1:0
-  Wolf = 1:1
-  Dir = 1:1
-  Eng = 1:2
+  V = [1]
+  E = Int64[]
+  Sheep = Int64[]
+  Wolf = [1]
+  Dir = [1]
+  Eng = [1, 2]
   src : E → V = Int64[]
   tgt : E → V = Int64[]
   sheep_loc : Sheep → V = Int64[]
@@ -780,12 +788,12 @@ wolf_eat = tryrule(RuleApp(:Wolf_eat, we_rule, W))</code></pre><pre class="docum
   sheep_dir : Sheep → Dir = Symbol[]
   wolf_dir : Wolf → Dir = ACSets.ColumnImplementations.AttrVar[ACSets.ColumnImplementations.AttrVar(1)]
   dir : E → Dir = Symbol[],Main.LV_Generic{Symbol, Int64}:
-  V = 1:1
-  E = 1:0
-  Sheep = 1:0
-  Wolf = 1:1
-  Dir = 1:1
-  Eng = 1:2
+  V = [1]
+  E = Int64[]
+  Sheep = Int64[]
+  Wolf = [1]
+  Dir = [1]
+  Eng = [1, 2]
   src : E → V = Int64[]
   tgt : E → V = Int64[]
   sheep_loc : Sheep → V = Int64[]
@@ -799,12 +807,12 @@ wolf_eat = tryrule(RuleApp(:Wolf_eat, we_rule, W))</code></pre><pre class="docum
 [ Wire((-2,1) =&gt; (1,1)),
   Wire((1,1) =&gt; (-1,1)),
   Wire((1,2) =&gt; (-1,1)) ]), compose(Wolf_eat,mmerge(Main.LV_Generic{Symbol, Int64}:
-  V = 1:1
-  E = 1:0
-  Sheep = 1:0
-  Wolf = 1:1
-  Dir = 1:1
-  Eng = 1:2
+  V = [1]
+  E = Int64[]
+  Sheep = Int64[]
+  Wolf = [1]
+  Dir = [1]
+  Eng = [1, 2]
   src : E → V = Int64[]
   tgt : E → V = Int64[]
   sheep_loc : Sheep → V = Int64[]
@@ -814,36 +822,35 @@ wolf_eat = tryrule(RuleApp(:Wolf_eat, we_rule, W))</code></pre><pre class="docum
   wolf_eng : Wolf → Eng = ACSets.ColumnImplementations.AttrVar[ACSets.ColumnImplementations.AttrVar(1)]
   sheep_dir : Sheep → Dir = Symbol[]
   wolf_dir : Wolf → Dir = ACSets.ColumnImplementations.AttrVar[ACSets.ColumnImplementations.AttrVar(1)]
-  dir : E → Dir = Symbol[])))</code></pre><h3 id="A-test"><a class="docs-heading-anchor" href="#A-test">A test</a><a id="A-test-1"></a><a class="docs-heading-anchor-permalink" href="#A-test" title="Permalink"></a></h3><pre><code class="language-julia hljs">ex = @acset LV begin
-  Sheep = 1
-  Wolf = 1
-  V = 3
-  E = 2
-  src = [1, 2]
-  tgt = [2, 3]
-  sheep_loc = 2
-  sheep_eng = [3]
-  grass_eng = [9, 10, 11]
-  dir = fill(:N, 2)
-  sheep_dir = [:N]
-  wolf_loc = [2]
-  wolf_eng = [16]
-  wolf_dir = [:S]
-end
-expected = @acset LV begin
-  Wolf = 1
-  V = 3
-  E = 2
-  src = [1, 2]
-  tgt = [2, 3]
-  grass_eng = [9, 10, 11]
-  dir = fill(:N, 2)
-  sheep_dir = [:N]
-  wolf_loc = [2]
-  wolf_eng = [36]
-  wolf_dir = [:S]
-end
-@test is_isomorphic(rewrite(we_rule, ex), expected)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi"><span class="sgr32"><span class="sgr1">Test Passed</span></span></code></pre><p>Die if 0 eng</p><pre><code class="language-julia hljs">s_die_l = @acset_colim yLV begin
+  dir : E → Dir = Symbol[])))</code></pre><h3 id="A-test"><a class="docs-heading-anchor" href="#A-test">A test</a><a id="A-test-1"></a><a class="docs-heading-anchor-permalink" href="#A-test" title="Permalink"></a></h3><pre><code class="language-julia hljs">begin # test
+  ex = @acset LV begin
+    Sheep=1; Wolf=1; V=3; E=2;
+    src=[1,2];
+    tgt=[2,3];
+    sheep_loc=2
+    sheep_eng=[3];
+    grass_eng=[9,10,11];
+    dir=[:N,:N];
+    sheep_dir=[:N]
+    wolf_loc=[2];
+    wolf_eng=[16];
+    wolf_dir=[:S]
+  end
+  expected = @acset LV begin
+    Wolf=1; V=3; E=2;
+    src=[1,2];
+    tgt=[2,3];
+    grass_eng=[9,10,11];
+    dir=[:N,:N];
+    sheep_dir=[:N]
+    wolf_loc=[2];
+    wolf_eng=[36];
+    wolf_dir=[:S]
+  end
+  @test is_isomorphic(rewrite(we_rule,ex), expected)
+  rewrite!(we_rule, ex)
+  @test is_isomorphic(ex,expected)
+end</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi"><span class="sgr32"><span class="sgr1">Test Passed</span></span></code></pre><p>Die if 0 eng</p><pre><code class="language-julia hljs">s_die_l = @acset_colim yLV begin
   s::Sheep
   sheep_eng(s) == 0
 end
@@ -855,9 +862,15 @@ sheep_starve = (RuleApp(:starve, sheep_die_rule,
                 (id([I]) ⊗ Weaken(create(S))) ⋅ merge_wires(I))
 
 begin # test
-  ex = s_die_l ⊕ W
-  expected = G ⊕ W
-  @test is_isomorphic(rewrite(sheep_die_rule, ex), expected)
+  compile_rewrite(sheep_die_rule)
+  ex = @acset_colim yLV begin
+    s::Sheep; w::Wolf
+    sheep_eng(s) == 0; sheep_dir(s) == :W
+  end
+  expected = @acset_colim yLV begin v::V; w::Wolf end
+  @test is_isomorphic(rewrite(sheep_die_rule,ex), expected)
+  rewrite!(sheep_die_rule,ex)
+  @test is_isomorphic(ex, expected)
 end</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi"><span class="sgr32"><span class="sgr1">Test Passed</span></span></code></pre><p>Reproduction</p><pre><code class="language-julia hljs">s_reprod_r = @acset_colim yLV begin
   (x, y)::Sheep
   sheep_loc(x) == sheep_loc(y)
@@ -875,18 +888,18 @@ sheep_reprod = RuleApp(:reproduce, sheep_reprod_rule,
 
 begin # test
   ex = @acset_colim yLV begin
-    s::Sheep
-    w::Wolf
-    sheep_eng(s) == 10
+    s::Sheep; w::Wolf; sheep_eng(s) == 10; sheep_dir(s) == :W
   end
-  expected = @acset_colim yLV begin
-    (s1, s2)::Sheep
-    w::Wolf
+  expected = @acset_colim yLV  begin
+    (s1,s2)::Sheep; w::Wolf;
     sheep_loc(s1) == sheep_loc(s2)
-    sheep_eng(s1) == 5
-    sheep_eng(s2) == 5
+    sheep_dir(s1) == sheep_dir(s2)
+    sheep_eng(s1) == sheep_eng(s2)
+    sheep_dir(s1) == :W; sheep_eng(s1) == 5;
   end
-  @test is_isomorphic(rewrite(sheep_reprod_rule, ex), expected)
+  @test is_isomorphic(rewrite(sheep_reprod_rule,ex),expected)
+  rewrite!(sheep_reprod_rule,ex)
+  @test is_isomorphic(ex, expected)
 end</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi"><span class="sgr32"><span class="sgr1">Test Passed</span></span></code></pre><p>Grass increment</p><pre><code class="language-julia hljs">g_inc_n = deepcopy(G)
 set_subpart!(g_inc_n, 1, :grass_eng, 0)
 rem_part!(g_inc_n, :Eng, 1)
@@ -896,32 +909,35 @@ g_inc_rule = Rule(id(G), id(G);
   expr=(Eng=[vs -&gt; only(vs) - 1],))
 g_inc = RuleApp(:GrassIncrements, g_inc_rule, G) |&gt; tryrule
 
-
-ex = @acset LV begin
-  Sheep = 1
-  V = 3
-  E = 2
-  src = [1, 2]
-  tgt = [2, 3]
-  sheep_loc = 2
-  sheep_eng = [3]
-  grass_eng = [1, 10, 2]
-  dir = fill(:N, 2)
-  sheep_dir = [:N]
-end
-expected = @acset LV begin
-  Sheep = 1
-  V = 3
-  E = 2
-  src = [1, 2]
-  tgt = [2, 3]
-  sheep_loc = 2
-  sheep_eng = [3]
-  grass_eng = [0, 10, 2]
-  dir = fill(:N, 2)
-  sheep_dir = [:N]
-end
-@test is_isomorphic(rewrite(g_inc_rule, ex), expected)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi"><span class="sgr32"><span class="sgr1">Test Passed</span></span></code></pre><p>Scheduling Rules</p><pre><code class="language-julia hljs">general = mk_sched((;), (init=:S,), N, (
+begin
+  ex = @acset LV begin
+    Sheep = 1
+    V = 3
+    E = 2
+    src = [1, 2]
+    tgt = [2, 3]
+    sheep_loc = 2
+    sheep_eng = [3]
+    grass_eng = [1, 10, 2]
+    dir = fill(:N, 2)
+    sheep_dir = [:N]
+  end
+  expected = @acset LV begin
+    Sheep = 1
+    V = 3
+    E = 2
+    src = [1, 2]
+    tgt = [2, 3]
+    sheep_loc = 2
+    sheep_eng = [3]
+    grass_eng = [0, 10, 2]
+    dir = fill(:N, 2)
+    sheep_dir = [:N]
+  end
+  @test is_isomorphic(rewrite(g_inc_rule, ex), expected)
+  rewrite!(g_inc_rule, ex)
+  @test is_isomorphic(ex, expected)
+end</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi"><span class="sgr32"><span class="sgr1">Test Passed</span></span></code></pre><p>Scheduling Rules</p><pre><code class="language-julia hljs">general = mk_sched((;), (init=:S,), N, (
     turn=const_cond([1.0, 2.0, 1.0], S; name=:turn),
     maybe=const_cond([0.1, 0.9], S; name=:reprod),
     lft=sheep_rotate_l,
@@ -945,5 +961,8 @@ wolf = wolf_eat ⋅ F(general);  # once per wolf</code></pre><p>Do all sheep, th
 
 overall = while_schedule(cycle, curr -&gt; nparts(curr, :Wolf) &gt;= 0) |&gt; F2  # wrap in a while loop
 
-X = initialize(3, 0.25, 0.25);
-res, = apply_schedule(overall, X; steps=50);</code></pre></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../game_of_life/">« Conway&#39;s Game of Life</a><a class="docs-footer-nextpage" href="../ptg_simple/">Slice Bread »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option><option value="auto">Automatic (OS)</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 1.2.1 on <span class="colophon-date" title="Wednesday 24 January 2024 15:48">Wednesday 24 January 2024</span>. Using Julia version 1.10.0.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
+X = initialize(3, 0.25, 0.25);</code></pre><p>Force something exciting to happen</p><pre><code class="language-julia hljs">X[1, :wolf_loc] = X[1, :sheep_loc]
+X[1, :wolf_dir] = X[1, :sheep_dir]
+
+res = interpret(overall, X; maxstep=100);</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">┌ Warning: Exceeded maximum number of steps
+└ @ AlgebraicRewriting.Schedules.Eval ~/work/AlgebraicRewriting.jl/AlgebraicRewriting.jl/src/schedules/Eval.jl:72</code></pre><p>Run this line to view the trajectory</p><pre><code class="language-julia hljs">view_traj(overall, res[1:10], view_LV; agent=true, names=F2(N))</code></pre></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../game_of_life/">« Conway&#39;s Game of Life</a><a class="docs-footer-nextpage" href="../ptg_simple/">Slice Bread »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option><option value="auto">Automatic (OS)</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 1.2.1 on <span class="colophon-date" title="Thursday 8 February 2024 19:32">Thursday 8 February 2024</span>. Using Julia version 1.10.0.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>

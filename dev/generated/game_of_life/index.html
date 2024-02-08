@@ -13,8 +13,8 @@ end
   Coords::AttrType
   coords::Attr(V, Coords)
 end
-@acset_type Life(SchLife) &lt;: AbstractSymmetricGraph
-@acset_type AbsLifeCoords(SchLifeCoords) &lt;: AbstractSymmetricGraph
+@acset_type Life(SchLife, part_type=BitSetParts) &lt;: AbstractSymmetricGraph
+@acset_type AbsLifeCoords(SchLifeCoords, part_type=BitSetParts) &lt;: AbstractSymmetricGraph
 const LifeCoords = AbsLifeCoords{Tuple{Int,Int}}
 F = Migrate(
   Dict(x =&gt; x for x in Symbol.(generators(SchLife, :Ob))),
@@ -129,19 +129,19 @@ Birth = Rule(id(Life(1)), to_next(); ac=bac)</code></pre><pre class="documenter-
   src : E → V = [2, 1, 2]
   tgt : E → V = [1, 3, 3]
   vlabel : V → VLabel = Union{Nothing, Main.Life}[Main.Life:
-  V = 1:4
-  E = 1:6
-  Curr = 1:3
-  Next = 1:0
+  V = [1, 2, 3, 4]
+  E = [1, 2, 3, 4, 5, 6]
+  Curr = [1, 2, 3]
+  Next = Int64[]
   src : E → V = [2, 1, 3, 1, 4, 1]
   tgt : E → V = [1, 2, 1, 3, 1, 4]
   inv : E → E = [2, 1, 4, 3, 6, 5]
   curr : Curr → V = [2, 3, 4]
   next : Next → V = Int64[], Main.Life:
-  V = 1:1
-  E = 1:0
-  Curr = 1:0
-  Next = 1:0
+  V = [1]
+  E = Int64[]
+  Curr = Int64[]
+  Next = Int64[]
   src : E → V = Int64[]
   tgt : E → V = Int64[]
   inv : E → E = Int64[]
@@ -155,19 +155,19 @@ Birth = Rule(id(Life(1)), to_next(); ac=bac)</code></pre><pre class="documenter-
   src : E → V = [2, 1, 2]
   tgt : E → V = [1, 3, 3]
   vlabel : V → VLabel = Union{Nothing, Main.Life}[Main.Life:
-  V = 1:5
-  E = 1:8
-  Curr = 1:4
-  Next = 1:0
+  V = [1, 2, 3, 4, 5]
+  E = [1, 2, 3, 4, 5, 6, 7, 8]
+  Curr = [1, 2, 3, 4]
+  Next = Int64[]
   src : E → V = [2, 1, 3, 1, 4, 1, 5, 1]
   tgt : E → V = [1, 2, 1, 3, 1, 4, 1, 5]
   inv : E → E = [2, 1, 4, 3, 6, 5, 8, 7]
   curr : Curr → V = [2, 3, 4, 5]
   next : Next → V = Int64[], Main.Life:
-  V = 1:1
-  E = 1:0
-  Curr = 1:0
-  Next = 1:0
+  V = [1]
+  E = Int64[]
+  Curr = Int64[]
+  Next = Int64[]
   src : E → V = Int64[]
   tgt : E → V = Int64[]
   inv : E → E = Int64[]
@@ -181,19 +181,19 @@ Birth = Rule(id(Life(1)), to_next(); ac=bac)</code></pre><pre class="documenter-
   src : E → V = [2, 1, 2]
   tgt : E → V = [1, 3, 3]
   vlabel : V → VLabel = Union{Nothing, Main.Life}[Main.Life:
-  V = 1:1
-  E = 1:0
-  Curr = 1:1
-  Next = 1:0
+  V = [1]
+  E = Int64[]
+  Curr = [1]
+  Next = Int64[]
   src : E → V = Int64[]
   tgt : E → V = Int64[]
   inv : E → E = Int64[]
   curr : Curr → V = [1]
   next : Next → V = Int64[], Main.Life:
-  V = 1:1
-  E = 1:0
-  Curr = 1:0
-  Next = 1:0
+  V = [1]
+  E = Int64[]
+  Curr = Int64[]
+  Next = Int64[]
   src : E → V = Int64[]
   tgt : E → V = Int64[]
   inv : E → E = Int64[]
@@ -226,19 +226,19 @@ rules = [:Birth =&gt; Birth, :Persist =&gt; Persist, :ClearCurr =&gt; ClearCurr,
   src : E → V = [2, 1, 2]
   tgt : E → V = [1, 3, 3]
   vlabel : V → VLabel = Union{Nothing, Main.Life}[Main.Life:
-  V = 1:4
-  E = 1:6
-  Curr = 1:3
-  Next = 1:0
+  V = [1, 2, 3, 4]
+  E = [1, 2, 3, 4, 5, 6]
+  Curr = [1, 2, 3]
+  Next = Int64[]
   src : E → V = [2, 1, 3, 1, 4, 1]
   tgt : E → V = [1, 2, 1, 3, 1, 4]
   inv : E → E = [2, 1, 4, 3, 6, 5]
   curr : Curr → V = [2, 3, 4]
   next : Next → V = Int64[], Main.Life:
-  V = 1:1
-  E = 1:0
-  Curr = 1:0
-  Next = 1:0
+  V = [1]
+  E = Int64[]
+  Curr = Int64[]
+  Next = Int64[]
   src : E → V = Int64[]
   tgt : E → V = Int64[]
   inv : E → E = Int64[]
@@ -252,19 +252,19 @@ rules = [:Birth =&gt; Birth, :Persist =&gt; Persist, :ClearCurr =&gt; ClearCurr,
   src : E → V = [2, 1, 2]
   tgt : E → V = [1, 3, 3]
   vlabel : V → VLabel = Union{Nothing, Main.Life}[Main.Life:
-  V = 1:5
-  E = 1:8
-  Curr = 1:4
-  Next = 1:0
+  V = [1, 2, 3, 4, 5]
+  E = [1, 2, 3, 4, 5, 6, 7, 8]
+  Curr = [1, 2, 3, 4]
+  Next = Int64[]
   src : E → V = [2, 1, 3, 1, 4, 1, 5, 1]
   tgt : E → V = [1, 2, 1, 3, 1, 4, 1, 5]
   inv : E → E = [2, 1, 4, 3, 6, 5, 8, 7]
   curr : Curr → V = [2, 3, 4, 5]
   next : Next → V = Int64[], Main.Life:
-  V = 1:1
-  E = 1:0
-  Curr = 1:0
-  Next = 1:0
+  V = [1]
+  E = Int64[]
+  Curr = Int64[]
+  Next = Int64[]
   src : E → V = Int64[]
   tgt : E → V = Int64[]
   inv : E → E = Int64[]
@@ -278,19 +278,19 @@ rules = [:Birth =&gt; Birth, :Persist =&gt; Persist, :ClearCurr =&gt; ClearCurr,
   src : E → V = [2, 1, 2]
   tgt : E → V = [1, 3, 3]
   vlabel : V → VLabel = Union{Nothing, Main.Life}[Main.Life:
-  V = 1:1
-  E = 1:0
-  Curr = 1:1
-  Next = 1:0
+  V = [1]
+  E = Int64[]
+  Curr = [1]
+  Next = Int64[]
   src : E → V = Int64[]
   tgt : E → V = Int64[]
   inv : E → E = Int64[]
   curr : Curr → V = [1]
   next : Next → V = Int64[], Main.Life:
-  V = 1:1
-  E = 1:0
-  Curr = 1:0
-  Next = 1:0
+  V = [1]
+  E = Int64[]
+  Curr = Int64[]
+  Next = Int64[]
   src : E → V = Int64[]
   tgt : E → V = Int64[]
   inv : E → E = Int64[]
@@ -305,19 +305,19 @@ rules = [:Birth =&gt; Birth, :Persist =&gt; Persist, :ClearCurr =&gt; ClearCurr,
   src : E → V = [2, 1, 2]
   tgt : E → V = [1, 3, 3]
   vlabel : V → VLabel = Union{Nothing, Main.Life}[Main.Life:
-  V = 1:3
-  E = 1:4
-  Curr = 1:3
-  Next = 1:0
+  V = [1, 2, 3]
+  E = [1, 2, 3, 4]
+  Curr = [1, 2, 3]
+  Next = Int64[]
   src : E → V = [2, 1, 3, 1]
   tgt : E → V = [1, 2, 1, 3]
   inv : E → E = [2, 1, 4, 3]
   curr : Curr → V = [1, 2, 3]
   next : Next → V = Int64[], Main.Life:
-  V = 1:1
-  E = 1:0
-  Curr = 1:1
-  Next = 1:0
+  V = [1]
+  E = Int64[]
+  Curr = [1]
+  Next = Int64[]
   src : E → V = Int64[]
   tgt : E → V = Int64[]
   inv : E → E = Int64[]
@@ -331,19 +331,19 @@ rules = [:Birth =&gt; Birth, :Persist =&gt; Persist, :ClearCurr =&gt; ClearCurr,
   src : E → V = [2, 1, 2]
   tgt : E → V = [1, 3, 3]
   vlabel : V → VLabel = Union{Nothing, Main.Life}[Main.Life:
-  V = 1:5
-  E = 1:8
-  Curr = 1:5
-  Next = 1:0
+  V = [1, 2, 3, 4, 5]
+  E = [1, 2, 3, 4, 5, 6, 7, 8]
+  Curr = [1, 2, 3, 4, 5]
+  Next = Int64[]
   src : E → V = [2, 1, 3, 1, 4, 1, 5, 1]
   tgt : E → V = [1, 2, 1, 3, 1, 4, 1, 5]
   inv : E → E = [2, 1, 4, 3, 6, 5, 8, 7]
   curr : Curr → V = [1, 2, 3, 4, 5]
   next : Next → V = Int64[], Main.Life:
-  V = 1:1
-  E = 1:0
-  Curr = 1:1
-  Next = 1:0
+  V = [1]
+  E = Int64[]
+  Curr = [1]
+  Next = Int64[]
   src : E → V = Int64[]
   tgt : E → V = Int64[]
   inv : E → E = Int64[]
@@ -358,11 +358,10 @@ rules = [:Birth =&gt; Birth, :Persist =&gt; Persist, :ClearCurr =&gt; ClearCurr,
 update_next = agent(rBirth ⋅ rPersist, Life(1); n=:Cell)
 next_step = agent(compose(rClearCurr, rCopyNext, rClearNext), Life(1); n=:Cell)
 life(n::Int) = for_schedule(update_next ⋅ next_step, n) |&gt; F
-const L1 = life(1)
+const L = life(1)
 
 G = make_grid([1 0 1 0 1; 0 1 0 1 0; 0 1 0 1 0; 1 0 1 0 1; 1 0 1 0 1])
 
-res, = apply_schedule(L1, G; steps=1000)
-traj = last(res).edge.o.val
-
-view_life(i, traj) = view_life(traj.steps[i].world)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">view_life (generic function with 7 methods)</code></pre><p>view<em>traj(L1, res, view</em>life; agent=true)</p></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../full_demo/">« Full Demo</a><a class="docs-footer-nextpage" href="../lotka_volterra/">Lotka Volterra »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option><option value="auto">Automatic (OS)</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 1.2.1 on <span class="colophon-date" title="Wednesday 24 January 2024 15:48">Wednesday 24 January 2024</span>. Using Julia version 1.10.0.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
+res = interpret(L, G; maxstep=100);
+view_traj(L, res[1:10], view_life; agent=true)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">┌ Warning: Exceeded maximum number of steps
+└ @ AlgebraicRewriting.Schedules.Eval ~/work/AlgebraicRewriting.jl/AlgebraicRewriting.jl/src/schedules/Eval.jl:72</code></pre></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../full_demo/">« Full Demo</a><a class="docs-footer-nextpage" href="../lotka_volterra/">Lotka Volterra »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option><option value="auto">Automatic (OS)</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 1.2.1 on <span class="colophon-date" title="Thursday 8 February 2024 19:32">Thursday 8 February 2024</span>. Using Julia version 1.10.0.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
