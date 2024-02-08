@@ -7,13 +7,14 @@ using Catlab.CategoricalAlgebra, Catlab.Theories
 
 using ...Rewrite
 using ...Rewrite.Utils: AbsRule, get_rmap, get_pmap, get_expr_binding_map
+using ...Rewrite.Inplace: interp_program!
 using ...CategoricalAlgebra.CSets: Migrate, extend_morphism_constraints
 using ..Wiring, ..Poly, ..Eval, ..Basic
 using ..Wiring: str_hom, mk_sched
-import ..Wiring: AgentBox, input_ports, output_ports, initial_state, color, update
+import ..Wiring: AgentBox, input_ports, output_ports, initial_state, color, update!
 using ..Conditionals
-using ..Eval: Traj, traj_agent, id_pmap, add_step, nochange
-import ..Eval: update!
+
+import ACSets: sparsify
 
 
 """
@@ -36,7 +37,7 @@ identical to I, take the id map, otherwise take the unique morphism into I).
   function RuleApp(n,r::AbsRule, i::ACSetTransformation, o::ACSetTransformation) 
     codom(i) == codom(left(r)) || error("Bad i for ruleapp $n")
     codom(o) == codom(right(r)) || error("Bad o for ruleapp $n")
-    return new(n,r,i,o)
+    return new(n,r,i,o,compile_rewrite(r))
   end
   """Implicitly give data via a map A->I"""
   RuleApp(n,r::AbsRule, a::ACSetTransformation) = 
@@ -57,39 +58,20 @@ color(::RuleApp) = "lightblue"
 initial_state(::RuleApp) = nothing 
 (F::Migrate)(a::RuleApp) = 
   RuleApp(a.name,F(a.rule), F(a.in_agent), F(a.out_agent))
+sparsify(a::RuleApp) = 
+  RuleApp(a.name,sparsify(a.rule), sparsify(a.in_agent), sparsify(a.out_agent))
 
 function update!(::Ref, r::RuleApp, g::ACSetTransformation, inport::Int)
   inport == 1 || error("Rule app has only one in port")
   m = update_match(r, g)
   if isnothing(m)
-    return (g, 2)
+    return (g, 2, "No match")
   else
-    rmap_components = interp_program!(g.prog, m, codom(g))
-    rmap = ACSetTransformation(codom(r.rule.R), codom(g), rmap_components)
-    return (compose(r.out_agent, rmap), 1)
+    rmap_components = interp_program!(r.prog, m.components, codom(g))
+    rmap = ACSetTransformation(rmap_components, codom(r.rule.R), codom(g))
+    return (compose(r.out_agent, rmap), 1, "Success")
   end
 end
-
-function update(r::RuleApp, ::PMonad=Maybe)#, ::Int, instate::Traj, ::Nothing)
-  function update_ruleapp(::Nothing, w::WireVal; kw...)
-    w.wire_id == 1 || error("RuleApps have exactly 1 input")
-    last_step = traj_agent(w.val) # A -> X 
-    m = update_match(r, last_step)
-    if isnothing(m)
-      return MealyRes(nothing, [(nothing,WireVal(2,nochange(w.val)))], "(no match)")
-    else 
-      res = rewrite_match_maps(r.rule, m)
-      rmap = get_rmap(ruletype(r.rule), res)
-      xmap = get_expr_binding_map(r.rule, m, res)
-      new_agent = r.out_agent ⋅ rmap ⋅ xmap
-      pl, pr = get_pmap(ruletype(r.rule), res)
-      pmap = Span(pl, pr ⋅ xmap)
-      msg = m isa ACSetTransformation ? str_hom(m) : str_hom(first(m)) # PBPO
-      wv = WireVal(1,add_step(w.val,TrajStep(new_agent, pmap)))
-      return MealyRes(nothing, [(nothing, wv)], msg)
-    end
-  end
-end 
 
 
 # """Helper function for `update`"""

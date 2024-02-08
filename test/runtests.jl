@@ -72,6 +72,11 @@ end
   include("rewrite/Representable.jl")
 end
 
+@testset "Inplace" begin
+  include("rewrite/Inplace.jl")
+end
+
+
 # Schedules 
 ##########
 

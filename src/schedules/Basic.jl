@@ -5,14 +5,19 @@ using StructEquality
 
 using Catlab.CategoricalAlgebra, Catlab.Theories
 
+using ...Rewrite
+using ...Rewrite.Inplace: interp_program!
 using ...CategoricalAlgebra.CSets: Migrate
 using ..Poly
 using ..Wiring: AgentBox
-import ..Wiring: input_ports, output_ports, initial_state, color, update
-using ..Eval: Traj, TrajStep, traj_agent, id_pmap, tot_pmap, traj_res, add_step, update!
+import ..Wiring: input_ports, output_ports, initial_state, color, update!
+import ACSets: sparsify
+
+# Weakening 
+###########
 
 """
-Change the agent to a subset of the current agent without changing the world
+Change the agent to a subobject of the current agent without changing the world
 """
 @struct_hash_equal struct Weaken <: AgentBox
   name::Symbol 
@@ -24,26 +29,30 @@ output_ports(r::Weaken) = [dom(r.agent)]
 initial_state(::Weaken) = nothing 
 color(::Weaken) = "lavender"
 (F::Migrate)(a::Weaken) =  Weaken(a.name,F(a.agent))
-function update(r::Weaken, p::PMonad=Maybe)
-  function update_weaken(::Nothing,w; kw...) 
-    ts = TrajStep(r.agent ⋅ traj_agent(w.val), id_pmap(traj_res(w.val)))
-    wv = WireVal(1, add_step(w.val,ts))
-   return  MealyRes(nothing,[(p==Maybe ? nothing : 1, wv)],"")
-  end
-end
+sparsify(a::Weaken) = Weaken(a.name, sparsify(a.agent))
 
-function update!(::Ref, boxdata::Weaken, g, inport::Int)
+function update!(::Ref, boxdata::Weaken, g::ACSetTransformation, inport::Int)
   inport == 1 || error("Weaken has exactly 1 input")
-  return boxdata.agent ⋅ g, 1
+  boxdata.agent ⋅ g, 1, ""
 end
 
+# Strengthening
+###############
 
 """
 Adds to both agent and the state of the world via a pushout.
+
+        Agent₁  →  Agent₂
+          ↓          ⇣    
+        World₁ -->⌜World₂ 
 """
 @struct_hash_equal struct Strengthen <: AgentBox
   name::Symbol 
   agent::ACSetTransformation # map A₁ -> A₂
+  prog::RewriteProgram
+  function Strengthen(n::Symbol, agent::ACSetTransformation)
+    new(n, deepcopy(agent), compile_rewrite(Rule(id(dom(agent)), agent)))
+  end
 end  
 Strengthen(agent::ACSetTransformation) = Strengthen(Symbol(""), agent)
 
@@ -52,20 +61,17 @@ output_ports(r::Strengthen) = [codom(r.agent)]
 initial_state(::Strengthen) = nothing 
 color(::Strengthen) = "lightgreen"
 (F::Migrate)(a::Strengthen) =  Strengthen(a.name,F(a.agent))
-function update(r::Strengthen, t::PMonad)
-  function update_strengthen(::Nothing,w::WireVal; kw...) 
-    last_step = traj_agent(w.val) # A -> X 
-    world_update, new_agent = pushout(last_step, r.agent)
-    wv = WireVal(1, add_step(w.val, TrajStep(new_agent, tot_pmap(world_update))))
-    return MealyRes(nothing,[(t == Maybe ? nothing : 1, wv)], "")
-  end
-end 
+sparsify(a::Strengthen) = Strengthen(a.name, sparsify(a.agent))
 
-function update!(::Ref, boxdata::Strengthen, g, inport::Int)
+function update!(::Ref, boxdata::Strengthen, g::ACSetTransformation, inport::Int)
   inport == 1 || error("Strengthen has exactly 1 input")
-  _, new_agent = pushout(last_step, boxdata.agent) # need this be in-place?
-  return new_agent, 1
+  rmap = interp_program!(boxdata.prog, g.components, codom(g))
+  new_agent = ACSetTransformation(rmap, codom(boxdata.agent), codom(g))
+  new_agent, 1, ""
 end
+
+# Initialization
+################
 
 """
 A box that spits out a constant ACSet with an empty agent above it. Possibly, 
@@ -75,13 +81,16 @@ it does not take any inputs, so it can act as a comonoid counit.
   name::Symbol
   state::StructACSet 
   in_agent::Union{Nothing,StructACSet}
-  Initialize(s, in_agent=nothing, n=Symbol("")) = new(n,s,in_agent)
+  Initialize(s, in_agent=nothing, n=Symbol("")) = 
+    new(n, deepcopy.([s, in_agent])...)
 end
 input_ports(r::Initialize) = isnothing(r.in_agent) ? [] : [r.in_agent] 
 output_ports(r::Initialize) = [typeof(r.state)()]
 initial_state(::Initialize) = nothing 
 color(::Initialize) = "gray"
 (F::Migrate)(a::Initialize) = Initialize(a.name,F(a.state),F(a.in_agent))
+sparsify(a::Initialize) = Initialize(a.name, sparsify([a.state,a.in_agent])...)
+
 function update(i::Initialize, t::PMonad)
   update_i(::Nothing,w::WireVal;kw...) = MealyRes(nothing,[
     (t == Maybe ? nothing : 1, WireVal(1,disjoint(w.val, create(i.state))))], "")
@@ -89,20 +98,30 @@ end
 
 function update!(::Ref, boxdata::Initialize, ::ACSetTransformation, inport::Int)
   inport == 1 || error("Initialize has exactly 1 input")
-  return create(i.state), 1
+  return create(i.state), 1, ""
 end
+
+# Failure
+#########
 
 @struct_hash_equal struct Fail <: AgentBox
   agent::ACSet
   silent::Bool
   name::String
-  Fail(a::ACSet, silent=false, name="Fail") = new(a,silent,name)
+  Fail(a::ACSet, silent=false, name="Fail") = new(deepcopy(a), silent, name)
 end 
+
 input_ports(r::Fail) = [r.agent] 
+
 output_ports(::Fail) = []
+
 initial_state(::Fail) = nothing 
+
 color(::Fail) = "red"
-(F::Migrate)(a::Fail) = Fail(F(a.agent))
+
+(F::Migrate)(a::Fail) = Fail(F(a.agent), a.silent, a.name)
+
+sparsify(a::Fail) = Fail(sparsify(a.agent), a.silent, a.name)
 
 function update(f::Fail, ::PMonad=Maybe)
   update_f(::Nothing,w; kw...) = f.silent ? MealyRes(nothing,[],"fail") : error("$S $w")
@@ -112,4 +131,4 @@ update!(::Ref, boxdata::Fail, ::ACSetTransformation, inport::Int) = error("Fail"
 
 
 
-end # module 
+end # module

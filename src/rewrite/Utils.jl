@@ -7,6 +7,7 @@ using Catlab, Catlab.Theories
 using Catlab.CategoricalAlgebra
 using Catlab.CategoricalAlgebra.HomSearch: backtracking_search
 import Catlab.CategoricalAlgebra: left, right
+import ACSets: sparsify 
 
 using Random
 using StructEquality
@@ -43,7 +44,7 @@ condition(s)
     S = acset_schema(dom(L))
     monic = monic === true ? collect(ob(S)) : monic
     dom(L) == dom(R) || error("L<->R not a span")
-    ACs = isnothing(ac) ? [] : ac
+    ACs = isnothing(ac) ? [] : deepcopy.(ac)
     exprs = isnothing(expr) ? Dict() : Dict(pairs(expr))
     map(enumerate([L,R,])) do (i, f)
       if !is_natural(f)
@@ -82,7 +83,7 @@ condition(s)
         o => binding
       end)
     end
-    new{T}(L, R, ACs, monic, exprs)
+    new{T}(deepcopy(L), deepcopy(R), ACs, monic, exprs)
   end
 end
 
@@ -93,6 +94,9 @@ right(r::Rule{T}) where T = r.R
 
 (F::Migrate)(r::Rule{T}) where {T} =
   Rule{T}(F(r.L), F(r.R); ac=F.(r.conditions), expr=F(r.exprs), monic=r.monic)
+sparsify(r::Rule{T}) where T = 
+  Rule{T}(sparsify(r.L), sparsify(r.R); ac=sparsify.(r.conditions), 
+          expr=r.exprs, monic=r.monic)
 
 # Extracting specific maps from rewriting output data 
 #####################################################
@@ -169,6 +173,7 @@ function can_match(r::Rule{T}, m; initial=Dict()) where T
   return nothing # we can match
 end
 
+"""Get one match (if any exist) otherwise return """
 get_match(args...; kw...) = let x = get_matches(args...; n=1, kw...);
   isempty(x) ? nothing : only(x) end 
 
@@ -188,7 +193,7 @@ function get_matches(r::Rule{T}, G::ACSet; initial=nothing,
                       random) do h 
     cm = can_match(r, h)
     if isnothing(cm)
-      push!(hs, deepcopy(h))
+      push!(hs, h)
       return length(hs) == n # we stop the search Hom(L,G) when this holds
     else
       @debug "$([k => collect(v) for (k,v) in pairs(components(h))]): $cm"
@@ -200,9 +205,8 @@ end
 
 """If not rewriting ACSets, we have to compute entire Hom(L,G)."""
 function get_matches(r::Rule{T}, G; initial=nothing, random=false, n=-1) where T 
-  initial = isnothing(initial) ? Dict() : initial
-  ms = homomorphisms(codom(left(r)), G; monic=r.monic, 
-                     initial=NamedTuple(initial), random)
+  initial = NamedTuple(isnothing(initial) ? Dict() : initial)
+  ms = homomorphisms(codom(left(r)), G; monic=r.monic, initial, random)
   res = []
   for m in ms 
     if (n < 0 || length(res) < n) && isnothing(can_match(r, m))
@@ -230,21 +234,25 @@ m ↓    ↓    ↓ res
   G <- • -> X 
             ↓  
             X′
-
 """
 function get_expr_binding_map(r::Rule{T}, m::ACSetTransformation, res) where T
-  X = codom(get_rmap(ruletype(r),res))
+  rmap = get_rmap(T, res)
+  X = codom(rmap)
   comps = Dict(map(attrtypes(acset_schema(X))) do at 
       bound_vars = Vector{Any}(collect(m[at]))
       binding = Dict()
-      for prt in parts(X,at)
-        if haskey(r.exprs[at],prt)
-          binding[prt] = r.exprs[at][prt](bound_vars)
+      for prt in parts(X, at)
+        exprs = filter(!isnothing, map(preimage(rmap[at], AttrVar(prt))) do rprt 
+          get(r.exprs[at], rprt, nothing)
+        end)
+        if !isempty(exprs)
+          
+          binding[prt] = only(unique([expr(bound_vars) for expr in exprs]))
         end 
       end
       return at => binding
   end)
-  return sub_vars(X, comps)
+  sub_vars(X, comps)
 end
 
 """Don't bind variables for things that are not ACSets"""
@@ -260,8 +268,8 @@ function rewrite_match_maps end  # to be implemented for each T
 Perform a rewrite (automatically finding an arbitrary match) and return result.
 """
 function rewrite(r::AbsRule, G; initial=nothing, random=false, kw...)
-  m = get_match(r, G; initial=initial, random)
-  return isnothing(m) ? nothing : rewrite_match(r, m; kw...)
+  m = get_match(r, G; initial, random)
+  isnothing(m) ? nothing : rewrite_match(r, m; kw...)
 end
 
 
@@ -269,27 +277,6 @@ end
 Perform a rewrite (with a supplied match morphism) and return result.
 """
 rewrite_match(r::AbsRule, m; kw...) =
-  codom(get_expr_binding_map(r, m, rewrite_match_maps(r,m; kw...)))
-
-
-# Rewriting function which return the maps, too
-###############################################
-"""    rewrite_full_output(r::Rule, G; initial=Dict(), kw...)
-Perform a rewrite (automatically finding an arbitrary match) and return a tuple:
-1.) the match morphism 2.) all computed data 3.) variable binding morphism
-"""
-function rewrite_full_output(r::AbsRule, G; initial=nothing, random=false,
-                             n=-1, kw...) 
-  T = ruletype(r)
-  ms = get_matches(r, G; initial, random, n)
-  if isempty(ms)
-    return nothing
-  elseif random
-    shuffle!(ms)
-  end
-  m = first(ms)
-  rdata = rewrite_match_maps(r, m; kw...)
-  return (m, rdata, codom(get_expr_binding_map(r, m, get_rmap(T, rdata))))
-end
+  codom(get_expr_binding_map(r, m, rewrite_match_maps(r, m; kw...)))
 
 end # module

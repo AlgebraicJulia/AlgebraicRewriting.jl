@@ -20,6 +20,7 @@ include("Basic.jl")
 include("Conditionals.jl")
 include("RuleApps.jl")
 include("Queries.jl")
+include("Callbacks.jl")
 include("Visuals.jl")
 
 @reexport using .Theories
@@ -31,5 +32,6 @@ include("Visuals.jl")
 @reexport using .Queries
 @reexport using .Eval
 @reexport using .Visuals
+@reexport using .Callbacks
 
 end # module
