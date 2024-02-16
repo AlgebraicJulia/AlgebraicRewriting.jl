@@ -165,14 +165,21 @@ end
 function good_overlap(subobj, h, I_R)
   S = acset_schema(dom(h))
   L = codom(subobj)
-  new_mat = Dict(k=>Set{Int}() for k in types(S))
-  for k in types(S)
-    v = h[k]
-    ϕ, ψ = k ∈ ob(S) ? (identity, identity) : (AttrVar, x-> x isa AttrVar ? x.val : x)
-    for i in ϕ.(parts(dom(h), k))
-      fᵢ = v(i)
-      if fᵢ ∉ collect(I_R[k])
-        push!(new_mat[k], ψ(subobj[k](i)))
+  # Parts of L which are mapped to newly added material via partial map
+  new_mat = Dict(k=>Set{Int}() for k in types(S)) 
+  for k in ob(S)
+    for i in parts(dom(h), k)
+      hᵢ = h[k](i)
+      if hᵢ ∉ collect(I_R[k])
+        push!(new_mat[k], subobj[k](i))
+      end
+    end
+  end
+  for k in attrtypes(S)
+    for i in AttrVar.(parts(dom(h), k))
+      hᵢ = h[k](i)
+      if hᵢ isa AttrVar && subobj[k](i) isa AttrVar && hᵢ.val ∉ collect(I_R[k])
+        push!(new_mat[k], subobj[k](i).val)
       end
     end
   end
