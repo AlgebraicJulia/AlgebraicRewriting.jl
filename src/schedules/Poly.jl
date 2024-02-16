@@ -180,7 +180,7 @@ Base.haskey(t::BTree, xs::Vector{WireVal}) = haskey(t.result_cache, xs)
 
 """Grow a tree and return the result."""
 function (t::BTree)(ks::Vector{WireVal}; kw...)
-  haskey(t, ks) && println("WARNING: REPEAT KEY")
+  haskey(t, ks) && @debug "WARNING: REPEAT KEY"
   old..., new = ks # ks cannot be empty
   isempty(old) || haskey(t, old) || t(old) # recursively compute earlier subsequences
   S = get_state(t, old)

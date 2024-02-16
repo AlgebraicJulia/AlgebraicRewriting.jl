@@ -54,6 +54,43 @@ hset = IncHomSet(ee, [homomorphism(e, tri)], X);
 addition!(hset, 1, omap)
 @test validate(hset)
 
+# Weighted Graph
+const WG′ = WeightedGraph{Bool}
+e, ee = path_graph.(WG′, 2:3)
+e[:weight] = [AttrVar(add_part!(e, :Weight))]
+ee[:weight] = [true, AttrVar(add_part!(ee, :Weight))]
+A = @acset WG′ begin V=3; E=4; Weight=1; 
+  src=[1,1,1,2]; tgt=[2,2,3,3]; weight=[AttrVar(1), true, false, true] 
+end
+A_rule = Rule(id(e), homomorphism(e, A); monic=true)
+
+start = @acset WG′ begin V=3; E=3; src=[1,2,3]; tgt=[2,3,3]; weight=Bool[0,1,0] end
+init_match = homomorphisms(e, start)[2]
+
+#               ⊤  [1]                ⊥   ⊤   
+# Pattern :   • → • → •   ||| Start: • → • → • ↺ ⊥   (there is only one map)
+
+#            [1]        [1],⊤  
+# Addition: • → •   => •  ⇉  •
+#                     ⊥ ↘  ↙ ⊤
+#                         •
+
+# Result of applying the addition to the ⊤ edge of `Start` (there are two maps)
+#                    ⊥  ⊤,⊤   
+#                  • → • ⇉ • ↺ ⊥
+#                     ⊥ ↘ ↙ ⊤
+#                        •
+hset = IncHomSet(ee, [A_rule.R], start);
+rewrite!(hset, A_rule, init_match)
+@test validate(hset)
+expected = @acset WeightedGraph{Bool} begin 
+  V=4; E=6; src=[1,2,2,2,3,3]; tgt=[2,3,3,4,3,4]; weight=Bool[0,1,1,0,0,1]
+end
+@test is_isomorphic(expected, hset.state[])
+
+rewrite!(hset, A_rule)
+@test validate(hset)
+
 ## DDS 
 #-----
 @present SchDDS(FreeSchema) begin X::Ob; Φ::Hom(X,X) end

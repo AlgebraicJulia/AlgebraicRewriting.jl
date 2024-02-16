@@ -3,7 +3,7 @@ module Incremental
 export IncHomSet, IncHomSets, rewrite!, matches
 
 using ..Rewrite
-using ..Rewrite.Utils: get_result, get_rmap, get_pmap
+using ..Rewrite.Utils: get_result, get_rmap, get_pmap, get_expr_binding_map
 using ..CategoricalAlgebra.CSets: invert_iso
 import ..Rewrite: rewrite!
 
@@ -106,21 +106,39 @@ isomorphism from the original ACSet into the colimit apex.
 """
 function connected_acset_components(X::ACSet)
   isempty(X) && return (coproduct([X]), id(X))  # edge case
-  e = elements(X)
-  g = Graph(nparts(e, :El))
-  Ob = e[:nameo]
-  for (s,t) in zip(e[:src], e[:tgt]) # Delta migrate Elements to Graph
-    add_edge!(g, s, t) 
+  S = acset_schema(X)
+  g = Graph()
+  # Part dict maps X indices to graph vertices, part lookup goes other way
+  part_dict, part_lookup = Dict(), Pair{Symbol, Int}[]
+  for o in types(S) 
+    append!(part_lookup, [o=>p for p in parts(X, o)])
+    vs = add_vertices!(g, nparts(X, o))
+    part_dict[o] = Dict(zip(parts(X, o), vs))
   end
+  for (h, s, t) in homs(S)
+    for p in parts(X, s)
+      add_edge!(g, part_dict[s][p], part_dict[t][X[p, h]])
+    end
+  end
+  for (h, s, t) in attrs(S)
+    for p in parts(X, s)
+      fp = X[p, h]
+      if fp isa AttrVar
+        add_edge!(g, part_dict[s][p], part_dict[t][fp.val])
+      end
+    end
+  end
+
   ιs = map(enumerate(connected_components(g))) do (i, cc)
-    d = Dict(o=>Int[] for o in Ob)
+    d = Dict(o=>Int[] for o in types(S))
     for elem in cc
-      o = e[elem, [:πₑ, :nameo]]
-      push!(d[o], findfirst(==(elem), incident(e, e[elem, :πₑ], :πₑ)))
+      (o, idx) = part_lookup[elem]
+      push!(d[o], idx)
     end 
     comp = constructor(X)()
     copy_parts!(comp, X; d...)
-    ACSetTransformation(comp, X; d...)
+    ACSetTransformation(comp, X; Dict(k=>k ∈ ob(S) ? v : AttrVar.(v) 
+                                      for (k, v) in pairs(d))...)
   end |> Multicospan
   cp = coproduct(dom.(ιs))
   (cp, invert_iso(universal(cp, ιs)))
@@ -131,15 +149,14 @@ Find all partial maps from the pattern to the addition, with some restrictions:
 1. Something must be mapped into the newly added material.
 2. Anything in L incident to a part mapped onto newly added material must be 
    mapped to newly added material
-
-
-Pruning with restriction #2 doesn't work for DDS, when matches are not monic.
 """
 function compute_overlaps(L::ACSet, I_R::ACSetTransformation)::Vector{Span}
   overlaps = Span[]
   for subobj in hom.(subobject_graph(L)[2])
-    for h in homomorphisms(dom(subobj), codom(I_R))
-      good_overlap(subobj, h, I_R) && push!(overlaps, Span(subobj, h))
+    abs_subobj = abstract_attributes(dom(subobj))
+    for h in homomorphisms(dom(abs_subobj), codom(I_R))
+      lft = abs_subobj ⋅ subobj
+      good_overlap(lft, h, I_R) && push!(overlaps, Span(lft, h))
     end
   end
   overlaps
@@ -148,11 +165,14 @@ end
 function good_overlap(subobj, h, I_R)
   S = acset_schema(dom(h))
   L = codom(subobj)
-  new_mat = Dict(k=>Set{Int}() for k in ob(S))
-  for (k, v) in pairs(components(h))
-    for (i, fᵢ) in enumerate(collect(v))
+  new_mat = Dict(k=>Set{Int}() for k in types(S))
+  for k in types(S)
+    v = h[k]
+    ϕ, ψ = k ∈ ob(S) ? (identity, identity) : (AttrVar, x-> x isa AttrVar ? x.val : x)
+    for i in ϕ.(parts(dom(h), k))
+      fᵢ = v(i)
       if fᵢ ∉ collect(I_R[k])
-        push!(new_mat[k], subobj[k](i))
+        push!(new_mat[k], ψ(subobj[k](i)))
       end
     end
   end
@@ -189,8 +209,8 @@ function addition!(hset::IncCCHomSet, i::Int, rmap::ACSetTransformation,
   S = acset_schema(hset.pattern)
   old_matches = [m ⋅ update for m in hset.matches]  # Push forward old matches
   old_stuff = Dict(o => setdiff(parts(X,o), collect(rmap[o])) for o in ob(S))
-  seen_constraints = Set() # if match is non-monic, different subobjects can be 
-  for (subL, mapR) in hset.overlaps[i]
+  seen_constraints = Set() # if match is non-monic, different subobjects can be identified
+  for (idx, (subL, mapR)) in enumerate(hset.overlaps[i])
     initial = Dict(map(ob(S)) do o  # initialize based on overlap btw L and R
       o => Dict(map(parts(dom(subL), o)) do idx
         subL[o](idx) => rmap[o](mapR[o](idx))  # make square commute
@@ -200,7 +220,8 @@ function addition!(hset::IncCCHomSet, i::Int, rmap::ACSetTransformation,
       push!(seen_constraints, initial)
       L_image = Dict(o => Set(collect(subL[o])) for o in ob(S))
       boundary = Dict(k => setdiff(parts(L,k), L_image[k]) for k in ob(S))
-      predicates = Dict(o => Dict(pₒ => old_stuff[o] for pₒ in boundary[o]) for o in ob(S))
+      predicates = Dict(o => Dict(pₒ => old_stuff[o] for pₒ in boundary[o]) 
+                        for o in ob(S))
       for h in homomorphisms(L, X; initial, predicates)
         if h ∈ new_matches 
           error("Duplicating work $h") 
@@ -221,16 +242,32 @@ reduced to a subobject. If a match touches upon something which is deleted,
 remove the match. Given X ↩ X′ we are updating Hom(L, X) => Hom(L, X′)
 """
 function deletion!(hset::IncCCHomSet, f::ACSetTransformation)
-  new_matches = Set{ACSetTransformation}()
-  for m in hset.matches
-    m′, f′ = pullback(f, m)
-    if is_monic(f′) && is_epic(f′)
-      updated = force(invert_iso(f′) ⋅ m′)
-      push!(new_matches, updated)
-    end
-  end
+  new_matches = Set{ACSetTransformation}(filter(!isnothing, pull_back.(Ref(f), hset.matches)))
   reset_matches!(hset, new_matches)
   hset.state[] = dom(f)
+end
+
+function pull_back(f::ACSetTransformation, m::ACSetTransformation)::Union{ACSetTransformation, Nothing}
+  L, X′ = dom.([m, f])
+  comps, S = Dict(), acset_schema(L)
+  for o in ob(S)
+    vec = []
+    for i in parts(L, o)
+      pre = preimage(f[o], m[o](i))
+      length(pre) == 1 || return nothing
+      push!(vec, only(pre))
+    end
+    comps[o] = vec
+  end
+  for o in attrtypes(S)
+    comps[o] = map(AttrVar.(parts(L, o))) do i 
+      for (f, c, _) in attrs(S; to=o)
+        inc = incident(L, i, f)
+        isempty(inc) || return X′[comps[c][first(inc)], f]
+      end
+    end
+  end
+  ACSetTransformation(dom(m), dom(f); comps...)
 end
 
 """Use a rewrite rule to induce a deletion followed by an addition"""
@@ -242,8 +279,10 @@ function rewrite!(hset::IncCCHomSet, r::Rule{T}, match::ACSetTransformation) whe
   hset.state[] == codom(match)|| error("Codom mismatch for match $match")
   res = rewrite_match_maps(r, match)
   pl, pr = get_pmap(T, res)
+  x = get_expr_binding_map(r, match, res)
+  pr′, rmap = (pr ⋅ x), (get_rmap(T, res) ⋅ x)
   deletion!(hset, pl)
-  addition!(hset, i, get_rmap(T, res), pr)
+  addition!(hset, i, rmap, pr′)
 end
 
 """Perform a pushout addition given a match morphism from the domain."""
