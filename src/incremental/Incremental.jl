@@ -9,6 +9,7 @@ import ..Rewrite: rewrite!
 
 using StructEquality
 using Catlab
+import Catlab: universal
 using Catlab.CategoricalAlgebra.CSets: ACSetColimit
 using Catlab.CategoricalAlgebra.HomSearch: total_parts
 
@@ -54,15 +55,19 @@ struct IncCCHomSet <: IncHomSet
   pattern::ACSet
   additions::Vector{ACSetTransformation}
   overlaps::Vector{Vector{Span}}
-  matches::Set{ACSetTransformation}
+  match_vect::Vector{Vector{ACSetTransformation}}
   state::Ref{<:ACSet}
   function IncCCHomSet(L, as, X)
     all(is_monic, as) || error("Nonmonic addition") # TODO: relax this condition
-    new(L, as, compute_overlaps.(Ref(L), as), Set(homomorphisms(L, X)), Ref(X))
+    new(L, as, compute_overlaps.(Ref(L), as), [homomorphisms(L, X)], Ref(X))
   end
 end
 
-matches(h::IncCCHomSet) = h.matches
+Base.length(i::IncCCHomSet) = length(match_vect(i))
+Base.getindex(i::IncCCHomSet, ij::Pair{Int,Int}) = i.match_vect[ij[1]][ij[2]]
+
+match_vect(h::IncCCHomSet) = h.match_vect
+matches(h::IncCCHomSet) = vcat(match_vect(h)...)
 state(h::IncCCHomSet) = h.state[]
 additions(h::IncCCHomSet) = h.additions
 
@@ -73,23 +78,37 @@ end
 
 """An incremental Hom Set for a pattern made of distinct connected components"""
 struct IncSumHomSet <: IncHomSet
-  pattern::ACSet 
+  pattern::ACSet
   coprod::ACSetColimit
   iso::ACSetTransformation # apex(coprod) ≅ pattern
   ihs::Vector{IncCCHomSet}
 end
 
-additions(h::IncSumHomSet) = additions(first(h.ihs))
-state(h::IncSumHomSet) = state(first(h.ihs))
+"""WARNING one might also expect length to refer to the length of ihs"""
+Base.length(h::IncSumHomSet) = length(first(h))
+
+Base.getindex(h::IncSumHomSet, idxs::Vector{Pair{Int,Int}}) =
+  universal(h, [hset[idx] for (hset, idx) in zip(h.ihs, idxs)])
+
+
+Base.first(h::IncSumHomSet) = first(h.ihs)
+additions(h::IncSumHomSet) = additions(first(h))
+state(h::IncSumHomSet) = state(first(h))
 
 """Universal property of coprod: induce map from pattern, given component maps"""
-matches(h::IncSumHomSet) = map(Iterators.product(matches.(h.ihs)...)) do comps
-  h.iso ⋅ universal(h.coprod, Multicospan(collect(comps)))
-end
+matches(h::IncSumHomSet) = universal.(Ref(h), collect.(Iterators.product(matches.(h.ihs)...)))
 
-function IncHomSet(L::ACSet, additions::Vector{<:ACSetTransformation}, state::ACSet)
+"""Apply universal property and the isomorphism"""
+universal(h::IncSumHomSet, comps::Vector{<:ACSetTransformation}) = 
+  h.iso ⋅ universal(h.coprod, Multicospan(collect(comps)))
+
+"""
+`single` keyword forces the pattern to be treated as a single connected 
+component, even if it's not
+"""
+function IncHomSet(L::ACSet, additions::Vector{<:ACSetTransformation}, state::ACSet; single=false)
   coprod, iso = connected_acset_components(L)
-  if length(coprod) == 1
+  if single || length(coprod) == 1
     IncCCHomSet(L, additions, state)
   else 
     ihs = IncCCHomSet.(dom.(coprod.cocone), Ref(additions), Ref(state))
@@ -162,7 +181,8 @@ function compute_overlaps(L::ACSet, I_R::ACSetTransformation)::Vector{Span}
   overlaps
 end
 
-function good_overlap(subobj, h, I_R)
+function good_overlap(subobj::ACSetTransformation, h::ACSetTransformation, 
+                      I_R::ACSetTransformation)
   S = acset_schema(dom(h))
   L = codom(subobj)
   # Parts of L which are mapped to newly added material via partial map
@@ -214,7 +234,10 @@ function addition!(hset::IncCCHomSet, i::Int, rmap::ACSetTransformation,
                    update::ACSetTransformation)
   X, L, new_matches = codom(rmap), hset.pattern, []
   S = acset_schema(hset.pattern)
-  old_matches = [m ⋅ update for m in hset.matches]  # Push forward old matches
+  # Push forward old matches
+  for idx in 1:length(hset)
+    hset.match_vect[idx] = [m ⋅ update for m in hset.match_vect[idx]]
+  end
   old_stuff = Dict(o => setdiff(parts(X,o), collect(rmap[o])) for o in ob(S))
   seen_constraints = Set() # if match is non-monic, different subobjects can be identified
   for (idx, (subL, mapR)) in enumerate(hset.overlaps[i])
@@ -239,7 +262,7 @@ function addition!(hset::IncCCHomSet, i::Int, rmap::ACSetTransformation,
       end
     end
   end
-  reset_matches!(hset, old_matches, new_matches)
+  push!(hset.match_vect, new_matches)
   hset.state[] = X
 end
 
@@ -249,9 +272,17 @@ reduced to a subobject. If a match touches upon something which is deleted,
 remove the match. Given X ↩ X′ we are updating Hom(L, X) => Hom(L, X′)
 """
 function deletion!(hset::IncCCHomSet, f::ACSetTransformation)
-  new_matches = Set{ACSetTransformation}(filter(!isnothing, pull_back.(Ref(f), hset.matches)))
-  reset_matches!(hset, new_matches)
+  deleted = Pair{Int,Int}[]
+  for idx in 1:length(hset)
+    ms = hset.match_vect[idx] 
+    new_vec = []
+    for (idx′, m) in enumerate(pull_back.(Ref(f), ms))
+      isnothing(m) ? push!(deleted, idx=>idx′) : push!(new_vec, m)
+    end
+    hset.match_vect[idx] = new_vec
+  end
   hset.state[] = dom(f)
+  deleted
 end
 
 function pull_back(f::ACSetTransformation, m::ACSetTransformation)::Union{ACSetTransformation, Nothing}
@@ -311,19 +342,20 @@ rewrite!(hset::IncSumHomSet, r::Rule, match::ACSetTransformation) =
 
 """Determine if an IncCCHomSet is invalid. Throw error if so."""
 function validate(hset::IncCCHomSet)::Bool
-  all(is_natural, hset.matches) || error("Unnatural")
-  all(==(hset.pattern), dom.(hset.matches)) || error("Bad dom")
-  all(==(hset.state[]), codom.(hset.matches)) || error("Bad codom")
+  ms = matches(hset)
+  all(is_natural, ms) || error("Unnatural")
+  all(==(hset.pattern), dom.(ms)) || error("Bad dom")
+  all(==(hset.state[]), codom.(ms)) || error("Bad codom")
   ref = IncHomSet(hset.pattern, hset.additions, hset.state[])
-  xtra = setdiff(hset.matches, ref.matches)
-  missin = setdiff(ref.matches, hset.matches)
+  xtra = setdiff(ms, match_vect(ref)[1])
+  missin = setdiff(match_vect(ref)[1], ms)
   isempty(xtra ∪ missin) || error("\n\textra $xtra \n\tmissing $missin")
 end
 
 function validate(hset::IncSumHomSet)::Bool
-  fst = first(hset.ihs)
-  all(==(additions(fst)), additions.(hset.ihs)) || error("Addns don't agree")
-  all(==(state(fst)), state.(hset.ihs)) || error("States don't agree")
+  allequal(additions.(hset.ihs)) || error("Addns don't agree")
+  allequal(state.(hset.ihs)) || error("States don't agree")
+  allequal(length.(hset.ihs)) || error("Lengths don't agree")
   codom(hset.iso) == apex(hset.coprod) || error("Bad iso codomain")
   dom(hset.iso) == hset.pattern || error("Bad iso domain")
   is_epic(hset.iso) && is_monic(hset.iso) || error("Iso not an iso")

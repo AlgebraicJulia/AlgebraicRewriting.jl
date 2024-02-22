@@ -27,7 +27,7 @@ A_rule = Rule(id(e), homomorphism(e, A); monic=true)
 
 # Empty edge case
 hset = IncHomSet(Graph(), [A_rule.R], Graph(3)); 
-@test length(hset.matches) == 1
+@test length(matches(hset)) == 1
 
 # Single connected component pattern
 start = @acset Graph begin V=3; E=3; src=[1,2,3]; tgt=[2,3,3] end
