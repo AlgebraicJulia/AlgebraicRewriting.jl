@@ -23,6 +23,7 @@ matches(::IncHomSet) an iterator of morphisms in the hom set
 """
 abstract type IncHomSet end
 
+matches(h::IncHomSet) = [h[k] for k in keys(h)]
 pattern(h::IncHomSet) = h.pattern
 
 """
@@ -76,7 +77,6 @@ Base.getindex(i::IncCCHomSet, idx::Int) = i[i.key_vect[idx]]
 Base.keys(h::IncCCHomSet) = keys(h.key_dict)
 
 match_vect(h::IncCCHomSet) = h.match_vect
-matches(h::IncCCHomSet) = [h[k] for k in keys(h)]
 state(h::IncCCHomSet) = h.state[]
 additions(h::IncCCHomSet) = h.additions
 
@@ -91,6 +91,8 @@ struct IncSumHomSet <: IncHomSet
   coprod::ACSetColimit
   iso::ACSetTransformation # apex(coprod) ≅ pattern
   ihs::Vector{IncCCHomSet}
+  key_vect::Vector{Vector{Pair{Int,Int}}}
+  key_dict::Dict{Vector{Pair{Int,Int}}, Int}
 end
 
 """WARNING one might also expect length to refer to the length of ihs"""
@@ -100,7 +102,8 @@ Base.getindex(h::IncSumHomSet, idxs::Vector{Pair{Int,Int}}) =
   universal(h, [hset[idx] for (hset, idx) in zip(h.ihs, idxs)])
 
 Base.first(h::IncSumHomSet) = first(h.ihs)
-Base.keys(h::IncSumHomSet) = collect.(Iterators.product(keys.(h.ihs)))
+Base.keys(h::IncSumHomSet) = 
+  vec(collect.(collect(Iterators.product(keys.(h.ihs)...))))
 
 additions(h::IncSumHomSet) = additions(first(h))
 state(h::IncSumHomSet) = state(first(h))
@@ -122,7 +125,9 @@ function IncHomSet(L::ACSet, additions::Vector{<:ACSetTransformation}, state::AC
     IncCCHomSet(L, additions, state)
   else 
     ihs = IncCCHomSet.(dom.(coprod.cocone), Ref(additions), Ref(state))
-    IncSumHomSet(L, coprod, iso, ihs)
+    key_vect = Vector{Pair{Int,Int}}[]
+    key_dict = Dict{Vector{Pair{Int,Int}}, Int}()
+    IncSumHomSet(L, coprod, iso, ihs, key_vect, key_dict)
   end
 end
 

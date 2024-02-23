@@ -54,6 +54,15 @@ hset = IncHomSet(ee, [homomorphism(e, tri)], X);
 addition!(hset, 1, omap)
 @test validate(hset)
 
+# Multiple connected components 
+hset = IncHomSet(Graph(1) ⊕ e, [A_rule.R], start);
+rewrite!(hset, A_rule, homomorphisms(e, start)[2])
+@test validate(hset)
+rewrite!(hset, A_rule)
+@test validate(hset)
+@test length(keys(hset)) == 45
+
+
 # Weighted Graph
 const WG′ = WeightedGraph{Bool}
 e, ee = path_graph.(WG′, 2:3)
@@ -90,6 +99,7 @@ end
 
 rewrite!(hset, A_rule)
 @test validate(hset)
+
 
 ## DDS 
 #-----
