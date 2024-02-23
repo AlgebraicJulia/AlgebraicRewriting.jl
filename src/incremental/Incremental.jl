@@ -55,19 +55,28 @@ struct IncCCHomSet <: IncHomSet
   pattern::ACSet
   additions::Vector{ACSetTransformation}
   overlaps::Vector{Vector{Span}}
-  match_vect::Vector{Vector{ACSetTransformation}}
+  match_vect::Vector{Dict{Int, ACSetTransformation}}
+  key_vect::Vector{Pair{Int,Int}}
+  key_dict::Dict{Pair{Int,Int}, Int}
   state::Ref{<:ACSet}
   function IncCCHomSet(L, as, X)
     all(is_monic, as) || error("Nonmonic addition") # TODO: relax this condition
-    new(L, as, compute_overlaps.(Ref(L), as), [homomorphisms(L, X)], Ref(X))
+    homs = homomorphisms(L, X)
+    n = length(homs)
+    key_vect = Pair{Int,Int}[1 => i for i in 1:n]
+    key_dict = Dict{Pair{Int,Int},Int}((1 => i) => i for i in 1:n)
+    new(L, as, compute_overlaps.(Ref(L), as), [Dict(enumerate(homs))], 
+        key_vect, key_dict, Ref(X))
   end
 end
 
 Base.length(i::IncCCHomSet) = length(match_vect(i))
 Base.getindex(i::IncCCHomSet, ij::Pair{Int,Int}) = i.match_vect[ij[1]][ij[2]]
+Base.getindex(i::IncCCHomSet, idx::Int) = i[i.key_vect[idx]]
+Base.keys(h::IncCCHomSet) = keys(h.key_dict)
 
 match_vect(h::IncCCHomSet) = h.match_vect
-matches(h::IncCCHomSet) = vcat(match_vect(h)...)
+matches(h::IncCCHomSet) = [h[k] for k in keys(h)]
 state(h::IncCCHomSet) = h.state[]
 additions(h::IncCCHomSet) = h.additions
 
@@ -90,8 +99,9 @@ Base.length(h::IncSumHomSet) = length(first(h))
 Base.getindex(h::IncSumHomSet, idxs::Vector{Pair{Int,Int}}) =
   universal(h, [hset[idx] for (hset, idx) in zip(h.ihs, idxs)])
 
-
 Base.first(h::IncSumHomSet) = first(h.ihs)
+Base.keys(h::IncSumHomSet) = collect.(Iterators.product(keys.(h.ihs)))
+
 additions(h::IncSumHomSet) = additions(first(h))
 state(h::IncSumHomSet) = state(first(h))
 
@@ -232,12 +242,15 @@ overlap which has already been calculated between L and Rᵢ.
 """
 function addition!(hset::IncCCHomSet, i::Int, rmap::ACSetTransformation, 
                    update::ACSetTransformation)
-  X, L, new_matches = codom(rmap), hset.pattern, []
+  X, L, new_matches, new_keys = codom(rmap), hset.pattern, Dict{Int, ACSetTransformation}(), Pair{Int,Int}[]
   S = acset_schema(hset.pattern)
   # Push forward old matches
   for idx in 1:length(hset)
-    hset.match_vect[idx] = [m ⋅ update for m in hset.match_vect[idx]]
+    hset.match_vect[idx] = Dict(
+      k => m ⋅ update for (k, m) in pairs(hset.match_vect[idx]))
   end
+
+  push!(hset.match_vect, new_matches)
   old_stuff = Dict(o => setdiff(parts(X,o), collect(rmap[o])) for o in ob(S))
   seen_constraints = Set() # if match is non-monic, different subobjects can be identified
   for (idx, (subL, mapR)) in enumerate(hset.overlaps[i])
@@ -253,17 +266,21 @@ function addition!(hset::IncCCHomSet, i::Int, rmap::ACSetTransformation,
       predicates = Dict(o => Dict(pₒ => old_stuff[o] for pₒ in boundary[o]) 
                         for o in ob(S))
       for h in homomorphisms(L, X; initial, predicates)
-        if h ∈ new_matches 
+        if h ∈ values(new_matches)
           error("Duplicating work $h") 
         else 
-          push!(new_matches, h) # @info "NEW from $subL\n$mapR"
-
+          @info "NEW from $subL\n$mapR"
+          new_key = length(hset) => length(new_keys)+1
+          push!(hset.key_vect, new_key)
+          push!(new_keys, new_key)
+          hset.key_dict[new_key] = length(hset.key_vect)
+          new_matches[length(new_keys)] = h 
         end
       end
     end
   end
-  push!(hset.match_vect, new_matches)
   hset.state[] = X
+  new_keys
 end
 
 """
@@ -273,13 +290,17 @@ remove the match. Given X ↩ X′ we are updating Hom(L, X) => Hom(L, X′)
 """
 function deletion!(hset::IncCCHomSet, f::ACSetTransformation)
   deleted = Pair{Int,Int}[]
-  for idx in 1:length(hset)
-    ms = hset.match_vect[idx] 
-    new_vec = []
-    for (idx′, m) in enumerate(pull_back.(Ref(f), ms))
-      isnothing(m) ? push!(deleted, idx=>idx′) : push!(new_vec, m)
+  for (idx, dic) in enumerate(hset.match_vect)
+    for (idx′, m) in collect(dic)
+      m′ = pull_back(f, m)
+      if isnothing(m′)
+        delete!(dic, idx′)
+        delete!(hset.key_dict, idx=>idx′)
+        push!(deleted, idx=>idx′)
+      else 
+        dic[idx] = m
+      end
     end
-    hset.match_vect[idx] = new_vec
   end
   hset.state[] = dom(f)
   deleted
@@ -347,8 +368,8 @@ function validate(hset::IncCCHomSet)::Bool
   all(==(hset.pattern), dom.(ms)) || error("Bad dom")
   all(==(hset.state[]), codom.(ms)) || error("Bad codom")
   ref = IncHomSet(hset.pattern, hset.additions, hset.state[])
-  xtra = setdiff(ms, match_vect(ref)[1])
-  missin = setdiff(match_vect(ref)[1], ms)
+  xtra = setdiff(ms, values(first(match_vect(ref))))
+  missin = setdiff(values(first(match_vect(ref))), ms)
   isempty(xtra ∪ missin) || error("\n\textra $xtra \n\tmissing $missin")
 end
 
