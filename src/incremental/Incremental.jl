@@ -242,13 +242,15 @@ overlap which has already been calculated between L and Rᵢ.
 """
 function addition!(hset::IncCCHomSet, i::Int, rmap::ACSetTransformation, 
                    update::ACSetTransformation)
-  X, L, new_matches, new_keys = codom(rmap), hset.pattern, Dict{Int, ACSetTransformation}(), Pair{Int,Int}[]
   S = acset_schema(hset.pattern)
   # Push forward old matches
   for idx in 1:length(hset)
     hset.match_vect[idx] = Dict(
       k => m ⋅ update for (k, m) in pairs(hset.match_vect[idx]))
   end
+
+  # Find newly-introduced matches
+  X, L, new_matches, new_keys = codom(rmap), hset.pattern, Dict{Int, ACSetTransformation}(), Pair{Int,Int}[]
 
   push!(hset.match_vect, new_matches)
   old_stuff = Dict(o => setdiff(parts(X,o), collect(rmap[o])) for o in ob(S))
@@ -269,7 +271,7 @@ function addition!(hset::IncCCHomSet, i::Int, rmap::ACSetTransformation,
         if h ∈ values(new_matches)
           error("Duplicating work $h") 
         else 
-          @info "NEW from $subL\n$mapR"
+          # @info "NEW from $subL\n$mapR"
           new_key = length(hset) => length(new_keys)+1
           push!(hset.key_vect, new_key)
           push!(new_keys, new_key)
@@ -298,7 +300,7 @@ function deletion!(hset::IncCCHomSet, f::ACSetTransformation)
         delete!(hset.key_dict, idx=>idx′)
         push!(deleted, idx=>idx′)
       else 
-        dic[idx] = m
+        dic[idx′] = m′
       end
     end
   end
