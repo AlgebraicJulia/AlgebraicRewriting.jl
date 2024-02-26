@@ -75,6 +75,11 @@ struct IncCCHomSet <: IncHomSet
   end
 end
 
+"""
+How many additions we've seen so far (including the initialization of the hom 
+set). This could be confused with giving the total number of matches, which is 
+instead `length(keys(hset))`
+"""
 Base.length(i::IncCCHomSet) = length(match_vect(i))
 Base.getindex(i::IncCCHomSet, ij::Pair{Int,Int}) = i.match_vect[ij[1]][ij[2]]
 Base.keys(h::IncHomSet) = keys(key_dict(h))
@@ -83,11 +88,6 @@ Base.haskey(h::IncCCHomSet, k::Pair{Int,Int}) = haskey(key_dict(h), k)
 match_vect(h::IncCCHomSet) = h.match_vect
 state(h::IncCCHomSet) = h.state[]
 additions(h::IncCCHomSet) = h.additions
-
-function reset_matches!(hset::IncCCHomSet, xs...)
-  empty!(hset.matches)
-  union!(hset.matches, xs...)
-end
 
 """An incremental Hom Set for a pattern made of distinct connected components"""
 struct IncSumHomSet <: IncHomSet
@@ -99,7 +99,10 @@ struct IncSumHomSet <: IncHomSet
   key_dict::Dict{Vector{Pair{Int,Int}}, Int}
 end
 
-"""WARNING one might also expect length to refer to the length of ihs"""
+"""
+How many additions we've seen so far (including the initialization of the hom 
+set). Could be confused with `length(h.ihs)` or `length(keys(h))`
+"""
 Base.length(h::IncSumHomSet) = length(first(h))
 
 Base.getindex(h::IncSumHomSet, idxs::Vector{Pair{Int,Int}}) =
@@ -255,7 +258,7 @@ Returns the 'keys' of the added matches.
 """
 function addition!(hset::IncCCHomSet, i::Int, rmap::ACSetTransformation, 
                    update::ACSetTransformation)
-  S = acset_schema(hset.pattern)
+  S = acset_schema(pattern(hset))
   # Push forward old matches
   for idx in 1:length(hset)
     hset.match_vect[idx] = Dict(
@@ -263,7 +266,7 @@ function addition!(hset::IncCCHomSet, i::Int, rmap::ACSetTransformation,
   end
 
   # Find newly-introduced matches
-  X, L, new_matches, new_keys = codom(rmap), hset.pattern, Dict{Int, ACSetTransformation}(), Pair{Int,Int}[]
+  X, L, new_matches, new_keys = codom(rmap), pattern(hset), Dict{Int, ACSetTransformation}(), Pair{Int,Int}[]
 
   push!(hset.match_vect, new_matches)
   old_stuff = Dict(o => setdiff(parts(X,o), collect(rmap[o])) for o in ob(S))
@@ -410,9 +413,9 @@ end
 function validate(hset::IncCCHomSet)::Bool
   ms = matches(hset)
   all(is_natural, ms) || error("Unnatural")
-  all(==(hset.pattern), dom.(ms)) || error("Bad dom")
+  all(==(pattern(hset)), dom.(ms)) || error("Bad dom")
   all(==(state(hset)), codom.(ms)) || error("Bad codom")
-  ref = IncHomSet(hset.pattern, additions(hset), state(hset))
+  ref = IncHomSet(pattern(hset), additions(hset), state(hset))
   xtra = setdiff(ms, values(first(match_vect(ref))))
   missin = setdiff(values(first(match_vect(ref))), ms)
   isempty(xtra ∪ missin) || error("\n\textra $xtra \n\tmissing $missin")
@@ -423,11 +426,11 @@ function validate(hset::IncSumHomSet)::Bool
   allequal(state.(hset.ihs)) || error("States don't agree")
   allequal(length.(hset.ihs)) || error("Lengths don't agree")
   codom(hset.iso) == apex(hset.coprod) || error("Bad iso codomain")
-  dom(hset.iso) == hset.pattern || error("Bad iso domain")
+  dom(hset.iso) == pattern(hset) || error("Bad iso domain")
   is_epic(hset.iso) && is_monic(hset.iso) || error("Iso not an iso")
   length(hset.ihs) == length(hset.coprod) || error("len(IHS) != len(CCS)")
   for (i, (h, hs)) in enumerate(zip(hset.coprod, hset.ihs))
-    dom(h) == hs.pattern || error("Sub-IncHomSet $i mismatch pattern")
+    dom(h) == pattern(hs) || error("Sub-IncHomSet $i mismatch pattern")
   end
   all(validate, hset.ihs) || error("Unnatural component IncrementalHomSet")
 end
