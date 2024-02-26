@@ -52,7 +52,7 @@ and purported new agent. (the new agent is the first argument to the constraint)
     Query(n,sa,a,ret;constraint=constraint)
   """ 
   Span Aₒ<-•->Aₙ relates old agent shape to new agent shape, such that the 
-  new agent Aₙ->X makes the square commute. If constraint is nontrivial, this 
+  new agent Aₙ->X makes the square commute. If `constraint` is nontrivial, this 
   constraint is added to it.
 
        rgt₂
@@ -63,7 +63,7 @@ and purported new agent. (the new agent is the first argument to the constraint)
   """
   function Query(a::Span, n::Symbol=:Query, ret=nothing; constraint=Trivial)
     in_shape, agent_shape = codom.([left(a),right(a)])
-    cg = @acset CGraph begin V=4; E=4; Elabel=1; src=[1,1,2,3]; tgt=[2,3,4,4]
+    cg = @acset CGraph begin V=4; E=4; src=[1,1,2,3]; tgt=[2,3,4,4]
       vlabel=[apex(a), in_shape, agent_shape, nothing]
       elabel=[a...,2,1]
     end
