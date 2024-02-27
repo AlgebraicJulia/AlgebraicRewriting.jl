@@ -249,20 +249,30 @@ end
 s_fwd_l = @acset_colim yLV begin
   e::E
   s::Sheep
+  d::Dir
   sheep_loc(s) == src(e)
+  dir(e) == d
+  sheep_dir(s) == d
 end
 s_fwd_i = @acset_colim yLV begin
-  e::E
+  e::E; d::Dir;  dir(e) == d
+
 end
 s_fwd_r = @acset_colim yLV begin
   e::E
   s::Sheep
+  d::Dir
   sheep_loc(s) == tgt(e)
+  dir(e) == d
+  sheep_dir(s) == d
 end
 s_n = @acset_colim yLV begin
   e::E
   s::Sheep
+  d::Dir
   sheep_loc(s) == src(e)
+  dir(e) == d
+  sheep_dir(s) == d
   sheep_eng(s) == 0
 end
 
@@ -286,6 +296,8 @@ begin # test
     sheep_loc(s) == tgt(e1)
     tgt(e1) == src(e2)
     sheep_dir(s) == :N
+    dir(e1) == :N
+    dir(e2) == :N
     sheep_eng(s) == 10
   end
   expected = @acset_colim yLV begin
@@ -294,6 +306,8 @@ begin # test
     sheep_loc(s) == tgt(e2)
     tgt(e1) == src(e2)
     sheep_dir(s) == :N
+    dir(e1) == :N
+    dir(e2) == :N
     sheep_eng(s) == 9
   end
   @test is_isomorphic(expected, rewrite(sheep_fwd_rule, ex))
