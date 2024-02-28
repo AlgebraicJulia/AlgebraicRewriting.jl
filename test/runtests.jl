@@ -9,8 +9,6 @@ using Luxor
 using DataMigrations
 @test length(methods(Rule)) > 2
 
-
-
 # Demos
 #######
 
@@ -21,7 +19,6 @@ end
 @testset "Game of Life" begin
   include("../docs/literate/game_of_life.jl")
 end
-
 
 # Background 
 ############
@@ -48,6 +45,7 @@ end
 
 # Rewriting flavors
 ###################
+
 @testset "DPO" begin
   include("rewrite/DPO.jl")
 end
@@ -75,7 +73,6 @@ end
 @testset "Inplace" begin
   include("rewrite/Inplace.jl")
 end
-
 
 # Schedules 
 ##########
