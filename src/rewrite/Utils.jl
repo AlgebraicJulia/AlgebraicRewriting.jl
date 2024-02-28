@@ -87,7 +87,8 @@ condition(s)
   end
 end
 
-Rule(l, r; kw...) = Rule{:DPO}(l, r; kw...)
+Rule(X::ACSet; kw...) = Rule(id(X), id(X); kw...) # only changing attributes
+Rule(l, r; kw...) = Rule{:DPO}(l, r; kw...) # Assume DPO by default
 ruletype(::Rule{T}) where T = T
 left(r::Rule{T}) where T = r.L
 right(r::Rule{T}) where T = r.R
