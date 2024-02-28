@@ -283,7 +283,7 @@ output wire).
 
 # Give symbolic names to the rewrite rules from before
 rules = [:Birth => Birth, :Persist => Persist, :ClearCurr => ClearCurr,
-  :ClearNext => ClearNext, :CopyNext => CopyNext]
+  :ClearNext => ClearNext, :CopyNext => CopyNext];
 
 #=
 All rules have interface of a single distinguished cell, i.e. they are executed 
