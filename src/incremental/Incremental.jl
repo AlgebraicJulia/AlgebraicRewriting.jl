@@ -3,12 +3,13 @@ module Incremental
 export IncHomSet, IncHomSets, rewrite!, matches
 
 using ..Rewrite
-using ..Rewrite.Utils: get_result, get_rmap, get_pmap
+using ..Rewrite.Utils: get_result, get_rmap, get_pmap, get_expr_binding_map
 using ..CategoricalAlgebra.CSets: invert_iso
 import ..Rewrite: rewrite!
 
 using StructEquality
 using Catlab
+import Catlab: universal
 using Catlab.CategoricalAlgebra.CSets: ACSetColimit
 using Catlab.CategoricalAlgebra.HomSearch: total_parts
 
@@ -22,7 +23,12 @@ matches(::IncHomSet) an iterator of morphisms in the hom set
 """
 abstract type IncHomSet end
 
+matches(h::IncHomSet) = [h[k] for k in keys(h)]
 pattern(h::IncHomSet) = h.pattern
+key_vect(h::IncHomSet) = h.key_vect 
+key_dict(h::IncHomSet) = h.key_dict 
+Base.getindex(i::IncHomSet, idx::Int)::ACSetTransformation = i[key_vect(i)[idx]]
+Base.delete!(i::IncHomSet, k) = delete!(key_dict(i), k)
 
 """
 A hom-set, `matches`, `pattern` -> `state`, which is incrementally updated with 
@@ -54,46 +60,83 @@ struct IncCCHomSet <: IncHomSet
   pattern::ACSet
   additions::Vector{ACSetTransformation}
   overlaps::Vector{Vector{Span}}
-  matches::Set{ACSetTransformation}
+  match_vect::Vector{Dict{Int, ACSetTransformation}}
+  key_vect::Vector{Pair{Int,Int}}
+  key_dict::Dict{Pair{Int,Int}, Int}
   state::Ref{<:ACSet}
   function IncCCHomSet(L, as, X)
     all(is_monic, as) || error("Nonmonic addition") # TODO: relax this condition
-    new(L, as, compute_overlaps.(Ref(L), as), Set(homomorphisms(L, X)), Ref(X))
+    homs = homomorphisms(L, X)
+    n = length(homs)
+    key_vect = Pair{Int,Int}[1 => i for i in 1:n]
+    key_dict = Dict{Pair{Int,Int},Int}((1 => i) => i for i in 1:n)
+    new(L, as, compute_overlaps.(Ref(L), as), [Dict(enumerate(homs))], 
+        key_vect, key_dict, Ref(X))
   end
 end
 
-matches(h::IncCCHomSet) = h.matches
+"""
+How many additions we've seen so far (including the initialization of the hom 
+set). This could be confused with giving the total number of matches, which is 
+instead `length(keys(hset))`
+"""
+Base.length(i::IncCCHomSet) = length(match_vect(i))
+Base.getindex(i::IncCCHomSet, ij::Pair{Int,Int}) = i.match_vect[ij[1]][ij[2]]
+Base.keys(h::IncHomSet) = keys(key_dict(h))
+Base.haskey(h::IncCCHomSet, k::Pair{Int,Int}) = haskey(key_dict(h), k)
+
+match_vect(h::IncCCHomSet) = h.match_vect
 state(h::IncCCHomSet) = h.state[]
 additions(h::IncCCHomSet) = h.additions
 
-function reset_matches!(hset::IncCCHomSet, xs...)
-  empty!(hset.matches)
-  union!(hset.matches, xs...)
-end
-
 """An incremental Hom Set for a pattern made of distinct connected components"""
 struct IncSumHomSet <: IncHomSet
-  pattern::ACSet 
+  pattern::ACSet
   coprod::ACSetColimit
   iso::ACSetTransformation # apex(coprod) ≅ pattern
   ihs::Vector{IncCCHomSet}
+  key_vect::Vector{Vector{Pair{Int,Int}}}
+  key_dict::Dict{Vector{Pair{Int,Int}}, Int}
 end
 
-additions(h::IncSumHomSet) = additions(first(h.ihs))
-state(h::IncSumHomSet) = state(first(h.ihs))
+"""
+How many additions we've seen so far (including the initialization of the hom 
+set). Could be confused with `length(h.ihs)` or `length(keys(h))`
+"""
+Base.length(h::IncSumHomSet) = length(first(h))
+
+Base.getindex(h::IncSumHomSet, idxs::Vector{Pair{Int,Int}}) =
+  universal(h, [hset[idx] for (hset, idx) in zip(h.ihs, idxs)])
+
+Base.first(h::IncSumHomSet) = first(h.ihs)
+
+Base.haskey(h::IncSumHomSet, ks::Vector{Pair{Int,Int}}) = all(zip(ks, h.ihs)) do (k, ihs)
+  haskey(ihs, k)
+end
+
+additions(h::IncSumHomSet) = additions(first(h))
+state(h::IncSumHomSet) = state(first(h))
 
 """Universal property of coprod: induce map from pattern, given component maps"""
-matches(h::IncSumHomSet) = map(Iterators.product(matches.(h.ihs)...)) do comps
-  h.iso ⋅ universal(h.coprod, Multicospan(collect(comps)))
-end
+matches(h::IncSumHomSet) = universal.(Ref(h), collect.(Iterators.product(matches.(h.ihs)...)))
 
-function IncHomSet(L::ACSet, additions::Vector{<:ACSetTransformation}, state::ACSet)
+"""Apply universal property and the isomorphism"""
+universal(h::IncSumHomSet, comps::Vector{<:ACSetTransformation}) = 
+  h.iso ⋅ universal(h.coprod, Multicospan(collect(comps)))
+
+"""
+`single` keyword forces the pattern to be treated as a single connected 
+component, even if it's not
+"""
+function IncHomSet(L::ACSet, additions::Vector{<:ACSetTransformation}, state::ACSet; single=false)
   coprod, iso = connected_acset_components(L)
-  if length(coprod) == 1
+  if single || length(coprod) == 1
     IncCCHomSet(L, additions, state)
   else 
     ihs = IncCCHomSet.(dom.(coprod.cocone), Ref(additions), Ref(state))
-    IncSumHomSet(L, coprod, iso, ihs)
+    key_vect = sort(vec(collect.(collect(Iterators.product(keys.(ihs)...)))))
+    key_dict = Dict(v => k for (k, v) in enumerate(key_vect))
+    IncSumHomSet(L, coprod, iso, ihs, key_vect, key_dict)
   end
 end
 
@@ -106,21 +149,39 @@ isomorphism from the original ACSet into the colimit apex.
 """
 function connected_acset_components(X::ACSet)
   isempty(X) && return (coproduct([X]), id(X))  # edge case
-  e = elements(X)
-  g = Graph(nparts(e, :El))
-  Ob = e[:nameo]
-  for (s,t) in zip(e[:src], e[:tgt]) # Delta migrate Elements to Graph
-    add_edge!(g, s, t) 
+  S = acset_schema(X)
+  g = Graph()
+  # Part dict maps X indices to graph vertices, part lookup goes other way
+  part_dict, part_lookup = Dict(), Pair{Symbol, Int}[]
+  for o in types(S) 
+    append!(part_lookup, [o => p for p in parts(X, o)])
+    vs = add_vertices!(g, nparts(X, o))
+    part_dict[o] = Dict(zip(parts(X, o), vs))
   end
+  for (h, s, t) in homs(S)
+    for p in parts(X, s)
+      add_edge!(g, part_dict[s][p], part_dict[t][X[p, h]])
+    end
+  end
+  for (h, s, t) in attrs(S)
+    for p in parts(X, s)
+      fp = X[p, h]
+      if fp isa AttrVar
+        add_edge!(g, part_dict[s][p], part_dict[t][fp.val])
+      end
+    end
+  end
+
   ιs = map(enumerate(connected_components(g))) do (i, cc)
-    d = Dict(o=>Int[] for o in Ob)
+    d = Dict(o=>Int[] for o in types(S))
     for elem in cc
-      o = e[elem, [:πₑ, :nameo]]
-      push!(d[o], findfirst(==(elem), incident(e, e[elem, :πₑ], :πₑ)))
+      (o, idx) = part_lookup[elem]
+      push!(d[o], idx)
     end 
     comp = constructor(X)()
     copy_parts!(comp, X; d...)
-    ACSetTransformation(comp, X; d...)
+    ACSetTransformation(comp, X; Dict(k=>k ∈ ob(S) ? v : AttrVar.(v) 
+                                      for (k, v) in pairs(d))...)
   end |> Multicospan
   cp = coproduct(dom.(ιs))
   (cp, invert_iso(universal(cp, ιs)))
@@ -131,28 +192,38 @@ Find all partial maps from the pattern to the addition, with some restrictions:
 1. Something must be mapped into the newly added material.
 2. Anything in L incident to a part mapped onto newly added material must be 
    mapped to newly added material
-
-
-Pruning with restriction #2 doesn't work for DDS, when matches are not monic.
 """
 function compute_overlaps(L::ACSet, I_R::ACSetTransformation)::Vector{Span}
   overlaps = Span[]
   for subobj in hom.(subobject_graph(L)[2])
-    for h in homomorphisms(dom(subobj), codom(I_R))
-      good_overlap(subobj, h, I_R) && push!(overlaps, Span(subobj, h))
+    abs_subobj = abstract_attributes(dom(subobj))
+    for h in homomorphisms(dom(abs_subobj), codom(I_R))
+      lft = abs_subobj ⋅ subobj
+      good_overlap(lft, h, I_R) && push!(overlaps, Span(lft, h))
     end
   end
   overlaps
 end
 
-function good_overlap(subobj, h, I_R)
+function good_overlap(subobj::ACSetTransformation, h::ACSetTransformation, 
+                      I_R::ACSetTransformation)
   S = acset_schema(dom(h))
   L = codom(subobj)
-  new_mat = Dict(k=>Set{Int}() for k in ob(S))
-  for (k, v) in pairs(components(h))
-    for (i, fᵢ) in enumerate(collect(v))
-      if fᵢ ∉ collect(I_R[k])
+  # Parts of L which are mapped to newly added material via partial map
+  new_mat = Dict(k=>Set{Int}() for k in types(S)) 
+  for k in ob(S)
+    for i in parts(dom(h), k)
+      hᵢ = h[k](i)
+      if hᵢ ∉ collect(I_R[k])
         push!(new_mat[k], subobj[k](i))
+      end
+    end
+  end
+  for k in attrtypes(S)
+    for i in AttrVar.(parts(dom(h), k))
+      hᵢ = h[k](i)
+      if hᵢ isa AttrVar && subobj[k](i) isa AttrVar && hᵢ.val ∉ collect(I_R[k])
+        push!(new_mat[k], subobj[k](i).val)
       end
     end
   end
@@ -182,15 +253,25 @@ sent to X elements which outside of the image of rmap.
 
 This is to avoid double-counting with a slightly bigger 
 overlap which has already been calculated between L and Rᵢ.
+
+Returns the 'keys' of the added matches.
 """
 function addition!(hset::IncCCHomSet, i::Int, rmap::ACSetTransformation, 
                    update::ACSetTransformation)
-  X, L, new_matches = codom(rmap), hset.pattern, []
-  S = acset_schema(hset.pattern)
-  old_matches = [m ⋅ update for m in hset.matches]  # Push forward old matches
+  S = acset_schema(pattern(hset))
+  # Push forward old matches
+  for idx in 1:length(hset)
+    hset.match_vect[idx] = Dict(
+      k => m ⋅ update for (k, m) in pairs(hset.match_vect[idx]))
+  end
+
+  # Find newly-introduced matches
+  X, L, new_matches, new_keys = codom(rmap), pattern(hset), Dict{Int, ACSetTransformation}(), Pair{Int,Int}[]
+
+  push!(hset.match_vect, new_matches)
   old_stuff = Dict(o => setdiff(parts(X,o), collect(rmap[o])) for o in ob(S))
-  seen_constraints = Set() # if match is non-monic, different subobjects can be 
-  for (subL, mapR) in hset.overlaps[i]
+  seen_constraints = Set() # if match is non-monic, different subobjects can be identified
+  for (idx, (subL, mapR)) in enumerate(hset.overlaps[i])
     initial = Dict(map(ob(S)) do o  # initialize based on overlap btw L and R
       o => Dict(map(parts(dom(subL), o)) do idx
         subL[o](idx) => rmap[o](mapR[o](idx))  # make square commute
@@ -200,90 +281,156 @@ function addition!(hset::IncCCHomSet, i::Int, rmap::ACSetTransformation,
       push!(seen_constraints, initial)
       L_image = Dict(o => Set(collect(subL[o])) for o in ob(S))
       boundary = Dict(k => setdiff(parts(L,k), L_image[k]) for k in ob(S))
-      predicates = Dict(o => Dict(pₒ => old_stuff[o] for pₒ in boundary[o]) for o in ob(S))
+      predicates = Dict(o => Dict(pₒ => old_stuff[o] for pₒ in boundary[o]) 
+                        for o in ob(S))
       for h in homomorphisms(L, X; initial, predicates)
-        if h ∈ new_matches 
+        if h ∈ values(new_matches) # this could be skipped once code is trusted
           error("Duplicating work $h") 
-        else 
-          push!(new_matches, h) # @info "NEW from $subL\n$mapR"
-
+        else
+          @debug "NEW from $subL\n$mapR"
+          new_key = length(hset) => length(new_keys)+1
+          push!(key_vect(hset), new_key)
+          push!(new_keys, new_key)
+          key_dict(hset)[new_key] = length(key_vect(hset))
+          new_matches[length(new_keys)] = h 
         end
       end
     end
   end
-  reset_matches!(hset, old_matches, new_matches)
   hset.state[] = X
+  new_keys
 end
 
 """
 Delete / modify existing matches based on the target ACSet being permuted or 
 reduced to a subobject. If a match touches upon something which is deleted, 
 remove the match. Given X ↩ X′ we are updating Hom(L, X) => Hom(L, X′)
+
+Returns the 'keys' of the deleted matches.
 """
 function deletion!(hset::IncCCHomSet, f::ACSetTransformation)
-  new_matches = Set{ACSetTransformation}()
-  for m in hset.matches
-    m′, f′ = pullback(f, m)
-    if is_monic(f′) && is_epic(f′)
-      updated = force(invert_iso(f′) ⋅ m′)
-      push!(new_matches, updated)
+  deleted = Pair{Int,Int}[]
+  for (idx, dic) in enumerate(hset.match_vect)
+    for (idx′, m) in collect(dic)
+      m′ = pull_back(f, m)
+      if isnothing(m′)
+        delete!(dic, idx′)
+        delete!(key_dict(hset), idx=>idx′)
+        push!(deleted, idx=>idx′)
+      else 
+        dic[idx′] = m′
+      end
     end
   end
-  reset_matches!(hset, new_matches)
   hset.state[] = dom(f)
+  deleted
 end
 
-"""Use a rewrite rule to induce a deletion followed by an addition"""
+
+"""
+Given f: L->X and m: X' ↣ X, find the unique map L -> X' making the triangle 
+commute, if it exists.
+"""
+function pull_back(f::ACSetTransformation, m::ACSetTransformation)::Union{ACSetTransformation, Nothing}
+  L, X′ = dom.([m, f])
+  comps, S = Dict(), acset_schema(L)
+  for o in ob(S)
+    vec = []
+    for i in parts(L, o)
+      pre = preimage(f[o], m[o](i))
+      length(pre) == 1 || return nothing
+      push!(vec, only(pre))
+    end
+    comps[o] = vec
+  end
+  for o in attrtypes(S)
+    comps[o] = map(AttrVar.(parts(L, o))) do i 
+      for (f, c, _) in attrs(S; to=o)
+        inc = incident(L, i, f)
+        isempty(inc) || return X′[comps[c][first(inc)], f]
+      end
+    end
+  end
+  ACSetTransformation(dom(m), dom(f); comps...)
+end
+
+"""rewrite! with an arbitrary match"""
 rewrite!(hset::IncHomSet, r::Rule) = rewrite!(hset, r, get_match(r, state(hset)))
 
-function rewrite!(hset::IncCCHomSet, r::Rule{T}, match::ACSetTransformation) where T
+"""
+Use a rewrite rule to induce a deletion followed by an addition.
+
+Returns the keys of deleted and added matches, respectively.
+"""
+function rewrite!(hset::IncHomSet, r::Rule{T}, match::ACSetTransformation) where T
   isnothing(can_match(r, match)) || error("Bad match data")
-  i = findfirst(==(right(r)), hset.additions) # RHS of rule must be an addition
-  hset.state[] == codom(match)|| error("Codom mismatch for match $match")
+  i = findfirst(==(right(r)), additions(hset)) # RHS of rule must be an addition
+  state(hset) == codom(match)|| error("Codom mismatch for match $match")
   res = rewrite_match_maps(r, match)
   pl, pr = get_pmap(T, res)
-  deletion!(hset, pl)
-  addition!(hset, i, get_rmap(T, res), pr)
+  x = get_expr_binding_map(r, match, res)
+  pr′, rmap = (pr ⋅ x), (get_rmap(T, res) ⋅ x)
+  del = deletion!(hset, pl)
+  add = addition!(hset, i, rmap, pr′)
+  (del, add)
 end
 
 """Perform a pushout addition given a match morphism from the domain."""
 addition!(hset, i::Int, omap::ACSetTransformation) =
-  addition!(hset, i, pushout(hset.additions[i], omap)...)
+  addition!(hset, i, pushout(additions(hset)[i], omap)...)
 
 # Extending mutation methods to sums of connected components 
 #-----------------------------------------------------------
-deletion!(hset::IncSumHomSet, f) = deletion!.(hset.ihs, Ref(f))
+function deletion!(hset::IncSumHomSet, f::ACSetTransformation) 
+  delkeys, dels = Vector{Pair{Int,Int}}[], deletion!.(hset.ihs, Ref(f))
+  for ks in keys(hset)
+    if any(((k, del),) -> k ∈ del, zip(ks, dels))   
+       push!(delkeys, ks) 
+       delete!(hset, ks)
+    end
+  end
+  delkeys
+end
 
-addition!(hset::IncSumHomSet, i::Int, rmap::ACSetTransformation, pr::ACSetTransformation) = 
-  addition!.(hset.ihs, i, Ref(rmap), Ref(pr))
+function addition!(hset::IncSumHomSet, i::Int, rmap::ACSetTransformation, pr::ACSetTransformation)
+  add_keys, adds = [], addition!.(hset.ihs, i, Ref(rmap), Ref(pr))
+  for (i, add) in enumerate(adds)
+    ms = [i == j ? add : keys(ihs) for (j,ihs) in enumerate(hset.ihs)]
+    for newkey in collect.(Iterators.product(ms...))
+      push!(key_vect(hset), newkey)
+      push!(add_keys, newkey)
+      key_dict(hset)[newkey] = length(key_vect(hset))
+    end
+  end
+  add_keys
+end
 
-rewrite!(hset::IncSumHomSet, r::Rule, match::ACSetTransformation) =
-  rewrite!.(hset.ihs, Ref(r), Ref(match))
 
 # Validation
 ############
 
 """Determine if an IncCCHomSet is invalid. Throw error if so."""
 function validate(hset::IncCCHomSet)::Bool
-  all(is_natural, hset.matches) || error("Unnatural")
-  all(==(hset.pattern), dom.(hset.matches)) || error("Bad dom")
-  all(==(hset.state[]), codom.(hset.matches)) || error("Bad codom")
-  ref = IncHomSet(hset.pattern, hset.additions, hset.state[])
-  xtra = setdiff(hset.matches, ref.matches)
-  missin = setdiff(ref.matches, hset.matches)
+  ms = matches(hset)
+  all(is_natural, ms) || error("Unnatural")
+  all(==(pattern(hset)), dom.(ms)) || error("Bad dom")
+  all(==(state(hset)), codom.(ms)) || error("Bad codom")
+  ref = IncHomSet(pattern(hset), additions(hset), state(hset))
+  xtra = setdiff(ms, values(first(match_vect(ref))))
+  missin = setdiff(values(first(match_vect(ref))), ms)
   isempty(xtra ∪ missin) || error("\n\textra $xtra \n\tmissing $missin")
 end
 
 function validate(hset::IncSumHomSet)::Bool
-  fst = first(hset.ihs)
-  all(==(additions(fst)), additions.(hset.ihs)) || error("Addns don't agree")
-  all(==(state(fst)), state.(hset.ihs)) || error("States don't agree")
+  allequal(additions.(hset.ihs)) || error("Addns don't agree")
+  allequal(state.(hset.ihs)) || error("States don't agree")
+  allequal(length.(hset.ihs)) || error("Lengths don't agree")
   codom(hset.iso) == apex(hset.coprod) || error("Bad iso codomain")
-  dom(hset.iso) == hset.pattern || error("Bad iso domain")
+  dom(hset.iso) == pattern(hset) || error("Bad iso domain")
   is_epic(hset.iso) && is_monic(hset.iso) || error("Iso not an iso")
   length(hset.ihs) == length(hset.coprod) || error("len(IHS) != len(CCS)")
   for (i, (h, hs)) in enumerate(zip(hset.coprod, hset.ihs))
-    dom(h) == hs.pattern || error("Sub-IncHomSet $i mismatch pattern")
+    dom(h) == pattern(hs) || error("Sub-IncHomSet $i mismatch pattern")
   end
   all(validate, hset.ihs) || error("Unnatural component IncrementalHomSet")
 end

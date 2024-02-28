@@ -27,20 +27,41 @@ A_rule = Rule(id(e), homomorphism(e, A); monic=true)
 
 # Empty edge case
 hset = IncHomSet(Graph(), [A_rule.R], Graph(3)); 
-@test length(hset.matches) == 1
+@test length(matches(hset)) == 1
+@test only(keys(hset)) == (1=>1)
+@test hset[1] == hset[1=>1]
 
 # Single connected component pattern
 start = @acset Graph begin V=3; E=3; src=[1,2,3]; tgt=[2,3,3] end
 hset = IncHomSet(ee, [A_rule.R], start);
-rewrite!(hset, A_rule, homomorphisms(e, start)[2])
+del, add = rewrite!(hset, A_rule, homomorphisms(e, start)[2])
+@test isempty(del)
+@test length(add) == 6
 @test validate(hset)
 rewrite!(hset, A_rule)
 @test validate(hset)
+@test length.(hset.match_vect) == [3, 6, 8]
+@test !haskey(hset, 2=>7)
+@test haskey(hset, 3=>7)
+@test hset[3=>8] == hset[17]
 
 # Multiple connected components in pattern
 hset = IncHomSet(ee ⊕ e, [A_rule.R], start);
-rewrite!(hset, A_rule, homomorphisms(e, start)[2])
+
+@test haskey(hset, [1=>2, 1=>2])
+@test !haskey(hset, [2=>2, 1=>2])
+@test length(keys(hset)) == 9
+@test hset[[1=>3,1=>3]] == hset[9]
+
+del, add = rewrite!(hset, A_rule, homomorphisms(e, start)[2])
+
+@test isempty(del)
+
+@test length.(hset.ihs[1].match_vect) == [3,6]
+@test length.(hset.ihs[2].match_vect) == [3,3]
+@test length(add) == 6*(3+3) + (3+6)*3
 @test validate(hset)
+
 @test Set(matches(hset)) == Set(homomorphisms(ee ⊕ e, state(hset)))
 rewrite!(hset, A_rule)
 @test validate(hset)
@@ -53,6 +74,53 @@ omap = homomorphism(e, X)
 hset = IncHomSet(ee, [homomorphism(e, tri)], X);
 addition!(hset, 1, omap)
 @test validate(hset)
+
+# Multiple connected components 
+hset = IncHomSet(Graph(1) ⊕ e, [A_rule.R], start);
+rewrite!(hset, A_rule, homomorphisms(e, start)[2])
+@test validate(hset)
+rewrite!(hset, A_rule)
+@test validate(hset)
+@test length(keys(hset)) == 45
+
+
+# Weighted Graph
+const WG′ = WeightedGraph{Bool}
+e, ee = path_graph.(WG′, 2:3)
+e[:weight] = [AttrVar(add_part!(e, :Weight))]
+ee[:weight] = [true, AttrVar(add_part!(ee, :Weight))]
+A = @acset WG′ begin V=3; E=4; Weight=1; 
+  src=[1,1,1,2]; tgt=[2,2,3,3]; weight=[AttrVar(1), true, false, true] 
+end
+A_rule = Rule(id(e), homomorphism(e, A); monic=true)
+
+start = @acset WG′ begin V=3; E=3; src=[1,2,3]; tgt=[2,3,3]; weight=Bool[0,1,0] end
+init_match = homomorphisms(e, start)[2]
+
+#               ⊤  [1]                ⊥   ⊤   
+# Pattern :   • → • → •   ||| Start: • → • → • ↺ ⊥   (there is only one map)
+
+#            [1]        [1],⊤  
+# Addition: • → •   => •  ⇉  •
+#                     ⊥ ↘  ↙ ⊤
+#                         •
+
+# Result of applying the addition to the ⊤ edge of `Start` (there are two maps)
+#                    ⊥  ⊤,⊤   
+#                  • → • ⇉ • ↺ ⊥
+#                     ⊥ ↘ ↙ ⊤
+#                        •
+hset = IncHomSet(ee, [A_rule.R], start);
+rewrite!(hset, A_rule, init_match)
+@test validate(hset)
+expected = @acset WeightedGraph{Bool} begin 
+  V=4; E=6; src=[1,2,2,2,3,3]; tgt=[2,3,3,4,3,4]; weight=Bool[0,1,1,0,0,1]
+end
+@test is_isomorphic(expected, hset.state[])
+
+rewrite!(hset, A_rule)
+@test validate(hset)
+
 
 ## DDS 
 #-----
