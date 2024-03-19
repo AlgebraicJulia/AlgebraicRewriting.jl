@@ -30,22 +30,12 @@ end
 const LSet = LFinSetType{Symbol}
 
 I = @acset LSet begin X=1; D=1; f=[AttrVar(1)] end
-G = @acset LSet begin X=2; D=2; f=[:x,:y] end
+G = @acset LSet begin X=2; f=[:x,:y] end
 f = homomorphism(I,G)
 
 kg = last(pushout_complement(id(I),f))
-@test dom(kg) == @acset LSet begin X=2; D=3; f=[AttrVar(1),:y] end
-@test collect(kg[:D]) == [:x, AttrVar.(1:2)...]
-
-I = @acset LSet begin X=1; D=1; f=[AttrVar(1)] end
-G = @acset LSet begin X=2; D=2; f=AttrVar.(1:2) end
-f = homomorphisms(I,G)[2]
-kg = last(pushout_complement(id(I),f))
-
-I = @acset LSet begin X=1; D=1; f=[AttrVar(1)] end
-G = @acset LSet begin X=2; D=2; f=[:x,:x] end
-f = homomorphism(I,G)
-kg = last(pushout_complement(id(I),f))
+@test dom(kg) == @acset LSet begin X=2; D=1; f=[AttrVar(1),:y] end
+@test collect(kg[:D]) == [:x]
 
 # Slices 
 ########

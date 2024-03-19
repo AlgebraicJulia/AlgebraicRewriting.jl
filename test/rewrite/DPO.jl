@@ -280,8 +280,6 @@ end
 rule = Rule(id(WeightedGraph{Int}()), create(X); freevar=true)
 G = @acset WeightedGraph{Int} begin V=1; E=3; src=1; tgt=1; weight=[10,20,100] end
 G2 = rewrite(rule,G)
-G3 = rewrite(rule,G2)
-G4 = rewrite(rule,G3)
 
 L = @acset WeightedGraph{Int} begin V=2; E=2; Weight=2; src=1; tgt=2; 
                                     weight=AttrVar.(1:2) end
@@ -304,12 +302,22 @@ rule = Rule(l, r; monic=[:E], freevar=true)
 @test rewrite(rule, G) == @acset WeightedGraph{Int} begin 
   V=1; E=2; Weight=1; src=1; tgt=1; weight=[AttrVar(1), 100] end
 
-# Rewriting when the original graph has variables
-G = @acset WeightedGraph{Int} begin V=1; E=4; Weight=2;src=1; tgt=1; 
-                                    weight=[AttrVar(2), 10,20,AttrVar(1)] end
-rule = Rule(l, r; monic=[:E], expr=Dict(:Weight=>[xs->xs[1]+xs[2]]))
-m = homomorphism(L,G; initial=(E=[2,3],))
-rewrite_match(rule,m)
+# Rewriting with induced equations between AttrVars in the rule
+#--------------------------------------------------------------
+@present SchFoo(FreeSchema) begin X::Ob; D::AttrType; f::Attr(X,D) end
+@acset_type AbsFoo(SchFoo)
+const Foo = AbsFoo{Bool}
 
+L = @acset Foo begin X=2; f=[false, false] end 
+I = @acset Foo begin X=2;D=2; f=AttrVar.(1:2) end 
+R = @acset Foo begin X=2; f=[false, true]end 
+rule = Rule(homomorphism(I, L; monic=[:X]), homomorphism(I, R; monic=[:X]))
+
+# we cannot match both X of L to the same part in G because this would yield 
+# an inconsistent result
+@test length(get_matches(rule, L)) == 2
+
+res = rewrite(rule, L)
+@test is_isomorphic(res, R)
 
 end # module 

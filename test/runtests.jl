@@ -77,17 +77,17 @@ end
 # Schedules 
 ##########
 
-@testset "Schedules" begin
+@testset "Schedules: Poly" begin
   include("schedules/Poly.jl")
 end
 
-@testset "Schedules" begin
+@testset "Schedules: Eval" begin
   include("schedules/Eval.jl")
 end
 
 # Incremental hom search
 ########################
 
-@testset "Schedules" begin
+@testset "Incremental" begin
   include("incremental/Incremental.jl")
 end
