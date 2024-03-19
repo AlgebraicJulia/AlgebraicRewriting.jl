@@ -163,6 +163,11 @@ function can_match(r::Rule{T}, m; initial=Dict()) where T
     if !isempty(gc)
       return ("Gluing conditions failed", gc)
     end
+
+    meq = check_match_var_eqs(r, m)
+    if !isempty(meq)
+      return ("Induced attrvar equation failed", meq)
+    end
   end
 
   for (nᵢ, N) in enumerate(r.conditions)
@@ -280,4 +285,6 @@ Perform a rewrite (with a supplied match morphism) and return result.
 rewrite_match(r::AbsRule, m; kw...) =
   codom(get_expr_binding_map(r, m, rewrite_match_maps(r, m; kw...)))
 
+
+function check_match_var_eqs end # implement in DPO.jl
 end # module

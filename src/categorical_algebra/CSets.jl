@@ -9,7 +9,7 @@ using CompTime
 using Catlab
 using Catlab.CategoricalAlgebra.FinSets: IdentityFunction, VarSet
 using Catlab.CategoricalAlgebra.Chase: extend_morphism, extend_morphism_constraints
-using Catlab.CategoricalAlgebra.CSets: unpack_diagram, type_components, abstract_attributes
+using Catlab.CategoricalAlgebra.CSets: unpack_diagram, type_components, abstract_attributes, var_reference
 import ..FinSets: pushout_complement, can_pushout_complement, id_condition
 import ACSets: acset_schema
 import Catlab.CategoricalAlgebra.FinSets: predicate
@@ -19,7 +19,7 @@ import Catlab.CategoricalAlgebra: is_natural, Slice, SliceHom, components,
 using ACSets.DenseACSets: attrtype_type, datatypes, constructor
 import ACSets: sparsify
 import Base: getindex
-using DataStructures: OrderedSet
+using DataStructures: OrderedSet, DefaultDict, IntDisjointSets, find_root!
 using StructEquality
 
 # Morphism search 
@@ -100,6 +100,47 @@ function check_pb(f,g,f_,g_)
   end 
 end
 
+# Non-monotonicity
+##################
+
+"""
+Every morphism induces a partition of the parts of the domain. This function 
+finds every nontrivial partition (size greater than one element) for the objects
+of the schema.
+"""
+fibers(f::ACSetTransformation) = 
+  Dict(o => fibers(f[o]) for o in ob(acset_schema(dom(f))))
+
+function fibers(f::FinFunction)
+  dic = DefaultDict{Int,Vector{Int}}(()->Int[])
+  for v in dom(f)
+    push!(dic[f(v)], v)
+  end
+  filter(xs->length(xs)>1, collect(values(dic)))
+end
+
+unions!(i::IntDisjointSets, xs::Vector{Int}) = if length(xs) > 1 
+  [union!(i, x, y) for (x,y) in zip(xs, xs[2:end])]
+end
+
+getvalue(a::AttrVar) = a.val
+
+"""Further induced equations between AttrVars, given a specific match morphism"""
+function var_eqs(l::ACSetTransformation, m::ACSetTransformation)
+  I, L = dom(l), codom(l)
+  S = acset_schema(L)
+  eq_I = Dict(a => IntDisjointSets(nparts(I, a)) for a in attrtypes(S))
+  for (o, xss) in pairs(fibers(m)) # match induces equivalence of ob parts in L
+    for xsₗ in xss
+      xsᵢ = Vector{Int}(vcat(preimage.(Ref(l[o]), xsₗ)...))
+      for (f, _, at) in attrs(S; from=o)
+        unions!(eq_I[at], getvalue.(filter(x -> x isa AttrVar, I[xsᵢ, f])))
+      end
+    end
+  end
+  return eq_I
+end
+
 # Pushout complement
 ####################
 
@@ -111,45 +152,53 @@ this method will raise an error. If the dangling condition fails, the resulting
 C-set will be only partially defined. To check all these conditions in advance,
 use the function [`can_pushout_complement`](@ref).
 
-Because Subobject does not work well with AttrVars, a correction is made
+In the absence of AttrVars, K is a subobject of G. But we want to be able to 
+change the value of attributes. So any variables in I are not concretized by 
+the I->K map. However, AttrVars may be merged together if `m: L -> G` merges 
+parts together.
 """
 function pushout_complement(pair::ComposablePair{<:ACSet, <:TightACSetTransformation})
-  p1,p2 = pair 
-  I,G = dom(p1), codom(p2)
+  l, m = pair 
+  I, G = dom(l), codom(m)
   S = acset_schema(I)
+  all(at->nparts(G, at)==0, attrtypes(S)) || error("Cannot rewrite with AttrVars in G")
   # Compute pushout complements pointwise in FinSet.
-  components = NamedTuple(Dict([o=>pushout_complement(ComposablePair(p1[o],p2[o])) 
-                                for o in types(S)]))
-  k_components, g_components = map(first, components), map(last, components)
+  components = NamedTuple(Dict(map(ob(S)) do o 
+      o => pushout_complement(ComposablePair(l[o], m[o]))
+  end))
+  k_components = Dict{Symbol,Any}(pairs(map(first, components)))
+  g_components = Dict{Symbol,Any}(pairs(map(last, components)))
 
   # Reassemble components into natural transformations.
-  g = hom(Subobject(G, NamedTuple(Dict(o=>g_components[o] for o in ob(S)))))
+  g = hom(Subobject(G, NamedTuple(Dict(o => g_components[o] for o in ob(S)))))
   K = dom(g)
-  
-  for at in attrtypes(S)
-    add_parts!(K, at, codom(k_components[at]).n)
-  end
 
-  for (a, d, at) in attrs(S)
-    # force k to be natural
-    for p in parts(I, d)
-      K[k_components[d](p),a] = k_components[at](I[p, a])
-    end
-    # force g to be natural 
-    for p in parts(K, d)
-      gval = G[g_components[d](p), a]
-      preim = preimage(g_components[at], gval)
-      if !isempty(preim) && gval isa AttrVar
-        K[p,a] = AttrVar(only(preim))
+  var_eq = var_eqs(l, m) # equivalence class of attrvars
+
+  for at in attrtypes(S)
+    eq = var_eq[at]
+    roots = unique(find_root!.(Ref(eq), 1:length(eq)))
+    add_parts!(K, at, length(roots))
+    k_components[at] = map(parts(I, at)) do pᵢ
+      attrvar = AttrVar(findfirst(==(find_root!(eq, pᵢ)), roots))
+      for (a, d, _) in attrs(S; to=at)
+        for p in incident(I, AttrVar(pᵢ), a)
+          K[k_components[d](p), a] = attrvar
+        end
       end
+      attrvar
     end
-  end 
+    T = Union{AttrVar, attrtype_type(G, at)}
+    g_components[at] = Vector{T}(map(parts(K, at)) do v
+      f, o, val = var_reference(K, at, v)
+      G[g_components[o](val), f]
+    end)
+  end
 
   k = ACSetTransformation(I, K; k_components...)
   g = ACSetTransformation(K, G; g_components...)
-
-  force(compose(k,g)) == force(compose(p1,p2)) || error("Square doesn't commute")
-  is_natural(k) || error("k unnatural")
+  force(compose(k,g)) == force(compose(l, m)) || error("Square doesn't commute")
+  is_natural(k) || error("k unnatural $k")
   is_natural(g) || error("g unnatural")
   return ComposablePair(k, g)
 end
@@ -260,16 +309,6 @@ dangling_condition(pair::ComposablePair{<:DynamicACSet}) = let S = acset_schema(
   end
   results
 end
-
-# n_src = parts(codom(m), @ct(src_obj)) # BIG
-# unmatched_vals = setdiff(n_src, collect(m[@ct(src_obj)]))
-# unmatched_tgt = [codom(m)[x,@ct(morph)] for x in unmatched_vals]
-# for unmatched_val in setdiff(n_src, collect(m[@ct(src_obj)]))  # G/m(L) src
-#   unmatched_tgt = codom(m)[unmatched_val,@ct morph]
-#   if unmatched_tgt in dels[@ct(tgt_obj)]
-#     push!(results, (@ct(morph), unmatched_val, unmatched_tgt))
-#   end
-# end
 
 # Subobjects
 ############

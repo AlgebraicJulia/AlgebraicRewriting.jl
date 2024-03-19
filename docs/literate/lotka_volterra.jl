@@ -7,13 +7,14 @@ We start with importing some libraries.
 =#
 
 using Catlab, DataMigrations, AlgebraicRewriting
-using Random, Test, StructEquality
-using Luxor
+using Random, Test
+using Luxor # optional: makes the sequence of images via `view_traj` at the end
 
 using Catlab.Graphics.Graphviz: Attributes, Statement, Node
 using Catlab.Graphics.Graphviz
 
 const hom = homomorphism
+
 Random.seed!(123);
 
 # # Ontology
@@ -335,11 +336,10 @@ view_sched(par_sched; names=N)
 
 # #### Test rotation
 begin
-  ex = @acset_colim yLV begin 
-    e::E
-    s::Sheep
-    sheep_loc(s) == src(e)
-    sheep_dir(s) == :N
+  ex = @acset LV begin 
+    E=1; Sheep=1; V=2
+    src=1; tgt=2; dir=:W; countdown = [0, 0]
+    sheep_loc=1; sheep_eng=100; sheep_dir=:N
   end;
 
   expected = copy(ex); 
@@ -381,19 +381,16 @@ sheep_fwd = tryrule(RuleApp(:move_fwd, sheep_fwd_rule,
 
 # #### Moving forward test
 
-begin # test 
-  ex = @acset_colim yLV begin
-    (e1, e2)::E; s::Sheep
-    sheep_loc(s) == tgt(e1); tgt(e1) == src(e2)
-    sheep_dir(s) == :N; dir(e1) == :N; dir(e2) == :N
-    sheep_eng(s) == 10
+begin
+  ex = @acset LV begin
+    V=3; E=2; Sheep=1; 
+    countdown=[0,0,0]
+    src=[1,2]; tgt=[2,3]; dir=[:N,:W]
+    sheep_loc=1; sheep_dir=:N; sheep_eng = 10
   end
-  expected = @acset_colim yLV begin
-    (e1, e2)::E; s::Sheep
-    sheep_loc(s) == tgt(e2); tgt(e1) == src(e2)
-    sheep_dir(s) == :N; dir(e1) == :N; dir(e2) == :N
-    sheep_eng(s) == 9
-  end
+  expected = copy(ex); 
+  expected[:sheep_loc] = 2
+  expected[:sheep_eng] = 9
   @test is_isomorphic(expected, rewrite(sheep_fwd_rule, ex))
   rewrite!(sheep_fwd_rule, ex)
   @test is_isomorphic(ex, expected)
@@ -409,17 +406,16 @@ se_rule = Rule(S; expr=(Eng=[vs -> vs[1] + 4, vs -> 30],),
 sheep_eat = tryrule(RuleApp(:Sheep_eat, se_rule, S));
 
 # #### Sheep eating test
-begin 
-  ex = @acset_colim yLV begin
-    s::Sheep; e::E
-    sheep_loc(s) == tgt(e); sheep_eng(s) == 3
-    countdown(tgt(e)) == 0; countdown(src(e)) == 10
+begin
+  ex = @acset LV begin
+    E=1; V=2; Sheep=1; 
+    src=1; tgt=2; dir=:S; countdown=[10, 0]
+    sheep_loc = 2; sheep_eng = 3; sheep_dir=:W
   end
-  expected = @acset_colim yLV begin
-    s::Sheep; e::E
-    sheep_loc(s) == tgt(e); sheep_eng(s) == 7
-    countdown(tgt(e)) == 30; countdown(src(e)) == 10
-  end
+
+  expected = copy(ex)
+  expected[2,:countdown] = 30
+  expected[1,:sheep_eng] = 7
 
   @test is_isomorphic(expected, rewrite(se_rule, ex))
   rewrite!(se_rule, ex)
@@ -442,17 +438,15 @@ wolf_eat = tryrule(RuleApp(:Wolf_eat, we_rule, W));
 begin
   ex = @acset LV begin 
     Sheep=1; Wolf=1; V=3; E=2; 
-    src=[1,2]; tgt=[2,3];
-    countdown=[9,10,11]; dir=[:N,:N]; 
+    src=[1,2]; tgt=[2,3]; countdown=[9,10,11]; dir=[:N,:N]; 
     sheep_loc=2; sheep_eng=[3]; sheep_dir=[:N]
     wolf_loc=[2];  wolf_eng=[16];  wolf_dir=[:S]
   end
-  expected = @acset LV begin 
-    Wolf=1; V=3; E=2; 
-    src=[1,2]; tgt=[2,3]; 
-    countdown=[9,10,11];  dir=[:N,:N]; 
-    wolf_loc=[2]; wolf_eng=[36]; wolf_dir=[:S]
-  end
+
+  expected = copy(ex)
+  expected[1, :wolf_eng] = 36
+  rem_part!(expected, :Sheep, 1)
+
   @test is_isomorphic(rewrite(we_rule,ex), expected)
   rewrite!(we_rule, ex)
   @test is_isomorphic(ex,expected)
@@ -469,13 +463,16 @@ sheep_starve = (RuleApp(:starve, sheep_die_rule,
 
 # #### Sheep starvation test
 
-begin # test
-  compile_rewrite(sheep_die_rule)
-  ex = @acset_colim yLV begin 
-    s::Sheep; w::Wolf
-    sheep_eng(s) == 0; sheep_dir(s) == :W
+begin
+  ex = @acset LV begin 
+    V=1; Sheep=1; Wolf=1
+    countdown=20;
+    sheep_loc=1; sheep_eng=0; sheep_dir=:W
+    wolf_loc=1; wolf_eng=10; wolf_dir=:S
   end
-  expected = @acset_colim yLV begin v::V; w::Wolf end
+  expected = copy(ex)
+  rem_part!(expected, :Sheep, 1)
+
   @test is_isomorphic(rewrite(sheep_die_rule,ex), expected)
   rewrite!(sheep_die_rule,ex)
   @test is_isomorphic(ex, expected)
@@ -501,16 +498,19 @@ sheep_reprod = RuleApp(:reproduce, sheep_reprod_rule,
 # #### Reproduction test
 
 begin # test
-  ex = @acset_colim yLV begin 
-    s::Sheep; w::Wolf; sheep_eng(s) == 10; sheep_dir(s) == :W 
+  ex = @acset LV begin 
+    Sheep=1; Wolf=1; V=2; 
+    countdown=[20,30]
+    sheep_loc=1; sheep_eng=10; sheep_dir=:W 
+    wolf_loc=2; wolf_eng=5; wolf_dir=:N
   end
-  expected = @acset_colim yLV  begin 
-    (s1,s2)::Sheep; w::Wolf;
-    sheep_loc(s1) == sheep_loc(s2)
-    sheep_dir(s1) == sheep_dir(s2)
-    sheep_eng(s1) == sheep_eng(s2)
-    sheep_dir(s1) == :W; sheep_eng(s1) == 5;
-  end
+
+  expected = copy(ex)
+  add_part!(expected,:Sheep)
+  expected[:sheep_eng] = [5, 5]
+  expected[:sheep_loc] = [1, 1]
+  expected[:sheep_dir] = [:W, :W]
+
   @test is_isomorphic(rewrite(sheep_reprod_rule,ex),expected)
   rewrite!(sheep_reprod_rule,ex)
   @test is_isomorphic(ex, expected)
