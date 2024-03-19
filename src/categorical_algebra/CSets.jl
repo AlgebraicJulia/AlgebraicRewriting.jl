@@ -138,7 +138,7 @@ function var_eqs(l::ACSetTransformation, m::ACSetTransformation)
       end
     end
   end
-  eq_I
+  return eq_I
 end
 
 # Pushout complement

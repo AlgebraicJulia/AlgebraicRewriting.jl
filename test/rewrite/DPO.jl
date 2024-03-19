@@ -304,6 +304,7 @@ rule = Rule(l, r; monic=[:E], freevar=true)
 
 # Rewriting with induced equations between AttrVars in the rule
 #--------------------------------------------------------------
+
 @present SchFoo(FreeSchema) begin X::Ob; D::AttrType; f::Attr(X,D) end
 @acset_type AbsFoo(SchFoo)
 const Foo = AbsFoo{Bool}
@@ -319,5 +320,17 @@ rule = Rule(homomorphism(I, L; monic=[:X]), homomorphism(I, R; monic=[:X]))
 
 res = rewrite(rule, L)
 @test is_isomorphic(res, R)
+
+# Now with arbitrary functions
+
+rule = Rule(I; expr=(D=[((x₁, x₂),) -> x₁ && x₂, ((x₁, x₂),) -> x₁ ≤ x₂],))
+
+# We can match (1,2) and (2,1) no matter what because those impose no constraints
+# (1,1) and (2,2) do unify the variables of the rule, so it is only a valid 
+# match if the two expressions evaluate to the same value. Because ⊥∧⊥ ≠ ⊥⟹⊥
+# (whereas ⊤∧⊤ = ⊤⟹⊤), the only match where both X's are mapped to a single 
+# value is the case where they are mapped to the one with the attribute ⊤.
+@test collect.(getindex.(components.(get_matches(rule, R)), :X)) == [[1,2],[2,1],[2,2]]
+
 
 end # module 

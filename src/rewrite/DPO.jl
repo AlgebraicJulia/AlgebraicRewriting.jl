@@ -3,7 +3,7 @@ module DPO
 using Catlab.CategoricalAlgebra
 
 using ...CategoricalAlgebra.CSets
-import ...CategoricalAlgebra.CSets: var_eqs, pushout_complement
+import ...CategoricalAlgebra.CSets: var_eqs
 using ..Utils
 import ..Utils: rewrite_match_maps, check_match_var_eqs
 
@@ -21,15 +21,12 @@ This works for any type that implements `pushout_complement` and `pushout`
 """
 function rewrite_match_maps(r::Rule{:DPO}, m; check::Bool=false)
   if check
-    can_pushout_complement(r.L, m) || error("Can't pushout complement $r\n$m")
+    can_pushout_complement(left(r), m) || error("Can't pushout complement $r\n$m")
   end
-  ik, kg = pushout_complement(r.L, m)  
-  rh, kh = pushout(r.R, ik) 
+  ik, kg = pushout_complement(left(r), m)  
+  rh, kh = pushout(right(r), ik) 
   Dict(:ik=>ik, :kg=>kg, :rh=>rh, :kh=>kh)
 end
-
-pushout_complement(r::Rule{:DPO}, m::ACSetTransformation) = 
-  pushout_complement(left(r), m)
 
 var_eqs(r::Rule{:DPO}, m::ACSetTransformation) = var_eqs(left(r), m)
 
@@ -61,7 +58,7 @@ function check_match_var_eqs(r::Rule{:DPO}, m::ACSetTransformation)
       end
     end
   end
-  errs
+  return errs
 end
 
 """Ignore for other categories"""
