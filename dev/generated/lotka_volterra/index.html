@@ -1,12 +1,13 @@
 <!DOCTYPE html>
 <html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/><title>Lotka Volterra · AlgebraicRewriting.jl</title><meta name="title" content="Lotka Volterra · AlgebraicRewriting.jl"/><meta property="og:title" content="Lotka Volterra · AlgebraicRewriting.jl"/><meta property="twitter:title" content="Lotka Volterra · AlgebraicRewriting.jl"/><meta name="description" content="Documentation for AlgebraicRewriting.jl."/><meta property="og:description" content="Documentation for AlgebraicRewriting.jl."/><meta property="twitter:description" content="Documentation for AlgebraicRewriting.jl."/><script data-outdated-warner src="../../assets/warner.js"></script><link href="https://cdnjs.cloudflare.com/ajax/libs/lato-font/3.0.0/css/lato-font.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/juliamono/0.050/juliamono.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/fontawesome.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/solid.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/brands.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.8/katex.min.css" rel="stylesheet" type="text/css"/><script>documenterBaseURL="../.."</script><script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.6/require.min.js" data-main="../../assets/documenter.js"></script><script src="../../search_index.js"></script><script src="../../siteinfo.js"></script><script src="../../../versions.js"></script><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/documenter-dark.css" data-theme-name="documenter-dark" data-theme-primary-dark/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/documenter-light.css" data-theme-name="documenter-light" data-theme-primary/><script src="../../assets/themeswap.js"></script></head><body><div id="documenter"><nav class="docs-sidebar"><a class="docs-logo" href="../../"><img src="../../assets/logo.png" alt="AlgebraicRewriting.jl logo"/></a><div class="docs-package-name"><span class="docs-autofit"><a href="../../">AlgebraicRewriting.jl</a></span></div><button class="docs-search-query input is-rounded is-small is-clickable my-2 mx-auto py-1 px-2" id="documenter-search-query">Search docs (Ctrl + /)</button><ul class="docs-menu"><li><a class="tocitem" href="../../">AlgebraicRewriting.jl</a></li><li><span class="tocitem">Examples</span><ul><li><a class="tocitem" href="../full_demo/">Full Demo</a></li><li><a class="tocitem" href="../game_of_life/">Conway&#39;s Game of Life</a></li><li class="is-active"><a class="tocitem" href>Lotka Volterra</a><ul class="internal"><li class="toplevel"><a class="tocitem" href="#Ontology"><span>Ontology</span></a></li><li class="toplevel"><a class="tocitem" href="#Data-migration-functors"><span>Data migration functors</span></a></li><li class="toplevel"><a class="tocitem" href="#Initializing-and-visualizing-world-states"><span>Initializing and visualizing world states</span></a></li><li class="toplevel"><a class="tocitem" href="#Rules"><span>Rules</span></a></li><li><a class="tocitem" href="#Assembling-rules-into-a-recipe"><span>Assembling rules into a recipe</span></a></li><li><a class="tocitem" href="#Running-the-simulation"><span>Running the simulation</span></a></li><li><a class="tocitem" href="#Visualizing-the-results"><span>Visualizing the results</span></a></li></ul></li><li><a class="tocitem" href="../ptg_simple/">Slice Bread</a></li></ul></li><li><a class="tocitem" href="../../api/">Library Reference</a></li></ul><div class="docs-version-selector field has-addons"><div class="control"><span class="docs-label button is-static is-size-7">Version</span></div><div class="docs-selector control is-expanded"><div class="select is-fullwidth is-size-7"><select id="documenter-version-selector"></select></div></div></div></nav><div class="docs-main"><header class="docs-navbar"><a class="docs-sidebar-button docs-navbar-link fa-solid fa-bars is-hidden-desktop" id="documenter-sidebar-button" href="#"></a><nav class="breadcrumb"><ul class="is-hidden-mobile"><li><a class="is-disabled">Examples</a></li><li class="is-active"><a href>Lotka Volterra</a></li></ul><ul class="is-hidden-tablet"><li class="is-active"><a href>Lotka Volterra</a></li></ul></nav><div class="docs-right"><a class="docs-navbar-link" href="https://github.com/AlgebraicJulia/AlgebraicRewriting.jl" title="View the repository on GitHub"><span class="docs-icon fa-brands"></span><span class="docs-label is-hidden-touch">GitHub</span></a><a class="docs-navbar-link" href="https://github.com/AlgebraicJulia/AlgebraicRewriting.jl/blob/main/docs/literate/lotka_volterra.jl" title="Edit source on GitHub"><span class="docs-icon fa-solid"></span></a><a class="docs-settings-button docs-navbar-link fa-solid fa-gear" id="documenter-settings-button" href="#" title="Settings"></a><a class="docs-article-toggle-button fa-solid fa-chevron-up" id="documenter-article-toggle-button" href="javascript:;" title="Collapse all docstrings"></a></div></header><article class="content" id="documenter-page"><h1 id="Lotka-Volterra"><a class="docs-heading-anchor" href="#Lotka-Volterra">Lotka Volterra</a><a id="Lotka-Volterra-1"></a><a class="docs-heading-anchor-permalink" href="#Lotka-Volterra" title="Permalink"></a></h1><p>This is a demonstration of a predator-prey agent-based model.</p><p>We start with importing some libraries.</p><pre><code class="language-julia hljs">using Catlab, DataMigrations, AlgebraicRewriting
-using Random, Test, StructEquality
-using Luxor
+using Random, Test
+using Luxor # optional: makes the sequence of images via `view_traj` at the end
 
 using Catlab.Graphics.Graphviz: Attributes, Statement, Node
 using Catlab.Graphics.Graphviz
 
 const hom = homomorphism
+
 Random.seed!(123);</code></pre><h1 id="Ontology"><a class="docs-heading-anchor" href="#Ontology">Ontology</a><a id="Ontology-1"></a><a class="docs-heading-anchor-permalink" href="#Ontology" title="Permalink"></a></h1><p>Defining an ontology is stating what data is required to specify a state of the simulation at some point in time. In AlgebraicJulia, this is done via declaring a <code>Presentation</code>, i.e. a database schema. Objects (<code>Ob</code>, or tables) are types of entities. Homs (<code>Hom</code>, or foreign keys) are functional relationships between the aforementioned entities. AttrTypes are placeholders for Julia types, which are assigned to <code>Ob</code> via attributes (<code>Attr</code>).</p><p>The schema below extends the schema for directed graphs, which consists in two tables (<code>E</code> and <code>V</code>, for edges and vertices) and two homs (<code>src</code> and <code>tgt</code>, <code>E→V</code>). It says there are two more types of entities, <code>Sheep</code> and <code>Wolf</code>, and they can be thought of as living <em>on</em> the graph due to homs <code>sheep_loc</code> and <code>wolf_loc</code> which assign each of them a vertex.</p><p>Furthermore, we want to give these entities some attributes. In this model, wolves and sheep both have &quot;energy&quot;, given by <code>Eng</code> (a type variable, which we&#39;ll later instantiate with <code>Int</code>). Also, grass lives on vertices, and it&#39;s represented by an integer. <code>countdown</code> being zero means the grass is ready to eat, whereas a value above zero represents a counter of time the grass needs until it grows back.</p><p>There is also a direction attribute type, and the edges (as well as animals) will be oriented in a particular direction at any point in time.</p><pre><code class="language-julia hljs">@present SchLV &lt;: SchGraph begin
   (Sheep, Wolf)::Ob
   sheep_loc::Hom(Sheep, V); wolf_loc::Hom(Wolf, V)
@@ -559,11 +560,10 @@ view_sched(par_sched; names=N)</code></pre><img src='data:image/svg+xml;utf-8,<?
 </g>
 </svg>
 '/><h4 id="Test-rotation"><a class="docs-heading-anchor" href="#Test-rotation">Test rotation</a><a id="Test-rotation-1"></a><a class="docs-heading-anchor-permalink" href="#Test-rotation" title="Permalink"></a></h4><pre><code class="language-julia hljs">begin
-  ex = @acset_colim yLV begin
-    e::E
-    s::Sheep
-    sheep_loc(s) == src(e)
-    sheep_dir(s) == :N
+  ex = @acset LV begin
+    E=1; Sheep=1; V=2
+    src=1; tgt=2; dir=:W; countdown = [0, 0]
+    sheep_loc=1; sheep_eng=100; sheep_dir=:N
   end;
 
   expected = copy(ex);
@@ -597,19 +597,16 @@ sheep_fwd_rule = Rule(
 );
 
 sheep_fwd = tryrule(RuleApp(:move_fwd, sheep_fwd_rule,
-  hom(S, s_fwd_l), hom(S, s_fwd_r)));</code></pre><h4 id="Moving-forward-test"><a class="docs-heading-anchor" href="#Moving-forward-test">Moving forward test</a><a id="Moving-forward-test-1"></a><a class="docs-heading-anchor-permalink" href="#Moving-forward-test" title="Permalink"></a></h4><pre><code class="language-julia hljs">begin # test
-  ex = @acset_colim yLV begin
-    (e1, e2)::E; s::Sheep
-    sheep_loc(s) == tgt(e1); tgt(e1) == src(e2)
-    sheep_dir(s) == :N; dir(e1) == :N; dir(e2) == :N
-    sheep_eng(s) == 10
+  hom(S, s_fwd_l), hom(S, s_fwd_r)));</code></pre><h4 id="Moving-forward-test"><a class="docs-heading-anchor" href="#Moving-forward-test">Moving forward test</a><a id="Moving-forward-test-1"></a><a class="docs-heading-anchor-permalink" href="#Moving-forward-test" title="Permalink"></a></h4><pre><code class="language-julia hljs">begin
+  ex = @acset LV begin
+    V=3; E=2; Sheep=1;
+    countdown=[0,0,0]
+    src=[1,2]; tgt=[2,3]; dir=[:N,:W]
+    sheep_loc=1; sheep_dir=:N; sheep_eng = 10
   end
-  expected = @acset_colim yLV begin
-    (e1, e2)::E; s::Sheep
-    sheep_loc(s) == tgt(e2); tgt(e1) == src(e2)
-    sheep_dir(s) == :N; dir(e1) == :N; dir(e2) == :N
-    sheep_eng(s) == 9
-  end
+  expected = copy(ex);
+  expected[:sheep_loc] = 2
+  expected[:sheep_eng] = 9
   @test is_isomorphic(expected, rewrite(sheep_fwd_rule, ex))
   rewrite!(sheep_fwd_rule, ex)
   @test is_isomorphic(ex, expected)
@@ -619,16 +616,15 @@ se_rule = Rule(S; expr=(Eng=[vs -&gt; vs[1] + 4, vs -&gt; 30],),
   ac=[AppCond(hom(S, s_eat_pac))]);
 
 sheep_eat = tryrule(RuleApp(:Sheep_eat, se_rule, S));</code></pre><h4 id="Sheep-eating-test"><a class="docs-heading-anchor" href="#Sheep-eating-test">Sheep eating test</a><a id="Sheep-eating-test-1"></a><a class="docs-heading-anchor-permalink" href="#Sheep-eating-test" title="Permalink"></a></h4><pre><code class="language-julia hljs">begin
-  ex = @acset_colim yLV begin
-    s::Sheep; e::E
-    sheep_loc(s) == tgt(e); sheep_eng(s) == 3
-    countdown(tgt(e)) == 0; countdown(src(e)) == 10
+  ex = @acset LV begin
+    E=1; V=2; Sheep=1;
+    src=1; tgt=2; dir=:S; countdown=[10, 0]
+    sheep_loc = 2; sheep_eng = 3; sheep_dir=:W
   end
-  expected = @acset_colim yLV begin
-    s::Sheep; e::E
-    sheep_loc(s) == tgt(e); sheep_eng(s) == 7
-    countdown(tgt(e)) == 30; countdown(src(e)) == 10
-  end
+
+  expected = copy(ex)
+  expected[2,:countdown] = 30
+  expected[1,:sheep_eng] = 7
 
   @test is_isomorphic(expected, rewrite(se_rule, ex))
   rewrite!(se_rule, ex)
@@ -644,17 +640,15 @@ we_rule = Rule(hom(W, w_eat_l), id(W);
 wolf_eat = tryrule(RuleApp(:Wolf_eat, we_rule, W));</code></pre><h4 id="Wolf-eating-test"><a class="docs-heading-anchor" href="#Wolf-eating-test">Wolf eating test</a><a id="Wolf-eating-test-1"></a><a class="docs-heading-anchor-permalink" href="#Wolf-eating-test" title="Permalink"></a></h4><pre><code class="language-julia hljs">begin
   ex = @acset LV begin
     Sheep=1; Wolf=1; V=3; E=2;
-    src=[1,2]; tgt=[2,3];
-    countdown=[9,10,11]; dir=[:N,:N];
+    src=[1,2]; tgt=[2,3]; countdown=[9,10,11]; dir=[:N,:N];
     sheep_loc=2; sheep_eng=[3]; sheep_dir=[:N]
     wolf_loc=[2];  wolf_eng=[16];  wolf_dir=[:S]
   end
-  expected = @acset LV begin
-    Wolf=1; V=3; E=2;
-    src=[1,2]; tgt=[2,3];
-    countdown=[9,10,11];  dir=[:N,:N];
-    wolf_loc=[2]; wolf_eng=[36]; wolf_dir=[:S]
-  end
+
+  expected = copy(ex)
+  expected[1, :wolf_eng] = 36
+  rem_part!(expected, :Sheep, 1)
+
   @test is_isomorphic(rewrite(we_rule,ex), expected)
   rewrite!(we_rule, ex)
   @test is_isomorphic(ex,expected)
@@ -664,13 +658,16 @@ sheep_die_rule = Rule(hom(G, s_die_l), id(G))
 sheep_starve = (RuleApp(:starve, sheep_die_rule,
   hom(S, s_die_l), create(G))
                 ⋅
-                (id([I]) ⊗ Weaken(create(S))) ⋅ merge_wires(I));</code></pre><h4 id="Sheep-starvation-test"><a class="docs-heading-anchor" href="#Sheep-starvation-test">Sheep starvation test</a><a id="Sheep-starvation-test-1"></a><a class="docs-heading-anchor-permalink" href="#Sheep-starvation-test" title="Permalink"></a></h4><pre><code class="language-julia hljs">begin # test
-  compile_rewrite(sheep_die_rule)
-  ex = @acset_colim yLV begin
-    s::Sheep; w::Wolf
-    sheep_eng(s) == 0; sheep_dir(s) == :W
+                (id([I]) ⊗ Weaken(create(S))) ⋅ merge_wires(I));</code></pre><h4 id="Sheep-starvation-test"><a class="docs-heading-anchor" href="#Sheep-starvation-test">Sheep starvation test</a><a id="Sheep-starvation-test-1"></a><a class="docs-heading-anchor-permalink" href="#Sheep-starvation-test" title="Permalink"></a></h4><pre><code class="language-julia hljs">begin
+  ex = @acset LV begin
+    V=1; Sheep=1; Wolf=1
+    countdown=20;
+    sheep_loc=1; sheep_eng=0; sheep_dir=:W
+    wolf_loc=1; wolf_eng=10; wolf_dir=:S
   end
-  expected = @acset_colim yLV begin v::V; w::Wolf end
+  expected = copy(ex)
+  rem_part!(expected, :Sheep, 1)
+
   @test is_isomorphic(rewrite(sheep_die_rule,ex), expected)
   rewrite!(sheep_die_rule,ex)
   @test is_isomorphic(ex, expected)
@@ -688,16 +685,19 @@ sheep_reprod_rule = Rule(
 
 sheep_reprod = RuleApp(:reproduce, sheep_reprod_rule,
   id(S), hom(S, s_reprod_r)) |&gt; tryrule;</code></pre><h4 id="Reproduction-test"><a class="docs-heading-anchor" href="#Reproduction-test">Reproduction test</a><a id="Reproduction-test-1"></a><a class="docs-heading-anchor-permalink" href="#Reproduction-test" title="Permalink"></a></h4><pre><code class="language-julia hljs">begin # test
-  ex = @acset_colim yLV begin
-    s::Sheep; w::Wolf; sheep_eng(s) == 10; sheep_dir(s) == :W
+  ex = @acset LV begin
+    Sheep=1; Wolf=1; V=2;
+    countdown=[20,30]
+    sheep_loc=1; sheep_eng=10; sheep_dir=:W
+    wolf_loc=2; wolf_eng=5; wolf_dir=:N
   end
-  expected = @acset_colim yLV  begin
-    (s1,s2)::Sheep; w::Wolf;
-    sheep_loc(s1) == sheep_loc(s2)
-    sheep_dir(s1) == sheep_dir(s2)
-    sheep_eng(s1) == sheep_eng(s2)
-    sheep_dir(s1) == :W; sheep_eng(s1) == 5;
-  end
+
+  expected = copy(ex)
+  add_part!(expected,:Sheep)
+  expected[:sheep_eng] = [5, 5]
+  expected[:sheep_loc] = [1, 1]
+  expected[:sheep_dir] = [:W, :W]
+
   @test is_isomorphic(rewrite(sheep_reprod_rule,ex),expected)
   rewrite!(sheep_reprod_rule,ex)
   @test is_isomorphic(ex, expected)
@@ -847,4 +847,4 @@ view_LV(X)</code></pre><img src='data:image/svg+xml;utf-8,<?xml version="1.0" en
 </g>
 </svg>
 '/><p>Run the simulation for 100 steps</p><pre><code class="language-julia hljs">res = interpret(overall, X; maxstep=100);</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">┌ Warning: Exceeded maximum number of steps
-└ @ AlgebraicRewriting.Schedules.Eval ~/work/AlgebraicRewriting.jl/AlgebraicRewriting.jl/src/schedules/Eval.jl:72</code></pre><h2 id="Visualizing-the-results"><a class="docs-heading-anchor" href="#Visualizing-the-results">Visualizing the results</a><a id="Visualizing-the-results-1"></a><a class="docs-heading-anchor-permalink" href="#Visualizing-the-results" title="Permalink"></a></h2><p>Run this line to view the trajectory in the generated <code>traj</code> folder</p><pre><code class="language-julia hljs">view_traj(overall, res[1:10], view_LV; agent=true, names=F2(N));</code></pre></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../game_of_life/">« Conway&#39;s Game of Life</a><a class="docs-footer-nextpage" href="../ptg_simple/">Slice Bread »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option><option value="auto">Automatic (OS)</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 1.2.1 on <span class="colophon-date" title="Wednesday 28 February 2024 20:14">Wednesday 28 February 2024</span>. Using Julia version 1.10.1.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
+└ @ AlgebraicRewriting.Schedules.Eval ~/work/AlgebraicRewriting.jl/AlgebraicRewriting.jl/src/schedules/Eval.jl:72</code></pre><h2 id="Visualizing-the-results"><a class="docs-heading-anchor" href="#Visualizing-the-results">Visualizing the results</a><a id="Visualizing-the-results-1"></a><a class="docs-heading-anchor-permalink" href="#Visualizing-the-results" title="Permalink"></a></h2><p>Run this line to view the trajectory in the generated <code>traj</code> folder</p><pre><code class="language-julia hljs">view_traj(overall, res[1:10], view_LV; agent=true, names=F2(N));</code></pre></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../game_of_life/">« Conway&#39;s Game of Life</a><a class="docs-footer-nextpage" href="../ptg_simple/">Slice Bread »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="auto">Automatic (OS)</option><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 1.4.0 on <span class="colophon-date" title="Friday 19 April 2024 23:13">Friday 19 April 2024</span>. Using Julia version 1.10.2.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
