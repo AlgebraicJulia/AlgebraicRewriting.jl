@@ -46,37 +46,6 @@ function pushout_complement(pair::ComposablePair{<:FinSet{Int}})
   return ComposablePair(k, g)
 end
 
-"""
-This may not be the actual pushout complement in the relevant (Kleisli) category
-
-      l
-    L ← I
-  m ↓   ↓ k
-    G ← K
-      g
-
-"""
-function pushout_complement(pair::ComposablePair{<:VarSet{T}}) where {T}
-  l, m = pair
-  lm = compose(l,m)
-  I, G = dom(l), codom(m)
-  # Initialize I -> K with image of composite l⋅m
-  image_lm = unique([lm(AttrVar(i)) for i in I])
-  
-  # Additionally, any vars not matched by m should be matched by g
-  unmatched = setdiff(AttrVar.(G), collect(m))
-  K = FinSet(length(image_lm) + length(unmatched))
-
-  # Construct I -> K 
-  ik = VarFunction{T}([AttrVar(findfirst(==(lm(AttrVar(i))), image_lm)) 
-                       for i in I], FinSet(length(K)))
-  # Construct K -> G 
-  kg = VarFunction{T}(Union{T,AttrVar}[
-    [lm(AttrVar(findfirst(==(AttrVar(k)), collect(ik)))) 
-     for k in 1:length(image_lm)]..., unmatched...], FinSet(length(G)))
-  return ComposablePair(ik, kg)
-end
-
 can_pushout_complement(pair::ComposablePair{<:FinSet{Int}}) =
   all(isempty, id_condition(pair))
 
