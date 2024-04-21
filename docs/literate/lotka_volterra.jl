@@ -48,8 +48,9 @@ be oriented in a particular direction at any point in time.
   (Sheep, Wolf)::Ob
   sheep_loc::Hom(Sheep, V); wolf_loc::Hom(Wolf, V)
 
-  Eng::AttrType
-  countdown::Attr(V, Eng); sheep_eng::Attr(Sheep, Eng); wolf_eng::Attr(Wolf, Eng)
+  (Time, Eng)::AttrType
+  countdown::Attr(V, Time); 
+  sheep_eng::Attr(Sheep, Eng); wolf_eng::Attr(Wolf, Eng)
   
   Dir::AttrType
   dir::Attr(E, Dir); sheep_dir::Attr(Sheep, Dir); wolf_dir::Attr(Wolf, Dir)
@@ -58,7 +59,7 @@ end
 ## efficient ABM rewriting uses BitSetParts rather than DenseParts to allow 
 ## in-place pushout rewriting, rather than pure/non-mutating pushouts.)
 @acset_type LV_Generic(SchLV, part_type=BitSetParts) <: HasGraph
-const LV = LV_Generic{Int, Symbol}
+const LV = LV_Generic{Int, Int, Symbol}
 
 to_graphviz(SchLV; prog="dot")
 
@@ -76,7 +77,7 @@ unnecessary when doing the actual agent-based modeling. So what we will do is
 end
 
 @acset_type LV′_Generic(SchLV′, part_type=BitSetParts) <: HasGraph
-const LV′ = LV′_Generic{Int, Symbol, Tuple{Int,Int}};
+const LV′ = LV′_Generic{Int, Int, Symbol, Tuple{Int,Int}};
 
 #=
 We will be representing directions as `Symbol`s and encode the geometry via 
@@ -267,8 +268,8 @@ obtain a generic LV′ sheep. We use this as the domain of a hom that
 assigns the sheep to Sheep #2 of the world state `init` from above.
 =#
 
-S = @acset LV begin V=1; Sheep=1; Dir=1; Eng=2;
-  sheep_loc=1; sheep_dir=[AttrVar(1)]; sheep_eng=[AttrVar(1)]; countdown=[AttrVar(2)]
+S = @acset LV begin V=1; Sheep=1; Dir=1; Eng=1; Time=1;
+  sheep_loc=1; sheep_dir=[AttrVar(1)]; sheep_eng=[AttrVar(1)]; countdown=[AttrVar(1)]
 end
 
 view_LV(hom(F2(S), init; initial=(Sheep=[2],)))
@@ -282,7 +283,7 @@ macro is perfect for exactly this. In order to use
 that macro, we need to compute something first with the `yoneda_cache` function.
 =#
 
-yLV = yoneda_cache(LV; clear=false); # reuse cached result, if available
+yLV = yoneda_cache(LV; clear=true); # reuse cached result, if available
 I = LV() # Empty agent type
 S = @acset_colim yLV begin s::Sheep end # Generic sheep agent
 W = F(S) # Generic wolf agent, obtained via the swapping `F` data migration
@@ -373,8 +374,8 @@ sheep_fwd_rule = Rule(
   hom(s_fwd_i, s_fwd_l; monic=true),
   hom(s_fwd_i, s_fwd_r; monic=true),
   ac=[AppCond(hom(s_fwd_l, s_n), false)],
-  expr=(Eng=Dict(3 => vs -> vs[3] - 1), Dir=Dict(2 => vs -> vs[2]))
-);
+  expr=(Eng=[vs -> only(vs) - 1],))
+;
 
 sheep_fwd = tryrule(RuleApp(:move_fwd, sheep_fwd_rule,
   hom(S, s_fwd_l), hom(S, s_fwd_r)));
@@ -400,7 +401,7 @@ end;
 
 s_eat_pac = @acset_colim yLV begin s::Sheep; countdown(sheep_loc(s)) == 0 end;
 
-se_rule = Rule(S; expr=(Eng=[vs -> vs[1] + 4, vs -> 30],),
+se_rule = Rule(S; expr=(Eng=[vs -> only(vs) + 4], Time=[vs -> 30],),
   ac=[AppCond(hom(S, s_eat_pac))]);
 
 sheep_eat = tryrule(RuleApp(:Sheep_eat, se_rule, S));
@@ -429,8 +430,7 @@ w_eat_l = @acset_colim yLV begin
   sheep_loc(s) == wolf_loc(w)
 end;
 
-we_rule = Rule(hom(W, w_eat_l), id(W); 
-               expr=(Eng=[vs -> vs[3] + 20, vs -> vs[1]],));
+we_rule = Rule(hom(W, w_eat_l), id(W); expr=(Eng=[vs -> vs[2] + 20],));
 
 wolf_eat = tryrule(RuleApp(:Wolf_eat, we_rule, W));
 
@@ -488,8 +488,8 @@ end;
 sheep_reprod_rule = Rule(
   hom(G, S),
   hom(G, s_reprod_r);
-  expr=(Dir=[vs -> vs[1], vs -> vs[1]], Eng=[vs -> vs[2],
-    fill(vs -> round(Int, vs[1] / 2, RoundUp), 2)...],)
+  expr=(Dir=fill(vs->only(vs) ,2), 
+        Eng=fill(vs -> round(Int, vs[1] / 2, RoundUp), 2),)
 );
 
 sheep_reprod = RuleApp(:reproduce, sheep_reprod_rule,
@@ -520,11 +520,11 @@ end;
 
 g_inc_n = deepcopy(G)
 set_subpart!(g_inc_n, 1, :countdown, 0)
-rem_part!(g_inc_n, :Eng, 1);
+rem_part!(g_inc_n, :Time, 1);
 
 g_inc_rule = Rule(id(G), id(G);
   ac=[AppCond(hom(G, g_inc_n), false)],
-  expr=(Eng=[vs -> only(vs) - 1],));
+  expr=(Time=[vs -> only(vs) - 1],));
 
 g_inc = RuleApp(:GrassIncrements, g_inc_rule, G) |> tryrule;
 
