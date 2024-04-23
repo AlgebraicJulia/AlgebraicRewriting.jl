@@ -34,9 +34,15 @@ end
 # Caching
 #########
 
+"""
+Want a filename that is stable to multiple Julia sessions but changes when the
+schema changes. This minimizes the need to clear the cache.
+"""
+pres_hash(p::Presentation) = "$(hash(p.generators))_$(hash(p.equations))"
+
 function yoneda_cache(T::Type,S=nothing; clear=false, cache="cache")
   S = isnothing(S) ? Presentation(T) : S
-  tname = nameof(T) |> string
+  tname = "$(nameof(T))_$(pres_hash(S))"
   cache_dict = Dict{Symbol,Tuple{T,Int}}(map(generators(S, :Ob)) do ob
     name = nameof(ob)
     cache_dir = mkpath(joinpath(cache, "$tname"))

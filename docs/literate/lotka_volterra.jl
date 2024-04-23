@@ -283,7 +283,7 @@ macro is perfect for exactly this. In order to use
 that macro, we need to compute something first with the `yoneda_cache` function.
 =#
 
-yLV = yoneda_cache(LV; clear=true); # reuse cached result, if available
+yLV = yoneda_cache(LV; clear=false); # cache=false means reuse cached results
 I = LV() # Empty agent type
 S = @acset_colim yLV begin s::Sheep end # Generic sheep agent
 W = F(S) # Generic wolf agent, obtained via the swapping `F` data migration
