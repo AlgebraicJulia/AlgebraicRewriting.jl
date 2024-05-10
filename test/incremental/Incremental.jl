@@ -4,7 +4,8 @@ using Test
 using AlgebraicRewriting
 using Catlab
 using AlgebraicRewriting.Incremental: validate, connected_acset_components, 
-                                      state, deletion!, addition!
+                                      state, deletion!, addition!, 
+                                      IncSumHomSet, IncCCHomSet
 using AlgebraicRewriting.Rewrite.Utils: get_result, get_rmap, get_pmap
 using Random
 
@@ -45,6 +46,9 @@ rewrite!(hset, A_rule)
 @test haskey(hset, 3=>7)
 @test hset[3=>8] == hset[17]
 
+@test hset == IncCCHomSet(hset)
+@test IncCCHomSet(IncSumHomSet(hset)) isa IncCCHomSet
+
 # Multiple connected components in pattern
 hset = IncHomSet(ee ⊕ e, [A_rule.R], start);
 
@@ -66,6 +70,9 @@ del, add = rewrite!(hset, A_rule, homomorphisms(e, start)[2])
 rewrite!(hset, A_rule)
 @test validate(hset)
 @test Set(matches(hset)) == Set(homomorphisms(ee ⊕ e, state(hset)))
+
+@test hset == IncSumHomSet(hset)
+@test IncSumHomSet(IncCCHomSet(hset)) isa IncSumHomSet
 
 # Blog example
 tri = @acset Graph begin V=3;E=3;src=[1,1,2];tgt=[3,2,3]end

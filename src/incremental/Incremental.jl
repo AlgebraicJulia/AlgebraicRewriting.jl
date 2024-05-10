@@ -64,15 +64,16 @@ struct IncCCHomSet <: IncHomSet
   key_vect::Vector{Pair{Int,Int}}
   key_dict::Dict{Pair{Int,Int}, Int}
   state::Ref{<:ACSet}
-  function IncCCHomSet(L, as, X)
-    all(is_monic, as) || error("Nonmonic addition") # TODO: relax this condition
-    homs = homomorphisms(L, X)
-    n = length(homs)
-    key_vect = Pair{Int,Int}[1 => i for i in 1:n]
-    key_dict = Dict{Pair{Int,Int},Int}((1 => i) => i for i in 1:n)
-    new(L, as, compute_overlaps.(Ref(L), as), [Dict(enumerate(homs))], 
-        key_vect, key_dict, Ref(X))
-  end
+end
+
+function IncCCHomSet(L, as, X)
+  all(is_monic, as) || error("Nonmonic addition") # TODO: relax this condition
+  homs = homomorphisms(L, X)
+  n = length(homs)
+  key_vect = Pair{Int,Int}[1 => i for i in 1:n]
+  key_dict = Dict{Pair{Int,Int},Int}((1 => i) => i for i in 1:n)
+  IncCCHomSet(L, as, compute_overlaps.(Ref(L), as), [Dict(enumerate(homs))], 
+      key_vect, key_dict, Ref(X))
 end
 
 """
@@ -97,6 +98,22 @@ struct IncSumHomSet <: IncHomSet
   ihs::Vector{IncCCHomSet}
   key_vect::Vector{Vector{Pair{Int,Int}}}
   key_dict::Dict{Vector{Pair{Int,Int}}, Int}
+end
+
+IncCCHomSet(hs::IncCCHomSet) = hs
+IncSumHomSet(hs::IncSumHomSet) = hs
+
+"""Cast a sum homset into a single 'connected component'"""
+function IncCCHomSet(hs::IncSumHomSet)
+  IncCCHomSet(pattern(hs), additions(hs), state(hs)) # TODO avoid recomputing homset
+end
+
+"""Cast a CC to a singleton sum"""
+function IncSumHomSet(hs::IncCCHomSet) 
+  pat = pattern(hs)
+  kv = [[x] for x in key_vect(hs)]
+  kd = Dict([k] => v for (k,v) in key_dict(hs))
+  IncSumHomSet(pat, coproduct([pat]), id(pat), [hs], kv, kd)
 end
 
 """
