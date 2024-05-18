@@ -2,9 +2,12 @@ module FinSets
 export pushout_complement,can_pushout_complement,id_condition
 
 using Catlab.Theories
-using Catlab.CategoricalAlgebra: ComposablePair, FinSet, FinFunction
+using Catlab.CategoricalAlgebra: ComposablePair, FinSet, FinFunction, is_monic, is_epic
 using Catlab.CategoricalAlgebra.FinSets: VarFunction, VarSet
 using ACSets.ColumnImplementations: AttrVar
+import Catlab: is_isomorphic
+
+is_isomorphic(f::FinFunction) = is_monic(f) && is_epic(f)
 
 # Pushout complements
 #--------------------
