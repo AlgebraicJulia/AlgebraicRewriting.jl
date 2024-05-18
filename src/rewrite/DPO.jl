@@ -28,6 +28,7 @@ function rewrite_match_maps(r::Rule{:DPO}, m; check::Bool=false)
   Dict(:ik=>ik, :kg=>kg, :rh=>rh, :kh=>kh)
 end
 
+"""Further induced equations between AttrVars, given a specific match morphism"""
 var_eqs(r::Rule{:DPO}, m::ACSetTransformation) = var_eqs(left(r), m)
 
 """

@@ -4,8 +4,8 @@ using Test
 using AlgebraicRewriting
 using Catlab
 using AlgebraicRewriting.Incremental: validate, connected_acset_components, 
-                                      state, deletion!, addition!, 
-                                      IncSumHomSet, IncCCHomSet
+                                      state, deletion!, addition!, runtime,
+                                      IncSumHomSet, IncCCHomSet, match_vect
 using AlgebraicRewriting.Rewrite.Utils: get_result, get_rmap, get_pmap
 using Random
 
@@ -17,7 +17,6 @@ g1, g2 = path_graph.(Graph, [3, 2])
 ccs, iso = connected_acset_components(g1 ⊕ g2);
 @test is_monic(iso) && is_epic(iso)
 @test collect(first(ccs.cocone)[:V]) == [1,2,3] 
-
 
 # Graph incremental hom search
 #-----------------------------
@@ -35,19 +34,23 @@ hset = IncHomSet(Graph(), [A_rule.R], Graph(3));
 # Single connected component pattern
 start = @acset Graph begin V=3; E=3; src=[1,2,3]; tgt=[2,3,3] end
 hset = IncHomSet(ee, [A_rule.R], start);
+@test length.(match_vect(hset)) == [3]
 del, add = rewrite!(hset, A_rule, homomorphisms(e, start)[2])
 @test isempty(del)
 @test length(add) == 6
+@test length.(match_vect(hset)) == [3,6]
 @test validate(hset)
 rewrite!(hset, A_rule)
 @test validate(hset)
-@test length.(hset.match_vect) == [3, 6, 8]
+@test length.(match_vect(hset)) == [3, 6, 8]
 @test !haskey(hset, 2=>7)
 @test haskey(hset, 3=>7)
 @test hset[3=>8] == hset[17]
 
 @test hset == IncCCHomSet(hset)
-@test IncCCHomSet(IncSumHomSet(hset)) isa IncCCHomSet
+roundtrip = IncCCHomSet(IncSumHomSet(hset))
+@test roundtrip isa IncCCHomSet
+@test length.(match_vect(hset)) == [17]
 
 # Multiple connected components in pattern
 hset = IncHomSet(ee ⊕ e, [A_rule.R], start);
@@ -56,13 +59,12 @@ hset = IncHomSet(ee ⊕ e, [A_rule.R], start);
 @test !haskey(hset, [2=>2, 1=>2])
 @test length(keys(hset)) == 9
 @test hset[[1=>3,1=>3]] == hset[9]
-
 del, add = rewrite!(hset, A_rule, homomorphisms(e, start)[2])
 
 @test isempty(del)
 
-@test length.(hset.ihs[1].match_vect) == [3,6]
-@test length.(hset.ihs[2].match_vect) == [3,3]
+@test length.(match_vect(runtime(hset).components[1])) == [3,6]
+@test length.(match_vect(runtime(hset).components[2])) == [3,3]
 @test length(add) == 6*(3+3) + (3+6)*3
 @test validate(hset)
 
