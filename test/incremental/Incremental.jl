@@ -3,9 +3,9 @@ module TestIncremental
 using Test
 using AlgebraicRewriting
 using Catlab
-using AlgebraicRewriting.Incremental: validate, connected_acset_components, 
-                                      state, deletion!, addition!, runtime,
-                                      IncSumHomSet, IncCCHomSet, match_vect
+using AlgebraicRewriting.Incremental: 
+  validate, connected_acset_components, state, deletion!, addition!, runtime,
+  IncSumHomSet, IncCCHomSet, match_vect
 using AlgebraicRewriting.Rewrite.Utils: get_result, get_rmap, get_pmap
 using Random
 
@@ -13,7 +13,7 @@ Random.seed!(100)
 
 # test connected_acset_components
 #--------------------------------
-g1, g2 = path_graph.(Graph, [3, 2])
+g1, g2 = path_graph.(Graph, [3, 2]);
 ccs, iso = connected_acset_components(g1 ⊕ g2);
 @test is_monic(iso) && is_epic(iso)
 @test collect(first(ccs.cocone)[:V]) == [1,2,3] 
@@ -23,7 +23,7 @@ ccs, iso = connected_acset_components(g1 ⊕ g2);
                                                                   #  • ⇉ •
 e, ee = path_graph.(Graph, 2:3)                                   #   ↘ ↙
 A = @acset Graph begin V=3; E=4; src=[1,1,1,2]; tgt=[2,2,3,3] end #    •
-A_rule = Rule(id(e), homomorphism(e, A); monic=true)
+A_rule = Rule(id(e), homomorphism(e, A));
 
 # Empty edge case
 hset = IncHomSet(Graph(), [A_rule.R], Graph(3)); 
@@ -35,22 +35,26 @@ hset = IncHomSet(Graph(), [A_rule.R], Graph(3));
 start = @acset Graph begin V=3; E=3; src=[1,2,3]; tgt=[2,3,3] end
 hset = IncHomSet(ee, [A_rule.R], start);
 @test length.(match_vect(hset)) == [3]
-del, add = rewrite!(hset, A_rule, homomorphisms(e, start)[2])
+
+m = homomorphisms(e, start)[2]
+del, add = rewrite!(hset, A_rule, m)
 @test isempty(del)
 @test length(add) == 6
-@test length.(match_vect(hset)) == [3,6]
+@test length.(match_vect(hset)) == [3,0,6]
 @test validate(hset)
+
+m = homomorphism(e, state(hset); monic=true)
 rewrite!(hset, A_rule)
 @test validate(hset)
-@test length.(match_vect(hset)) == [3, 6, 8]
-@test !haskey(hset, 2=>7)
-@test haskey(hset, 3=>7)
-@test hset[3=>8] == hset[17]
+@test length.(match_vect(hset)) == [3, 0, 6, 0, 8]
+@test !haskey(hset, 3=>7)
+@test haskey(hset, 5=>7)
+@test hset[5=>8] == hset[17]
 
 @test hset == IncCCHomSet(hset)
-roundtrip = IncCCHomSet(IncSumHomSet(hset))
+roundtrip = IncCCHomSet(IncSumHomSet(hset));
 @test roundtrip isa IncCCHomSet
-@test length.(match_vect(hset)) == [17]
+@test length.(match_vect(roundtrip)) == [17]
 
 # Multiple connected components in pattern
 hset = IncHomSet(ee ⊕ e, [A_rule.R], start);
@@ -59,22 +63,23 @@ hset = IncHomSet(ee ⊕ e, [A_rule.R], start);
 @test !haskey(hset, [2=>2, 1=>2])
 @test length(keys(hset)) == 9
 @test hset[[1=>3,1=>3]] == hset[9]
-del, add = rewrite!(hset, A_rule, homomorphisms(e, start)[2])
+del, add = rewrite!(hset, A_rule, homomorphisms(e, start)[2]);
 
 @test isempty(del)
 
-@test length.(match_vect(runtime(hset).components[1])) == [3,6]
-@test length.(match_vect(runtime(hset).components[2])) == [3,3]
+@test length.(match_vect(runtime(hset).components[1])) == [3,0,6]
+@test length.(match_vect(runtime(hset).components[2])) == [3,0,3]
 @test length(add) == 6*(3+3) + (3+6)*3
 @test validate(hset)
 
 @test Set(matches(hset)) == Set(homomorphisms(ee ⊕ e, state(hset)))
-rewrite!(hset, A_rule)
+rewrite!(hset, A_rule);
 @test validate(hset)
 @test Set(matches(hset)) == Set(homomorphisms(ee ⊕ e, state(hset)))
 
 @test hset == IncSumHomSet(hset)
-@test IncSumHomSet(IncCCHomSet(hset)) isa IncSumHomSet
+roundtrip = IncSumHomSet(IncCCHomSet(hset));
+@test roundtrip isa IncSumHomSet
 
 # Blog example
 tri = @acset Graph begin V=3;E=3;src=[1,1,2];tgt=[3,2,3]end
@@ -86,13 +91,37 @@ addition!(hset, 1, omap)
 
 # Multiple connected components 
 hset = IncHomSet(Graph(1) ⊕ e, [A_rule.R], start);
-rewrite!(hset, A_rule, homomorphisms(e, start)[2])
+rewrite!(hset, A_rule, homomorphisms(e, start)[2]);
 @test validate(hset)
 rewrite!(hset, A_rule)
 @test validate(hset)
 @test length(keys(hset)) == 45
 
+# Monic contraints
+mset = IncHomSet(Graph(2), [create(Graph(1))], Graph(2); monic=true);
+@test mset isa IncCCHomSet
+@test length(matches(mset)) == 2
+M_rule = Rule(id(Graph()), create(Graph(1)); monic=true)
+rewrite!(mset, M_rule)
+@test length.(match_vect(mset)) == [2, 4]
 
+# Application conditions: NAC removing morphisms during addition!
+del = delete(Graph(1))
+mset = IncHomSet(Graph(1), [del], Graph(2)⊕ob(terminal(Graph)); nac=[del]);
+@test length(keys(mset)) == 2
+M_rule = Rule(id(Graph(1)), delete(Graph(1)); ac=[AppCond(del, false)])
+rewrite!(mset, M_rule)
+@test length(keys(mset)) == 1
+rewrite!(mset, M_rule)
+@test length(keys(mset)) == 0
+@test isnothing(rewrite!(mset, M_rule))
+
+# Application conditions: NAC adding morphisms during deletion!
+
+match_vect(mset)
+del = homomorphism(⊕(Graph[fill(ob(terminal(Graph)), 2); Graph(1)]), 
+                   state(mset); monic=true) # delete one loop
+deletion!(mset, del)
 # Weighted Graph
 const WG′ = WeightedGraph{Bool}
 e, ee = path_graph.(WG′, 2:3)
@@ -125,7 +154,7 @@ rewrite!(hset, A_rule, init_match)
 expected = @acset WeightedGraph{Bool} begin 
   V=4; E=6; src=[1,2,2,2,3,3]; tgt=[2,3,3,4,3,4]; weight=Bool[0,1,1,0,0,1]
 end
-@test is_isomorphic(expected, hset.state[])
+@test is_isomorphic(expected, state(hset))
 
 rewrite!(hset, A_rule)
 @test validate(hset)

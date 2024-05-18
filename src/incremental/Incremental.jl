@@ -6,8 +6,8 @@ export IncHomSet, IncHomSets, rewrite!, matches
 
 using ..Rewrite
 using ..Rewrite.Utils: get_result, get_rmap, get_pmap, get_expr_binding_map
-using ..CategoricalAlgebra.CSets: invert_iso
-import ..Rewrite: rewrite!
+using ..CategoricalAlgebra.CSets: invert_iso, extend_morphism
+import ..Rewrite: rewrite!, can_match
 
 using StructEquality
 using Catlab
@@ -30,13 +30,30 @@ constraints on that derived morphism.
 abstract type AC end
 
 """
+Coerce a general `Constraint` into a simple application condition, if possible. 
+This works if the `Constraint` was created by `AppCond`.
+"""
+function AC(c::Constraint)
+  m = c.g[1,:elabel]
+  monic = c.d.expr.monic
+  AppCond(m; monic) == c && return PAC(m, monic)
+  AppCond(m, false; monic) == c && return NAC(m, monic)
+  return nothing
+end
+
+"""
 A negative application condition L -> N means a match L -> X is invalid if 
 there exists a commuting triangle.  
 """
 @struct_hash_equal struct NAC <: AC 
   m::ACSetTransformation
-  monic::Union{Bool, Vector{Symbol}}
+  monic::Vector{Symbol}
 end
+
+NAC(n::NAC) = n
+
+NAC(m::ACSetTransformation, b::Bool=false) = 
+  NAC(m, b ? ob(acset_schema(dom(m))) : [])
 
 """
 A negative application condition L -> N means a match L -> X is invalid if 
@@ -46,6 +63,11 @@ there does not exist a commuting triangle.
   m::ACSetTransformation
   monic::Union{Bool, Vector{Symbol}}
 end
+
+PAC(p::PAC) = p
+
+PAC(m::ACSetTransformation, b::Bool=false) = 
+  PAC(m, b ? ob(acset_schema(dom(m))) : [])
 
 # Abstract types
 #---------------
@@ -164,21 +186,58 @@ all morphisms that send *some* part of N to a deleted part of X and all of L to
 the nondeleted part of X (this will find all of the new morphisms, only the 
 new morphisms, but will possibly contain duplicates).
 
-fun::ACSetTransformation → 𝔹 allows for a post-hoc filtering of matches.
+TODO add `dangling` field
 """
 @struct_hash_equal struct IncConstraints 
-  monic::Union{Bool, AbstractVector{Symbol}}
+  monic::Vector{Symbol}
   pac::Vector{PAC}
   nac::Vector{NAC}
-  fun::Union{Nothing, Function} 
 end
 
-Base.isempty(c::IncConstraints) = all([
-  c.monic == false,
-  isempty(c.pac),
-  isempty(c.nac),
-  isnothing(c.fun)
-])
+Base.isempty(c::IncConstraints) = all(isempty, [c.monic,c.pac,c.nac])
+
+"""
+Check whether a putative hom meets the constraints. Kwargs control which checks 
+are run. Often these homs are generated via hom search using the monic 
+constraint, so the monic constraint is usually not checked.
+"""
+function can_match(constr::IncConstraints, m::ACSetTransformation; 
+                   monic::Bool=false, pac=true, nac=true)::Bool
+
+  !monic || all(o -> is_monic(m[o]), constr.monic) || return false
+
+  if pac 
+    for ac in constr.pac
+      isnothing(extend_morphism(m, ac.m;  monic=ac.monic)) && return false
+    end
+  end
+  
+  if nac 
+    for ac in constr.nac
+      isnothing(extend_morphism(m, ac.m;  monic=ac.monic)) || return false
+    end
+  end
+  
+  return true
+end
+
+"""
+Check if a rule imposes the same constraints as captured by an IncConstraint
+
+TODO handle dangling condition specially (add it as a field to IncConstraints) 
+"""
+function compat_constraints(constraints::IncConstraints, r::Rule{T}) where T
+  # (T == DPO && constraints.dangling == left(r)) || return false
+  cm, rm = Set.([constraints.monic, r.monic])
+  cm == rm || return "Monic mismatch: $cm != $rm"
+  nac, pac = Set(), Set()
+  for constr in AC.(r.conditions)
+    push!(constr isa PAC ? pac : nac, constr)
+  end 
+  Set(constraints.nac) == nac || return "NAC mismatch" 
+  Set(constraints.pac) == pac || return "PAC mismatch"
+  return nothing
+end
 
 # Single-connected-component incremental hom sets
 #------------------------------------------------
@@ -191,7 +250,7 @@ For `IncCCHomSet` the pattern `L` must be a single connected component.
   additions::Vector{ACSetTransformation}
   overlaps::Vector{Vector{Span}}
   function IncCCStatic(pattern::ACSet, adds=[])
-    hs = new(pattern,[],[])
+    hs = new(pattern, [], [])
     push!.(Ref(hs), adds)
     return hs 
   end
@@ -232,8 +291,9 @@ This assumes the state of the world is changed in discrete updates.
   const key_vect::Vector{Pair{Int,Int}}
   const key_dict::Dict{Pair{Int,Int}, Int}
   state::ACSet
-  function IncCCRuntime(pattern, initial_state)
-    homs = homomorphisms(pattern, initial_state)
+  function IncCCRuntime(pattern::ACSet, initial_state::ACSet, constr::IncConstraints)
+    homs = filter(h -> can_match(constr, h), 
+                  homomorphisms(pattern, initial_state; monic=constr.monic))
     n = length(homs)
     match_vect = [Dict(enumerate(homs))]
     key_vect = Pair{Int,Int}[1 => i for i in 1:n]
@@ -311,7 +371,7 @@ IncSumHomSet(hs::IncSumHomSet) = hs
 """Cast a sum homset into a single 'connected component'"""
 function IncCCHomSet(hs::IncSumHomSet)
   stat = IncCCStatic(pattern(hs), additions(hs))
-  runt = IncCCRuntime(pattern(hs), state(hs))
+  runt = IncCCRuntime(pattern(hs), state(hs), constraints(hs))
   IncCCHomSet(stat, runt, constraints(hs))
 end
 
@@ -352,20 +412,23 @@ universal(h::IncSumStatic, comps::Vector{<:ACSetTransformation}) =
 component, even if it's not
 """
 function IncHomSet(pattern::ACSet, additions::Vector{<:ACSetTransformation}, 
-                   state::ACSet; single=false, monic=false, pac=[], nac=[], 
-                   fun=nothing)
-  constraints = IncConstraints(monic, pac, nac, fun)
+                   state::ACSet; single=false, monic=false, pac=[], nac=[])
+  obs = ob(acset_schema(pattern))
+  monic = monic isa Bool ? (monic ? obs : []) : monic
+  pac, nac = PAC.(pac), NAC.(nac)
+  constraints = IncConstraints(monic, pac, nac)
   all(is_monic, additions) || error("Nonmonic addition") # TODO: support merging
   coprod, iso = connected_acset_components(pattern)
   single = single || !isempty(constraints)
   if single || length(coprod) == 1
     stat = IncCCStatic(pattern, additions)
-    runt = IncCCRuntime(pattern, state)
+    runt = IncCCRuntime(pattern, state, constraints)
     return IncCCHomSet(stat, runt, constraints)
   else 
     pats = dom.(coprod.cocone)
     ccs = IncCCHomSet.(IncCCStatic.(pats, Ref(additions)), 
-                       IncCCRuntime.(pats, Ref(state)), Ref(constraints))
+                       IncCCRuntime.(pats, Ref(state), Ref(constraints)), 
+                       Ref(constraints))
     stat = IncSumStatic(pattern, coprod, iso, static.(ccs))
     key_vect = sort(vec(collect.(collect(×(keys.(ccs)...)))))
     key_dict = Dict(v => k for (k, v) in enumerate(key_vect))
@@ -490,16 +553,27 @@ overlap which has already been calculated between L and Rᵢ.
 
 Returns the 'keys' of the added matches.
 """
-addition!(hset::IncCCHomSet, i::Int, rmap::ACSetTransformation, 
+addition!(hset::IncHomSet, i::Int, rmap::ACSetTransformation, 
   update::ACSetTransformation) = addition!(hset..., i , rmap, update)
 
 function addition!(static::IncCCStatic, runtime::IncCCRuntime, constraints::IncConstraints,
                    i::Int, rmap::ACSetTransformation, update::ACSetTransformation)
   S = acset_schema(pattern(static))
+  invalidated_keys = Pair{Int,Int}[]
   # Push forward old matches
   for idx in 1:length(runtime)
-    runtime.match_vect[idx] = Dict(k => m ⋅ update 
-                                for (k, m) in pairs(runtime.match_vect[idx]))
+    dic = Dict()
+    for (k, m) in pairs(runtime.match_vect[idx])
+      m′ = m ⋅ update
+      # Check whether any NAC / dangling conditions are violated before adding
+      if can_match(constraints, m′; pac=false) 
+        dic[k] = m′
+      else
+        delete!(runtime, idx => k)
+        push!(invalidated_keys, idx => k)
+      end
+    end
+    runtime.match_vect[idx] = dic                       
   end
 
   # Find newly-introduced matches
@@ -536,7 +610,7 @@ function addition!(static::IncCCStatic, runtime::IncCCRuntime, constraints::IncC
     end
   end
   set_state!(runtime, X)
-  return new_keys
+  return (invalidated_keys, new_keys)
 end
 
 """
@@ -544,33 +618,55 @@ Delete / modify existing matches based on the target ACSet being permuted or
 reduced to a subobject. If a match touches upon something which is deleted, 
 remove the match. Given X ↩ X′ we are updating Hom(L, X) => Hom(L, X′)
 
-Returns the 'keys' of the deleted matches.
+In the presence of negative application conditions / dangling condition, 
+a deletion can also *add* new matches.
+
+Returns the 'keys' of the deleted matches and added matches.
 """
 deletion!(hset::IncHomSet, f::ACSetTransformation) = deletion!(hset..., f)
 
 function deletion!(::IncCCStatic, runtime::IncCCRuntime, constr::IncConstraints,  
                    f::ACSetTransformation)
-  deleted = Pair{Int,Int}[]
+  invalidated_keys = Pair{Int,Int}[]
   for (idx, dic) in enumerate(match_vect(runtime))
     for (idx′, m) in collect(dic)
       m′ = pull_back(f, m)
-      if isnothing(m′)
+      # Delete if match refers to something deleted OR we have invalidated a PAC
+      if isnothing(m′) || !can_match(constr, m′; nac=false)
         delete!(dic, idx′)
-        delete!(key_dict(runtime), idx=>idx′)
-        push!(deleted, idx=>idx′)
+        delete!(key_dict(runtime), idx => idx′)
+        push!(invalidated_keys, idx => idx′)
       else 
         dic[idx′] = m′
       end
     end
   end
-  set_state!(runtime, dom(f))
-  deleted
-end
 
+  set_state!(runtime, dom(f))
+
+  # A NAC has been deactivated if there exists a morphism N ⇾ X that sends 
+  # all of L to the nondeleted part of X and *some* of N to the deleted portion.
+  new_matches, new_keys = Dict{Int, ACSetTransformation}(), Pair{Int,Int}[]
+  push!(runtime.match_vect, new_matches)
+  for n in constr.nac
+    for h in homomorphisms(codom(n), state(runtime); monic=n.monic)
+      if can_match(constr, h; pac=true)
+        new_key = length(runtime) => length(new_keys)+1
+        push!(key_vect(runtime), new_key)
+        push!(new_keys, new_key)
+        key_dict(runtime)[new_key] = length(key_vect(runtime))
+        new_matches[length(new_keys)] = h 
+      end
+    end
+  end
+  return (invalidated_keys, new_keys)
+end
 
 """
 Given f: L->X and m: X' ↣ X, find the unique map L -> X' making the triangle 
 commute, if it exists.
+
+TODO rewrite with @comptime
 """
 function pull_back(f::ACSetTransformation, m::ACSetTransformation
                   )::Union{ACSetTransformation, Nothing}
@@ -596,69 +692,111 @@ function pull_back(f::ACSetTransformation, m::ACSetTransformation
   ACSetTransformation(dom(m), dom(f); comps...)
 end
 
-"""rewrite! with an arbitrary match"""
-rewrite!(hset::IncHomSet, r::Rule) = rewrite!(hset, r, get_match(r, state(hset)))
+"""Perform a rewrite! with an arbitrary match"""
+function rewrite!(hset::IncHomSet, r::Rule) 
+  m = get_match(r, state(hset))
+  isnothing(m) ? nothing : rewrite!(hset, r, m)
+end
 
 """
 Use a rewrite rule to induce a deletion followed by an addition.
 
 Returns the keys of deleted and added matches, respectively.
 """
-function rewrite!(hset::IncHomSet, r::Rule{T}, match::ACSetTransformation) where T
-  isnothing(can_match(r, match)) || error("Bad match data")
+function rewrite!(hset::IncHomSet, r::Rule{T}, match::ACSetTransformation; 
+                 ) where T
+  # Check input data
+  c_err = compat_constraints(constraints(hset), r) 
+  isnothing(c_err) || error("Constraint mismatch: $c_err")
   i = findfirst(==(right(r)), additions(hset)) # RHS of rule must be an addition
   state(hset) == codom(match)|| error("Codom mismatch for match $match")
-  res = rewrite_match_maps(r, match)
-  pl, pr = get_pmap(T, res)
-  x = get_expr_binding_map(r, match, res)
-  pr′, rmap = (pr ⋅ x), (get_rmap(T, res) ⋅ x)
-  del = deletion!(hset, pl)
-  add = addition!(hset, i, rmap, pr′)
-  (del, add)
+
+  # Perform rewrite, unpack results
+  rw_result = rewrite_match_maps(r, match)
+  del_map, pushforward_no_attr = get_pmap(T, rw_result)
+  pushforward_attr = get_expr_binding_map(r, match, rw_result)
+  pushforward = pushforward_no_attr ⋅ pushforward_attr
+  rmap = get_rmap(T, rw_result) ⋅ pushforward_attr
+
+  # Use results to update hom set
+  del_invalidated, del_new = deletion!(hset, del_map)
+  add_invalidated, add_new = addition!(hset, i, rmap, pushforward)
+  (vcat(del_invalidated, add_invalidated), vcat(del_new, add_new))
 end
 
 """Perform a pushout addition given a match morphism from the domain."""
-addition!(hset, i::Int, omap::ACSetTransformation) =
+addition!(hset::IncHomSet, i::Int, omap::ACSetTransformation) =
   addition!(hset, i, pushout(additions(hset)[i], omap)...)
 
 # Extending mutation methods to sums of connected components 
 #-----------------------------------------------------------
-function deletion!(stat::IncSumStatic, runt::IncSumRuntime, 
-                   constraints::IncConstraints, f::ACSetTransformation) 
-  delkeys = Vector{Pair{Int,Int}}[]
-  dels = deletion!.(stat.components, runt.components, Ref(constraints), Ref(f))
-  for ks in keys(runt)
-    if any(((k, del),) -> k ∈ del, zip(ks, dels))   
-      push!(delkeys, ks) 
-      delete!(runt, ks)
+"""
+Delete keys from a component of a IncSumHomSet. This implicitly deletes all 
+composite keys that make reference to those keys. 
+
+Returns the *composite keys* which are deleted as an explicit list.
+"""
+function delete_keys!(runt::IncSumRuntime, component::Int, comp_keys::Vector{Pair{Int,Int}})
+  invalidated_keys = []
+  comp_keys = Set(comp_keys)
+  for composite_key in keys(runt)
+    if composite_key[component] ∈ comp_keys 
+      push!(invalidated_keys, composite_key) 
+      delete!(runt, composite_key)
     end
   end
-  delkeys
+  return invalidated_keys
 end
 
-function addition!(hset::IncSumHomSet, i::Int, rmap::ACSetTransformation, 
-                   pr::ACSetTransformation)
+"""
+Add keys to a component of a IncSumHomSet. This implicitly adds composite keys 
+for every combination of existing keys in the other components' hom sets.
+
+Returns the *composite keys* which are added as an explicit list.
+"""
+function add_keys!(runt::IncSumRuntime, component::Int, comp_keys::Vector{Pair{Int,Int}})
   add_keys = []
-  adds = addition!.(static(hset).components, runtime(hset).components, 
-                    Ref(constraints(hset)), i, Ref(rmap), Ref(pr))
-  for (i, add) in enumerate(adds)
-    ms = [i == j ? add : keys(ihs) 
-          for (j, ihs) in enumerate(runtime(hset).components)]
-    for newkey in collect.(×(ms...))
-      push!(key_vect(hset), newkey)
-      push!(add_keys, newkey)
-      key_dict(hset)[newkey] = length(key_vect(hset))
-    end
+  ms = [i == component ? comp_keys : keys(ihs) 
+        for (i, ihs) in enumerate(runt.components)]
+  for newkey in collect.(×(ms...))
+    push!(key_vect(runt), newkey)
+    push!(add_keys, newkey)
+    key_dict(runt)[newkey] = length(key_vect(runt))
   end
-  add_keys
+  return add_keys
 end
 
+"""Propagate deletion/addition for a component to the composite key level""" 
+function delete_add_keys!(runt::IncSumRuntime, comp::Int, 
+                          inv_keys::Vector{Pair{Int,Int}}, 
+                          add_keys::Vector{Pair{Int,Int}})
+  return (delete_keys!(runt, comp, inv_keys), add_keys!(runt, comp, add_keys))
+end
+
+"""Compute deletions component-wise, then aggregate results"""
+function deletion!(stat::IncSumStatic, runt::IncSumRuntime, 
+                   constr::IncConstraints, f::ACSetTransformation) 
+  deldata = deletion!.(stat.components, runt.components, Ref(constr), Ref(f))
+  resdata = [delete_add_keys!(runt, i, inv, add) for (i, (inv, add)) in enumerate(deldata)]
+  return (vcat(first.(resdata)...), vcat(last.(resdata)...))
+end
+
+"""Compute additions component-wise, then aggregate results"""
+function addition!(stat::IncSumStatic, runt::IncSumRuntime, 
+                   constr::IncConstraints, i::Int, rmap::ACSetTransformation, 
+                   pr::ACSetTransformation)
+  adddata = addition!.(stat.components, runt.components, 
+                       Ref(constr), i, Ref(rmap), Ref(pr))
+  resdata = [delete_add_keys!(runt, i, inv, add) for (i, (inv, add)) in enumerate(adddata)]
+  return (vcat(first.(resdata)...), vcat(last.(resdata)...))
+end
 
 # Validation
 ############
 
 """
-Check, with brute computational effort, that the IncrementalHomSet is well formed.
+Check, with brute computational effort, that the IncrementalHomSet is well 
+formed.
 """
 function validate(hset::IncCCHomSet)
   ms = matches(hset)
@@ -672,7 +810,8 @@ function validate(hset::IncCCHomSet)
 end
 
 """
-Check, with brute computational effort, that the IncrementalHomSet is well formed.
+Check, with brute computational effort, that the IncrementalHomSet is well 
+formed.
 """
 function validate(hset::IncSumHomSet)
   (stat, runt, constr) = hset
@@ -691,35 +830,3 @@ function validate(hset::IncSumHomSet)
 end
 
 end # module
-
-
-# struct IncSumStatic <: Inc
-#   pattern::ACSet
-#   coprod::ACSetColimit
-#   iso::ACSetTransformation # apex(coprod) ≅ pattern
-#   ihs::Vector{IncCCHomSet}
-#   key_vect::Vector{Vector{Pair{Int,Int}}}
-#   key_dict::Dict{Vector{Pair{Int,Int}}, Int}
-# end
-# struct IncCCHomSet <: IncHomSet
-#   pattern::ACSet
-#   additions::Vector{ACSetTransformation}
-#   overlaps::Vector{Vector{Span}}
-#   match_vect::Vector{Dict{Int, ACSetTransformation}}
-#   key_vect::Vector{Pair{Int,Int}}
-#   key_dict::Dict{Pair{Int,Int}, Int}
-#   state::Ref{<:ACSet}
-#   monic::Union{Bool, Vector{Symbol}}
-#   pac::Vector{ACSetTransformation}
-#   nac::Vector{ACSetTransformation}
-# end
-
-# function IncCCHomSet(pattern, additions, initial_state, constraints)
-#   homs = homomorphisms(pattern, initial_state)
-#   n = length(homs)
-#   key_vect = Pair{Int,Int}[1 => i for i in 1:n]
-#   key_dict = Dict{Pair{Int,Int},Int}((1 => i) => i for i in 1:n)
-#   IncCCHomSet(pattern, additions, compute_overlaps.(Ref(L), additions), 
-#     [Dict(enumerate(homs))], key_vect, key_dict, Ref(initial_state), 
-#     constraints)
-# end

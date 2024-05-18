@@ -37,12 +37,12 @@ condition(s)
   L::Any
   R::Any
   conditions::Vector{Constraint} # constraints on match morphism
-  monic::Union{Bool, Vector{Symbol}} # further constraint on match morphism
+  monic::Vector{Symbol} # further constraint on match morphism
   exprs::Dict{Symbol, Dict{Int,Union{Nothing,Function}}}
 
   function Rule{T}(L, R; ac=nothing, monic=false, expr=nothing, freevar=false) where {T}
     S = acset_schema(dom(L))
-    monic = monic === true ? collect(ob(S)) : monic
+    monic = monic isa Bool ? (monic ? ob(S) : []) : monic
     dom(L) == dom(R) || error("L<->R not a span")
     ACs = isnothing(ac) ? [] : deepcopy.(ac)
     exprs = isnothing(expr) ? Dict() : Dict(pairs(expr))
