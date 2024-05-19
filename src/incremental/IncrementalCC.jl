@@ -5,13 +5,15 @@ from being broken up)
 """
 module IncrementalCC 
 
-using ..Constraints: IncConstraints, can_match
+using ..Constraints: NAC, IncConstraints, can_match
 using ..IncrementalHom: IncStatic, IncRuntime, IncHomSet, pattern, runtime, 
                         key_vect, key_dict
-import ..IncrementalHom: validate, additions, state, deletion!, addition!, matches
-using ..Algorithms: compute_overlaps, pull_back
+import ..IncrementalHom: validate, additions, state, deletion!, addition!, 
+                         matches
+using ..Algorithms: compute_overlaps, pull_back, nac_overlap
 
 using Catlab
+using Catlab.CategoricalAlgebra.Chase: extend_morphism_constraints  
 
 using StructEquality
 
@@ -40,12 +42,12 @@ end
 """
 This assumes the state of the world is changed in discrete updates.
 
-`match_vect`: the ground source of truth. It stores, for each update to `state`, 
-              what *new* matches were found at that time (and still exist in the 
+`match_vect`: ground source of truth. It stores, for each update to `state`, 
+              what *new* matches were found at that time (+ still exist in the 
               present state - hence the data must be a Dict{Int} rather than a 
               vector, so that we can delete elements). 
 
-`key_vect`: a way of indexing this list of dicts where the first element refers 
+`key_vect`: way of indexing this list of dicts where the first element refers 
             to an index of `match_vect` and the second element refers to the 
             keys in the associated Dict. This gives us a single-integer value 
             way of referring to *every* hom that has been seen, including the 
@@ -64,7 +66,8 @@ This assumes the state of the world is changed in discrete updates.
   const key_vect::Vector{Pair{Int,Int}}
   const key_dict::Dict{Pair{Int,Int}, Int}
   state::ACSet
-  function IncCCRuntime(pattern::ACSet, initial_state::ACSet, constr::IncConstraints)
+  function IncCCRuntime(pattern::ACSet, initial_state::ACSet, 
+                        constr::IncConstraints)
     homs = filter(h -> can_match(constr, h), 
                   homomorphisms(pattern, initial_state; monic=constr.monic))
     n = length(homs)
@@ -133,55 +136,53 @@ function addition!(stat::IncCCStatic, runt::IncCCRuntime, constr::IncConstraints
 
   # Push forward old matches
   for idx in 1:length(runt)
-    dic = Dict()
-    for (k, m) in pairs(runt.match_vect[idx])
-      m′ = m ⋅ update
+    pushed_forward = Dict()
+    for (key, match) in pairs(runt.match_vect[idx])
+      match′ = match ⋅ update
       # Check whether any NAC / dangling conditions are violated before adding
-      if can_match(constr, m′; pac=false) 
-        dic[k] = m′
+      if can_match(constr, match′; pac=false) 
+        pushed_forward[key] = match′
       else
-        delete!(runt, idx => k)
-        push!(invalidated_keys, idx => k)
+        delete!(runt, idx => key)
+        push!(invalidated_keys, idx => key)
       end
     end
-    runt.match_vect[idx] = dic                       
+    runt.match_vect[idx] = pushed_forward                       
   end
 
   # Find newly-introduced matches
-  S = acset_schema(pattern(stat))
+  Ob = ob(acset_schema(pattern(stat)))
   X, L = codom(rmap), pattern(stat)
-  new_matches, new_keys = Dict{Int, ACSetTransformation}(), Pair{Int,Int}[]
+  new_matches, new_keys = Dict{Int, ACSetTransformation}(), Pair{Int, Int}[]
 
   push!(runt.match_vect, new_matches)
-  old_stuff = Dict(o => setdiff(parts(X,o), collect(rmap[o])) for o in ob(S))
+  old_stuff = Dict(o => setdiff(parts(X,o), collect(rmap[o])) for o in Ob)
   seen_constraints = Set() # non-monic match can identify different subobjects 
   for (idx, (subL, mapR)) in enumerate(stat.overlaps[i])
-    initial = Dict(map(ob(S)) do o  # initialize based on overlap btw L and R
+    initial = Dict(map(Ob) do o  # initialize based on overlap btw L and R
       o => Dict(map(parts(dom(subL), o)) do idx
         subL[o](idx) => rmap[o](mapR[o](idx))  # make square commute
       end)
     end)
-    if initial ∉ seen_constraints
-      push!(seen_constraints, initial)
-      L_image = Dict(o => Set(collect(subL[o])) for o in ob(S))
-      boundary = Dict(k => setdiff(parts(L,k), L_image[k]) for k in ob(S))
-      predicates = Dict(o => Dict(pₒ => old_stuff[o] for pₒ in boundary[o]) 
-                        for o in ob(S))
-      for h in homomorphisms(L, X; monic=constr.monic, initial, predicates)
-        if h ∈ values(new_matches) # this could be skipped once code is trusted
-          error("Duplicating work $h")
-        else # PAC?
-          @debug "NEW from $subL\n$mapR"
-          new_key = length(runt) => length(new_keys)+1
-          push!(key_vect(runt), new_key)
-          push!(new_keys, new_key)
-          key_dict(runt)[new_key] = length(key_vect(runt))
-          new_matches[length(new_keys)] = h 
-        end
+    initial ∈ seen_constraints && continue
+    push!(seen_constraints, initial)
+    L_image = Dict(o => Set(collect(subL[o])) for o in Ob)
+    boundary = Dict(k => setdiff(parts(L, k), L_image[k]) for k in Ob)
+    predicates = Dict(map(Ob) do o
+      o => Dict(pₒ => old_stuff[o] for pₒ in boundary[o])
+    end)
+    for h in homomorphisms(L, X; monic=constr.monic, initial, predicates)
+      if h ∈ values(new_matches) # this could be skipped once code is trusted
+        error("Duplicating work $h")
+      else # PAC?
+        @debug "NEW from $subL\n$mapR"
+        add_match!(runt, constr, new_keys, new_matches, h)
       end
     end
   end
+
   runt.state = X
+
   return (invalidated_keys, new_keys)
 end
 
@@ -194,24 +195,31 @@ remove the match. Given X ↩ X′ we are updating Hom(L, X) => Hom(L, X′)
 In the presence of negative application conditions / dangling condition, 
 a deletion can also *add* new matches. When deletion is performed by DPO, we 
 can know statically where to search for newly added morphisms. However, if we 
-simply have an arbitrary deletion, 
+simply have an arbitrary deletion, this is harder. 
 
 A NAC has been deactivated if there exists a morphism N ⇾ X that sends 
-all of L to the nondeleted part of X and *some* of N to the deleted portion.
+all of L to the nondeleted part of X & *some* of N to the deleted portion. The 
+deleted portion should be *tiny* compared to the not deleted portion, so it's 
+pretty bad to search for all morphisms N->X and filter by those which have 
+something which has something in the deleted portion. This means we ought to 
+compute the overlaps on the fly in the non-DPO case. 
 
+The `dpo` flag signals that `f` was produced via pushout complement, such that 
+any NAC can take advantage of its cached overlaps if it has them. If it is not 
+nothing, it contains the morphism `L ↢ I` that was used in POC.
 
 Returns the 'keys' of the deleted matches and added matches.
 """
 function deletion!(::IncCCStatic, runt::IncCCRuntime, constr::IncConstraints,  
-                   f::ACSetTransformation)
-
+                   f::ACSetTransformation; dpo=nothing)
+  X = codom(f)
   # Initialize variables
   invalidated_keys, new_keys = Pair{Int,Int}[], Pair{Int,Int}[]
   new_matches = Dict{Int, ACSetTransformation}()
   push!(runt.match_vect, new_matches)
 
-  # Check special short circuit case
-  if force(f) == force(id(dom(f)))
+  # Check special short circuit case when f is identity
+  if force(f) == force(id(X))
     return (Pair{Int,Int}[], Pair{Int,Int}[]) # nothing happens
   end
 
@@ -230,25 +238,98 @@ function deletion!(::IncCCStatic, runt::IncCCRuntime, constr::IncConstraints,
     end
   end
 
+  # Discover new matches
+  non_del_X = Dict(o=>Set(collect(f[o])) for o in ob(acset_schema(X)))
+  for nac in constr.nac
+    if isnothing(dpo) || !haskey(nac, dpo[1])
+      new_nac_homs!(runt, constr, nac, f,  new_keys, new_matches, non_del_X)
+    else 
+      new_nac_dpo!(runt, constr, nac, f, dpo, new_keys, new_matches, non_del_X)
+    end
+  end
   # Update state 
   runt.state = dom(f)
 
-  # Discover new matches
-  if !all(is_isomorphic, components(f))
-    for n in constr.nac
-      for h in homomorphisms(codom(n), state(runt); monic=n.monic)
-        if can_match(constr, h; pac=true)
-          new_key = length(runt) => length(new_keys)+1
-          push!(key_vect(runt), new_key)
-          push!(new_keys, new_key)
-          key_dict(runt)[new_key] = length(key_vect(runt))
-          new_matches[length(new_keys)] = h 
-        end
-      end
-    end
-  end
   return (invalidated_keys, new_keys)
 end
+
+"""
+General method for discovering the newly added homs that arise from deleting 
+some part of the world due to a NAC.
+"""
+function new_nac_homs!(runt::IncCCRuntime, constr::IncConstraints, nac::NAC, 
+                       f::ACSetTransformation, new_keys, new_matches,
+                       X_nondeleted::Dict{Symbol, Set{Int}})
+  N, X = codom(nac), codom(f)
+  Ob = ob(acset_schema(N))
+  for spn in nac_overlap(nac, f) # N ↢ overlap -> X ↢ X'
+    overlap = apex(spn)
+    overlap_N = Dict(o=>Set(collect(left(spn)[o])) for o in Ob)
+    # everything that is not in overlap is forced to go to a non-deleted thing
+    predicates = Dict(map(Ob) do o 
+      o => Dict([p => X_nondeleted[o] for p in parts(N, o) 
+                 if p ∉ overlap_N[o]])
+    end)
+    # force the triangle to commute
+    initial = Dict(map(Ob) do o 
+      o=>Dict(map(parts(overlap, o)) do p
+        left(spn)[o](p) => right(spn)[o](p)
+      end)
+    end)
+    # get *new* matches that were blocked from existing by this NAC
+    for h in homomorphisms(N, X; monic=nac.monic, predicates, initial)
+      h′ = pull_back(f, nac.m ⋅ h) # constrained search so that this must work
+      add_match!(runt, constr, new_keys, new_matches, h′)
+    end
+  end
+end
+
+"""
+Given dpo, a composable pair I→L→X, we use the latter morphism as a key into
+the NAC to access a complete set of overlaps L ↢ O → N that send *some* part 
+of N/L to some part of L/I.
+"""
+function new_nac_dpo!(runt::IncCCRuntime, constr::IncConstraints, nac::NAC, 
+                      f::ACSetTransformation, dpo, new_keys, new_matches,
+                      X_nondeleted::Dict{Symbol, Set{Int}})
+  N, X, (l, match) = codom(nac), codom(f), dpo
+  overlaps, Ob, seen = nac[l], ob(acset_schema(N)), Set{Dict}() 
+               
+  for (to_L, to_N) in overlaps
+    # make O->L->X commute with O->N->X
+    initial = extend_morphism_constraints(to_L ⋅ match, to_N)
+    
+    # some overlaps are identified with each other due to non-monic match. 
+    (isnothing(initial) || initial ∈ seen) && continue 
+    push!(seen, initial)
+
+    # Everything not in the image of the overlap must go to non-deleted X
+    overlap_N = Dict(o => Set(collect(to_N[o])) for o in Ob) # store to_N image
+    predicates = Dict(map(Ob) do o
+      o => Dict(p => X_nondeleted[o] for p in parts(N, o) if p ∉ overlap_N[o])
+    end)
+
+    # get *new* matches that were blocked from existing by this NAC
+    for h in homomorphisms(N, X; predicates, initial)
+      h′ = pull_back(f, nac.m ⋅ h) # constrained search so that this must work
+      add_match!(runt, constr, new_keys, new_matches, h′)
+    end
+  end
+end
+
+"""Add a match during a deletion"""
+function add_match!(runt::IncCCRuntime, constr::IncConstraints,      
+                    new_keys, new_matches, m::ACSetTransformation)
+  if can_match(constr, m)
+    new_key = length(runt) => length(new_keys)+1
+    push!(key_vect(runt), new_key)
+    push!(new_keys, new_key)
+    key_dict(runt)[new_key] = length(key_vect(runt))
+    new_matches[length(new_keys)] = m 
+  end
+end
+
+
 
 # Validation 
 ############

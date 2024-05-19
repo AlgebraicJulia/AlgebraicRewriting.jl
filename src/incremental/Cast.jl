@@ -1,13 +1,15 @@
 """Cast between IncCC and IncSum"""
 module Cast
 
+using ...Rewrite: Rule
+
 using ..IncrementalCC: IncCCStatic, IncCCRuntime, key_vect
 import ..IncrementalCC: IncCCHomSet
 using ..IncrementalSum: IncSumStatic, IncSumRuntime
 import ..IncrementalSum: IncSumHomSet
 using ..IncrementalHom: pattern, key_dict, static, runtime, constraints, additions, state
 import ..IncrementalHom: IncHomSet
-using ..Constraints: PAC, NAC, IncConstraints
+using ..Constraints: AC, PAC, NAC, IncConstraints
 using ..Algorithms: connected_acset_components
 
 using Catlab 
@@ -75,5 +77,16 @@ function IncHomSet(pattern::ACSet, additions::Vector{<:ACSetTransformation},
     return IncSumHomSet(stat, runt, constraints)
   end
 end
+
+function IncHomSet(rule::Rule{T}, state::ACSet) where T
+  pac, nac = [], []
+  dpo = (T == :DPO) ? [left(rule)] : []
+  for c in AC.(rule.conditions, Ref(dpo))
+    c isa PAC && push!(pac, c)
+    c isa NAC && push!(nac, c)
+  end
+  IncHomSet(codom(left(rule)), [right(rule)], state; monic=rule.monic, pac, nac)
+end
+
 
 end # module

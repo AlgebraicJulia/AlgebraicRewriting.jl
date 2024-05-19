@@ -8,18 +8,21 @@ using AlgebraicRewriting.Incremental.IncrementalHom: state, deletion!, addition!
 
 # Graph incremental hom search
 #-----------------------------
+T = ob(terminal(Graph))
                                                                   #  • ⇉ •
 e, ee = path_graph.(Graph, 2:3)                                   #   ↘ ↙
 A = @acset Graph begin V=3; E=4; src=[1,1,1,2]; tgt=[2,2,3,3] end #    •
 A_rule = Rule(id(e), homomorphism(e, A));
 
 # Empty edge case
+#----------------
 hset = IncHomSet(Graph(), [A_rule.R], Graph(3)); 
 @test length(matches(hset)) == 1
 @test only(keys(hset)) == (1=>1)
 @test hset[1] == hset[1=>1]
 
 # Single connected component pattern
+#----------------
 start = @acset Graph begin V=3; E=3; src=[1,2,3]; tgt=[2,3,3] end
 hset = IncHomSet(ee, [A_rule.R], start);
 @test length.(match_vect(hset)) == [3]
@@ -46,6 +49,7 @@ roundtrip = IncCCHomSet(IncSumHomSet(hset));
 
 
 # Blog example
+#----------------
 tri = @acset Graph begin V=3;E=3;src=[1,1,2];tgt=[3,2,3]end
 X = @acset Graph begin V=2; E=2; src=[1,2]; tgt=[2,2] end
 omap = homomorphism(e, X)
@@ -55,6 +59,7 @@ addition!(hset, 1, omap)
 
 
 # Monic contraints
+#----------------
 mset = IncHomSet(Graph(2), [create(Graph(1))], Graph(2); monic=true);
 @test mset isa IncCCHomSet
 @test length(matches(mset)) == 2
@@ -63,8 +68,10 @@ rewrite!(mset, M_rule)
 @test length.(match_vect(mset)) == [2, 0, 4]
 
 # Application conditions: NAC removing morphisms during addition!
+#----------------
 del = delete(Graph(1))
-mset = IncHomSet(Graph(1), [del], Graph(2)⊕ob(terminal(Graph)); nac=[del]);
+AlgebraicRewriting.Incremental.Constraints.NAC(del)
+mset = IncHomSet(Graph(1), [del], Graph(2)⊕T; nac=[del]);
 @test length(keys(mset)) == 2
 M_rule = Rule(id(Graph(1)), delete(Graph(1)); ac=[AppCond(del, false)])
 rewrite!(mset, M_rule)
@@ -74,14 +81,36 @@ rewrite!(mset, M_rule)
 @test isnothing(rewrite!(mset, M_rule))
 
 # Application conditions: NAC adding morphisms during deletion!
-if false # TODO
-match_vect(mset)
-del = homomorphism(⊕(Graph[fill(ob(terminal(Graph)), 2); Graph(1)]), 
+#--------------------------------------------------------------
+del = homomorphism(⊕(Graph[fill(T, 2); Graph(1)]), 
                    state(mset); monic=true) # delete one loop
 deletion!(mset, del)
-end
+@test length(keys(mset)) == 1
+del = homomorphism(⊕(Graph[T; Graph(2)]), 
+                   state(mset); monic=true) # delete another loop
+deletion!(mset, del)
+@test length(keys(mset)) == 2
+
+del = homomorphism(Graph(3), state(mset); monic=true) # delete another loop
+deletion!(mset, del)
+@test length(keys(mset)) == 3
+
+# NAC with DPO optimization
+#--------------------------
+edge_loop = @acset Graph begin V=2; E=2; src=[1,1]; tgt=[1,2] end
+# rem edge, not if src has loop
+r = Rule(homomorphism(Graph(2), e; monic=true), id(Graph(2));
+         ac=[AppCond(homomorphism(e, edge_loop; monic=true), false; monic=true)])
+
+mset = IncHomSet(r, edge_loop);
+# @test length(keys(mset)) == 1
+rewrite!(mset, r)
+@test length(keys(mset)) == 1
+rewrite!(mset, r)
+@test length(keys(mset)) == 0
 
 # Weighted Graph
+#---------------
 if false 
   const WG′ = WeightedGraph{Bool}
 e, ee = path_graph.(WG′, 2:3)

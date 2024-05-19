@@ -24,11 +24,11 @@ abstract type AC end
 Coerce a general `Constraint` into a simple application condition, if possible. 
 This works if the `Constraint` was created by `AppCond`.
 """
-function AC(c::Constraint)
+function AC(c::Constraint, dpo=[])
   m = c.g[1,:elabel]
   monic = c.d.expr.monic
   AppCond(m; monic) == c && return PAC(m, monic)
-  AppCond(m, false; monic) == c && return NAC(m, monic)
+  AppCond(m, false; monic) == c && return NAC(m, monic, dpo)
   return nothing
 end
 
@@ -37,16 +37,65 @@ codom(ac::AC) = codom(ac.m)
 """
 A negative application condition L -> N means a match L -> X is invalid if 
 there exists a commuting triangle.  
+
+We cache the subobjects of ~N (our best approximation to the things that are in
+N but not in L), as this can be taken advantage of in detecting new matches
+when we delete something.
+
+dpo argument allows us to pass in a morphism I->L so that we can compute the 
+staticly known overlaps beforehand, rather than at runtime. These are partial 
+overlaps between N and L, which enumerate the possible ways a part of N can be 
+sent to something that is deleted (part of L/I).
 """
 @struct_hash_equal struct NAC <: AC 
   m::ACSetTransformation
   monic::Vector{Symbol}
+  m_complement::ACSetTransformation
+  subobj::Vector{ACSetTransformation}
+  overlaps::Dict{ACSetTransformation, Vector{Span}}
+  function NAC(m, monic, dpos)
+    m_comp = hom(~Subobject(m))
+    subobjs = hom.(last(subobject_graph(dom(m_comp))))
+    subobjs_L = hom.(last(subobject_graph(dom(m))))
+    Ob = ob(acset_schema(dom(m)))
+    part_N = partition_image(m)
+    overlaps = Dict(map(dpos) do dpo
+      part_L = partition_image(dpo)
+      spans = Set{Span}()
+      for subobj in subobjs_L
+        all(o->isempty(collect(subobj[o]) ∩ part_L[o][2]), Ob) && continue
+        for h in homomorphisms(dom(subobj), codom(m);)
+          if !all(o -> isempty(collect(h[o]) ∩ part_N[o][2]), Ob)
+            spn = Span(subobj, h)
+            spn ∈ spans && error("We shouldn't have duplicates")
+            push!(spans, spn)
+          end
+        end
+      end
+      dpo => collect(spans)
+    end)
+    new(m, monic, m_comp, subobjs, overlaps)
+  end
 end
+
+"""Get the pairs for each component of the image and its component"""
+partition_image(f::ACSetTransformation) = Dict(map(ob(acset_schema(dom(f)))) do o
+  del,nondel = Set(parts(codom(f), o)), Set{Int}()
+  for p in parts(dom(f), o) 
+    push!(nondel, f[o](p))
+    delete!(del, f[o](p))
+  end
+  o => (nondel, del)
+end)
+
+Base.haskey(n::NAC, k) = haskey(n.overlaps, k)
+
+Base.getindex(n::NAC, k) = n.overlaps[k]
 
 NAC(n::NAC) = n
 
-NAC(m::ACSetTransformation, b::Bool=false) = 
-  NAC(m, b ? ob(acset_schema(dom(m))) : [])
+NAC(m::ACSetTransformation, b::Bool=false, dpo=[]) = 
+  NAC(m, b ? ob(acset_schema(dom(m))) : [], dpo)
 
 """
 A negative application condition L -> N means a match L -> X is invalid if 
@@ -116,16 +165,21 @@ Check if a rule imposes the same constraints as captured by an IncConstraint
 
 TODO handle dangling condition specially (add it as a field to IncConstraints) 
 """
-function compat_constraints(constraints::IncConstraints, r::Rule{T}) where T
-  # (T == DPO && constraints.dangling == left(r)) || return false
-  cm, rm = Set.([constraints.monic, r.monic])
+function compat_constraints(constr::IncConstraints, r::Rule{T}) where T
+  # (T == DPO && constr.dangling == left(r)) || return false
+  cm, rm = Set.([constr.monic, r.monic])
   cm == rm || return "Monic mismatch: $cm != $rm"
-  nac, pac = Set(), Set()
-  for constr in AC.(r.conditions)
-    push!(constr isa PAC ? pac : nac, constr)
+  for c in AC.(r.conditions)
+    if c isa PAC 
+      any(pac -> pac.m == c.m && pac.monic == c.monic, constr.pac
+        ) || return "PAC mismatch"
+    elseif c isa NAC 
+      any(nac -> nac.m == c.m && nac.monic == c.monic, constr.nac
+      ) || return "PAC mismatch"
+    else 
+      return "Rule contains non-AC constraint"
+    end
   end 
-  Set(constraints.nac) == nac || return "NAC mismatch" 
-  Set(constraints.pac) == pac || return "PAC mismatch"
   return nothing
 end
 

@@ -5,6 +5,7 @@ using Catlab, Catlab.CategoricalAlgebra
 import Catlab.CategoricalAlgebra: left, right
 using Catlab.CategoricalAlgebra.CSets: abstract_attributes
 using Catlab.CategoricalAlgebra.HomSearch: backtracking_search
+using Catlab.CategoricalAlgebra.Chase: extend_morphism_constraints  
 
 using StructEquality
 using DataStructures: DefaultDict
@@ -15,8 +16,7 @@ import ..Utils:
   rewrite_match_maps, get_matches, get_expr_binding_map, AbsRule, ruletype
 using ..Constraints
 using ...CategoricalAlgebra
-using ...CategoricalAlgebra.CSets: extend_morphism_constraints, var_pullback  
-
+using ...CategoricalAlgebra.CSets: var_pullback  
 """
       l    r 
    L  ⟵ K ⟶ R 

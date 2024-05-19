@@ -123,7 +123,8 @@ addition!(hset::IncHomSet, i::Int, omap::ACSetTransformation) =
 addition!(hset::IncHomSet, i::Int, rmap::ACSetTransformation, 
           update::ACSetTransformation) = addition!(hset..., i , rmap, update)
 
-deletion!(hset::IncHomSet, f::ACSetTransformation) = deletion!(hset..., f)
+deletion!(hset::IncHomSet, f::ACSetTransformation; kw...) = 
+  deletion!(hset..., f; kw...)
 
 
 # Rewriting: combined deletion! then addition!
@@ -141,12 +142,15 @@ Use a rewrite rule to induce a deletion followed by an addition.
 Returns the keys of deleted and added matches, respectively.
 """
 function rewrite!(hset::IncHomSet, r::Rule{T}, match::ACSetTransformation; 
-                 ) where T
+                 check_compat=false) where T
   # Check input data
-  c_err = compat_constraints(constraints(hset), r) 
-  isnothing(c_err) || error("Constraint mismatch: $c_err")
+  if check_compat 
+    c_err = compat_constraints(constraints(hset), r) 
+    isnothing(c_err) || error("Constraint mismatch: $c_err")
+  end
   i = findfirst(==(right(r)), additions(hset)) # RHS of rule must be an addition
   state(hset) == codom(match)|| error("Codom mismatch for match $match")
+  dpo = T == :DPO ? (left(r), match) : nothing
 
   # Perform rewrite, unpack results
   rw_result = rewrite_match_maps(r, match)
@@ -156,7 +160,7 @@ function rewrite!(hset::IncHomSet, r::Rule{T}, match::ACSetTransformation;
   rmap = get_rmap(T, rw_result) ⋅ pushforward_attr
 
   # Use results to update hom set
-  del_invalidated, del_new = deletion!(hset, del_map)
+  del_invalidated, del_new = deletion!(hset, del_map; dpo)
   add_invalidated, add_new = addition!(hset, i, rmap, pushforward)
   (vcat(del_invalidated, add_invalidated), vcat(del_new, add_new))
 end

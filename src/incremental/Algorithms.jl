@@ -2,6 +2,7 @@ module Algorithms
 
 using Catlab 
 using ...CategoricalAlgebra.CSets: invert_iso
+using ..Constraints: NAC
 
 """
 Break an ACSet into connected components, represented as a coproduct and an 
@@ -99,6 +100,64 @@ function good_overlap(subobj::ACSetTransformation, h::ACSetTransformation,
   return true
 end
 
+"""
+Goal: find overlaps between a negative application condition, N, and some 
+current state of the world, X, such that we can efficiently check if something 
+has been deleted generates a match by allowing it to satisfy the NAC. The data:
+
+`u`: X ↢ X' (we are updating via some deletion)
+`nac`: L → N
+
+X and X' are big. L and N are small. X ∖ X' is small. 
+
+Let η ↣ ~N be any subobject of ~N, the complement of N, which is our best 
+approximation to N ∖ L. 
+
+We want matches η -> X that send everything in L to something in X'. 
+But *something* in η must map to something *not* in X'. We look at all matches 
+and then filter. 
+
+But we can do something more efficient than enumerating Hom(η, X), as we we need 
+only generate matches into ~u (our best approximation to the part of X that got 
+deleted, X ∖ X'). 
+
+Thus, our process for finding overlaps requires only searching for morphisms  
+between two things which are themselves pattern-sized.
+"""
+function nac_overlap(nac::NAC, update::ACSetTransformation)
+  N = codom(nac)
+  Ob = ob(acset_schema(N))
+  L_parts_in_N = Dict(o=>Set(collect(nac.m[o])) for o in Ob)
+  non_deleted_X_parts = Dict(o=>Set(collect(update[o])) for o in Ob)
+  mostly_deleted_X = hom(~Subobject(update)) # the deleted stuff, and a bit more
+  χ = dom(mostly_deleted_X)
+  undeleted = Dict(map(Ob) do o 
+    o => Set(filter(∈(non_deleted_X_parts[o]), parts(χ,o)))
+  end)
+  res = Set{Span}() # could there be duplicates using this method?
+  for subobj in nac.subobj # η ↣ ~N
+    η = dom(subobj)
+    η_to_N = subobj ⋅ nac.m_complement
+    predicates = Dict(map(Ob) do o 
+      o => Dict([p => undeleted[o] for p in parts(η,o) 
+            if η_to_N[o](p) ∈ L_parts_in_N[o]])
+    end)
+    for h in homomorphisms(η, χ; predicates)
+      found = false  # need to find *some* part of η not in L and not in X'
+      η_to_X = h ⋅ mostly_deleted_X
+      for o in Ob
+        found && break
+        for p in parts(η, o)
+          found && break
+          Np, Xp = η_to_N[o](p), η_to_X[o](p)
+          found = Np ∉ L_parts_in_N[o] && Xp ∉ non_deleted_X_parts[o]
+        end
+      end
+      found && push!(res, Span(η_to_N, η_to_X))
+    end
+  end
+  return res
+end 
 
 """
 Given f: L->X and m: X' ↣ X, find the unique map L -> X' making the triangle 
