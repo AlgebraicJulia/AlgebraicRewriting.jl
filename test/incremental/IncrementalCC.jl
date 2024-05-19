@@ -9,6 +9,7 @@ using AlgebraicRewriting.Incremental.IncrementalHom: state, deletion!, addition!
 # Graph incremental hom search
 #-----------------------------
 T = ob(terminal(Graph))
+G2 = Graph(2)
                                                                   #  • ⇉ •
 e, ee = path_graph.(Graph, 2:3)                                   #   ↘ ↙
 A = @acset Graph begin V=3; E=4; src=[1,1,1,2]; tgt=[2,2,3,3] end #    •
@@ -60,7 +61,7 @@ addition!(hset, 1, omap)
 
 # Monic contraints
 #----------------
-mset = IncHomSet(Graph(2), [create(Graph(1))], Graph(2); monic=true);
+mset = IncHomSet(G2, [create(Graph(1))], G2; monic=true);
 @test mset isa IncCCHomSet
 @test length(matches(mset)) == 2
 M_rule = Rule(id(Graph()), create(Graph(1)); monic=true)
@@ -68,10 +69,9 @@ rewrite!(mset, M_rule)
 @test length.(match_vect(mset)) == [2, 0, 4]
 
 # Application conditions: NAC removing morphisms during addition!
-#----------------
+#----------------------------------------------------------------
 del = delete(Graph(1))
-AlgebraicRewriting.Incremental.Constraints.NAC(del)
-mset = IncHomSet(Graph(1), [del], Graph(2)⊕T; nac=[del]);
+mset = IncHomSet(Graph(1), [del], G2⊕T; nac=[del]);
 @test length(keys(mset)) == 2
 M_rule = Rule(id(Graph(1)), delete(Graph(1)); ac=[AppCond(del, false)])
 rewrite!(mset, M_rule)
@@ -86,7 +86,7 @@ del = homomorphism(⊕(Graph[fill(T, 2); Graph(1)]),
                    state(mset); monic=true) # delete one loop
 deletion!(mset, del)
 @test length(keys(mset)) == 1
-del = homomorphism(⊕(Graph[T; Graph(2)]), 
+del = homomorphism(⊕(Graph[T; G2]), 
                    state(mset); monic=true) # delete another loop
 deletion!(mset, del)
 @test length(keys(mset)) == 2
@@ -98,21 +98,58 @@ deletion!(mset, del)
 # NAC with DPO optimization
 #--------------------------
 edge_loop = @acset Graph begin V=2; E=2; src=[1,1]; tgt=[1,2] end
+to_edge_loop = homomorphism(e, edge_loop; monic=true)
 # rem edge, not if src has loop
-r = Rule(homomorphism(Graph(2), e; monic=true), id(Graph(2));
-         ac=[AppCond(homomorphism(e, edge_loop; monic=true), false; monic=true)])
+r = Rule(homomorphism(G2, e; monic=true), id(G2);
+         ac=[AppCond(to_edge_loop, false; monic=true)]);
 
 mset = IncHomSet(r, edge_loop);
-# @test length(keys(mset)) == 1
+@test length(keys(mset)) == 1
 rewrite!(mset, r)
 @test length(keys(mset)) == 1
 rewrite!(mset, r)
 @test length(keys(mset)) == 0
 
+# Application conditions: PAC removing morphisms during deletion!
+#----------------------------------------------------------------
+# Remove edge, only if src has loop (no monic constraint on PAC)
+r = Rule(homomorphism(G2, e; monic=true), id(G2);
+         ac=[AppCond(to_edge_loop)]);
+mset = IncHomSet(r, edge_loop ⊕ e);
+m1, m2 = get_matches(r, state(mset)) # first one removes the loop
+rewrite!(mset, r, m1)
+@test length(keys(mset)) == 0
+mset = IncHomSet(r, edge_loop ⊕ e);
+rewrite!(mset, r, m2)
+@test length(keys(mset)) == 1
+rewrite!(mset, r)
+@test length(keys(mset)) == 0
+
+# Application conditions: PAC adding morphisms during addition!
+#----------------------------------------------------------------
+edge_loop′ = @acset Graph begin V=2; E=2; src=[1,2]; tgt=[2,2] end
+to_edge_loop′ = homomorphism(e, edge_loop′; monic=true)
+r = Rule(id(e), to_edge_loop′;
+         ac=[AppCond(to_edge_loop; monic=true), 
+             AppCond(to_edge_loop′, false; monic=true)]);
+G = @acset Graph begin V=4; E=4; src=[1,1,2,3]; tgt=[1,2,3,4] end
+mset = IncHomSet(r, G);
+# there is just one 'way' in which apply R unlocks new matches from this PAC
+@test length(only(values(mset.constraints.pac[1].overlaps))) == 1
+@test length(keys(mset)) == 1
+rewrite!(mset, r)
+@test length(keys(mset)) == 1
+@test ne(state(mset)) == 5
+rewrite!(mset, r)
+@test length(keys(mset)) == 1
+@test ne(state(mset)) == 6
+rewrite!(mset, r)
+@test length(keys(mset)) == 0
+@test ne(state(mset)) == 7
+
 # Weighted Graph
 #---------------
-if false 
-  const WG′ = WeightedGraph{Bool}
+const WG′ = WeightedGraph{Bool}
 e, ee = path_graph.(WG′, 2:3)
 e[:weight] = [AttrVar(add_part!(e, :Weight))]
 ee[:weight] = [true, AttrVar(add_part!(ee, :Weight))]
@@ -145,7 +182,7 @@ expected = @acset WeightedGraph{Bool} begin
 end
 @test is_isomorphic(expected, state(hset))
 
-m = error("TO DO: get the monic match we were getting before")
+get_matches(A_rule, state(hset))
 rewrite!(hset, A_rule)
 @test validate(hset)
 
@@ -171,5 +208,5 @@ m = homomorphism(I, start)
 hset = IncHomSet(DDS([1,1,1]), [r], start);
 rewrite!(hset, Rule(id(I), r), m)
 @test validate(hset)
-end
+
 end # module

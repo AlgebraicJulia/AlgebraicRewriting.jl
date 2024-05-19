@@ -5,7 +5,7 @@ from being broken up)
 """
 module IncrementalCC 
 
-using ..Constraints: NAC, IncConstraints, can_match
+using ..IncrementalConstraints: NAC, IncConstraints, can_match
 using ..IncrementalHom: IncStatic, IncRuntime, IncHomSet, pattern, runtime, 
                         key_vect, key_dict
 import ..IncrementalHom: validate, additions, state, deletion!, addition!, 
@@ -24,9 +24,9 @@ For `IncCCHomSet` the pattern `L` must be a single connected component.
   pattern::ACSet
   additions::Vector{ACSetTransformation}
   overlaps::Vector{Vector{Span}}
-  function IncCCStatic(pattern::ACSet, adds=[])
+  function IncCCStatic(pattern::ACSet, constr::IncConstraints, adds=[])
     hs = new(pattern, [], [])
-    push!.(Ref(hs), adds)
+    push!.(Ref(hs), Ref(constr,), adds)
     return hs 
   end
 end
@@ -34,9 +34,10 @@ end
 additions(h::IncCCStatic) = h.additions
 
 """Consider a new addition (and compute its partial overlaps w/ the pattern)"""
-function Base.push!(hs::IncCCStatic, addition::ACSetTransformation)
+function Base.push!(hs::IncCCStatic, constr::IncConstraints, 
+                    addition::ACSetTransformation)
   push!(hs.additions, addition)
-  push!(hs.overlaps, compute_overlaps(pattern(hs), addition))
+  push!(hs.overlaps, compute_overlaps(pattern(hs), addition; constr.monic))
 end
 
 """
@@ -158,13 +159,9 @@ function addition!(stat::IncCCStatic, runt::IncCCRuntime, constr::IncConstraints
   push!(runt.match_vect, new_matches)
   old_stuff = Dict(o => setdiff(parts(X,o), collect(rmap[o])) for o in Ob)
   seen_constraints = Set() # non-monic match can identify different subobjects 
-  for (idx, (subL, mapR)) in enumerate(stat.overlaps[i])
-    initial = Dict(map(Ob) do o  # initialize based on overlap btw L and R
-      o => Dict(map(parts(dom(subL), o)) do idx
-        subL[o](idx) => rmap[o](mapR[o](idx))  # make square commute
-      end)
-    end)
-    initial ∈ seen_constraints && continue
+  for (subL, mapR) in stat.overlaps[i] 
+    initial = extend_morphism_constraints(mapR⋅rmap, subL) # make it commute
+    (isnothing(initial) || initial ∈ seen_constraints) && continue
     push!(seen_constraints, initial)
     L_image = Dict(o => Set(collect(subL[o])) for o in Ob)
     boundary = Dict(k => setdiff(parts(L, k), L_image[k]) for k in Ob)
@@ -174,13 +171,28 @@ function addition!(stat::IncCCStatic, runt::IncCCRuntime, constr::IncConstraints
     for h in homomorphisms(L, X; monic=constr.monic, initial, predicates)
       if h ∈ values(new_matches) # this could be skipped once code is trusted
         error("Duplicating work $h")
-      else # PAC?
+      else
         @debug "NEW from $subL\n$mapR"
         add_match!(runt, constr, new_keys, new_matches, h)
       end
     end
   end
-
+  # Find new matches unlocked by PAC
+  for pac in constr.pac
+    P = codom(pac)
+    for overlap in pac.overlaps[stat.additions[i]]
+      to_P = left(overlap) ⋅ pac.m_complement
+      to_R = right(overlap) ⋅ rmap
+      initial = extend_morphism_constraints(to_R, to_P)
+      # P stuff not in image of overlap shouldn't be newly introduced material
+      predicates = Dict(map(Ob) do o 
+        o => Dict([old_stuff[o] for p in setdiff(parts(P, o), collect(to_P[o]))])
+      end)
+      for h in homomorphisms(P, X; monic=pac.monic, initial, predicates)
+        add_match!(runt, constr, new_keys, new_matches, pac.m ⋅ h)
+      end
+    end
+  end
   runt.state = X
 
   return (invalidated_keys, new_keys)

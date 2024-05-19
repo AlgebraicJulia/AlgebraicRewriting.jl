@@ -1,11 +1,13 @@
-module Constraints
+module IncrementalConstraints
 
 using ...Rewrite: Constraint, Rule
 
 using Catlab
 
+using ..Algorithms: compute_overlaps, partition_image
 using ...CategoricalAlgebra.CSets: extend_morphism
 using ...Rewrite: AppCond
+using ...Rewrite.Constraints: BoolNot
 import Catlab: codom
 
 using StructEquality
@@ -24,15 +26,17 @@ abstract type AC end
 Coerce a general `Constraint` into a simple application condition, if possible. 
 This works if the `Constraint` was created by `AppCond`.
 """
-function AC(c::Constraint, dpo=[])
-  m = c.g[1,:elabel]
-  monic = c.d.expr.monic
-  AppCond(m; monic) == c && return PAC(m, monic)
+function AC(c::Constraint, addns=[], dpo=[])
+  m, expr = c.g[1,:elabel], c.d
+  monic = expr isa BoolNot ? expr.expr.monic : expr.monic
+  AppCond(m; monic) == c && return PAC(m, addns, monic)
   AppCond(m, false; monic) == c && return NAC(m, monic, dpo)
   return nothing
 end
 
 codom(ac::AC) = codom(ac.m)
+Base.haskey(n::AC, k) = haskey(n.overlaps, k)
+Base.getindex(n::AC, k) = n.overlaps[k]
 
 """
 A negative application condition L -> N means a match L -> X is invalid if 
@@ -78,38 +82,37 @@ sent to something that is deleted (part of L/I).
   end
 end
 
-"""Get the pairs for each component of the image and its component"""
-partition_image(f::ACSetTransformation) = Dict(map(ob(acset_schema(dom(f)))) do o
-  del,nondel = Set(parts(codom(f), o)), Set{Int}()
-  for p in parts(dom(f), o) 
-    push!(nondel, f[o](p))
-    delete!(del, f[o](p))
-  end
-  o => (nondel, del)
-end)
-
-Base.haskey(n::NAC, k) = haskey(n.overlaps, k)
-
-Base.getindex(n::NAC, k) = n.overlaps[k]
-
 NAC(n::NAC) = n
 
 NAC(m::ACSetTransformation, b::Bool=false, dpo=[]) = 
   NAC(m, b ? ob(acset_schema(dom(m))) : [], dpo)
 
 """
-A negative application condition L -> N means a match L -> X is invalid if 
+A positive application condition L -> P means a match L -> X is valid only if 
 there does not exist a commuting triangle.  
+
+When we add something via some addition: O -> R, this could activate hitherto 
+invalid matches which were blocked by a PAC. To detect these incrementally, we 
+cache overlaps (indexed by possible additions) that store the ways in which the 
+addition could intersect with P.
 """
 @struct_hash_equal struct PAC <: AC
   m::ACSetTransformation
   monic::Union{Bool, Vector{Symbol}}
+  m_complement::ACSetTransformation
+  overlaps::Dict{ACSetTransformation, Vector{Span}}
+  function PAC(m::ACSetTransformation, additions::Vector{<:ACSetTransformation}, 
+               monic::Vector{Symbol})
+    newP = hom(~Subobject(m))
+    new(m, monic, newP, 
+        Dict(a => compute_overlaps(dom(newP), a; monic) for a in additions))
+  end
 end
 
 PAC(p::PAC) = p
 
-PAC(m::ACSetTransformation, b::Bool=false) = 
-  PAC(m, b ? ob(acset_schema(dom(m))) : [])
+PAC(m::ACSetTransformation, additions=ACSetTransformation[], b::Bool=false) = 
+  PAC(m, additions, b ? ob(acset_schema(dom(m))) : Symbol[])
 
 
 

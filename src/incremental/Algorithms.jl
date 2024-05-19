@@ -2,7 +2,6 @@ module Algorithms
 
 using Catlab 
 using ...CategoricalAlgebra.CSets: invert_iso
-using ..Constraints: NAC
 
 """
 Break an ACSet into connected components, represented as a coproduct and an 
@@ -54,11 +53,11 @@ Find all partial maps from the pattern to the addition, with some restrictions:
 2. Anything in L incident to a part mapped onto newly added material must be 
    mapped to newly added material
 """
-function compute_overlaps(L::ACSet, I_R::ACSetTransformation)::Vector{Span}
+function compute_overlaps(L::ACSet, I_R::ACSetTransformation; monic=[])::Vector{Span}
   overlaps = Span[]
   for subobj in hom.(subobject_graph(L)[2])
     abs_subobj = abstract_attributes(dom(subobj))
-    for h in homomorphisms(dom(abs_subobj), codom(I_R))
+    for h in homomorphisms(dom(abs_subobj), codom(I_R); monic)
       lft = abs_subobj ⋅ subobj
       good_overlap(lft, h, I_R) && push!(overlaps, Span(lft, h))
     end
@@ -124,7 +123,7 @@ deleted, X ∖ X').
 Thus, our process for finding overlaps requires only searching for morphisms  
 between two things which are themselves pattern-sized.
 """
-function nac_overlap(nac::NAC, update::ACSetTransformation)
+function nac_overlap(nac, update::ACSetTransformation)
   N = codom(nac)
   Ob = ob(acset_schema(N))
   L_parts_in_N = Dict(o=>Set(collect(nac.m[o])) for o in Ob)
@@ -188,5 +187,15 @@ function pull_back(f::ACSetTransformation, m::ACSetTransformation
   end
   ACSetTransformation(dom(m), dom(f); comps...)
 end
+
+"""Get the pairs for each component of the image and its component"""
+partition_image(f::ACSetTransformation) = Dict(map(ob(acset_schema(dom(f)))) do o
+  del,nondel = Set(parts(codom(f), o)), Set{Int}()
+  for p in parts(dom(f), o) 
+    push!(nondel, f[o](p))
+    delete!(del, f[o](p))
+  end
+  o => (nondel, del)
+end)
 
 end # module

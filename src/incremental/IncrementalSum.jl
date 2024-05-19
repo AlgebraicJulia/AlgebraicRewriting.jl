@@ -6,7 +6,7 @@ module IncrementalSum
 using ..IncrementalHom: IncStatic, IncRuntime, IncHomSet, static, runtime, key_dict, pattern
 import ..IncrementalHom: validate, additions, state, deletion!, addition!, matches
 
-using ..Constraints: IncConstraints
+using ..IncrementalConstraints: IncConstraints
 using ..IncrementalCC: IncCCHomSet, IncCCStatic, IncCCRuntime, key_vect
 
 using Catlab
@@ -121,8 +121,8 @@ end
 
 """Compute deletions component-wise, then aggregate results"""
 function deletion!(stat::IncSumStatic, runt::IncSumRuntime, 
-                   constr::IncConstraints, f::ACSetTransformation) 
-  deldata = deletion!.(stat.components, runt.components, Ref(constr), Ref(f))
+                   constr::IncConstraints, f::ACSetTransformation; kw...) 
+  deldata = deletion!.(stat.components, runt.components, Ref(constr), Ref(f); kw...)
   resdata = [delete_add_keys!(runt, i, inv, add) for (i, (inv, add)) in enumerate(deldata)]
   return (vcat(first.(resdata)...), vcat(last.(resdata)...))
 end

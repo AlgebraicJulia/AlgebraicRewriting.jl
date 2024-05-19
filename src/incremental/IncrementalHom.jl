@@ -3,14 +3,14 @@ Things for incremental hom sets, not particular to any specific implementation.
 """
 module IncrementalHom
 
-export IncHomSet, matches, validate
+export IncHomSet, matches, validate, addition!, deletion!
 
 using Catlab
 
 using ...Rewrite: Rule, rewrite_match_maps, get_match
 using ...Rewrite.Utils: get_result, get_rmap, get_pmap, get_expr_binding_map
 import ...Rewrite: rewrite!
-using ..Constraints: compat_constraints
+using ..IncrementalConstraints: compat_constraints
 
 """
 There are currently two types of IncHomSets. Common to both is a separation of 
@@ -108,6 +108,8 @@ key_dict(h::IncRuntime) = h.key_dict
 Base.getindex(i::IncRuntime, idx::Int)::ACSetTransformation = i[key_vect(i)[idx]]
 
 Base.delete!(i::IncRuntime, k) = delete!(key_dict(i), k)
+
+Base.pairs(h::IncHomSet) = [k => h[k] for k in keys(key_dict(h))]
 
 # Addition
 ##########

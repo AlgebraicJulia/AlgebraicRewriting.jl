@@ -1,13 +1,13 @@
 module Utils
 
 export Rule, ruletype,rewrite, rewrite_match, rewrite_full_output, 
-       rewrite_match_maps, can_match, get_match, get_matches
+       rewrite_match_maps, can_match, get_match, get_matches, pattern
 
 using Catlab, Catlab.Theories
 using Catlab.CategoricalAlgebra
 using Catlab.CategoricalAlgebra.HomSearch: backtracking_search
 import Catlab.CategoricalAlgebra: left, right
-import ACSets: sparsify 
+import ACSets: sparsify, acset_schema
 
 using Random
 using StructEquality
@@ -92,6 +92,9 @@ Rule(l, r; kw...) = Rule{:DPO}(l, r; kw...) # Assume DPO by default
 ruletype(::Rule{T}) where T = T
 left(r::Rule{T}) where T = r.L
 right(r::Rule{T}) where T = r.R
+pattern(r::Rule) = codom(left(r))
+acset_schema(r::Rule) = acset_schema(pattern(r))
+
 
 (F::Migrate)(r::Rule{T}) where {T} =
   Rule{T}(F(r.L), F(r.R); ac=F.(r.conditions), expr=F(r.exprs), monic=r.monic)

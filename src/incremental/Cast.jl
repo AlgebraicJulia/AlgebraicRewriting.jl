@@ -9,7 +9,7 @@ using ..IncrementalSum: IncSumStatic, IncSumRuntime
 import ..IncrementalSum: IncSumHomSet
 using ..IncrementalHom: pattern, key_dict, static, runtime, constraints, additions, state
 import ..IncrementalHom: IncHomSet
-using ..Constraints: AC, PAC, NAC, IncConstraints
+using ..IncrementalConstraints: AC, PAC, NAC, IncConstraints
 using ..Algorithms: connected_acset_components
 
 using Catlab 
@@ -28,7 +28,7 @@ IncSumHomSet(hs::IncSumHomSet) = hs
 
 """Cast a sum homset into a single 'connected component'"""
 function IncCCHomSet(hs::IncSumHomSet)
-  stat = IncCCStatic(pattern(hs), additions(hs))
+  stat = IncCCStatic(pattern(hs), constraints(hs), additions(hs))
   runt = IncCCRuntime(pattern(hs), state(hs), constraints(hs))
   IncCCHomSet(stat, runt, constraints(hs))
 end
@@ -62,12 +62,12 @@ function IncHomSet(pattern::ACSet, additions::Vector{<:ACSetTransformation},
   coprod, iso = connected_acset_components(pattern)
   single = single || !isempty(constraints)
   if single || length(coprod) == 1
-    stat = IncCCStatic(pattern, additions)
+    stat = IncCCStatic(pattern, constraints, additions)
     runt = IncCCRuntime(pattern, state, constraints)
     return IncCCHomSet(stat, runt, constraints)
   else 
     pats = dom.(coprod.cocone)
-    ccs = IncCCHomSet.(IncCCStatic.(pats, Ref(additions)), 
+    ccs = IncCCHomSet.(IncCCStatic.(pats, Ref(constraints), Ref(additions)), 
                        IncCCRuntime.(pats, Ref(state), Ref(constraints)), 
                        Ref(constraints))
     stat = IncSumStatic(pattern, coprod, iso, static.(ccs))
@@ -78,14 +78,15 @@ function IncHomSet(pattern::ACSet, additions::Vector{<:ACSetTransformation},
   end
 end
 
-function IncHomSet(rule::Rule{T}, state::ACSet) where T
+function IncHomSet(rule::Rule{T}, state::ACSet, additions=ACSetTransformation[]) where T
   pac, nac = [], []
-  dpo = (T == :DPO) ? [left(rule)] : []
-  for c in AC.(rule.conditions, Ref(dpo))
+  dpo = (T == :DPO) ? [left(rule)] : ACSetTransformation[]
+  right(rule) ∈ additions || push!(additions, right(rule))
+  for c in AC.(rule.conditions, Ref(additions), Ref(dpo))
     c isa PAC && push!(pac, c)
     c isa NAC && push!(nac, c)
   end
-  IncHomSet(codom(left(rule)), [right(rule)], state; monic=rule.monic, pac, nac)
+  IncHomSet(codom(left(rule)), additions, state; monic=rule.monic, pac, nac)
 end
 
 
