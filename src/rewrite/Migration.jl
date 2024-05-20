@@ -40,10 +40,10 @@ schema changes. This minimizes the need to clear the cache.
 """
 pres_hash(p::Presentation) = "$(hash(p.generators))_$(hash(p.equations))"
 
-function yoneda_cache(T::Type,S=nothing; clear=false, cache="cache")
+function repr_dict(T::Type,S=nothing; clear=false, cache="cache")
   S = isnothing(S) ? Presentation(T) : S
   tname = "$(nameof(T))_$(pres_hash(S))"
-  cache_dict = Dict{Symbol,Tuple{T,Int}}(map(generators(S, :Ob)) do ob
+  Dict{Symbol,Tuple{T,Int}}(map(generators(S, :Ob)) do ob
     name = nameof(ob)
     cache_dir = mkpath(joinpath(cache, "$tname"))
     path, ipath = joinpath.(cache_dir, ["$name.json", "_id_$name.json"])
@@ -57,7 +57,9 @@ function yoneda_cache(T::Type,S=nothing; clear=false, cache="cache")
       (rep, i)
     end
   end)
-  return yoneda(T; cache=cache_dict)
 end
+
+yoneda_cache(T::Type,S=nothing; clear=false, cache="cache") = 
+  yoneda(T; cache=repr_dict(T, S; clear, cache))
 
 end # module 
