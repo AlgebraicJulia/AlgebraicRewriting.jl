@@ -240,7 +240,9 @@ function deletion!(::IncCCStatic, runt::IncCCRuntime, constr::IncConstraints,
     for (idx′, m) in collect(dic)
       m′ = pull_back(f, m)
       # Delete if match refers to something deleted OR we have invalidated a PAC
-      if isnothing(m′) || !can_match(constr, m′; nac=false)
+      # TODO: pass into `can_match` *which* parts were deleted, if P\L does not 
+      # have any such parts, we can skip.
+      if isnothing(m′) || !can_match(constr, m′; nac=false) 
         delete!(dic, idx′)
         delete!(key_dict(runt), idx => idx′)
         push!(invalidated_keys, idx => idx′)
