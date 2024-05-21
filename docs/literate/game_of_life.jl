@@ -76,10 +76,8 @@ and obtain a state of the world with coordinates (the canonical way to do this
 is to assign "variables" for the values of the coordinates).
 =#
 
-idₒ = Dict(x => x for x in Symbol.(generators(SchLife, :Ob)))
-idₘ = Dict(x => x for x in Symbol.(generators(SchLife, :Hom)))
-F = Migrate(idₒ, idₘ, LifeCoords; delta=false); # adds coordinates
-F⁻¹ = DeltaMigration(FinFunctor(idₒ, idₘ, SchLife, SchLifeCoords)); # removes coordinates
+F = Migrate(SchLifeCoords, LifeCoords; delta=false); # adds coordinates
+# F⁻¹ = DeltaMigration(FinFunctor(idₒ, idₘ, SchLife, SchLifeCoords)); # removes coordinates
 
 # # Helper functions
 
@@ -173,7 +171,7 @@ visualization function.
 =#
 
 
-function view_life(X::Life, pth=tempname(); star=nothing)
+function view_life_graph(X::Union{Life,LifeCoords}, pth=tempname(); star=nothing)
   pg = PropertyGraph{Any}(; prog="neato", graph=Dict(),
     node=Dict(:shape => "circle", :style => "filled", :margin => "0"),
     edge=Dict(:dir => "none", :minlen => "1"))
@@ -193,7 +191,7 @@ function view_life(X::Life, pth=tempname(); star=nothing)
   G
 end;
 
-view_life(migrate(Life,  init, F⁻¹))
+view_life_graph(init)
 
 
 #=
@@ -203,12 +201,12 @@ in the next time step.
 =#
 Next() = @acset Life begin V = 1; Next = 1; next = 1 end;
 
-view_life(Next())
+view_life_graph(Next())
 
 # We also want to refer to a vertex which is alive in the current time step
 
 Curr() = @acset Life begin V = 1; Curr = 1; curr = 1 end;
-view_life(Curr())
+view_life_graph(Curr())
 
 # We also want these where we have a morphism incoming from a vertex. 
 to_next() = homomorphism(Life(1), Next());
@@ -227,10 +225,10 @@ function living_neighbors(n::Int; alive=false)
   X
 end
 
-view_life(living_neighbors(3))
+view_life_graph(living_neighbors(3))
 
 # We can control whether the central cell is itself alive or not
-view_life(living_neighbors(3; alive=true))
+view_life_graph(living_neighbors(3; alive=true))
 
 
 # # Rules 
@@ -322,7 +320,7 @@ view_sched(L)
 # Make an initial state
 G = make_grid([1 0 1 0 1; 0 1 0 1 0; 0 1 0 1 0; 1 0 1 0 1; 1 0 1 0 1])
 
-view_life(migrate(Life,  G, F⁻¹))
+view_life_graph(G)
 
 # (or, viewed in plaintext)
 

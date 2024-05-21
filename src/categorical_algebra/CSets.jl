@@ -450,16 +450,29 @@ end
 # Simple Δ migrations (or limited case Σ)
 #########################################
 
-"""To do: check if functorial"""
+"""TODO: check if functorial"""
 @struct_hash_equal struct Migrate
   obs::Dict{Symbol, Symbol}
   homs::Dict{Symbol, Symbol}
+  P1::Presentation
   T1::Type 
+  P2::Presentation
   T2::Type 
   delta::Bool 
-  Migrate(o,h,t1,t2=nothing; delta::Bool=true) = new(
-    Dict(collect(pairs(o))),Dict(collect(pairs(h))),t1,isnothing(t2) ? t1 : t2, delta)
 end 
+
+Migrate(s1::Presentation, t1::Type, s2=nothing, t2=nothing; delta=true) = 
+Migrate(Dict(x => x for x in Symbol.(generators(s1, :Ob))),
+        Dict(x => x for x in Symbol.(generators(s1, :Hom))),
+        s1, t1, s2, t2; delta)
+
+Migrate(o::Dict, h::Dict, s1::Presentation, t1::Type, s2=nothing, t2=nothing; 
+        delta::Bool=true) = Migrate(Dict(collect(pairs(o))),
+                                    Dict(collect(pairs(h))), s1, t1, 
+                                    isnothing(s2) ? s1 : s2, 
+                                    isnothing(t2) ? t1 : t2, 
+                                    delta)
+
 
 sparsify(d::Dict{V,<:ACSet}) where V = Dict([k=>sparsify(v) for (k,v) in collect(d)])
 sparsify(d::Dict{<:ACSet,V}) where V = Dict([sparsify(k)=>v for (k,v) in collect(d)])
