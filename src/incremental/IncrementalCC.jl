@@ -7,7 +7,7 @@ module IncrementalCC
 
 using ..IncrementalConstraints: NAC, IncConstraints, can_match
 using ..IncrementalHom: IncStatic, IncRuntime, IncHomSet, pattern, runtime, 
-                        key_vect, key_dict
+                        constraints, key_vect, key_dict
 import ..IncrementalHom: validate, additions, state, deletion!, addition!, 
                          matches
 using ..Algorithms: compute_overlaps, pull_back, nac_overlap
@@ -186,7 +186,7 @@ function addition!(stat::IncCCStatic, runt::IncCCRuntime, constr::IncConstraints
       initial = extend_morphism_constraints(to_R, to_P)
       # P stuff not in image of overlap shouldn't be newly introduced material
       predicates = Dict(map(Ob) do o 
-        o => Dict([old_stuff[o] for p in setdiff(parts(P, o), collect(to_P[o]))])
+        o => Dict([p => old_stuff[o] for p in setdiff(parts(P, o), collect(to_P[o]))])
       end)
       for h in homomorphisms(P, X; monic=pac.monic, initial, predicates)
         add_match!(runt, constr, new_keys, new_matches, pac.m ⋅ h)
@@ -334,7 +334,8 @@ end
 """Add a match during a deletion"""
 function add_match!(runt::IncCCRuntime, constr::IncConstraints,      
                     new_keys, new_matches, m::ACSetTransformation)
-  if can_match(constr, m)
+  # check if we've already seen it and that it satifies constraints
+  if m ∉ values(new_matches) && can_match(constr, m)
     new_key = length(runt) => length(new_keys)+1
     push!(key_vect(runt), new_key)
     push!(new_keys, new_key)
@@ -356,7 +357,9 @@ function validate(hset::IncCCHomSet)
   all(is_natural, ms) || error("Unnatural")
   all(==(pattern(hset)), dom.(ms)) || error("Bad dom")
   all(==(state(hset)), codom.(ms)) || error("Bad codom")
-  ref = IncHomSet(pattern(hset), additions(hset), state(hset))
+  c = constraints(hset)
+  ref = IncHomSet(pattern(hset), additions(hset), state(hset); single=true, 
+                  monic=c.monic, pac=c.pac, nac=c.nac)
   xtra = setdiff(ms, values(first(match_vect(ref))))
   missin = setdiff(values(first(match_vect(ref))), ms)
   isempty(xtra ∪ missin) || error("\n\textra $xtra \n\tmissing $missin")
