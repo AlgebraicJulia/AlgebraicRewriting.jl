@@ -91,10 +91,7 @@ end
 
 @acset_type AbsLifeCoords(SchLifeCoords, part_type=BitSetParts) &lt;: AbstractSymmetricGraph
 
-const LifeCoords = AbsLifeCoords{Tuple{Int,Int}};</code></pre><h1 id="Data-migration-functors"><a class="docs-heading-anchor" href="#Data-migration-functors">Data migration functors</a><a id="Data-migration-functors-1"></a><a class="docs-heading-anchor-permalink" href="#Data-migration-functors" title="Permalink"></a></h1><p>We ought to be able to take a state of the world (with no coordinate information) and obtain a state of the world with coordinates (the canonical way to do this is to assign &quot;variables&quot; for the values of the coordinates).</p><pre><code class="language-julia hljs">idₒ = Dict(x =&gt; x for x in Symbol.(generators(SchLife, :Ob)))
-idₘ = Dict(x =&gt; x for x in Symbol.(generators(SchLife, :Hom)))
-F = Migrate(idₒ, idₘ, LifeCoords; delta=false); # adds coordinates
-F⁻¹ = DeltaMigration(FinFunctor(idₒ, idₘ, SchLife, SchLifeCoords)); # removes coordinates</code></pre><h1 id="Helper-functions"><a class="docs-heading-anchor" href="#Helper-functions">Helper functions</a><a id="Helper-functions-1"></a><a class="docs-heading-anchor-permalink" href="#Helper-functions" title="Permalink"></a></h1><p>Functions to help us create a grid.</p><pre><code class="language-julia hljs">function make_grid(curr::AbstractMatrix, next=nothing)
+const LifeCoords = AbsLifeCoords{Tuple{Int,Int}};</code></pre><h1 id="Data-migration-functors"><a class="docs-heading-anchor" href="#Data-migration-functors">Data migration functors</a><a id="Data-migration-functors-1"></a><a class="docs-heading-anchor-permalink" href="#Data-migration-functors" title="Permalink"></a></h1><p>We ought to be able to take a state of the world (with no coordinate information) and obtain a state of the world with coordinates (the canonical way to do this is to assign &quot;variables&quot; for the values of the coordinates).</p><pre><code class="language-julia hljs">F = Migrate(SchLifeCoords, LifeCoords; delta=false); # adds coordinates</code></pre><p>F⁻¹ = DeltaMigration(FinFunctor(idₒ, idₘ, SchLife, SchLifeCoords)); # removes coordinates</p><h1 id="Helper-functions"><a class="docs-heading-anchor" href="#Helper-functions">Helper functions</a><a id="Helper-functions-1"></a><a class="docs-heading-anchor-permalink" href="#Helper-functions" title="Permalink"></a></h1><p>Functions to help us create a grid.</p><pre><code class="language-julia hljs">function make_grid(curr::AbstractMatrix, next=nothing)
   n, m = size(curr)
   n == m || error(&quot;Must be square&quot;)
   X, coords = LifeCoords(), Dict()
@@ -156,7 +153,7 @@ view_life(init) |&gt; println</code></pre><pre class="documenter-example-output"
 | x | o | x |</code></pre><p>We can also visualize a grid with a distinguished <em>agent</em>. Here an agent living in a game state <code>X</code> is a map <code>A → X</code> where <code>A</code> is the shape of the agent. The only kind of agent we&#39;ll consider in this model is that of a lone vertex.</p><p>Note that <code>A</code> below is defined without coordinates, whereas <code>init</code> is an instance of <code>LifeCoords</code>. So in order to relate them via a mapping (which requires them to share a schema) we promote <code>A</code> to <code>LifeCoords</code> using the data migration, <code>F</code>.</p><pre><code class="language-julia hljs">A = Life(1)
 view_life(homomorphism(F(A), init)) |&gt; println</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">| o. | x | o |
 |  x | x | x |
-|  x | o | x |</code></pre><p>We must also work with miniature game states that are <em>not</em> grids in order for us to define the dynamics, as they are what the patterns and replacements of rewrite rules are made of. In order to visualize these, we will use another visualization function.</p><pre><code class="language-julia hljs">function view_life(X::Life, pth=tempname(); star=nothing)
+|  x | o | x |</code></pre><p>We must also work with miniature game states that are <em>not</em> grids in order for us to define the dynamics, as they are what the patterns and replacements of rewrite rules are made of. In order to visualize these, we will use another visualization function.</p><pre><code class="language-julia hljs">function view_life_graph(X::Union{Life,LifeCoords}, pth=tempname(); star=nothing)
   pg = PropertyGraph{Any}(; prog=&quot;neato&quot;, graph=Dict(),
     node=Dict(:shape =&gt; &quot;circle&quot;, :style =&gt; &quot;filled&quot;, :margin =&gt; &quot;0&quot;),
     edge=Dict(:dir =&gt; &quot;none&quot;, :minlen =&gt; &quot;1&quot;))
@@ -176,7 +173,7 @@ view_life(homomorphism(F(A), init)) |&gt; println</code></pre><pre class="docume
   G
 end;
 
-view_life(migrate(Life,  init, F⁻¹))</code></pre><img src='data:image/svg+xml;utf-8,<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+view_life_graph(init)</code></pre><img src='data:image/svg+xml;utf-8,<?xml version="1.0" encoding="UTF-8" standalone="no"?>
 <!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN"
  "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
 <!-- Generated by graphviz version 2.43.0 (0)
@@ -336,7 +333,7 @@ view_life(migrate(Life,  init, F⁻¹))</code></pre><img src='data:image/svg+xml
 </svg>
 '/><p>Now we make some helper functions to construct important ACSets and maps between them. We start with a single vertex which is marked as to-be-alive in the next time step.</p><pre><code class="language-julia hljs">Next() = @acset Life begin V = 1; Next = 1; next = 1 end;
 
-view_life(Next())</code></pre><img src='data:image/svg+xml;utf-8,<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+view_life_graph(Next())</code></pre><img src='data:image/svg+xml;utf-8,<?xml version="1.0" encoding="UTF-8" standalone="no"?>
 <!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN"
  "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
 <!-- Generated by graphviz version 2.43.0 (0)
@@ -355,7 +352,7 @@ view_life(Next())</code></pre><img src='data:image/svg+xml;utf-8,<?xml version="
 </g>
 </svg>
 '/><p>We also want to refer to a vertex which is alive in the current time step</p><pre><code class="language-julia hljs">Curr() = @acset Life begin V = 1; Curr = 1; curr = 1 end;
-view_life(Curr())</code></pre><img src='data:image/svg+xml;utf-8,<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+view_life_graph(Curr())</code></pre><img src='data:image/svg+xml;utf-8,<?xml version="1.0" encoding="UTF-8" standalone="no"?>
 <!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN"
  "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
 <!-- Generated by graphviz version 2.43.0 (0)
@@ -385,7 +382,7 @@ to_curr() = homomorphism(Life(1), Curr());</code></pre><p>We make a helper for c
   X
 end
 
-view_life(living_neighbors(3))</code></pre><img src='data:image/svg+xml;utf-8,<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+view_life_graph(living_neighbors(3))</code></pre><img src='data:image/svg+xml;utf-8,<?xml version="1.0" encoding="UTF-8" standalone="no"?>
 <!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN"
  "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
 <!-- Generated by graphviz version 2.43.0 (0)
@@ -433,7 +430,7 @@ view_life(living_neighbors(3))</code></pre><img src='data:image/svg+xml;utf-8,<?
 </g>
 </g>
 </svg>
-'/><p>We can control whether the central cell is itself alive or not</p><pre><code class="language-julia hljs">view_life(living_neighbors(3; alive=true))</code></pre><img src='data:image/svg+xml;utf-8,<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+'/><p>We can control whether the central cell is itself alive or not</p><pre><code class="language-julia hljs">view_life_graph(living_neighbors(3; alive=true))</code></pre><img src='data:image/svg+xml;utf-8,<?xml version="1.0" encoding="UTF-8" standalone="no"?>
 <!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN"
  "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
 <!-- Generated by graphviz version 2.43.0 (0)
@@ -758,7 +755,7 @@ const L = life(1) # Game of life simulation that runs just one (global) timestep
 
 view_sched(L)</code></pre><img src="f4218140.svg" alt="Example block output"/><h2 id="Running-the-simulation"><a class="docs-heading-anchor" href="#Running-the-simulation">Running the simulation</a><a id="Running-the-simulation-1"></a><a class="docs-heading-anchor-permalink" href="#Running-the-simulation" title="Permalink"></a></h2><p>Make an initial state</p><pre><code class="language-julia hljs">G = make_grid([1 0 1 0 1; 0 1 0 1 0; 0 1 0 1 0; 1 0 1 0 1; 1 0 1 0 1])
 
-view_life(migrate(Life,  G, F⁻¹))</code></pre><img src="a9979819.svg" alt="Example block output"/><p>(or, viewed in plaintext)</p><pre><code class="language-julia hljs">view_life(G) |&gt; println</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">| o | x | x | o | o |
+view_life_graph(G)</code></pre><img src="a9979819.svg" alt="Example block output"/><p>(or, viewed in plaintext)</p><pre><code class="language-julia hljs">view_life(G) |&gt; println</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">| o | x | x | o | o |
 | x | o | o | x | x |
 | o | x | x | o | o |
 | x | o | o | x | x |
@@ -766,4 +763,4 @@ view_life(migrate(Life,  G, F⁻¹))</code></pre><img src="a9979819.svg" alt="Ex
 | o | o | o | x | x |
 | o | x | x | o | x |
 | o | o | o | x | x |
-| x | o | o | o | x |</code></pre><p>Visualize the results in the <code>traj</code> folder</p><pre><code class="language-julia hljs">view_traj(L, res[1:10], view_life; agent=true)</code></pre></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../full_demo/">« Full Demo</a><a class="docs-footer-nextpage" href="../lotka_volterra/">Lotka Volterra »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="auto">Automatic (OS)</option><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 1.4.1 on <span class="colophon-date" title="Tuesday 21 May 2024 18:23">Tuesday 21 May 2024</span>. Using Julia version 1.10.3.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
+| x | o | o | o | x |</code></pre><p>Visualize the results in the <code>traj</code> folder</p><pre><code class="language-julia hljs">view_traj(L, res[1:10], view_life; agent=true)</code></pre></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../full_demo/">« Full Demo</a><a class="docs-footer-nextpage" href="../lotka_volterra/">Lotka Volterra »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="auto">Automatic (OS)</option><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 1.4.1 on <span class="colophon-date" title="Tuesday 21 May 2024 19:36">Tuesday 21 May 2024</span>. Using Julia version 1.10.3.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
