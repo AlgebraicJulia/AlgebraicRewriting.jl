@@ -126,7 +126,7 @@ F = Migrate(
   Dict(:Sheep => :Wolf, :Wolf => :Sheep),
   Dict([:sheep_loc => :wolf_loc, :wolf_loc => :sheep_loc,
     :sheep_eng => :wolf_eng, :wolf_eng => :sheep_eng, :countdown => :countdown,
-    :sheep_dir => :wolf_dir, :wolf_dir => :sheep_dir,]), LV);
+    :sheep_dir => :wolf_dir, :wolf_dir => :sheep_dir,]), SchLV, LV);
 
 #=
 We ought to be able to take a state of the world (with no coordinate information)
@@ -134,9 +134,7 @@ and obtain a state of the world with coordinates (the canonical way to do this
 is to assign "variables" for the values of the coordinates).
 =#
 
-F2 = Migrate(
-  Dict(x => x for x in Symbol.(SchLV.generators[:Ob])),
-  Dict(x => x for x in Symbol.(SchLV.generators[:Hom])), LV′; delta=false);
+F2 = Migrate(SchLV, LV, SchLV′, LV′; delta=false);
 
 # # Initializing and visualizing world states
 

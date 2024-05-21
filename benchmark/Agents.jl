@@ -192,7 +192,8 @@ const hom = homomorphism
   (Sheep, Wolf)::Ob
   sheep_loc::Hom(Sheep, V); wolf_loc::Hom(Wolf, V)
   Eng::AttrType
-  countdown::Attr(V, Eng); sheep_eng::Attr(Sheep, Eng); wolf_eng::Attr(Wolf, Eng)
+  countdown::Attr(V, Eng); 
+  sheep_eng::Attr(Sheep, Eng); wolf_eng::Attr(Wolf, Eng)
 end
 
 @present TheoryWS′ <: TheoryWS begin
@@ -210,10 +211,8 @@ F = Migrate(
   Dict(:Sheep => :Wolf, :Wolf => :Sheep),
   Dict([:sheep_loc => :wolf_loc, :wolf_loc => :sheep_loc,
     :sheep_eng => :wolf_eng, :wolf_eng => :sheep_eng,
-    :countdown => :countdown]), WS)
-F2 = Migrate(
-  Dict(x => x for x in Symbol.(TheoryWS.generators[:Ob])),
-  Dict(x => x for x in Symbol.(TheoryWS.generators[:Hom])), WS′; delta=false)
+    :countdown => :countdown]), TheoryWS, WS)
+F2 = Migrate(TheoryWS, WS, TheoryWS′, WS′; delta=false)
 
 #=
 Create an n × n grid with periodic boundary conditions. Edges in each cardinal
