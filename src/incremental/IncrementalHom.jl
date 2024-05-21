@@ -115,15 +115,15 @@ Base.pairs(h::IncHomSet) = [k => h[k] for k in keys(key_dict(h))]
 ##########
 
 """Perform a pushout addition given a match morphism from the domain."""
-addition!(hset::IncHomSet, i::Int, omap::ACSetTransformation) =
-  addition!(hset, i, pushout(additions(hset)[i], omap)...)
+addition!(hset::IncHomSet, r::ACSetTransformation, omap::ACSetTransformation) =
+  addition!(hset, r, pushout(r, omap)...)
 
 
 # Unpacking into components
 ###########################
 
-addition!(hset::IncHomSet, i::Int, rmap::ACSetTransformation, 
-          update::ACSetTransformation) = addition!(hset..., i , rmap, update)
+addition!(hset::IncHomSet, r::ACSetTransformation, rmap::ACSetTransformation, 
+          update::ACSetTransformation) = addition!(hset..., r, rmap, update)
 
 deletion!(hset::IncHomSet, f::ACSetTransformation; kw...) = 
   deletion!(hset..., f; kw...)
@@ -150,7 +150,7 @@ function rewrite!(hset::IncHomSet, r::Rule{T}, match::ACSetTransformation;
     c_err = compat_constraints(constraints(hset), r) 
     isnothing(c_err) || error("Constraint mismatch: $c_err")
   end
-  i = findfirst(==(right(r)), additions(hset)) # RHS of rule must be an addition
+  rght = right(r) # RHS of rule must be an addition
   state(hset) == codom(match)|| error("Codom mismatch for match $match")
   dpo = T == :DPO ? (left(r), match) : nothing
 
@@ -163,7 +163,7 @@ function rewrite!(hset::IncHomSet, r::Rule{T}, match::ACSetTransformation;
 
   # Use results to update hom set
   del_invalidated, del_new = deletion!(hset, del_map; dpo)
-  add_invalidated, add_new = addition!(hset, i, rmap, pushforward)
+  add_invalidated, add_new = addition!(hset, rght, rmap, pushforward)
   (vcat(del_invalidated, add_invalidated), vcat(del_new, add_new))
 end
 

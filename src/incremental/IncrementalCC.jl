@@ -6,38 +6,38 @@ from being broken up)
 module IncrementalCC 
 
 using ..IncrementalConstraints: NAC, IncConstraints, can_match
-using ..IncrementalHom: IncStatic, IncRuntime, IncHomSet, pattern, runtime, 
+using ..IncrementalHom: IncStatic, IncRuntime, IncHomSet, pattern, runtime,
                         constraints, key_vect, key_dict
-import ..IncrementalHom: validate, additions, state, deletion!, addition!, 
+import ..IncrementalHom: validate, additions, state, deletion!, addition!,
                          matches
 using ..Algorithms: compute_overlaps, pull_back, nac_overlap
 
 using Catlab
-using Catlab.CategoricalAlgebra.Chase: extend_morphism_constraints  
+using Catlab.CategoricalAlgebra.Chase: extend_morphism_constraints
 
 using StructEquality
 
 """
-For `IncCCHomSet` the pattern `L` must be a single connected component.
+For `IncCCHomSet` the pattern (`L`) ought be a single connected component or 
+have constraints forcing it to be treated all at once instead of componentwise.
 """
 @struct_hash_equal struct IncCCStatic <: IncStatic
   pattern::ACSet
-  additions::Vector{ACSetTransformation}
-  overlaps::Vector{Vector{Span}}
+  overlaps::Dict{ACSetTransformation, Vector{Span}}
   function IncCCStatic(pattern::ACSet, constr::IncConstraints, adds=[])
-    hs = new(pattern, [], [])
+    hs = new(pattern, Dict())
     push!.(Ref(hs), Ref(constr,), adds)
     return hs 
   end
 end
 
-additions(h::IncCCStatic) = h.additions
+additions(h::IncCCStatic) = collect(keys(h.overlaps))
 
 """Consider a new addition (and compute its partial overlaps w/ the pattern)"""
 function Base.push!(hs::IncCCStatic, constr::IncConstraints, 
                     addition::ACSetTransformation)
-  push!(hs.additions, addition)
-  push!(hs.overlaps, compute_overlaps(pattern(hs), addition; constr.monic))
+  haskey(hs.overlaps, addition) && return nothing
+  hs.overlaps[addition]=compute_overlaps(pattern(hs), addition; constr.monic)
 end
 
 """
@@ -132,7 +132,7 @@ application or dangling conditions.
 Returns the 'keys' of the deleted matches and added matches.
 """
 function addition!(stat::IncCCStatic, runt::IncCCRuntime, constr::IncConstraints,
-                   i::Int, rmap::ACSetTransformation, update::ACSetTransformation)  
+                   r::ACSetTransformation, rmap::ACSetTransformation, update::ACSetTransformation)  
   invalidated_keys = Pair{Int,Int}[]
 
   # Push forward old matches
@@ -159,7 +159,7 @@ function addition!(stat::IncCCStatic, runt::IncCCRuntime, constr::IncConstraints
   push!(runt.match_vect, new_matches)
   old_stuff = Dict(o => setdiff(parts(X,o), collect(rmap[o])) for o in Ob)
   seen_constraints = Set() # non-monic match can identify different subobjects 
-  for (subL, mapR) in stat.overlaps[i] 
+  for (subL, mapR) in stat.overlaps[r] 
     initial = extend_morphism_constraints(mapR⋅rmap, subL) # make it commute
     (isnothing(initial) || initial ∈ seen_constraints) && continue
     push!(seen_constraints, initial)
@@ -180,7 +180,7 @@ function addition!(stat::IncCCStatic, runt::IncCCRuntime, constr::IncConstraints
   # Find new matches unlocked by PAC
   for pac in constr.pac
     P = codom(pac)
-    for overlap in pac.overlaps[stat.additions[i]]
+    for overlap in pac.overlaps[r]
       to_P = left(overlap) ⋅ pac.m_complement
       to_R = right(overlap) ⋅ rmap
       initial = extend_morphism_constraints(to_R, to_P)

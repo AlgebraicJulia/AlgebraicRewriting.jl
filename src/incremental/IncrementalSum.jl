@@ -129,11 +129,12 @@ end
 
 """Compute additions component-wise, then aggregate results"""
 function addition!(stat::IncSumStatic, runt::IncSumRuntime, 
-                   constr::IncConstraints, i::Int, rmap::ACSetTransformation, 
-                   pr::ACSetTransformation)
+                   constr::IncConstraints, r::ACSetTransformation, 
+                   rmap::ACSetTransformation, update::ACSetTransformation)
   adddata = addition!.(stat.components, runt.components, 
-                       Ref(constr), i, Ref(rmap), Ref(pr))
-  resdata = [delete_add_keys!(runt, i, inv, add) for (i, (inv, add)) in enumerate(adddata)]
+                       Ref(constr), Ref(r), Ref(rmap), Ref(update))
+  resdata = [delete_add_keys!(runt, i, inv, add) 
+             for (i, (inv, add)) in enumerate(adddata)]
   return (vcat(first.(resdata)...), vcat(last.(resdata)...))
 end
 

@@ -36,7 +36,7 @@ while true
   hset = IncHomSet(L, [r], start);
   @time begin 
     deletion!(hset, pl);
-    addition!(hset, 1, rmap, pr);
+    addition!(hset, r, rmap, pr);
   end 
   validate(hset)
   break
@@ -72,7 +72,7 @@ while true
   @time begin 
     try 
     deletion!(hset, pl)
-    addition!(hset, 1, rmap, pr)
+    addition!(hset, rand_rule.R, rmap, pr)
   
     catch e 
       error("dom(r) $(dom(r))\ncodom(r) $(codom(r))\nr $r\npattern $pattern\nm$m")

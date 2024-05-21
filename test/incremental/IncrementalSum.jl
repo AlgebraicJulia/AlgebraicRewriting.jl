@@ -46,4 +46,19 @@ rewrite!(hset, A_rule)
 @test validate(hset)
 @test length(keys(hset)) == 45
 
+# DDS
+#####
+@present SchDDS(FreeSchema) begin X::Ob; Φ::Hom(X,X) end
+@acset_type DDS(SchDDS, index=[:Φ])
+DDS(i::Int) = @acset DDS begin X=i; Φ=[rand(1:i) for _ in 1:i] end
+DDS(phi::Vector{Int}) = @acset DDS begin X=(length(phi)); Φ=phi end
+
+
+p2 = DDS([2,2])
+p22 = p2 ⊕ p2
+r = homomorphism(p22, DDS([2,2,4,4,4]); monic=true)
+hset = IncHomSet(p22, [r], p22);
+rewrite!(hset, Rule(id(p22), r), id(p22))
+@test validate(hset)
+
 end # module

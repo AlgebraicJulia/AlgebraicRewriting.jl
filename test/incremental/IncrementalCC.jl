@@ -54,8 +54,9 @@ roundtrip = IncCCHomSet(IncSumHomSet(hset));
 tri = @acset Graph begin V=3;E=3;src=[1,1,2];tgt=[3,2,3]end
 X = @acset Graph begin V=2; E=2; src=[1,2]; tgt=[2,2] end
 omap = homomorphism(e, X)
-hset = IncHomSet(ee, [homomorphism(e, tri)], X);
-addition!(hset, 1, omap)
+r = homomorphism(e, tri)
+hset = IncHomSet(ee, [r], X);
+addition!(hset, r, omap)
 @test validate(hset)
 
 
@@ -193,13 +194,6 @@ rewrite!(hset, A_rule)
 @acset_type DDS(SchDDS, index=[:Φ])
 DDS(i::Int) = @acset DDS begin X=i; Φ=[rand(1:i) for _ in 1:i] end
 DDS(phi::Vector{Int}) = @acset DDS begin X=(length(phi)); Φ=phi end
-
-p2 = DDS([2,2])
-p22 = p2 ⊕ p2
-r = homomorphism(p22, DDS([2,2,4,4,4]); monic=true)
-hset = IncHomSet(p22, [r], p22);
-rewrite!(hset, Rule(id(p22), r), id(p22))
-@test validate(hset)
 
 I = DDS([1,2,1])
 r = ACSetTransformation(I, DDS([1,2,1,1]); X=[1, 2, 3])
