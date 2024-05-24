@@ -24,8 +24,9 @@ have constraints forcing it to be treated all at once instead of componentwise.
 @struct_hash_equal struct IncCCStatic <: IncStatic
   pattern::ACSet
   overlaps::Dict{ACSetTransformation, Vector{Span}}
-  function IncCCStatic(pattern::ACSet, constr::IncConstraints, adds=[])
-    hs = new(pattern, Dict())
+  S::Union{Nothing, Presentation}
+  function IncCCStatic(pattern::ACSet, constr::IncConstraints, adds=[], S=nothing)
+    hs = new(pattern, Dict(), S)
     push!.(Ref(hs), Ref(constr,), adds)
     return hs 
   end
@@ -37,7 +38,8 @@ additions(h::IncCCStatic) = collect(keys(h.overlaps))
 function Base.push!(hs::IncCCStatic, constr::IncConstraints, 
                     addition::ACSetTransformation)
   haskey(hs.overlaps, addition) && return nothing
-  hs.overlaps[addition]=compute_overlaps(pattern(hs), addition; constr.monic)
+  hs.overlaps[addition]=compute_overlaps(pattern(hs), addition; constr.monic, 
+                                         S=hs.S)
 end
 
 """
@@ -155,18 +157,18 @@ function addition!(stat::IncCCStatic, runt::IncCCRuntime, constr::IncConstraints
   Ob = ob(acset_schema(pattern(stat)))
   X, L = codom(rmap), pattern(stat)
   new_matches, new_keys = Dict{Int, ACSetTransformation}(), Pair{Int, Int}[]
-
   push!(runt.match_vect, new_matches)
-  old_stuff = Dict(o => setdiff(parts(X,o), collect(rmap[o])) for o in Ob)
+  strictly_old_stuff = Dict(o => setdiff(parts(X,o), collect(rmap[o])) 
+                            for o in Ob)
   seen_constraints = Set() # non-monic match can identify different subobjects 
-  for (subL, mapR) in stat.overlaps[r] 
+  for (subL, mapR) = stat.overlaps[r]
     initial = extend_morphism_constraints(mapR⋅rmap, subL) # make it commute
     (isnothing(initial) || initial ∈ seen_constraints) && continue
     push!(seen_constraints, initial)
     L_image = Dict(o => Set(collect(subL[o])) for o in Ob)
     boundary = Dict(k => setdiff(parts(L, k), L_image[k]) for k in Ob)
     predicates = Dict(map(Ob) do o
-      o => Dict(pₒ => old_stuff[o] for pₒ in boundary[o])
+      o => Dict(pₒ => strictly_old_stuff[o] for pₒ in boundary[o])
     end)
     for h in homomorphisms(L, X; monic=constr.monic, initial, predicates)
       if h ∈ values(new_matches) # this could be skipped once code is trusted
@@ -186,7 +188,7 @@ function addition!(stat::IncCCStatic, runt::IncCCRuntime, constr::IncConstraints
       initial = extend_morphism_constraints(to_R, to_P)
       # P stuff not in image of overlap shouldn't be newly introduced material
       predicates = Dict(map(Ob) do o 
-        o => Dict([p => old_stuff[o] for p in setdiff(parts(P, o), collect(to_P[o]))])
+        o => Dict([p => strictly_old_stuff[o] for p in setdiff(parts(P, o), collect(to_P[o]))])
       end)
       for h in homomorphisms(P, X; monic=pac.monic, initial, predicates)
         add_match!(runt, constr, new_keys, new_matches, pac.m ⋅ h)

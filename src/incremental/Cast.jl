@@ -10,7 +10,7 @@ import ..IncrementalSum: IncSumHomSet
 using ..IncrementalHom: pattern, key_dict, static, runtime, constraints, additions, state
 import ..IncrementalHom: IncHomSet
 using ..IncrementalConstraints: AC, PAC, NAC, IncConstraints
-using ..Algorithms: connected_acset_components
+using ..Algorithms: connected_acset_components, is_combinatorially_monic
 
 using Catlab 
 
@@ -53,40 +53,49 @@ Automatically determine whether one creates an IncCC or an IncHom.
 not one. Having any constraints will also force it to be treated as a single CC.
 """
 function IncHomSet(pattern::ACSet, additions::Vector{<:ACSetTransformation}, 
-                   state::ACSet; single=false, monic=false, pac=[], nac=[])
+                   state::ACSet; single=false, monic=false, pac=[], nac=[], 
+                   S=nothing)
   obs = ob(acset_schema(pattern))
   monic = monic isa Bool ? (monic ? obs : []) : monic
   pac, nac = PAC.(pac), NAC.(nac)
-  constraints = IncConstraints(monic, pac, nac)
-  all(is_monic, additions) || error("Nonmonic addition") # TODO: support merging
+  constr = IncConstraints(monic, pac, nac)
+  for add in additions  # TODO: support merging
+    is_combinatorially_monic(add) || error("Nonmonic addition $add") 
+  end
   coprod, iso = connected_acset_components(pattern)
-  single = single || !isempty(constraints)
+  single = single || !isempty(constr)
   if single || length(coprod) == 1
-    stat = IncCCStatic(pattern, constraints, additions)
-    runt = IncCCRuntime(pattern, state, constraints)
-    return IncCCHomSet(stat, runt, constraints)
+    stat = IncCCStatic(pattern, constr, additions, S)
+    runt = IncCCRuntime(pattern, state, constr)
+    return IncCCHomSet(stat, runt, constr)
   else 
     pats = dom.(coprod.cocone)
-    ccs = IncCCHomSet.(IncCCStatic.(pats, Ref(constraints), Ref(additions)), 
-                       IncCCRuntime.(pats, Ref(state), Ref(constraints)), 
-                       Ref(constraints))
+    ccs = IncCCHomSet.(IncCCStatic.(pats, Ref(constr), Ref(additions), Ref(S)), 
+                       IncCCRuntime.(pats, Ref(state), Ref(constr)), 
+                       Ref(constr))
     stat = IncSumStatic(pattern, coprod, iso, static.(ccs))
     key_vect = sort(vec(collect.(collect(×(keys.(ccs)...)))))
     key_dict = Dict(v => k for (k, v) in enumerate(key_vect))
     runt = IncSumRuntime(key_vect, key_dict, runtime.(ccs))
-    return IncSumHomSet(stat, runt, constraints)
+    return IncSumHomSet(stat, runt, constr)
   end
 end
 
-function IncHomSet(rule::Rule{T}, state::ACSet, additions=ACSetTransformation[]) where T
+"""
+Initialize an Incremental hom set from a rule, using it's pattern `L` as the 
+domain of the hom set. Any additions other than the map `I->R` can be passed in
+by `additions`, and the schema Presentation can be passed as `S`.
+"""
+function IncHomSet(rule::Rule{T}, state::ACSet, additions=ACSetTransformation[], 
+                   S=nothing) where T
   pac, nac = [], []
   dpo = (T == :DPO) ? [left(rule)] : ACSetTransformation[]
   right(rule) ∈ additions || push!(additions, right(rule))
-  for c in AC.(rule.conditions, Ref(additions), Ref(dpo))
+  for c in AC.(rule.conditions, Ref(additions), Ref(dpo), Ref(S))
     c isa PAC && push!(pac, c)
     c isa NAC && push!(nac, c)
   end
-  IncHomSet(codom(left(rule)), additions, state; monic=rule.monic, pac, nac)
+  IncHomSet(codom(left(rule)), additions, state; monic=rule.monic, pac, nac, S)
 end
 
 

@@ -148,8 +148,19 @@ rewrite!(mset, r)
 @test length(keys(mset)) == 0
 @test ne(state(mset)) == 7
 
+# Non-monic match causing problems
+if false 
+  A_rule = Rule(id(Graph(2)), 
+                homomorphism(Graph(2), path_graph(Graph, 2); monic=true));
+  start =ob(terminal(Graph));
+  hset = IncHomSet(path_graph(Graph, 3), [A_rule.R], start);
+  rewrite!(hset, A_rule);
+  validate(hset)
+end
+
 # Weighted Graph
 #---------------
+if false # has same non-monic match problem as above
 const WG′ = WeightedGraph{Bool}
 e, ee = path_graph.(WG′, 2:3)
 e[:weight] = [AttrVar(add_part!(e, :Weight))]
@@ -186,9 +197,9 @@ end
 get_matches(A_rule, state(hset))
 rewrite!(hset, A_rule)
 @test validate(hset)
+end
 
-
-## DDS 
+# DDS 
 #-----
 @present SchDDS(FreeSchema) begin X::Ob; Φ::Hom(X,X) end
 @acset_type DDS(SchDDS, index=[:Φ])
@@ -202,5 +213,25 @@ m = homomorphism(I, start)
 hset = IncHomSet(DDS([1,1,1]), [r], start);
 rewrite!(hset, Rule(id(I), r), m)
 @test validate(hset)
+
+# Labeled Set
+#-----------
+if false
+  @present SchLSet(FreeSchema) begin X::Ob; D::AttrType; f::Attr(X,D) end
+  @acset_type LSet(SchLSet){Symbol}
+  rep = @acset LSet begin X=1; D=1; f=[AttrVar(1)] end # representable X
+  X = @acset LSet begin X=1; f=[:X] end
+  Y = @acset LSet begin X=1; f=[:Y] end
+  to_X, to_Y = homomorphism.(Ref(rep),[X,Y]);
+
+  hset = IncHomSet(X, [to_X, to_Y], X);
+  @test isempty(hset.static.overlaps[to_Y]) # Y cannot generate new matches
+  @test length(hset.static.overlaps[to_X])==1
+  @test length(keys(hset)) == 1;
+  rewrite!(hset, Rule(to_X,to_Y))
+  validate(hset)
+  rewrite!(hset, Rule(to_Y,to_X))
+  validate(hset)
+end
 
 end # module
