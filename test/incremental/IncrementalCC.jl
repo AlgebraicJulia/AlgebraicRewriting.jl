@@ -216,22 +216,20 @@ rewrite!(hset, Rule(id(I), r), m)
 
 # Labeled Set
 #-----------
-if false
-  @present SchLSet(FreeSchema) begin X::Ob; D::AttrType; f::Attr(X,D) end
-  @acset_type LSet(SchLSet){Symbol}
-  rep = @acset LSet begin X=1; D=1; f=[AttrVar(1)] end # representable X
-  X = @acset LSet begin X=1; f=[:X] end
-  Y = @acset LSet begin X=1; f=[:Y] end
-  to_X, to_Y = homomorphism.(Ref(rep),[X,Y]);
+@present SchLSet(FreeSchema) begin X::Ob; D::AttrType; f::Attr(X,D) end
+@acset_type LSet(SchLSet){Symbol}
+rep = @acset LSet begin X=1; D=1; f=[AttrVar(1)] end # representable X
+X = @acset LSet begin X=1; f=[:X] end
+Y = @acset LSet begin X=1; f=[:Y] end
+to_X, to_Y = homomorphism.(Ref(rep),[X,Y]);
 
-  hset = IncHomSet(X, [to_X, to_Y], X);
-  @test isempty(hset.static.overlaps[to_Y]) # Y cannot generate new matches
-  @test length(hset.static.overlaps[to_X])==1
-  @test length(keys(hset)) == 1;
-  rewrite!(hset, Rule(to_X,to_Y))
-  validate(hset)
-  rewrite!(hset, Rule(to_Y,to_X))
-  validate(hset)
-end
+hset = IncHomSet(X, [to_X, to_Y], X);
+@test isempty(hset.static.overlaps[to_Y]) # Y cannot generate new matches
+@test length(hset.static.overlaps[to_X])==1
+@test length(keys(hset)) == 1;
+rewrite!(hset, Rule(to_X,to_Y))
+validate(hset)
+rewrite!(hset, Rule(to_Y,to_X))
+validate(hset)
 
 end # module
