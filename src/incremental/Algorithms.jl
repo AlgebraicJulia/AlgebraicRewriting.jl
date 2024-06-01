@@ -58,21 +58,7 @@ function compute_overlaps(L::ACSet, I_R::ACSetTransformation; monic=[],
                           S=nothing)::Vector{Span}
   overlaps = Span[]
   for subobj in all_subobjects(L, S)
-    abs_subobj = abstract_attributes(dom(subobj))
-
-    function prnt(s,x::ACSet)
-      println(s);
-      show(stdout,"text/plain",x)
-    end
-    function prnt(s,x::ACSetTransformation)
-      println(s)
-      for (k,v) in pairs(components(x))
-        println("\t$k: [$(join(string.(collect(v)), ","))]")
-      end
-    end
-    prnt("dom(abs_subobj)", dom(abs_subobj))
-    prnt("codom(I_R)", codom(I_R))
-  
+    abs_subobj = abstract_attributes(dom(subobj))  
     for h in homomorphisms(dom(abs_subobj), codom(I_R); monic)
       lft = abs_subobj ⋅ subobj
       good_overlap(lft, h, I_R) && push!(overlaps, Span(lft, h))
