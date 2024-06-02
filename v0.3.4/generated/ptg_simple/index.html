@@ -1,0 +1,441 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/><title>Slice Bread · AlgebraicRewriting.jl</title><meta name="title" content="Slice Bread · AlgebraicRewriting.jl"/><meta property="og:title" content="Slice Bread · AlgebraicRewriting.jl"/><meta property="twitter:title" content="Slice Bread · AlgebraicRewriting.jl"/><meta name="description" content="Documentation for AlgebraicRewriting.jl."/><meta property="og:description" content="Documentation for AlgebraicRewriting.jl."/><meta property="twitter:description" content="Documentation for AlgebraicRewriting.jl."/><script data-outdated-warner src="../../assets/warner.js"></script><link href="https://cdnjs.cloudflare.com/ajax/libs/lato-font/3.0.0/css/lato-font.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/juliamono/0.050/juliamono.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/fontawesome.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/solid.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/brands.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.8/katex.min.css" rel="stylesheet" type="text/css"/><script>documenterBaseURL="../.."</script><script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.6/require.min.js" data-main="../../assets/documenter.js"></script><script src="../../search_index.js"></script><script src="../../siteinfo.js"></script><script src="../../../versions.js"></script><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/documenter-dark.css" data-theme-name="documenter-dark" data-theme-primary-dark/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/documenter-light.css" data-theme-name="documenter-light" data-theme-primary/><script src="../../assets/themeswap.js"></script></head><body><div id="documenter"><nav class="docs-sidebar"><a class="docs-logo" href="../../"><img src="../../assets/logo.png" alt="AlgebraicRewriting.jl logo"/></a><div class="docs-package-name"><span class="docs-autofit"><a href="../../">AlgebraicRewriting.jl</a></span></div><button class="docs-search-query input is-rounded is-small is-clickable my-2 mx-auto py-1 px-2" id="documenter-search-query">Search docs (Ctrl + /)</button><ul class="docs-menu"><li><a class="tocitem" href="../../">AlgebraicRewriting.jl</a></li><li><span class="tocitem">Examples</span><ul><li><a class="tocitem" href="../full_demo/">Full Demo</a></li><li><a class="tocitem" href="../game_of_life/">Conway&#39;s Game of Life</a></li><li><a class="tocitem" href="../lotka_volterra/">Lotka Volterra</a></li><li class="is-active"><a class="tocitem" href>Slice Bread</a><ul class="internal"><li><a class="tocitem" href="#WORLD-STATE"><span>WORLD STATE</span></a></li><li><a class="tocitem" href="#Apply-Rule"><span>Apply Rule</span></a></li></ul></li></ul></li><li><a class="tocitem" href="../../api/">Library Reference</a></li></ul><div class="docs-version-selector field has-addons"><div class="control"><span class="docs-label button is-static is-size-7">Version</span></div><div class="docs-selector control is-expanded"><div class="select is-fullwidth is-size-7"><select id="documenter-version-selector"></select></div></div></div></nav><div class="docs-main"><header class="docs-navbar"><a class="docs-sidebar-button docs-navbar-link fa-solid fa-bars is-hidden-desktop" id="documenter-sidebar-button" href="#"></a><nav class="breadcrumb"><ul class="is-hidden-mobile"><li><a class="is-disabled">Examples</a></li><li class="is-active"><a href>Slice Bread</a></li></ul><ul class="is-hidden-tablet"><li class="is-active"><a href>Slice Bread</a></li></ul></nav><div class="docs-right"><a class="docs-navbar-link" href="https://github.com/AlgebraicJulia/AlgebraicRewriting.jl" title="View the repository on GitHub"><span class="docs-icon fa-brands"></span><span class="docs-label is-hidden-touch">GitHub</span></a><a class="docs-navbar-link" href="https://github.com/AlgebraicJulia/AlgebraicRewriting.jl/blob/main/docs/literate/ptg_simple.jl" title="Edit source on GitHub"><span class="docs-icon fa-solid"></span></a><a class="docs-settings-button docs-navbar-link fa-solid fa-gear" id="documenter-settings-button" href="#" title="Settings"></a><a class="docs-article-toggle-button fa-solid fa-chevron-up" id="documenter-article-toggle-button" href="javascript:;" title="Collapse all docstrings"></a></div></header><article class="content" id="documenter-page"><h1 id="Slice-Bread"><a class="docs-heading-anchor" href="#Slice-Bread">Slice Bread</a><a id="Slice-Bread-1"></a><a class="docs-heading-anchor-permalink" href="#Slice-Bread" title="Permalink"></a></h1><pre><code class="language-julia hljs">using PrettyTables
+
+using Catlab
+using AlgebraicRewriting</code></pre><p>Create an ontology by defining a finite presentation of a freely generated category using @present macro</p><p>About the world: The Bread World Ontology has the types Thing, BreadLoaf, Countertop, and Stool. The Breadloaf, Countertop, and Stool types have morphisms to Thing that represent is-a relationships. The InOn type can be used to encode a set relation (as opposed to a function) that was two morphisms going to Thing. One morphism points out the LHS of the relation and the other morphism point out the RHS of the relation.</p><pre><code class="language-julia hljs">@present OntBreadWorld(FreeSchema) begin
+  Thing::Ob
+  BreadLoaf::Ob
+  Countertop::Ob
+  Stool::Ob
+
+  BreadLoafIsThing::Hom(BreadLoaf, Thing)  # is-a
+  CountertopIsThing::Hom(Countertop, Thing)  # is-a
+  StoolIsThing::Hom(Stool, Thing)  # is-a
+
+  InOn::Ob
+  inOn_l::Hom(InOn, Thing)
+  inOn_r::Hom(InOn, Thing)
+end</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">GATlab.Models.Presentations.Presentation{Catlab.Theories.ThSchema.Meta.T, Symbol}(Catlab.Theories.FreeSchema, (Ob = Catlab.Theories.FreeSchema.Ob{:generator}[Thing, BreadLoaf, Countertop, Stool, InOn], Hom = Catlab.Theories.FreeSchema.Hom{:generator}[BreadLoafIsThing, CountertopIsThing, StoolIsThing, inOn_l, inOn_r], AttrType = Catlab.Theories.FreeSchema.AttrType{:generator}[], Attr = Catlab.Theories.FreeSchema.Attr{:generator}[]), Dict(:inOn_r =&gt; (:Hom =&gt; 5), :CountertopIsThing =&gt; (:Hom =&gt; 2), :Countertop =&gt; (:Ob =&gt; 3), :BreadLoaf =&gt; (:Ob =&gt; 2), :Thing =&gt; (:Ob =&gt; 1), :BreadLoafIsThing =&gt; (:Hom =&gt; 1), :StoolIsThing =&gt; (:Hom =&gt; 3), :InOn =&gt; (:Ob =&gt; 5), :inOn_l =&gt; (:Hom =&gt; 4), :Stool =&gt; (:Ob =&gt; 4)…), Pair[])</code></pre><p>Visualize the ontology</p><pre><code class="language-julia hljs">to_graphviz(OntBreadWorld)</code></pre><img src='data:image/svg+xml;utf-8,<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN"
+ "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+<!-- Generated by graphviz version 2.43.0 (0)
+ -->
+<!-- Title: G Pages: 1 -->
+<svg width="330pt" height="177pt"
+ viewBox="0.00 0.00 330.05 176.97" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+<g id="graph0" class="graph" transform="scale(1 1) rotate(0) translate(4 172.97)">
+<title>G</title>
+<polygon fill="white" stroke="transparent" points="-4,4 -4,-172.97 326.05,-172.97 326.05,4 -4,4"/>
+<!-- n1 -->
+<g id="node1" class="node">
+<title>n1</title>
+<ellipse fill="none" stroke="black" cx="159.1" cy="-84.66" rx="27" ry="18"/>
+<text text-anchor="middle" x="159.1" y="-80.96" font-family="Times,serif" font-size="14.00">Thing</text>
+</g>
+<!-- n2 -->
+<g id="node2" class="node">
+<title>n2</title>
+<ellipse fill="none" stroke="black" cx="225.79" cy="-41.42" rx="40.9" ry="18"/>
+<text text-anchor="middle" x="225.79" y="-37.72" font-family="Times,serif" font-size="14.00">BreadLoaf</text>
+</g>
+<!-- n2&%2345;&gt;n1 -->
+<g id="edge1" class="edge">
+<title>n2&%2345;&gt;n1</title>
+<path fill="none" stroke="black" d="M202.84,-56.3C197.82,-59.55 192.45,-63.04 187.25,-66.41"/>
+<polygon fill="black" stroke="black" points="185.25,-63.53 178.76,-71.91 189.06,-69.41 185.25,-63.53"/>
+<text text-anchor="middle" x="258.55" y="-65.15" font-family="Times,serif" font-size="14.00">BreadLoafIsThing</text>
+</g>
+<!-- n3 -->
+<g id="node3" class="node">
+<title>n3</title>
+<ellipse fill="none" stroke="black" cx="115.94" cy="-18" rx="45.2" ry="18"/>
+<text text-anchor="middle" x="115.94" y="-14.3" font-family="Times,serif" font-size="14.00">Countertop</text>
+</g>
+<!-- n3&%2345;&gt;n1 -->
+<g id="edge2" class="edge">
+<title>n3&%2345;&gt;n1</title>
+<path fill="none" stroke="black" d="M127.28,-35.51C132,-42.8 137.57,-51.4 142.72,-59.35"/>
+<polygon fill="black" stroke="black" points="139.91,-61.46 148.29,-67.95 145.79,-57.65 139.91,-61.46"/>
+<text text-anchor="middle" x="67.5" y="-51.23" font-family="Times,serif" font-size="14.00">CountertopIsThing</text>
+</g>
+<!-- n4 -->
+<g id="node4" class="node">
+<title>n4</title>
+<ellipse fill="none" stroke="black" cx="92.88" cy="-128.51" rx="27" ry="18"/>
+<text text-anchor="middle" x="92.88" y="-124.81" font-family="Times,serif" font-size="14.00">Stool</text>
+</g>
+<!-- n4&%2345;&gt;n1 -->
+<g id="edge3" class="edge">
+<title>n4&%2345;&gt;n1</title>
+<path fill="none" stroke="black" d="M112.39,-115.59C118.27,-111.7 124.84,-107.35 131.15,-103.17"/>
+<polygon fill="black" stroke="black" points="133.1,-106.08 139.5,-97.64 129.23,-100.24 133.1,-106.08"/>
+<text text-anchor="middle" x="76.27" y="-98.18" font-family="Times,serif" font-size="14.00">StoolIsThing</text>
+</g>
+<!-- n5 -->
+<g id="node5" class="node">
+<title>n5</title>
+<ellipse fill="none" stroke="black" cx="202.95" cy="-150.97" rx="27" ry="18"/>
+<text text-anchor="middle" x="202.95" y="-147.27" font-family="Times,serif" font-size="14.00">InOn</text>
+</g>
+<!-- n5&%2345;&gt;n1 -->
+<g id="edge4" class="edge">
+<title>n5&%2345;&gt;n1</title>
+<path fill="none" stroke="black" d="M197.99,-133.1C193.89,-125.23 188.1,-115.92 182.19,-107.56"/>
+<polygon fill="black" stroke="black" points="184.83,-105.24 176.06,-99.29 179.21,-109.41 184.83,-105.24"/>
+<text text-anchor="middle" x="167.09" y="-109.13" font-family="Times,serif" font-size="14.00">inOn_l</text>
+</g>
+<!-- n5&%2345;&gt;n1 -->
+<g id="edge5" class="edge">
+<title>n5&%2345;&gt;n1</title>
+<path fill="none" stroke="black" d="M186.15,-136.54C180.38,-129.18 174.16,-120.03 169.06,-111.46"/>
+<polygon fill="black" stroke="black" points="171.98,-109.51 164.04,-102.49 165.87,-112.93 171.98,-109.51"/>
+<text text-anchor="middle" x="153.6" y="-127.8" font-family="Times,serif" font-size="14.00">inOn_r</text>
+</g>
+</g>
+</svg>
+'/><p>Make the ontology an acset type</p><pre><code class="language-julia hljs">@acset_type BreadWorld(OntBreadWorld)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">Main.BreadWorld</code></pre><p>Construct rule by defining a span in the category of ACSets</p><p>Use the @acset macro to define an ACSet functor. The LHS refers to a type (or object) in our ontology and the RHS defines the set assignment using FinFunctions. For this, you need to completely specify the ACSet functor, i.e. every object and morphism in the index category must be specified.</p><p><strong>About the rule:</strong> This rule moves a breadloaf from a countertop to a stool.</p><h3 id="Left-ACSet"><a class="docs-heading-anchor" href="#Left-ACSet">Left ACSet</a><a id="Left-ACSet-1"></a><a class="docs-heading-anchor-permalink" href="#Left-ACSet" title="Permalink"></a></h3><pre><code class="language-julia hljs">L = @acset BreadWorld begin
+  Thing = 3
+  BreadLoaf = 1
+  Countertop = 1
+  Stool = 1
+
+  BreadLoafIsThing = [1]
+  CountertopIsThing = [2]
+  StoolIsThing = [3]
+
+  InOn = 1
+  inOn_l = [1]
+  inOn_r = [2]  # breadloaf is on the countertop
+end</code></pre><div class="c-set">
+<span class="c-set-summary">Main.__atexample__named__ptg_simple.BreadWorld {Thing:3, BreadLoaf:1, Countertop:1, Stool:1, InOn:1}</span>
+<table>
+  <thead>
+    <tr class = "header headerLastRow">
+      <th class = "rowLabel" style = "font-weight: bold; text-align: right;">BreadLoaf</th>
+      <th style = "text-align: right;">BreadLoafIsThing</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td class = "rowLabel" style = "font-weight: bold; text-align: right;">1</td>
+      <td style = "text-align: right;">1</td>
+    </tr>
+  </tbody>
+</table>
+<table>
+  <thead>
+    <tr class = "header headerLastRow">
+      <th class = "rowLabel" style = "font-weight: bold; text-align: right;">Countertop</th>
+      <th style = "text-align: right;">CountertopIsThing</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td class = "rowLabel" style = "font-weight: bold; text-align: right;">1</td>
+      <td style = "text-align: right;">2</td>
+    </tr>
+  </tbody>
+</table>
+<table>
+  <thead>
+    <tr class = "header headerLastRow">
+      <th class = "rowLabel" style = "font-weight: bold; text-align: right;">Stool</th>
+      <th style = "text-align: right;">StoolIsThing</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td class = "rowLabel" style = "font-weight: bold; text-align: right;">1</td>
+      <td style = "text-align: right;">3</td>
+    </tr>
+  </tbody>
+</table>
+<table>
+  <thead>
+    <tr class = "header headerLastRow">
+      <th class = "rowLabel" style = "font-weight: bold; text-align: right;">InOn</th>
+      <th style = "text-align: right;">inOn_l</th>
+      <th style = "text-align: right;">inOn_r</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td class = "rowLabel" style = "font-weight: bold; text-align: right;">1</td>
+      <td style = "text-align: right;">1</td>
+      <td style = "text-align: right;">2</td>
+    </tr>
+  </tbody>
+</table>
+</div>
+<h3 id="Middle/Keep-ACSet"><a class="docs-heading-anchor" href="#Middle/Keep-ACSet">Middle/Keep ACSet</a><a id="Middle/Keep-ACSet-1"></a><a class="docs-heading-anchor-permalink" href="#Middle/Keep-ACSet" title="Permalink"></a></h3><p>The Thing, Breadloaf, Countertop, and Stool types should be held constant. The InOn type will change because we are changing the underlying set function.</p><pre><code class="language-julia hljs">K = @acset BreadWorld begin
+  Thing = 3
+  BreadLoaf = 1
+  Countertop = 1
+  Stool = 1
+  BreadLoafIsThing = [1]
+  CountertopIsThing = [2]
+  StoolIsThing = [3]
+end</code></pre><div class="c-set">
+<span class="c-set-summary">Main.__atexample__named__ptg_simple.BreadWorld {Thing:3, BreadLoaf:1, Countertop:1, Stool:1, InOn:0}</span>
+<table>
+  <thead>
+    <tr class = "header headerLastRow">
+      <th class = "rowLabel" style = "font-weight: bold; text-align: right;">BreadLoaf</th>
+      <th style = "text-align: right;">BreadLoafIsThing</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td class = "rowLabel" style = "font-weight: bold; text-align: right;">1</td>
+      <td style = "text-align: right;">1</td>
+    </tr>
+  </tbody>
+</table>
+<table>
+  <thead>
+    <tr class = "header headerLastRow">
+      <th class = "rowLabel" style = "font-weight: bold; text-align: right;">Countertop</th>
+      <th style = "text-align: right;">CountertopIsThing</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td class = "rowLabel" style = "font-weight: bold; text-align: right;">1</td>
+      <td style = "text-align: right;">2</td>
+    </tr>
+  </tbody>
+</table>
+<table>
+  <thead>
+    <tr class = "header headerLastRow">
+      <th class = "rowLabel" style = "font-weight: bold; text-align: right;">Stool</th>
+      <th style = "text-align: right;">StoolIsThing</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td class = "rowLabel" style = "font-weight: bold; text-align: right;">1</td>
+      <td style = "text-align: right;">3</td>
+    </tr>
+  </tbody>
+</table>
+</div>
+<h3 id="Right-ACSet"><a class="docs-heading-anchor" href="#Right-ACSet">Right ACSet</a><a id="Right-ACSet-1"></a><a class="docs-heading-anchor-permalink" href="#Right-ACSet" title="Permalink"></a></h3><pre><code class="language-julia hljs">R = @acset BreadWorld begin
+  Thing = 3
+  BreadLoaf = 1
+  Countertop = 1
+  Stool = 1
+
+  BreadLoafIsThing = [1]
+  CountertopIsThing = [2]
+  StoolIsThing = [3]
+
+  InOn = 1
+  inOn_l = [1]
+  inOn_r = [3]  # breadloaf is on the stool
+end</code></pre><div class="c-set">
+<span class="c-set-summary">Main.__atexample__named__ptg_simple.BreadWorld {Thing:3, BreadLoaf:1, Countertop:1, Stool:1, InOn:1}</span>
+<table>
+  <thead>
+    <tr class = "header headerLastRow">
+      <th class = "rowLabel" style = "font-weight: bold; text-align: right;">BreadLoaf</th>
+      <th style = "text-align: right;">BreadLoafIsThing</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td class = "rowLabel" style = "font-weight: bold; text-align: right;">1</td>
+      <td style = "text-align: right;">1</td>
+    </tr>
+  </tbody>
+</table>
+<table>
+  <thead>
+    <tr class = "header headerLastRow">
+      <th class = "rowLabel" style = "font-weight: bold; text-align: right;">Countertop</th>
+      <th style = "text-align: right;">CountertopIsThing</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td class = "rowLabel" style = "font-weight: bold; text-align: right;">1</td>
+      <td style = "text-align: right;">2</td>
+    </tr>
+  </tbody>
+</table>
+<table>
+  <thead>
+    <tr class = "header headerLastRow">
+      <th class = "rowLabel" style = "font-weight: bold; text-align: right;">Stool</th>
+      <th style = "text-align: right;">StoolIsThing</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td class = "rowLabel" style = "font-weight: bold; text-align: right;">1</td>
+      <td style = "text-align: right;">3</td>
+    </tr>
+  </tbody>
+</table>
+<table>
+  <thead>
+    <tr class = "header headerLastRow">
+      <th class = "rowLabel" style = "font-weight: bold; text-align: right;">InOn</th>
+      <th style = "text-align: right;">inOn_l</th>
+      <th style = "text-align: right;">inOn_r</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td class = "rowLabel" style = "font-weight: bold; text-align: right;">1</td>
+      <td style = "text-align: right;">1</td>
+      <td style = "text-align: right;">3</td>
+    </tr>
+  </tbody>
+</table>
+</div>
+<h3 id="Left-leg-of-span"><a class="docs-heading-anchor" href="#Left-leg-of-span">Left leg of span</a><a id="Left-leg-of-span-1"></a><a class="docs-heading-anchor-permalink" href="#Left-leg-of-span" title="Permalink"></a></h3><pre><code class="language-julia hljs">l = ACSetTransformation(K, L, Thing=[1, 2, 3], BreadLoaf=[1], Countertop=[1], Stool=[1])</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">ACSetTransformation((Thing = FinFunction([1, 2, 3], 3, 3), BreadLoaf = FinFunction([1], 1, 1), Countertop = FinFunction([1], 1, 1), Stool = FinFunction([1], 1, 1), InOn = FinFunction(Int64[], 0, 1)), Main.BreadWorld {Thing:3, BreadLoaf:1, Countertop:1, Stool:1, InOn:0}, Main.BreadWorld {Thing:3, BreadLoaf:1, Countertop:1, Stool:1, InOn:1})</code></pre><h3 id="Right-leg-of-span"><a class="docs-heading-anchor" href="#Right-leg-of-span">Right leg of span</a><a id="Right-leg-of-span-1"></a><a class="docs-heading-anchor-permalink" href="#Right-leg-of-span" title="Permalink"></a></h3><pre><code class="language-julia hljs">r = ACSetTransformation(K, R, Thing=[1, 2, 3], BreadLoaf=[1], Countertop=[1], Stool=[1])</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">ACSetTransformation((Thing = FinFunction([1, 2, 3], 3, 3), BreadLoaf = FinFunction([1], 1, 1), Countertop = FinFunction([1], 1, 1), Stool = FinFunction([1], 1, 1), InOn = FinFunction(Int64[], 0, 1)), Main.BreadWorld {Thing:3, BreadLoaf:1, Countertop:1, Stool:1, InOn:0}, Main.BreadWorld {Thing:3, BreadLoaf:1, Countertop:1, Stool:1, InOn:1})</code></pre><p>Use AlgebraicRewriting.Rule wrapper to add a rule interface</p><pre><code class="language-julia hljs">moveBreadRule = Rule(l, r)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">Rule{:DPO}(ACSetTransformation((Thing = FinFunction([1, 2, 3], 3, 3), BreadLoaf = FinFunction([1], 1, 1), Countertop = FinFunction([1], 1, 1), Stool = FinFunction([1], 1, 1), InOn = FinFunction(Int64[], 0, 1)), Main.BreadWorld {Thing:3, BreadLoaf:1, Countertop:1, Stool:1, InOn:0}, Main.BreadWorld {Thing:3, BreadLoaf:1, Countertop:1, Stool:1, InOn:1}), ACSetTransformation((Thing = FinFunction([1, 2, 3], 3, 3), BreadLoaf = FinFunction([1], 1, 1), Countertop = FinFunction([1], 1, 1), Stool = FinFunction([1], 1, 1), InOn = FinFunction(Int64[], 0, 1)), Main.BreadWorld {Thing:3, BreadLoaf:1, Countertop:1, Stool:1, InOn:0}, Main.BreadWorld {Thing:3, BreadLoaf:1, Countertop:1, Stool:1, InOn:1}), Constraint[], Symbol[], Dict{Symbol, Dict{Int64, Union{Nothing, Function}}}())</code></pre><h2 id="WORLD-STATE"><a class="docs-heading-anchor" href="#WORLD-STATE">WORLD STATE</a><a id="WORLD-STATE-1"></a><a class="docs-heading-anchor-permalink" href="#WORLD-STATE" title="Permalink"></a></h2><p>Define a world state using the @acset macro. This is the ACSet way of specifying an ACSet. For this, you need to completely specify the ACSet functor, i.e. every object and morphism in the index category must be specified. The ACSets must be specified in terms of FinFunctions.</p><p><strong>About the world state:</strong> In this world state, there are two countertops, one stool, and one breadloaf. All of these amount to four things. The breadloaf is on the first countertop.</p><pre><code class="language-julia hljs">state = @acset BreadWorld begin
+  Thing = 4
+  BreadLoaf = 1
+  Countertop = 2
+  Stool = 1
+
+  BreadLoafIsThing = [1]
+  CountertopIsThing = [2, 3] # there are two countertops
+  StoolIsThing = [4]
+
+  InOn = 1
+  inOn_l = [1]  # breadloaf is on the countertop 1
+  inOn_r = [2]
+end</code></pre><div class="c-set">
+<span class="c-set-summary">Main.__atexample__named__ptg_simple.BreadWorld {Thing:4, BreadLoaf:1, Countertop:2, Stool:1, InOn:1}</span>
+<table>
+  <thead>
+    <tr class = "header headerLastRow">
+      <th class = "rowLabel" style = "font-weight: bold; text-align: right;">BreadLoaf</th>
+      <th style = "text-align: right;">BreadLoafIsThing</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td class = "rowLabel" style = "font-weight: bold; text-align: right;">1</td>
+      <td style = "text-align: right;">1</td>
+    </tr>
+  </tbody>
+</table>
+<table>
+  <thead>
+    <tr class = "header headerLastRow">
+      <th class = "rowLabel" style = "font-weight: bold; text-align: right;">Countertop</th>
+      <th style = "text-align: right;">CountertopIsThing</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td class = "rowLabel" style = "font-weight: bold; text-align: right;">1</td>
+      <td style = "text-align: right;">2</td>
+    </tr>
+    <tr>
+      <td class = "rowLabel" style = "font-weight: bold; text-align: right;">2</td>
+      <td style = "text-align: right;">3</td>
+    </tr>
+  </tbody>
+</table>
+<table>
+  <thead>
+    <tr class = "header headerLastRow">
+      <th class = "rowLabel" style = "font-weight: bold; text-align: right;">Stool</th>
+      <th style = "text-align: right;">StoolIsThing</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td class = "rowLabel" style = "font-weight: bold; text-align: right;">1</td>
+      <td style = "text-align: right;">4</td>
+    </tr>
+  </tbody>
+</table>
+<table>
+  <thead>
+    <tr class = "header headerLastRow">
+      <th class = "rowLabel" style = "font-weight: bold; text-align: right;">InOn</th>
+      <th style = "text-align: right;">inOn_l</th>
+      <th style = "text-align: right;">inOn_r</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td class = "rowLabel" style = "font-weight: bold; text-align: right;">1</td>
+      <td style = "text-align: right;">1</td>
+      <td style = "text-align: right;">2</td>
+    </tr>
+  </tbody>
+</table>
+</div>
+<h2 id="Apply-Rule"><a class="docs-heading-anchor" href="#Apply-Rule">Apply Rule</a><a id="Apply-Rule-1"></a><a class="docs-heading-anchor-permalink" href="#Apply-Rule" title="Permalink"></a></h2><p>Use the AlgebraicRewriting.get_matches(::Rule{T}, ::ACSet) utility function to find matches between the rule and the state.</p><pre><code class="language-julia hljs">matches = get_matches(moveBreadRule, state)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">1-element Vector{Any}:
+ ACSetTransformation((Thing = FinFunction([1, 2, 4], 3, 4), BreadLoaf = FinFunction([1], 1, 1), Countertop = FinFunction([1], 1, 2), Stool = FinFunction([1], 1, 1), InOn = FinFunction([1], 1, 1)), Main.BreadWorld {Thing:3, BreadLoaf:1, Countertop:1, Stool:1, InOn:1}, Main.BreadWorld {Thing:4, BreadLoaf:1, Countertop:2, Stool:1, InOn:1})</code></pre><p>Take the first match</p><pre><code class="language-julia hljs">match = matches[1]</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">ACSetTransformation((Thing = FinFunction([1, 2, 4], 3, 4), BreadLoaf = FinFunction([1], 1, 1), Countertop = FinFunction([1], 1, 2), Stool = FinFunction([1], 1, 1), InOn = FinFunction([1], 1, 1)), Main.BreadWorld {Thing:3, BreadLoaf:1, Countertop:1, Stool:1, InOn:1}, Main.BreadWorld {Thing:4, BreadLoaf:1, Countertop:2, Stool:1, InOn:1})</code></pre><p>Compute the new world state after rewriting</p><pre><code class="language-julia hljs">new_state = rewrite_match(moveBreadRule, match)</code></pre><div class="c-set">
+<span class="c-set-summary">Main.__atexample__named__ptg_simple.BreadWorld {Thing:4, BreadLoaf:1, Countertop:2, Stool:1, InOn:1}</span>
+<table>
+  <thead>
+    <tr class = "header headerLastRow">
+      <th class = "rowLabel" style = "font-weight: bold; text-align: right;">BreadLoaf</th>
+      <th style = "text-align: right;">BreadLoafIsThing</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td class = "rowLabel" style = "font-weight: bold; text-align: right;">1</td>
+      <td style = "text-align: right;">1</td>
+    </tr>
+  </tbody>
+</table>
+<table>
+  <thead>
+    <tr class = "header headerLastRow">
+      <th class = "rowLabel" style = "font-weight: bold; text-align: right;">Countertop</th>
+      <th style = "text-align: right;">CountertopIsThing</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td class = "rowLabel" style = "font-weight: bold; text-align: right;">1</td>
+      <td style = "text-align: right;">2</td>
+    </tr>
+    <tr>
+      <td class = "rowLabel" style = "font-weight: bold; text-align: right;">2</td>
+      <td style = "text-align: right;">4</td>
+    </tr>
+  </tbody>
+</table>
+<table>
+  <thead>
+    <tr class = "header headerLastRow">
+      <th class = "rowLabel" style = "font-weight: bold; text-align: right;">Stool</th>
+      <th style = "text-align: right;">StoolIsThing</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td class = "rowLabel" style = "font-weight: bold; text-align: right;">1</td>
+      <td style = "text-align: right;">3</td>
+    </tr>
+  </tbody>
+</table>
+<table>
+  <thead>
+    <tr class = "header headerLastRow">
+      <th class = "rowLabel" style = "font-weight: bold; text-align: right;">InOn</th>
+      <th style = "text-align: right;">inOn_l</th>
+      <th style = "text-align: right;">inOn_r</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td class = "rowLabel" style = "font-weight: bold; text-align: right;">1</td>
+      <td style = "text-align: right;">1</td>
+      <td style = "text-align: right;">3</td>
+    </tr>
+  </tbody>
+</table>
+</div>
+</article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../lotka_volterra/">« Lotka Volterra</a><a class="docs-footer-nextpage" href="../../api/">Library Reference »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="auto">Automatic (OS)</option><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 1.4.1 on <span class="colophon-date" title="Sunday 2 June 2024 01:10">Sunday 2 June 2024</span>. Using Julia version 1.10.3.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
