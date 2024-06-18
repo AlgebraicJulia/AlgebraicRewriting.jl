@@ -305,16 +305,19 @@ we do not check it.
   L <--⌞•
 m ↓     ↓
   G ⟵ Gk
+
+See Lemma 7.2 of "TERMINATION OF GRAPH TRANSFORMATION SYSTEMS USING WEIGHTED 
+SUBGRAPH COUNTING" by Overbeek and Endrullis (2023)
 """
-function rewrite_match_maps(rule::PBPORule,mα; check=false, kw...)
+function rewrite_match_maps(rule::PBPORule, mα; kw...)
   _, _, _, α = mα 
   S = acset_schema(dom(left(rule)))
   gl, u′ = var_pullback(Cospan(α, rule.l′)) # A <-- Gk --> K'
   abs_K = abstract_attributes(dom(left(rule))) # absK -> K 
-  u = only(filter(u->force(compose(u,u′))==force(compose(abs_K,rule.tk)), 
-                  homomorphisms(dom(abs_K), dom(u′))))
+  v, i = var_pullback(Cospan(u′, rule.tk))
+  u = invert_iso(i) ⋅ v
   abs_r = homomorphism(dom(abs_K), codom(right(rule)); 
-                       initial=Dict([o=>collect(right(rule)[o]) for o in ob(S)]))
+                       initial=Dict(o=>collect(right(rule)[o]) for o in ob(S)))
   w, gr = pushout(abs_r, u)
 
   return Dict(:gl=>gl, :u′=>u′, :u=>u, :gr=>gr, :w=>w)

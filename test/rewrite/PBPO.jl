@@ -253,8 +253,8 @@ end
 
 init = Dict(:V => [1, 2]) => Dict()
 
-get_matches(rule, G; initial=init)
-homomorphisms(codom(left(rule)), G; monic=true)
+@test length(get_matches(rule, G; initial=init))==1
+@test isempty(homomorphisms(codom(left(rule)), G; monic=true))
 
 @test only(get_matches(rule, G; initial=init)) == get_match(rule, G;initial=init)
 @test is_isomorphic(expected, rewrite(rule, G; initial=init))
