@@ -24,9 +24,8 @@ have constraints forcing it to be treated all at once instead of componentwise.
 @struct_hash_equal struct IncCCStatic <: IncStatic
   pattern::ACSet
   overlaps::Dict{ACSetTransformation, Vector{Span}}
-  S::Union{Nothing, Presentation}
-  function IncCCStatic(pattern::ACSet, constr::IncConstraints, adds=[], S=nothing)
-    hs = new(pattern, Dict(), S)
+  function IncCCStatic(pattern::ACSet, constr::IncConstraints, adds=[])
+    hs = new(pattern, Dict())
     push!.(Ref(hs), Ref(constr,), adds)
     return hs 
   end
@@ -38,8 +37,7 @@ additions(h::IncCCStatic) = collect(keys(h.overlaps))
 function Base.push!(hs::IncCCStatic, constr::IncConstraints, 
                     addition::ACSetTransformation)
   haskey(hs.overlaps, addition) && return nothing
-  hs.overlaps[addition]=compute_overlaps(pattern(hs), addition; constr.monic, 
-                                         S=hs.S)
+  hs.overlaps[addition]=compute_overlaps(pattern(hs), addition; constr.monic)
 end
 
 """

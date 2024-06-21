@@ -26,11 +26,11 @@ abstract type AC end
 Coerce a general `Constraint` into a simple application condition, if possible. 
 This works if the `Constraint` was created by `AppCond`.
 """
-function AC(c::Constraint, addns=[], dpo=[], S=nothing)
+function AC(c::Constraint, addns=[], dpo=[])
   m, expr = c.g[1,:elabel], c.d
   monic = expr isa BoolNot ? expr.expr.monic : expr.monic
-  AppCond(m; monic) == c && return PAC(m, addns, monic, S)
-  AppCond(m, false; monic) == c && return NAC(m, monic, dpo, S)
+  AppCond(m; monic) == c && return PAC(m, addns, monic)
+  AppCond(m, false; monic) == c && return NAC(m, monic, dpo)
   return nothing
 end
 
@@ -57,10 +57,10 @@ sent to something that is deleted (part of L/I).
   m_complement::ACSetTransformation
   subobj::Vector{ACSetTransformation}
   overlaps::Dict{ACSetTransformation, Vector{Span}}
-  function NAC(m, monic, dpos, S=nothing)
+  function NAC(m, monic, dpos)
     m_comp = hom(~Subobject(m))
-    subobjs = all_subobjects(dom(m_comp), S)
-    subobjs_L = all_subobjects(dom(m), S)
+    subobjs = all_subobjects(dom(m_comp))
+    subobjs_L = all_subobjects(dom(m))
     Ob = ob(acset_schema(dom(m)))
     part_N = partition_image(m)
     overlaps = Dict(map(dpos) do dpo
@@ -84,8 +84,8 @@ end
 
 NAC(n::NAC) = n
 
-NAC(m::ACSetTransformation, b::Bool=false, dpo=[], S=nothing) = 
-  NAC(m, b ? ob(acset_schema(dom(m))) : [], dpo, S)
+NAC(m::ACSetTransformation, b::Bool=false, dpo=[]) = 
+  NAC(m, b ? ob(acset_schema(dom(m))) : [], dpo)
 
 """
 A positive application condition L -> P means a match L -> X is valid only if 
@@ -102,17 +102,17 @@ addition could intersect with P.
   m_complement::ACSetTransformation
   overlaps::Dict{ACSetTransformation, Vector{Span}}
   function PAC(m::ACSetTransformation, additions::Vector{<:ACSetTransformation}, 
-               monic::Vector{Symbol}, S=nothing)
+               monic::Vector{Symbol})
     newP = hom(~Subobject(m))
     new(m, monic, newP, 
-        Dict(a => compute_overlaps(dom(newP), a; monic, S) for a in additions))
+        Dict(a => compute_overlaps(dom(newP), a; monic) for a in additions))
   end
 end
 
 PAC(p::PAC) = p
 
-PAC(m::ACSetTransformation, additions=ACSetTransformation[], b::Bool=false, S=nothing) = 
-  PAC(m, additions, b ? ob(acset_schema(dom(m))) : Symbol[], S)
+PAC(m::ACSetTransformation, additions=ACSetTransformation[], b::Bool=false) = 
+  PAC(m, additions, b ? ob(acset_schema(dom(m))) : Symbol[])
 
 
 

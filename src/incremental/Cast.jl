@@ -53,8 +53,7 @@ Automatically determine whether one creates an IncCC or an IncHom.
 not one. Having any constraints will also force it to be treated as a single CC.
 """
 function IncHomSet(pattern::ACSet, additions::Vector{<:ACSetTransformation}, 
-                   state::ACSet; single=false, monic=false, pac=[], nac=[], 
-                   S=nothing)
+                   state::ACSet; single=false, monic=false, pac=[], nac=[])
   obs = ob(acset_schema(pattern))
   monic = monic isa Bool ? (monic ? obs : []) : monic
   pac, nac = PAC.(pac), NAC.(nac)
@@ -65,12 +64,12 @@ function IncHomSet(pattern::ACSet, additions::Vector{<:ACSetTransformation},
   coprod, iso = connected_acset_components(pattern)
   single = single || !isempty(constr)
   if single || length(coprod) == 1
-    stat = IncCCStatic(pattern, constr, additions, S)
+    stat = IncCCStatic(pattern, constr, additions)
     runt = IncCCRuntime(pattern, state, constr)
     return IncCCHomSet(stat, runt, constr)
   else 
     pats = dom.(coprod.cocone)
-    ccs = IncCCHomSet.(IncCCStatic.(pats, Ref(constr), Ref(additions), Ref(S)), 
+    ccs = IncCCHomSet.(IncCCStatic.(pats, Ref(constr), Ref(additions)), 
                        IncCCRuntime.(pats, Ref(state), Ref(constr)), 
                        Ref(constr))
     stat = IncSumStatic(pattern, coprod, iso, static.(ccs))
@@ -86,16 +85,16 @@ Initialize an Incremental hom set from a rule, using it's pattern `L` as the
 domain of the hom set. Any additions other than the map `I->R` can be passed in
 by `additions`, and the schema Presentation can be passed as `S`.
 """
-function IncHomSet(rule::Rule{T}, state::ACSet, additions=ACSetTransformation[], 
-                   S=nothing) where T
+function IncHomSet(rule::Rule{T}, state::ACSet, additions=ACSetTransformation[]
+                  ) where T
   pac, nac = [], []
   dpo = (T == :DPO) ? [left(rule)] : ACSetTransformation[]
   right(rule) ∈ additions || push!(additions, right(rule))
-  for c in AC.(rule.conditions, Ref(additions), Ref(dpo), Ref(S))
+  for c in AC.(rule.conditions, Ref(additions), Ref(dpo))
     c isa PAC && push!(pac, c)
     c isa NAC && push!(nac, c)
   end
-  IncHomSet(codom(left(rule)), additions, state; monic=rule.monic, pac, nac, S)
+  IncHomSet(codom(left(rule)), additions, state; monic=rule.monic, pac, nac)
 end
 
 

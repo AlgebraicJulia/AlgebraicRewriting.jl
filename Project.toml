@@ -2,7 +2,7 @@ name = "AlgebraicRewriting"
 uuid = "725a01d3-f174-5bbd-84e1-b9417bad95d9"
 license = "MIT"
 authors = ["Kris Brown <kris@topos.institute>"]
-version = "0.3.4"
+version = "0.3.5"
 
 [deps]
 ACSets = "227ef7b5-1206-438b-ac65-934d6da304b8"
@@ -24,8 +24,8 @@ AlgebraicRewritingLuxorExt = "Luxor"
 AlgebraicRewritingDataMigrationsExt = "DataMigrations"
 
 [compat]
-ACSets = "0.2.9"
-Catlab = "0.16.7"
+ACSets = "0.2.20"
+Catlab = "0.16.11"
 DataMigrations = "0.0.3"
 DataStructures = "0.17, 0.18"
 Reexport = "^1"

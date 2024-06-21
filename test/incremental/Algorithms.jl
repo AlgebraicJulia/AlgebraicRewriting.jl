@@ -29,7 +29,7 @@ so_wg = all_subobjects(wg)
 
 # Mini benchmark
 G = SymmetricGraph(3) ⊕ cycle_graph(SymmetricGraph, 3)
-@time x1 = all_subobjects(G, SchSymmetricGraph);
+@time x1 = all_subobjects(G);
 @time x2 = subobject_graph(G)[2]; # should be much longer than all_subobjects
 @test length(x1) == length(x2) # yet give same result
 

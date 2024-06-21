@@ -163,18 +163,17 @@ function pushout_complement(pair::ComposablePair{<:ACSet, <:TightACSetTransforma
   S = acset_schema(I)
   all(at->nparts(G, at)==0, attrtypes(S)) || error("Cannot rewrite with AttrVars in G")
   # Compute pushout complements pointwise in FinSet.
-  components = NamedTuple(Dict(map(ob(S)) do o 
+  comps = NamedTuple(Dict(map(ob(S)) do o 
       o => pushout_complement(ComposablePair(l[o], m[o]))
   end))
-  k_components = Dict{Symbol,Any}(pairs(map(first, components)))
-  g_components = Dict{Symbol,Any}(pairs(map(last, components)))
+  k_components = Dict{Symbol,Any}(pairs(map(first, comps)))
+  g_components = Dict{Symbol,Any}(pairs(map(last, comps)))
 
   # Reassemble components into natural transformations.
   g = hom(Subobject(G, NamedTuple(Dict(o => g_components[o] for o in ob(S)))))
   K = dom(g)
 
   var_eq = var_eqs(l, m) # equivalence class of attrvars
-
   for at in attrtypes(S)
     eq = var_eq[at]
     roots = unique(find_root!.(Ref(eq), 1:length(eq)))
@@ -190,14 +189,20 @@ function pushout_complement(pair::ComposablePair{<:ACSet, <:TightACSetTransforma
     end
     T = Union{AttrVar, attrtype_type(G, at)}
     g_components[at] = Vector{T}(map(parts(K, at)) do v
-      f, o, val = var_reference(K, at, v)
-      G[g_components[o](val), f]
+      try 
+        f, o, val = var_reference(K, at, v)
+        G[g_components[o](val), f]
+      catch e 
+        vᵢ = findfirst(==(AttrVar(v)), k_components[at])
+        m[at](AttrVar(l[at](vᵢ)))
+      end 
     end)
   end
 
   k = ACSetTransformation(I, K; k_components...)
   g = ACSetTransformation(K, G; g_components...)
-  force(compose(k,g)) == force(compose(l, m)) || error("Square doesn't commute")
+  kg, lm = force.(compose.([k,l], [g, m]))
+  kg == lm || error("Square doesn't commute: \n\t$(components(kg)) \n!= \n\t$(components(lm))")
   is_natural(k) || error("k unnatural $k")
   is_natural(g) || error("g unnatural")
   return ComposablePair(k, g)
