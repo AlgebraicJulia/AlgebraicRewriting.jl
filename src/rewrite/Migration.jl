@@ -40,8 +40,8 @@ schema changes. This minimizes the need to clear the cache.
 """
 pres_hash(p::Presentation) = "$(hash(p.generators))_$(hash(p.equations))"
 
-function repr_dict(T::Type,S=nothing; clear=false, cache="cache")
-  S = isnothing(S) ? Presentation(T) : S
+function repr_dict(T::Type; clear=false, cache="cache")
+  S = Presentation(T)
   tname = "$(nameof(T))_$(pres_hash(S))"
   Dict{Symbol,Tuple{T,Int}}(map(generators(S, :Ob)) do ob
     name = nameof(ob)
@@ -51,7 +51,7 @@ function repr_dict(T::Type,S=nothing; clear=false, cache="cache")
       (read_json_acset(T, path), parse(Int,open(io->read(io, String), ipath)))
     else 
       @debug "Computing representable $name"
-      rep, i = representable(T, S, name; return_unit_id=true)
+      rep, i = representable(T, name; return_unit_id=true)
       write_json_acset(rep, path)
       write(ipath, string(i))
       (rep, i)
@@ -59,7 +59,7 @@ function repr_dict(T::Type,S=nothing; clear=false, cache="cache")
   end)
 end
 
-yoneda_cache(T::Type,S=nothing; clear=false, cache="cache") = 
-  yoneda(T; cache=repr_dict(T, S; clear, cache))
+yoneda_cache(T::Type; clear=false, cache="cache") = 
+  yoneda(T; cache=repr_dict(T; clear, cache))
 
 end # module 

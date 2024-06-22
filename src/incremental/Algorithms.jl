@@ -55,9 +55,9 @@ Find all partial maps from the pattern to the addition, with some restrictions:
    mapped to newly added material
 """
 function compute_overlaps(L::ACSet, I_R::ACSetTransformation; monic=[],   
-                          S=nothing)::Vector{Span}
+                         )::Vector{Span}
   overlaps = Span[]
-  for subobj in all_subobjects(L, S)
+  for subobj in all_subobjects(L)
     abs_subobj = abstract_attributes(dom(subobj))  
     for h in homomorphisms(dom(abs_subobj), codom(I_R); monic)
       lft = abs_subobj ⋅ subobj
@@ -227,8 +227,8 @@ Compute and cache the subobject classifier; reuse if already computed.
 Some schemas have no finitely presentable subobject classifier. Return `nothing` 
 in that case.
 """
-function subobject_cache(T::Type, S=nothing; cache="cache")
-  S = deattr(isnothing(S) ? Presentation(T) : S)
+function subobject_cache(T::Type; cache="cache")
+  S = deattr(Presentation(T))
   T = AnonACSetType(Schema(S))
   name = joinpath(cache,"Ω_$(nameof(T))_$(pres_hash(S)).json")
   mkpath(cache)
@@ -238,7 +238,7 @@ function subobject_cache(T::Type, S=nothing; cache="cache")
     return read_json_acset(T, name)
   else 
     try 
-      Ω = first(subobject_classifier(T, S))
+      Ω = first(subobject_classifier(T))
       write_json_acset(Ω, name)
       return Ω  
     catch e 
@@ -262,10 +262,10 @@ function to_subobj(f::ACSetTransformation)
 end
 
 """Get all subobjects as monos into X"""
-function all_subobjects(X::ACSet, S=nothing; cache="cache")
-  Ω = subobject_cache(typeof(X), S; cache) 
+function all_subobjects(X::ACSet; cache="cache")
+  Ω = subobject_cache(typeof(X); cache) 
   isnothing(Ω) && return hom.(subobject_graph(X)[2]) # compute the slow way
-  S = isnothing(S) ? acset_schema(X) : Schema(S)
+  S = acset_schema(X)
   X′ = typeof(Ω)()
   copy_parts!(X′, X)
   return map(homomorphisms(X′, Ω; alg=VMSearch())) do h
