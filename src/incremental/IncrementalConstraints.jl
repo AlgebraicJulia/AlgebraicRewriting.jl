@@ -91,16 +91,18 @@ NAC(m::ACSetTransformation, b::Bool=false, dpo=[]) =
 A positive application condition L -> P means a match L -> X is valid only if 
 there does not exist a commuting triangle.  
 
-When we add something via some addition: O -> R, this could activate hitherto 
+When we add something via some addition: I -> R, this could activate hitherto 
 invalid matches which were blocked by a PAC. To detect these incrementally, we 
 cache overlaps (indexed by possible additions) that store the ways in which the 
-addition could intersect with P.
+addition could intersect with P. Just like with regular incremental additions, 
+we consider that I may have been quotiented, I ↠ I', and thus we parameterize 
+our overlaps by this. 
 """
 @struct_hash_equal struct PAC <: AC
   m::ACSetTransformation
   monic::Union{Bool, Vector{Symbol}}
   m_complement::ACSetTransformation
-  overlaps::Dict{ACSetTransformation, Vector{Span}}
+  overlaps::Dict{ACSetTransformation, Dict{ACSetTransformation,Vector{Span}}}
   function PAC(m::ACSetTransformation, additions::Vector{<:ACSetTransformation}, 
                monic::Vector{Symbol})
     newP = hom(~Subobject(m))

@@ -135,8 +135,6 @@ r = Rule(id(e), to_edge_loop′;
              AppCond(to_edge_loop′, false; monic=true)]);
 G = @acset Graph begin V=4; E=4; src=[1,1,2,3]; tgt=[1,2,3,4] end
 mset = IncHomSet(r, G);
-# there is just one 'way' in which apply R unlocks new matches from this PAC
-@test length(only(values(mset.constraints.pac[1].overlaps))) == 1
 @test length(keys(mset)) == 1
 rewrite!(mset, r)
 @test length(keys(mset)) == 1
