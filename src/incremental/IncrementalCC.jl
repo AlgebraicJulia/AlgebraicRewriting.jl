@@ -17,13 +17,16 @@ using Catlab.CategoricalAlgebra.Chase: extend_morphism_constraints
 
 using StructEquality
 
+const Hom = ACSetTransformation # shorter type signatures
 """
 For `IncCCHomSet` the pattern (`L`) ought be a single connected component or 
 have constraints forcing it to be treated all at once instead of componentwise.
+
+Precomputed overlap spans are 
 """
 @struct_hash_equal struct IncCCStatic <: IncStatic
   pattern::ACSet
-  overlaps::Dict{ACSetTransformation, Vector{Span}}
+  overlaps::Dict{Hom, Dict{ACSet, Dict{Hom, Vector{Span}}}}
   function IncCCStatic(pattern::ACSet, constr::IncConstraints, adds=[])
     hs = new(pattern, Dict())
     push!.(Ref(hs), Ref(constr,), adds)
@@ -35,7 +38,7 @@ additions(h::IncCCStatic) = collect(keys(h.overlaps))
 
 """Consider a new addition (and compute its partial overlaps w/ the pattern)"""
 function Base.push!(hs::IncCCStatic, constr::IncConstraints, 
-                    addition::ACSetTransformation)
+                    addition::Hom)
   haskey(hs.overlaps, addition) && return nothing
   hs.overlaps[addition]=compute_overlaps(pattern(hs), addition; constr.monic)
 end
@@ -63,7 +66,7 @@ This assumes the state of the world is changed in discrete updates.
             post-hoc constraints.
 """
 @struct_hash_equal mutable struct IncCCRuntime <: IncRuntime
-  const match_vect::Vector{Dict{Int, ACSetTransformation}}
+  const match_vect::Vector{Dict{Int, Hom}}
   const key_vect::Vector{Pair{Int,Int}}
   const key_dict::Dict{Pair{Int,Int}, Int}
   state::ACSet
@@ -89,7 +92,7 @@ state(h::IncCCRuntime) = h.state
   constraints::IncConstraints
 end
 
-Base.getindex(i::IncCCHomSet, idx::Int)::ACSetTransformation = runtime(i)[idx]
+Base.getindex(i::IncCCHomSet, idx::Int)::Hom = runtime(i)[idx]
 
 """
 How many additions we've seen so far (including the initialization of the hom 
@@ -130,9 +133,13 @@ Note, adding things can also invalidate old matches if there are negative
 application or dangling conditions.
 
 Returns the 'keys' of the deleted matches and added matches.
+
+Optionally, pass in a map I↠I' which accounts for how the domain of the addition
+has been quotiented (due to the match of the rule being non-monic).
 """
 function addition!(stat::IncCCStatic, runt::IncCCRuntime, constr::IncConstraints,
-                   r::ACSetTransformation, rmap::ACSetTransformation, update::ACSetTransformation)  
+                   r::Hom, rmap::Hom, 
+                  update::Hom, i_i′=nothing)  
   invalidated_keys = Pair{Int,Int}[]
 
   # Push forward old matches
@@ -153,13 +160,14 @@ function addition!(stat::IncCCStatic, runt::IncCCRuntime, constr::IncConstraints
 
   # Find newly-introduced matches
   Ob = ob(acset_schema(pattern(stat)))
-  X, L = codom(rmap), pattern(stat)
-  new_matches, new_keys = Dict{Int, ACSetTransformation}(), Pair{Int, Int}[]
+  X, L, I = codom(rmap), pattern(stat), dom(r)
+  i_i′ = isnothing(i_i′) ? id(I) : i_i′
+  new_matches, new_keys = Dict{Int, Hom}(), Pair{Int, Int}[]
   push!(runt.match_vect, new_matches)
   strictly_old_stuff = Dict(o => setdiff(parts(X,o), collect(rmap[o])) 
                             for o in Ob)
   seen_constraints = Set() # non-monic match can identify different subobjects 
-  for (subL, mapR) = stat.overlaps[r]
+  for (subL, mapR) in stat.overlaps[r][i_i′]
     initial = extend_morphism_constraints(mapR⋅rmap, subL) # make it commute
     (isnothing(initial) || initial ∈ seen_constraints) && continue
     push!(seen_constraints, initial)
@@ -180,7 +188,7 @@ function addition!(stat::IncCCStatic, runt::IncCCRuntime, constr::IncConstraints
   # Find new matches unlocked by PAC
   for pac in constr.pac
     P = codom(pac)
-    for overlap in pac.overlaps[r]
+    for overlap in pac.overlaps[r][i_i′]
       to_P = left(overlap) ⋅ pac.m_complement
       to_R = right(overlap) ⋅ rmap
       initial = extend_morphism_constraints(to_R, to_P)
@@ -223,11 +231,11 @@ nothing, it contains the morphism `L ↢ I` that was used in POC.
 Returns the 'keys' of the deleted matches and added matches.
 """
 function deletion!(::IncCCStatic, runt::IncCCRuntime, constr::IncConstraints,  
-                   f::ACSetTransformation; dpo=nothing)
+                   f::Hom; dpo=nothing)
   X = codom(f)
   # Initialize variables
   invalidated_keys, new_keys = Pair{Int,Int}[], Pair{Int,Int}[]
-  new_matches = Dict{Int, ACSetTransformation}()
+  new_matches = Dict{Int, Hom}()
   push!(runt.match_vect, new_matches)
 
   # Check special short circuit case when f is identity
@@ -272,7 +280,7 @@ General method for discovering the newly added homs that arise from deleting
 some part of the world due to a NAC.
 """
 function new_nac_homs!(runt::IncCCRuntime, constr::IncConstraints, nac::NAC, 
-                       f::ACSetTransformation, new_keys, new_matches,
+                       f::Hom, new_keys, new_matches,
                        X_nondeleted::Dict{Symbol, Set{Int}})
   N, X = codom(nac), codom(f)
   Ob = ob(acset_schema(N))
@@ -304,7 +312,7 @@ the NAC to access a complete set of overlaps L ↢ O → N that send *some* part
 of N/L to some part of L/I.
 """
 function new_nac_dpo!(runt::IncCCRuntime, constr::IncConstraints, nac::NAC, 
-                      f::ACSetTransformation, dpo, new_keys, new_matches,
+                      f::Hom, dpo, new_keys, new_matches,
                       X_nondeleted::Dict{Symbol, Set{Int}})
   N, X, (l, match) = codom(nac), codom(f), dpo
   overlaps, Ob, seen = nac[l], ob(acset_schema(N)), Set{Dict}() 
@@ -333,7 +341,7 @@ end
 
 """Add a match during a deletion"""
 function add_match!(runt::IncCCRuntime, constr::IncConstraints,      
-                    new_keys, new_matches, m::ACSetTransformation)
+                    new_keys, new_matches, m::Hom)
   # check if we've already seen it and that it satifies constraints
   if m ∉ values(new_matches) && can_match(constr, m)
     new_key = length(runt) => length(new_keys)+1

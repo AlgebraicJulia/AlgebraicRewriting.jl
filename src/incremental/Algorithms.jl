@@ -1,8 +1,24 @@
 module Algorithms 
 
-using Catlab 
+using Catlab, nauty_jll
 using ...CategoricalAlgebra.CSets: invert_iso, var_reference
-using ...Rewrite.Migration: pres_hash
+using ...Rewrite.Migration: pres_hash, repr_dict
+
+const Hom = ACSetTransformation # shorter type signatures
+
+"""For debugging"""
+function prnt(s,x::ACSet)
+  println(s);
+  show(stdout,"text/plain",x)
+end
+
+"""For debugging"""
+function prnt(s, x::Hom)
+  println(s)
+  for (k,v) in pairs(components(x))
+    println("\t$k: [$(join(string.(collect(v)), ","))]")
+  end
+end
 
 """
 Break an ACSet into connected components, represented as a coproduct and an 
@@ -41,8 +57,7 @@ function connected_acset_components(X::ACSet)
     end 
     comp = constructor(X)()
     copy_parts!(comp, X; d...)
-    ACSetTransformation(comp, X; Dict(k=>k ∈ ob(S) ? v : AttrVar.(v) 
-                                      for (k, v) in pairs(d))...)
+    Hom(comp, X; Dict(k=>k ∈ ob(S) ? v : AttrVar.(v) for (k, v) in pairs(d))...)
   end |> Multicospan
   cp = coproduct(dom.(ιs))
   return (cp, invert_iso(universal(cp, ιs)))
@@ -53,15 +68,31 @@ Find all partial maps from the pattern to the addition, with some restrictions:
 1. *Something* must be mapped into the newly added material.
 2. Anything in L incident to a part mapped onto newly added material must be 
    mapped to newly added material
+
+The shape of the addition may be different from R because it has been quotiented
+due to a non-monic match. Given some I ↠ I' at runtime, the effective map I → R
+is actually a composite map via pushout with I ↠ I':
+
+  I ↣ R
+  ↡   ↓
+  I'→⌜R'
+
+So we use this map I → R' rather than I → R for the purposes of the above
+calculation.
 """
-function compute_overlaps(L::ACSet, I_R::ACSetTransformation; monic=[],   
-                         )::Vector{Span}
-  overlaps = Span[]
-  for subobj in all_subobjects(L)
-    abs_subobj = abstract_attributes(dom(subobj))  
-    for h in homomorphisms(dom(abs_subobj), codom(I_R); monic)
-      lft = abs_subobj ⋅ subobj
-      good_overlap(lft, h, I_R) && push!(overlaps, Span(lft, h))
+function compute_overlaps(L::ACSet, I_R::Hom; monic=[], S=nothing
+                         )::Dict{Hom, Vector{Span}}
+  overlaps = Dict{Hom, Vector{Span}}()
+  subobjs = all_subobjects(L)
+  for I_I′ in all_epis(dom(I_R))
+    overlaps[I_I′] = Span[]
+    I_R′ = I_R ⋅ first(pushout(I_R, I_I′))
+    for subobj in subobjs
+      abs_subobj = abstract_attributes(dom(subobj))    
+      for h in homomorphisms(dom(abs_subobj), codom(I_R′); monic)
+        lft = abs_subobj ⋅ subobj
+        good_overlap(lft, h, I_R′) && push!(overlaps[I_I′], Span(lft, h))
+      end
     end
   end
   return overlaps
@@ -75,8 +106,7 @@ end
 
 Subobject O is presumed to be abstract, i.e. has only (distinct) variables
 """
-function good_overlap(subobj::ACSetTransformation, h::ACSetTransformation, 
-                      I_R::ACSetTransformation)
+function good_overlap(subobj::Hom, h::Hom, I_R::Hom)
   S = acset_schema(dom(h))
   L = codom(subobj)
   O = dom(subobj) # for "overlap"
@@ -139,7 +169,7 @@ deleted, X ∖ X').
 Thus, our process for finding overlaps requires only searching for morphisms  
 between two things which are themselves pattern-sized.
 """
-function nac_overlap(nac, update::ACSetTransformation)
+function nac_overlap(nac, update::Hom)
   N = codom(nac)
   Ob = ob(acset_schema(N))
   L_parts_in_N = Dict(o=>Set(collect(nac.m[o])) for o in Ob)
@@ -180,8 +210,7 @@ commute, if it exists.
 
 TODO rewrite with @comptime
 """
-function pull_back(f::ACSetTransformation, m::ACSetTransformation
-                  )::Union{ACSetTransformation, Nothing}
+function pull_back(f::Hom, m::Hom)::Union{Hom, Nothing}
   L, X′ = dom.([m, f])
   comps, S = Dict(), acset_schema(L)
   for o in ob(S)
@@ -209,11 +238,11 @@ function pull_back(f::ACSetTransformation, m::ACSetTransformation
       return only(vals)
     end
   end
-  ACSetTransformation(dom(m), dom(f); comps...)
+  Hom(dom(m), dom(f); comps...)
 end
 
 """Get the pairs for each component of the image and its component"""
-partition_image(f::ACSetTransformation) = Dict(map(ob(acset_schema(dom(f)))) do o
+partition_image(f::Hom) = Dict(map(ob(acset_schema(dom(f)))) do o
   del,nondel = Set(parts(codom(f), o)), Set{Int}()
   for p in parts(dom(f), o) 
     push!(nondel, f[o](p))
@@ -227,8 +256,8 @@ Compute and cache the subobject classifier; reuse if already computed.
 Some schemas have no finitely presentable subobject classifier. Return `nothing` 
 in that case.
 """
-function subobject_cache(T::Type; cache="cache")
-  S = deattr(Presentation(T))
+function subobject_cache(T::Type, S=nothing; cache="cache")
+  S = deattr(Presentation(isnothing(S) ? T : S))
   T = AnonACSetType(Schema(S))
   name = joinpath(cache,"Ω_$(nameof(T))_$(pres_hash(S)).json")
   mkpath(cache)
@@ -255,7 +284,7 @@ end
 Convert a morphism X → Ω into a subobject X'↣X, assuming that Ω was generated 
 by Catlab's `subobject_classifier` function.
 """
-function to_subobj(f::ACSetTransformation)
+function to_subobj(f::Hom)
   Subobject(dom(f); Dict(map(collect(pairs(components(f)))) do (k, v)
     k => findall(==(1), collect(v))
   end)...)
@@ -269,7 +298,7 @@ function all_subobjects(X::ACSet; cache="cache")
   X′ = typeof(Ω)()
   copy_parts!(X′, X)
   return map(homomorphisms(X′, Ω; alg=VMSearch())) do h
-    f = hom(to_subobj(ACSetTransformation(X′, Ω; h...)))
+    f = hom(to_subobj(Hom(X′, Ω; h...)))
     A = constructor(X)()
     copy_parts!(A, dom(f))
     h′ = Dict(o => get(components(f), o, []) for o in types(S))
@@ -279,7 +308,7 @@ function all_subobjects(X::ACSet; cache="cache")
         push!(h′[d], X[f[c](p), a])
       end
     end
-    ACSetTransformation(A, X; h′...)
+    Hom(A, X; h′...)
   end
 end
 
@@ -300,7 +329,7 @@ VarFunctions can both bind variables to concrete values or merge variables
 together. Although the overall VarFunction is not monic if either of these
 happens, it is only combinatorially non-monic if variables are merged together.
 """
-function is_combinatorially_monic(f::ACSetTransformation) 
+function is_combinatorially_monic(f::Hom)::Bool 
   S = acset_schema(dom(f))
   all(o -> is_monic(f[o]), ob(S)) || return false
   return all(attrtype(S)) do o 
@@ -308,4 +337,90 @@ function is_combinatorially_monic(f::ACSetTransformation)
     length(attrimg) == length(unique(attrimg))
   end
 end
+
+function ACSetTransformation(X::ACSet, canon::CSetNautyRes)
+  ACSetTransformation(X, canon.canon; canon.canonmap...)
+end
+
+
+function all_epis(X::ACSet)
+  S = acset_schema(X)
+  reprs = repr_dict(typeof(X))
+
+  # Create schema for arrow category, where domain is NOT up to iso
+  S′ = copy(Presentation(S))
+  gens = Dict(o => add_generator!(S′, Ob(FreeSchema, eq(o))) for o in ob(S))
+  _Fix = add_generator!(S′, AttrType(FreeSchema.AttrType, :_Fix))
+  for o in ob(S)
+    add_generator!(S′, Catlab.Hom(alpha(o), Ob(FreeSchema,o), gens[o]))
+    add_generator!(S′, Catlab.Attr(Symbol("$(o)_fix"), Ob(FreeSchema,o), _Fix))
+  end
+  for (f, c, d) in homs(S)
+    add_generator!(S′, Catlab.Hom(eq(f), gens[c], gens[d]))
+  end
+
+  # Helper functions
+  """Pushforward S -> S' along the codom inclusion of the collage"""
+  function cheap_sigma(Z::ACSet)
+    Z′ = AnonACSet(S′; type_assignment=Dict(:_Fix=>Int))
+    for o in ob(S)
+      add_parts!(Z′, eq(o), nparts(Z, o))
+    end  
+    for h in homs(S; just_names=true)
+      Z′[eq(h)] = Z[h]
+    end
+    return Z′  
+  end
+  
+  """Convert an ACSet with schema S' into an epimorphism in schema S"""
+  function cheap_uncurry(Z::ACSet)
+    Z′ = constructor(X)()
+    comps = map(ob(S)) do o 
+      add_parts!(Z′, o, nparts(Z, eq(o)))
+      o => Z[alpha(o)]
+    end
+    ACSetTransformation(X, Z′; comps...)
+  end
+
+  """Unique map from the representable `o` to the i'th `o` equivalence class"""
+  function get_map(Z::ACSet, o::Symbol, i::Int)
+    R, ι = reprs[o]
+    homomorphism(cheap_sigma(R), Z; initial=Dict(eq(o) => Dict(ι=>i)))
+  end
+
+  # Initial partition (nothing merged)
+  X′ = cheap_sigma(X)
+  copy_parts!(X′, X)
+  for o in ob(S)
+    X′[Symbol("$(o)_fix")] = X′[alpha(o)] = parts(X, o)
+  end
+  
+  epis, queue = Dict{String, ACSet}("" => X′), Set{ACSet}([X′])
+
+  # All possible pairwise mergings of eq classes, tree search
+  while !isempty(queue)
+    Q = pop!(queue)
+    for o in ob(S)
+      for i ∈ 1:(nparts(Q, eq(o))-1)
+        f = get_map(Q, o, i)
+        for j ∈ (i+1):nparts(Q, eq(o))
+          g = get_map(Q, o, j)
+          Q′ = codom(first(coequalizer(f, g)))
+          hsh = call_nauty(Q′).strhsh
+          if !(haskey(epis, hsh))
+            push!(queue, Q′)
+            epis[hsh] = Q′
+          end
+        end
+      end
+    end
+  end
+  return cheap_uncurry.(collect(values(epis)))
+end
+
+eq(x::Symbol) = Symbol("$(x)_eq")
+alpha(x::Symbol) = Symbol("$(x)_α")
+
+
+
 end # module

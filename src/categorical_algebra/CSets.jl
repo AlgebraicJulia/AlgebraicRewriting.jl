@@ -360,6 +360,8 @@ substitution. We do this via pushout.
 """
 function sub_vars(X::ACSet, subs::AbstractDict=Dict(), merge::AbstractDict=Dict()) 
   S = acset_schema(X)
+  show(stdout,"text/plain",X)
+  println("SUBS $subs")
   O, C = [constructor(X)() for _ in 1:2]
   ox_, oc_ = Dict{Symbol, Any}(), Dict{Symbol,Any}()
   for at in attrtypes(S)
