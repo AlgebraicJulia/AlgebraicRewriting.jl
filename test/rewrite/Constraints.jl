@@ -68,8 +68,8 @@ Every vertex mapped into the leftmost vertex must also have an outgoing edge to
 a vertex that is is mapped into the middle vertex.
 """
 
-constr = LiftCond(homomorphism(Graph(1),p2), 
-                  homomorphism(p2, loop_csp; monic=true))
+constr = LiftCond(ACSetTransformation(Graph(1),p2; V=[1]), 
+                  homomorphism(p2, loop_csp; initial=(V=[1,2],)))
 
 G = @acset Graph begin V=3; E=3; src=[1,1,3]; tgt=[1,2,3] end
 h1,h2,h3,h4 = homomorphisms(G, loop_csp; initial=(V=Dict(1=>1),))

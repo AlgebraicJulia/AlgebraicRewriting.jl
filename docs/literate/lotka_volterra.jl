@@ -541,8 +541,9 @@ begin
     sheep_loc = 2; sheep_eng = [3]; sheep_dir = [:N]
     countdown = [0, 10, 2]; dir = fill(:N, 2)
   end
-  @test is_isomorphic(rewrite(g_inc_rule, ex), expected)
-  rewrite!(g_inc_rule, ex)
+  m = get_matches(g_inc_rule, ex)[1]
+  @test is_isomorphic(rewrite_match(g_inc_rule, ex), expected)
+  rewrite_match!(g_inc_rule, m)
   @test is_isomorphic(ex, expected)
 end;
 

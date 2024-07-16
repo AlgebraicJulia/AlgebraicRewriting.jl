@@ -1,8 +1,6 @@
 module TestDPO 
 
-using Test
-using Catlab, Catlab.CategoricalAlgebra, Catlab.Programs, Catlab.Graphs
-using AlgebraicRewriting
+using Test, Catlab, AlgebraicRewriting
 
 # Graphs
 ########
@@ -243,13 +241,15 @@ R = @acset SSet begin
   tgt=[2,3,4,4,3]
 end
 edge = @acset SSet begin E=1; V=2; src=[1]; tgt=[2] end
-edge_left = homomorphism(edge, L; initial=Dict([:V=>[1,3]]))
-edge_left_R = homomorphism(edge, R; initial=Dict([:V=>[1,3]]))
-edge_right = homomorphism(edge, L; initial=Dict([:V=>[2,4]]))
+edge_left = only(homomorphisms(edge, L; initial=Dict([:V=>[1,3]])))
+edge_left_R = only(homomorphisms(edge, R; initial=Dict([:V=>[1,3]])))
+edge_right = only(homomorphisms(edge, L; initial=Dict([:V=>[2,4]])))
 G = apex(pushout(edge_left, edge_right))
-r = Rule(homomorphism(I, L; monic=true), homomorphism(I, R; monic=true);
+r = Rule(homomorphism(I, L; initial=(V=1:4,)), 
+         homomorphism(I, R; initial=(V=1:4,));
          monic=true)
-res =  rewrite(r, G)
+m = get_matches(r, G)[1]
+res =  rewrite_match(r, m)
 expected = apex(pushout(edge_left_R, edge_right))
 @test !is_isomorphic(res, G) # it changed
 @test is_isomorphic(res, expected)
@@ -293,13 +293,14 @@ rule = Rule(l, r; monic=[:E], expr=Dict(:Weight=>[xs->xs[1]+xs[2]]))
 
 G = @acset WeightedGraph{Int} begin V=1; E=3; src=1; tgt=1; 
                                     weight=[10,20,100] end
-
-@test rewrite(rule, G) == @acset WeightedGraph{Int} begin 
+m = get_matches(rule, G)[1]
+@test rewrite_match(rule, m) == @acset WeightedGraph{Int} begin 
   V=1; E=2; src=1; tgt=1; weight=[30, 100] end
 
 # or, introduce free variables 
 rule = Rule(l, r; monic=[:E], freevar=true)
-@test rewrite(rule, G) == @acset WeightedGraph{Int} begin 
+m = get_matches(rule, G)[1]
+@test rewrite_match(rule, m) == @acset WeightedGraph{Int} begin 
   V=1; E=2; Weight=1; src=1; tgt=1; weight=[AttrVar(1), 100] end
 
 # Rewriting with induced equations between AttrVars in the rule
@@ -317,8 +318,8 @@ rule = Rule(homomorphism(I, L; monic=[:X]), homomorphism(I, R; monic=[:X]))
 # we cannot match both X of L to the same part in G because this would yield 
 # an inconsistent result
 @test length(get_matches(rule, L)) == 2
-
-res = rewrite(rule, L)
+m = get_matches(rule, L)[1]
+res = rewrite_match(rule, m)
 @test is_isomorphic(res, R)
 
 # Now with arbitrary functions

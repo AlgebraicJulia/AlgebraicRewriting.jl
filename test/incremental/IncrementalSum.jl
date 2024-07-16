@@ -9,7 +9,7 @@ using AlgebraicRewriting.Incremental.IncrementalHom: runtime, state
                                                                   #  • ⇉ •
 e, ee = path_graph.(Graph, 2:3)                                   #   ↘ ↙
 A = @acset Graph begin V=3; E=4; src=[1,1,1,2]; tgt=[2,2,3,3] end #    •
-A_rule = Rule(id(e), homomorphism(e, A));
+A_rule = Rule(id(e), homomorphism(e, A; initial=(V=1:2,)));
 start = @acset Graph begin V=3; E=3; src=[1,2,3]; tgt=[2,3,3] end
 
 hset = IncHomSet(ee ⊕ e, [A_rule.R], start);
@@ -18,7 +18,7 @@ hset = IncHomSet(ee ⊕ e, [A_rule.R], start);
 @test !haskey(hset, [2=>2, 1=>2])
 @test length(keys(hset)) == 9
 @test hset[[1=>3,1=>3]] == hset[9]
-del, add = rewrite!(hset, A_rule, homomorphisms(e, start)[2]);
+del, add = rewrite!(hset, A_rule, homomorphism(e, start; initial=(V=2:3,)));
 
 @test isempty(del)
 
@@ -28,7 +28,8 @@ del, add = rewrite!(hset, A_rule, homomorphisms(e, start)[2]);
 @test validate(hset)
 
 @test Set(matches(hset)) == Set(homomorphisms(ee ⊕ e, state(hset)))
-rewrite!(hset, A_rule);
+m = ACSetTransformation(e, state(hset); V=1:2, E=[1])
+rewrite!(hset, A_rule, m);
 @test validate(hset)
 @test Set(matches(hset)) == Set(homomorphisms(ee ⊕ e, state(hset)))
 
@@ -42,7 +43,8 @@ roundtrip = IncSumHomSet(IncCCHomSet(hset));
 hset = IncHomSet(Graph(1) ⊕ e, [A_rule.R], start);
 rewrite!(hset, A_rule, homomorphisms(e, start)[2]);
 @test validate(hset)
-rewrite!(hset, A_rule)
+m = ACSetTransformation(e, state(hset); V=1:2, E=[1])
+rewrite!(hset, A_rule, m)
 @test validate(hset)
 @test length(keys(hset)) == 45
 

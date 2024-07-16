@@ -1,8 +1,6 @@
 module TestPBPO 
 
-using Test
-using AlgebraicRewriting
-using Catlab
+using Test, AlgebraicRewriting, Catlab
 
 using AlgebraicRewriting.Rewrite.PBPO: partial_abstract
 
@@ -176,8 +174,8 @@ l = homomorphism(K,L)
 r = homomorphism(K,R)
 L′ = L ⊕ L 
 K′ = K ⊕ L 
-tl = homomorphism(L,L′)
-tk = homomorphism(K,K′)
+tl = homomorphism(L,L′; initial=(V=[1],))
+tk = ACSetTransformation(K,K′; V=[1])
 l′ = homomorphism(K′,L′; initial=(V=[1,2],)) 
 rule = PBPORule(l,r,tl,tk,l′)
 
@@ -197,7 +195,7 @@ l = homomorphism(K,L)
 r = homomorphism(K,R)
 L′ = @acset Graph begin V=2; E=3; src=[1,2,2]; tgt=[1,2,1] end 
 K′ = @acset Graph begin V=2; E=2; src=[2,2]; tgt=[2,1] end 
-tl = homomorphism(L,L′)
+tl = homomorphism(L,L′; initial=(V=[1],))
 tk = ACSetTransformation(K,K′; V=[1])
 l′ = homomorphism(K′,L′; initial=(V=[1,2],))
 rule = PBPORule(l,r,tl,tk,l′)
@@ -213,12 +211,12 @@ expected = @acset Graph begin V=3; E=4; src=[1,2,1,2]; tgt=[1,2,2,3] end
 L = @acset WG begin V=2; E=1; Weight=1; src=1; tgt=2; weight=[AttrVar(1)] end
 K = WG(2)
 R = WG(1)
-l = homomorphism(K, L; monic=true)
+l = homomorphism(K, L; initial=(V=[1,2],))
 r = homomorphism(K, R)
 L′ = @acset WG begin V=4; E=10; Weight=10;
   src=[1,1,2,3,3,3,3,4,4,4]; tgt=[2,4,4,1,4,3,2,2,3,4]; weight=AttrVar.(1:10)
 end
-tl = homomorphism(L, L′)
+tl = homomorphism(L, L′; initial=(V=[1,2],))
 K′ = @acset WG begin V=4; E=9; Weight=9;
   src=[1,2,3,3,3,3,4,4,4]; tgt=[4,4,1,4,3,2,2,3,4]; weight=AttrVar.(1:9)
 end
@@ -237,7 +235,7 @@ ac = AppCond(homomorphism(L,loop), false) # cannot bind pattern to loop
            [   •    ]
 
 """
-lc = LiftCond(homomorphism(R, L), # vertical
+lc = LiftCond(homomorphism(R, L; initial=(V=[1],)), # vertical
               homomorphism(L, L′; initial=(E=[4],)))
 
 kx = Any[fill(nothing, 9)...]

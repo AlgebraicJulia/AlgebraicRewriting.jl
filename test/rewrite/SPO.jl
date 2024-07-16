@@ -1,8 +1,6 @@
 module TestSPO
 
-using Test
-using Catlab, Catlab.Graphs, Catlab.CategoricalAlgebra
-using AlgebraicRewriting
+using Test, Catlab, AlgebraicRewriting
 
 
 # Removing edges 
@@ -12,7 +10,8 @@ f = homomorphism(g2, p2; monic=true)
 r = Rule{:SPO}(f, id(g2))
 r2 = Rule{:SPO}(create(Graph(1)), id(Graph()))
 @test rewrite(r, p2) == Graph(2)
-@test rewrite(r2, p2) == Graph(1)
+m = get_matches(r2, p2)[1]
+@test rewrite_match(r2, m) == Graph(1)
 
 
 

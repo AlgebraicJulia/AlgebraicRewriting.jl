@@ -75,7 +75,8 @@ rule = Rule(l, r; monic=[:E], expr=Dict(:Weight=>[plus]))
 # Apply rewrite
 prog = compile_rewrite(rule)
 
-f = rewrite!(rule, G)
+m = get_matches(rule, G)[1]
+f = rewrite_match!(rule, m)
 
 @test f.components[:Weight](AttrVar(1)) == 30
 

@@ -114,7 +114,8 @@ rule2 = Rule(@migration(SchRulel, SchGraph, begin
 rule_spo = Rule{:SPO}(l, r)  # (same data as before)
 
 @test length(get_matches(rule_spo, G)) == 4 # there are now four matches
-res = rewrite(rule_spo, G)
+m = get_matches(rule_spo, G)[1]
+res = rewrite_match(rule_spo, m)
 to_graphviz(res)
 @test is_isomorphic(res, path_graph(Graph, 3) ⊕ R)
 
@@ -351,8 +352,8 @@ R = @acset WeightedGraph{Int} begin
   weight = [AttrVar(1)]
 end
 
-l = homomorphism(I, L; monic=true)
-r = homomorphism(I, R; monic=true)
+l = homomorphism(I, L; initial=(V=1:2,))
+r = homomorphism(I, R; initial=(V=1:2,))
 rule = Rule(l, r; monic=[:E], expr=Dict(:Weight => [xs -> xs[1] + xs[2]]))
 
 G = @acset WeightedGraph{Int} begin
@@ -363,7 +364,8 @@ G = @acset WeightedGraph{Int} begin
   weight = [10, 20, 100]
 end
 
-@test rewrite(rule, G) == @acset WeightedGraph{Int} begin
+m = get_matches(rule,G)[1]
+@test rewrite_match(rule, m) == @acset WeightedGraph{Int} begin
   V = 1
   E = 2
   src = 1

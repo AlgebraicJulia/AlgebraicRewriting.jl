@@ -6,17 +6,21 @@ This is a demonstration of the game of life as an agent-based model.
 We start with importing some libraries.
 =#
 
-using AlgebraicRewriting
-using Catlab, Catlab.Graphs, Catlab.CategoricalAlgebra, Catlab.Theories
+using AlgebraicRewriting, Catlab
 import Catlab.Graphics: to_graphviz
 using Catlab.Graphics.Graphviz: Attributes, Statement, Node, Edge, Digraph
-using PrettyTables
-using Luxor
+using PrettyTables, Luxor
 
 #=
-The game of life has two rules: one which turns living things dead, and one that brings dead things to life. We model the terrain as a symmetric graph: cells are vertices. Neighboring cells have edges between them.
+The game of life has two rules: one which turns living things dead, and one that 
+brings dead things to life. We model the terrain as a symmetric graph: cells are 
+vertices. Neighboring cells have edges between them.
 
-Implementation wise, if we are going to update cells one at a time, we must keep track of two bits of information (the cell's living status for the *current* timestep and whether it will be alive in the *next* timestep). Thus we need helper rule to overwrite the "current" life status with the "next" life status at the end of each timestep.
+Implementation wise, if we are going to update cells one at a time, we must keep 
+track of two bits of information (the cell's living status for the *current* 
+timestep and whether it will be alive in the *next* timestep). Thus we need 
+helper rule to overwrite the "current" life status with the "next" life status 
+at the end of each timestep.
 =#
 
 # # Ontology

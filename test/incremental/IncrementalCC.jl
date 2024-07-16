@@ -13,7 +13,7 @@ G2 = Graph(2)
                                                                   #  • ⇉ •
 e, ee = path_graph.(Graph, 2:3)                                   #   ↘ ↙
 A = @acset Graph begin V=3; E=4; src=[1,1,1,2]; tgt=[2,2,3,3] end #    •
-A_rule = Rule(id(e), homomorphism(e, A));
+A_rule = Rule(id(e), homomorphism(e, A; initial=(V=1:2,)));
 
 # Empty edge case
 #----------------
@@ -35,8 +35,8 @@ del, add = rewrite!(hset, A_rule, m)
 @test length.(match_vect(hset)) == [3,0,6]
 @test validate(hset)
 
-m = homomorphism(e, state(hset); monic=true)
-rewrite!(hset, A_rule)
+m = homomorphism(e, state(hset); initial=(V=1:2,E=[1]))
+rewrite!(hset, A_rule, m)
 @test validate(hset)
 @test length.(match_vect(hset)) == [3, 0, 6, 0, 8]
 @test !haskey(hset, 3=>7)
@@ -53,8 +53,8 @@ roundtrip = IncCCHomSet(IncSumHomSet(hset));
 #----------------
 tri = @acset Graph begin V=3;E=3;src=[1,1,2];tgt=[3,2,3]end
 X = @acset Graph begin V=2; E=2; src=[1,2]; tgt=[2,2] end
-omap = homomorphism(e, X)
-r = homomorphism(e, tri)
+omap = homomorphism(e, X; initial=(V=1:2,))
+r = homomorphism(e, tri; initial=(V=1:2,))
 hset = IncHomSet(ee, [r], X);
 addition!(hset, r, omap)
 @test validate(hset)
@@ -75,7 +75,8 @@ del = delete(Graph(1))
 mset = IncHomSet(Graph(1), [del], G2⊕T; nac=[del]);
 @test length(keys(mset)) == 2
 M_rule = Rule(id(Graph(1)), delete(Graph(1)); ac=[AppCond(del, false)])
-rewrite!(mset, M_rule)
+m = ACSetTransformation(Graph(1), G2⊕T; V=[1])
+rewrite!(mset, M_rule, m)
 @test length(keys(mset)) == 1
 rewrite!(mset, M_rule)
 @test length(keys(mset)) == 0
