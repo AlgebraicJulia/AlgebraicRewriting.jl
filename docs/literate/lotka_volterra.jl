@@ -542,7 +542,7 @@ begin
     countdown = [0, 10, 2]; dir = fill(:N, 2)
   end
   m = get_matches(g_inc_rule, ex)[1]
-  @test is_isomorphic(rewrite_match(g_inc_rule, ex), expected)
+  @test is_isomorphic(rewrite_match(g_inc_rule, m), expected)
   rewrite_match!(g_inc_rule, m)
   @test is_isomorphic(ex, expected)
 end;
