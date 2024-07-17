@@ -287,8 +287,8 @@ I = WeightedGraph{Int}(2)
 R = @acset WeightedGraph{Int} begin V=2; E=1; Weight=1; src=1; tgt=2; 
                                     weight=[AttrVar(1)] end
 
-l = homomorphism(I,L; monic=true)
-r = homomorphism(I,R; monic=true)
+l = homomorphism(I,L; initial=(V=1:2,))
+r = homomorphism(I,R; initial=(V=1:2,))
 rule = Rule(l, r; monic=[:E], expr=Dict(:Weight=>[xs->xs[1]+xs[2]]))
 
 G = @acset WeightedGraph{Int} begin V=1; E=3; src=1; tgt=1; 
@@ -313,7 +313,8 @@ const Foo = AbsFoo{Bool}
 L = @acset Foo begin X=2; f=[false, false] end 
 I = @acset Foo begin X=2;D=2; f=AttrVar.(1:2) end 
 R = @acset Foo begin X=2; f=[false, true]end 
-rule = Rule(homomorphism(I, L; monic=[:X]), homomorphism(I, R; monic=[:X]))
+rule = Rule(homomorphism(I, L; initial=(X=1:2,)), 
+            homomorphism(I, R; initial=(X=1:2,)))
 
 # we cannot match both X of L to the same part in G because this would yield 
 # an inconsistent result

@@ -13,7 +13,7 @@ G2 = Graph(2)
                                                                   #  • ⇉ •
 e, ee = path_graph.(Graph, 2:3)                                   #   ↘ ↙
 A = @acset Graph begin V=3; E=4; src=[1,1,1,2]; tgt=[2,2,3,3] end #    •
-A_rule = Rule(id(e), homomorphism(e, A; initial=(V=1:2,)));
+A_rule = Rule(id(e), homomorphism(e, A; initial=(E=[1],)));
 
 # Empty edge case
 #----------------
@@ -85,15 +85,15 @@ rewrite!(mset, M_rule)
 # Application conditions: NAC adding morphisms during deletion!
 #--------------------------------------------------------------
 del = homomorphism(⊕(Graph[fill(T, 2); Graph(1)]), 
-                   state(mset); monic=true) # delete one loop
+                   state(mset); initial=(V=1:3,)) # delete one loop
 deletion!(mset, del)
 @test length(keys(mset)) == 1
 del = homomorphism(⊕(Graph[T; G2]), 
-                   state(mset); monic=true) # delete another loop
+                   state(mset); initial=(V=1:3,)) # delete another loop
 deletion!(mset, del)
 @test length(keys(mset)) == 2
 
-del = homomorphism(Graph(3), state(mset); monic=true) # delete another loop
+del = homomorphism(Graph(3), state(mset); initial=(V=1:3,)) # delete another loop
 deletion!(mset, del)
 @test length(keys(mset)) == 3
 
@@ -102,7 +102,7 @@ deletion!(mset, del)
 edge_loop = @acset Graph begin V=2; E=2; src=[1,1]; tgt=[1,2] end
 to_edge_loop = homomorphism(e, edge_loop; monic=true)
 # rem edge, not if src has loop
-r = Rule(homomorphism(G2, e; monic=true), id(G2);
+r = Rule(homomorphism(G2, e; initial=(V=1:2,)), id(G2);
          ac=[AppCond(to_edge_loop, false; monic=true)]);
 
 mset = IncHomSet(r, edge_loop);
@@ -115,7 +115,7 @@ rewrite!(mset, r)
 # Application conditions: PAC removing morphisms during deletion!
 #----------------------------------------------------------------
 # Remove edge, only if src has loop (no monic constraint on PAC)
-r = Rule(homomorphism(G2, e; monic=true), id(G2);
+r = Rule(homomorphism(G2, e; initial=(V=1:2,)), id(G2);
          ac=[AppCond(to_edge_loop)]);
 mset = IncHomSet(r, edge_loop ⊕ e);
 m1, m2 = get_matches(r, state(mset)) # first one removes the loop

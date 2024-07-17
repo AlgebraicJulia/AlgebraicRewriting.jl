@@ -37,11 +37,6 @@ prog = compile_rewrite(toggle)
 @test F == rewrite(toggle, T)
 
 m= homomorphism(Pat, T)
-is_natural(m)
-can_match(toggle, m)
-
-get_match(toggle, T)
-
 rewrite_match!(toggle, m; prog);
 @test T == F
 
@@ -66,7 +61,7 @@ G = @acset MADIntGraph begin V=1; E=3; src=1; tgt=1; weight=[10,20,100] end
 # to_graphviz(G; edge_labels=:weight)
 
 # Rule
-l, r = homomorphism.(Ref(MADIntGraph(2)), [L, R]; monic=true)
+l, r = homomorphism.(Ref(MADIntGraph(2)), [L, R]; initial=(V=1:2,))
 
 plus(xs) = xs[1] + xs[2]
 

@@ -144,22 +144,26 @@ has_comp(monic::Vector{Symbol}, c::Symbol) = c ∈ monic
 """
 Returns nothing if the match is acceptable for rewriting according to the
 rule, otherwise returns the reason why it should be rejected
-"""
-function can_match(r::Rule{T}, m; initial=Dict()) where T
-  S = acset_schema(dom(m))
-  for k in ob(S)
-    if has_comp(r.monic, k) && !is_monic(m[k])
-      return ("Match is not injective", k, m[k])
-    end
-  end
-  for (k, vs) in collect(initial)
-    errs = check_initial(vs, collect(m[k]))
-    if !isempty(errs)
-      return ("Initial condition violated", k, errs)
-    end
-  end
 
-  is_natural(m) || return ("Match is not natural", m)
+homsearch = if we know ahead of time that m was obtained m via automatic hom 
+            search, then we do not need to make certain checks
+"""
+function can_match(r::Rule{T}, m; homsearch=false, initial=Dict()) where T
+  S = acset_schema(dom(m))
+  if !homsearch
+    for k in ob(S)
+      if has_comp(r.monic, k) && !is_monic(m[k])
+        return ("Match is not injective", k, m[k])
+      end
+    end
+    for (k, vs) in collect(initial)
+      errs = check_initial(vs, collect(m[k]))
+      if !isempty(errs)
+        return ("Initial condition violated", k, errs)
+      end
+    end
+    is_natural(m) || return ("Match is not natural", m)
+  end
 
   if T == :DPO
     gc = gluing_conditions(ComposablePair(r.L, m))
@@ -183,7 +187,7 @@ function can_match(r::Rule{T}, m; initial=Dict()) where T
 end
 
 """Get one match (if any exist) otherwise return """
-get_match(args...; kw...) = let x = get_matches(args...; n=1, kw...);
+get_match(args...; kw...) = let x = get_matches(args...; take=1, kw...);
   isempty(x) ? nothing : only(x) end 
 
 """
@@ -193,29 +197,13 @@ This function has the same behavior as the generic `get_matches`, but it is
 more performant because we do not have to query all homomorphisms before finding 
 a valid match, in case n=1. 
 """
-function get_matches(r::Rule{T}, G::ACSet; initial=nothing,
-                     random=false, n=-1) where T
-  initial = isnothing(initial) ? Dict() : initial
-
-  hs = []
-  backtracking_search(codom(r.L), G; monic=r.monic, initial=NamedTuple(initial), 
-                      random) do h 
-    cm = can_match(r, h)
-    if isnothing(cm)
-      push!(hs, h)
-      return length(hs) == n # we stop the search Hom(L,G) when this holds
-    else
-      @debug "$([k => collect(v) for (k,v) in pairs(components(h))]): $cm"
-      return false
-    end
-  end 
-  return hs
-end
+get_matches(r::Rule, G::ACSet; kw...) =
+  homomorphisms(codom(r.L), G; kw..., monic=r.monic, 
+                filter= m -> isnothing(can_match(r, m; homsearch=true)))
 
 """If not rewriting ACSets, we have to compute entire Hom(L,G)."""
-function get_matches(r::Rule{T}, G; initial=nothing, random=false, n=-1) where T 
-  initial = NamedTuple(isnothing(initial) ? Dict() : initial)
-  ms = homomorphisms(codom(left(r)), G; monic=r.monic, initial, random)
+function get_matches(r::Rule, G; kw...)
+  ms = homomorphisms(codom(left(r)), G; kw..., monic=r.monic)
   res = []
   for m in ms 
     if (n < 0 || length(res) < n) && isnothing(can_match(r, m))
@@ -276,7 +264,7 @@ function rewrite_match_maps end  # to be implemented for each T
 """    rewrite(r::Rule, G; kw...)
 Perform a rewrite (automatically finding an arbitrary match) and return result.
 """
-function rewrite(r::AbsRule, G; initial=nothing, random=false, kw...)
+function rewrite(r::AbsRule, G; initial=(;), random=false, kw...)
   m = get_match(r, G; initial, random)
   isnothing(m) ? nothing : rewrite_match(r, m; kw...)
 end

@@ -9,7 +9,7 @@ using AlgebraicRewriting.Incremental.IncrementalHom: runtime, state
                                                                   #  • ⇉ •
 e, ee = path_graph.(Graph, 2:3)                                   #   ↘ ↙
 A = @acset Graph begin V=3; E=4; src=[1,1,1,2]; tgt=[2,2,3,3] end #    •
-A_rule = Rule(id(e), homomorphism(e, A; initial=(V=1:2,)));
+A_rule = Rule(id(e), homomorphism(e, A; initial=(E=[1],)));
 start = @acset Graph begin V=3; E=3; src=[1,2,3]; tgt=[2,3,3] end
 
 hset = IncHomSet(ee ⊕ e, [A_rule.R], start);
@@ -58,7 +58,7 @@ DDS(phi::Vector{Int}) = @acset DDS begin X=(length(phi)); Φ=phi end
 
 p2 = DDS([2,2])
 p22 = p2 ⊕ p2
-r = homomorphism(p22, DDS([2,2,4,4,4]); monic=true)
+r = homomorphism(p22, DDS([2,2,4,4,4]); initial=(X=1:4,))
 hset = IncHomSet(p22, [r], p22);
 rewrite!(hset, Rule(id(p22), r), id(p22))
 @test validate(hset)

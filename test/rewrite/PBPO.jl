@@ -48,7 +48,7 @@ G = @acset Graph begin V=5;E=11;
   src=[1,1,1,2,2,2,3,4,5,5,5]; tgt=[2,4,5,1,3,3,2,5,3,3,5] 
 end
 
-res = rewrite(rule,G; initial=(V=[1,2,3],)=>(V=[1,2,3,4,4],))
+res = rewrite(rule, G; initial=(V=[1,2,3],))
 expected = @acset Graph begin V=6;E=10;
   src=[1,3,3,4,5,6,6,6,6,6];tgt=[3,4,5,5,5,3,3,4,5,6] 
 end
@@ -153,7 +153,7 @@ G = @acset Graph begin V=8; E=8;
   src=[1,1,2,2,3,4,4,5]; tgt=[2,3,4,5,6,5,7,8] 
 end
 
-init = (initial=Dict(:V=>[2])=>Dict(),)
+init = (initial=(V=[2],),)
 
 @test length(get_matches(rule_no_condition, G; α_unique=false, init...)) > 1
 @test_throws ErrorException get_matches(rule_no_condition, G; init...) 
@@ -170,11 +170,10 @@ end
 #############################################################
 L = apex(terminal(Graph))
 K = R = Graph(1)
-l = homomorphism(K,L)
-r = homomorphism(K,R)
+l, r = homomorphism.(Ref(K), [L, R])
 L′ = L ⊕ L 
 K′ = K ⊕ L 
-tl = homomorphism(L,L′; initial=(V=[1],))
+tl = homomorphism(L, L′; initial=(V=[1],))
 tk = ACSetTransformation(K,K′; V=[1])
 l′ = homomorphism(K′,L′; initial=(V=[1,2],)) 
 rule = PBPORule(l,r,tl,tk,l′)
@@ -249,13 +248,13 @@ expected = @acset WG begin V=4; E=6; src=[2,2,2,3,3,4]; tgt=[1,3,4,1,1,1];
   weight=[6., 5., 6., 8., 7., 9.]
 end
 
-init = Dict(:V => [1, 2]) => Dict()
+initial = Dict(:V => [1, 2])
 
-@test length(get_matches(rule, G; initial=init))==1
+@test length(get_matches(rule, G; initial))==1
 @test isempty(homomorphisms(codom(left(rule)), G; monic=true))
 
-@test only(get_matches(rule, G; initial=init)) == get_match(rule, G;initial=init)
-@test is_isomorphic(expected, rewrite(rule, G; initial=init))
+@test only(get_matches(rule, G; initial)) == get_match(rule, G;initial)
+@test is_isomorphic(expected, rewrite(rule, G; initial))
 
 # Test canonization: TODO
 

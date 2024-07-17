@@ -288,7 +288,7 @@ end
 
 rewrite_match!(r::Rule{:DPO}, ::Nothing; kw...) = nothing
 
-rewrite!(r::Rule{:DPO}, G; initial=nothing, random=false, kw...) =
+rewrite!(r::Rule{:DPO}, G; initial=(;), random=false, kw...) =
   rewrite_match!(r, get_match(r, G; initial, random); kw...)
 
 end

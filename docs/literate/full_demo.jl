@@ -1,6 +1,6 @@
 # # Full Demo
 
-using AlgebraicRewriting, Catlab, AlgebraicPetri, DataMigrations
+using AlgebraicRewriting, Catlab, DataMigrations, AlgebraicPetri
 using Test
 
 
@@ -131,16 +131,20 @@ I = Graph(2)
 R = path_graph(Graph, 2)
 
 #=
-We can use automated homomorphism search to reduce the tedium of specifying data manually. In this case, there is a unique option.
+We can use automated homomorphism search to reduce the tedium of specifying data 
+manually. In this case, there is a unique option. In general, `homomorphism`
+will throw an error if there is *more* than one homomorphism.
 =#
 
 l = homomorphism(I, L)
 
 #=
-There are many constraints we can put on the search, such as being monic.
+There are many constraints we can put on the search, such as being monic. Here
+there are two monic homomorphisms (sending vertices 1 and 2 to (1,2) and (2,1)),
+so we add the keyword `any=true` to avoid throwing an error.
 =#
 
-r = homomorphism(I, R; monic=true)
+r = homomorphism(I, R; monic=true, any=true)
 
 rule_sqpo = Rule{:SqPO}(l, r) # same data as before)
 
@@ -200,7 +204,7 @@ G = @acset Graph begin
 end
 to_graphviz(G; node_labels=true)
 
-m = get_match(prule, G; initial=(V=[3],) => Dict())
+m = get_match(prule, G; initial=(V=[3],))
 
 res = rewrite_match(prule, m)
 # V1 is copied to V2. Outneighbor V5 (w/ loop) is copied to V6, creating an edge
@@ -297,10 +301,10 @@ loop_csp = @acset Graph begin
   src = [1, 3, 1, 3]
   tgt = [1, 3, 2, 2]
 end
-b = homomorphism(looparr, loop_csp; monic=true)
+b = homomorphism(looparr, loop_csp; initial=(V=[2,1],))
 constr = LiftCond(v, b)
 
-@test !apply_constraint(constr, homomorphism(t, loop_csp))
+@test !apply_constraint(constr, homomorphism(t, loop_csp; initial=(V=[1],)))
 @test apply_constraint(constr, b)
 
 # We can combining constraints with logical combinators.
@@ -344,12 +348,8 @@ L = @acset_colim yWG begin
 end
 I = WeightedGraph{Int}(2)
 R = @acset WeightedGraph{Int} begin
-  V = 2
-  E = 1
-  Weight = 1
-  src = 1
-  tgt = 2
-  weight = [AttrVar(1)]
+  V = 2; E = 1; Weight = 1
+  src = [1]; tgt = [2]; weight = [AttrVar(1)]
 end
 
 l = homomorphism(I, L; initial=(V=1:2,))
@@ -366,11 +366,8 @@ end
 
 m = get_matches(rule,G)[1]
 @test rewrite_match(rule, m) == @acset WeightedGraph{Int} begin
-  V = 1
-  E = 2
-  src = 1
-  tgt = 1
-  weight = [30, 100]
+  V = 1; E = 2
+  src = [1]; tgt = [1]; weight = [30, 100]
 end
 
 # # 8. Graph processes

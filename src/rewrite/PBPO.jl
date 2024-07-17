@@ -116,30 +116,15 @@ The "strong match" condition we enforce is that: tl⁻¹(α(A)) = a⁻¹(A). Thi
 we can deduce precisely what m is by looking at α.
 
 """
-function get_matches(rule::PBPORule, G::ACSet;  initial=nothing, 
-                     α_unique=true, random=false, n=-1, kw...)
-  S = acset_schema(G)
+function get_matches(rule::PBPORule, G::ACSet;  initial=(;), 
+                     α_unique=true, random=false, take=nothing)
   res = [] # Quadruples of of (m, Labs, abs, α)
   L = codom(left(rule))
 
-  # Process the initial constraints for match morphism and typing morphism
-  if isnothing(initial)
-    matchinit, typinit = (;), (;)
-  elseif initial isa Union{NamedTuple,AbstractDict}
-    matchinit, typinit = Dict(pairs(initial)), (;)
-  elseif length(initial)==2
-    matchinit, typinit = [Dict(pairs(x)) for x in initial]
-  else 
-    error("Unexpected type for `initial` keyword: $initial")
-  end  
-
   # Search for each match morphism
-  backtracking_search(L, G; monic=rule.monic, initial=NamedTuple(matchinit),
-                      random) do m
-    m_seen = false # keeps track if α_unique is violated for each new m
-    if all(ac->apply_constraint(ac, m), rule.acs)
-      @debug "m:  $([k=>collect(v) for (k,v) in pairs(components(m))])"
-      
+  backtracking_search(L, G; monic=rule.monic, initial=initial, random) do ms
+    for m in ms       
+      all(ac -> apply_constraint(ac, m), rule.acs) || continue
       # Construct partially-abtract version of G. Labs: L->A and abs: A->G 
       Labs, abs = partial_abstract(m)
       A = codom(Labs)
@@ -150,44 +135,47 @@ function get_matches(rule::PBPORule, G::ACSet;  initial=nothing,
         # Return nothing if failure
         if !isnothing(init)
           αs = homomorphisms(A, codom(rule.tl); initial=init)
-          # Also return nothing if the result is not unique
-          if length(αs) ==1 
-            push!(res, deepcopy((m, Labs, abs, only(αs))))
-          end 
+          # Also return nothing if the result isn't unique
+          length(αs) == 1 && push!(res, deepcopy((m, Labs, abs, only(αs))))
         end
       else 
         # Search for adherence morphisms: A -> L′
         init = extend_morphism_constraints(rule.tl, Labs)
         isnothing(init) && return false
-        backtracking_search(A, codom(rule.tl); initial=init, kw...) do α
-          @debug "\tα: ", [k=>collect(v) for (k,v) in pairs(components(α))] 
-
-          # Check strong match condition
-          strong_match = all(types(S)) do o
-            prt = o ∈ ob(S) ? identity : AttrVar
-            all(prt.(parts(A,o))) do i 
-              p1 = preimage(rule.tl[o],α[o](i))
-              p2 = preimage(Labs[o], i)
-              p1 == p2
-            end
-          end
-          if strong_match && all(lc -> apply_constraint(lc, α), rule.lcs)
-            all(is_natural, [m, Labs, abs, α]) || error("Unnatural match")
-            if m_seen  error("Multiple α for a single match $m") end 
-            @debug "\tSUCCESS"
-            push!(res, deepcopy((m, Labs, abs, α)))
-            m_seen |= α_unique
-            return length(res) == n
-          else
-            @debug "\tFAILURE (strong $strong_match)"
-            return false
-          end
+        kwargs = if α_unique 
+          (max = 1,) 
+        else 
+          (take = isnothing(take) ? nothing : take-length(res),)
+        end
+        for α in homomorphisms(A, codom(rule.tl); initial=init, kwargs...,
+                               filter=test_adherence(rule, Labs)) 
+          push!(res, deepcopy((m, Labs, abs, α)))
+          length(res) == take && return true
         end
       end
     end
-    return length(res) == n
+    return false
   end 
   return res
+end
+
+""" See `get_matches(::PBPORule, ::ACSet)` """
+function test_adherence(rule::PBPORule, Labs::ACSetTransformation)
+  A = codom(Labs)
+  S = acset_schema(A)
+  """ For use in the homomorphism search for adherence morphisms """
+  function filter(α::ACSetTransformation)::Bool
+    # Check strong match condition
+    strong_match = all(types(S)) do o
+      prt = o ∈ ob(S) ? identity : AttrVar
+      all(prt.(parts(A, o))) do i 
+        p1 = preimage(rule.tl[o],α[o](i))
+        p2 = preimage(Labs[o], i)
+        p1 == p2
+      end
+    end
+    return strong_match && all(lc -> apply_constraint(lc, α), rule.lcs)
+  end
 end
 
 

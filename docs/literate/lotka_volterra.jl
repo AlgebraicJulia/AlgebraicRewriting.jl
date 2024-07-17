@@ -491,7 +491,7 @@ sheep_reprod_rule = Rule(
 );
 
 sheep_reprod = RuleApp(:reproduce, sheep_reprod_rule,
-  id(S), hom(S, s_reprod_r)) |> tryrule;
+  id(S), hom(S, s_reprod_r; any=true)) |> tryrule;
 
 # #### Reproduction test
 

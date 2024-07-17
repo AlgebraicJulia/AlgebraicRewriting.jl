@@ -150,13 +150,13 @@ function can_match(constr::IncConstraints, m::ACSetTransformation;
 
   if pac 
     for ac in constr.pac
-      isnothing(extend_morphism(m, ac.m;  monic=ac.monic)) && return false
+      isnothing(extend_morphism(m, ac.m; any=true, monic=ac.monic)) && return false
     end
   end
   
   if nac 
     for ac in constr.nac
-      isnothing(extend_morphism(m, ac.m;  monic=ac.monic)) || return false
+      isnothing(extend_morphism(m, ac.m; any=true, monic=ac.monic)) || return false
     end
   end
   
