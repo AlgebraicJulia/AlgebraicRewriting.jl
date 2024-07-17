@@ -202,11 +202,11 @@ get_matches(r::Rule, G::ACSet; kw...) =
                 filter= m -> isnothing(can_match(r, m; homsearch=true)))
 
 """If not rewriting ACSets, we have to compute entire Hom(L,G)."""
-function get_matches(r::Rule, G; kw...)
+function get_matches(r::Rule, G; take=nothing, kw...)
   ms = homomorphisms(codom(left(r)), G; kw..., monic=r.monic)
   res = []
   for m in ms 
-    if (n < 0 || length(res) < n) && isnothing(can_match(r, m))
+    if (isnothing(take) || length(res) < take) && isnothing(can_match(r, m))
       push!(res, m)
     end
   end
