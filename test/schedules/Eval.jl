@@ -42,7 +42,7 @@ N["•→•"] = ar
 Dot, A = Symbol.([N[g1],N[ar]]) 
 
 av = RuleApp(:add_vertex, Rule(id(z), create(g1)))
-g2ar = homomorphism(g2, ar; monic=true)
+g2ar = homomorphism(g2, ar; initial=(V=1:2,))
 de = loop_rule(RuleApp(:del_edge, Rule(g2ar, id(g2))))
 coin = uniform(2, z)
 sched = coin ⋅ (tryrule(av) ⊗ id([z])) ⋅ merge_wires(z) ⋅ de
@@ -194,7 +194,8 @@ inc_E_ = @acset LG begin Cell=2; V=6; E=7; Life=1; Eng=2
   live=[true,AttrVar(1)]; eng=AttrVar.(1:2)
 end
 inc_E = Rule(id(inc_E_), id(inc_E_); expr=(Eng=[es->es[1],es->es[2]+1],))
-inc_E_rule = RuleApp(:incE, inc_E, homomorphism(Cell, inc_E_)) |> tryrule
+inc_E_rule = RuleApp(
+  :incE, inc_E, homomorphism(Cell, inc_E_; initial=(V=[1,2,4,5],))) |> tryrule
 
 # Assemble a schedule 
 sched = agent(inc_E_rule, Cell, ret=Cell)

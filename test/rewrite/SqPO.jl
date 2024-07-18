@@ -1,9 +1,7 @@
 
 module TestSqPO 
 
-using Test
-using Catlab, Catlab.Graphs, Catlab.CategoricalAlgebra
-using AlgebraicRewriting 
+using Test, Catlab, AlgebraicRewriting 
 using AlgebraicRewriting.Rewrite.SqPO: final_pullback_complement
 
 # Sesqui Pushout Tests

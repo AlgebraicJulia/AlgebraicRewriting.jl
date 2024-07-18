@@ -31,7 +31,7 @@ const LSet = LFinSetType{Symbol}
 
 I = @acset LSet begin X=1; D=1; f=[AttrVar(1)] end
 G = @acset LSet begin X=2; f=[:x,:y] end
-f = homomorphism(I,G)
+f = homomorphism(I,G; initial=(X=[1],))
 
 kg = last(pushout_complement(id(I),f))
 @test dom(kg) == @acset LSet begin X=2; D=1; f=[AttrVar(1),:y] end

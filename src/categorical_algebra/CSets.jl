@@ -194,7 +194,7 @@ function pushout_complement(pair::ComposablePair{<:ACSet, <:TightACSetTransforma
         G[g_components[o](val), f]
       catch e 
         vᵢ = findfirst(==(AttrVar(v)), k_components[at])
-        m[at](AttrVar(l[at](vᵢ)))
+        m[at](l[at](AttrVar(vᵢ)))
       end 
     end)
   end

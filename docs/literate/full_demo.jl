@@ -1,6 +1,6 @@
 # # Full Demo
 
-using AlgebraicRewriting, Catlab, AlgebraicPetri, DataMigrations
+using AlgebraicRewriting, Catlab, DataMigrations, AlgebraicPetri
 using Test
 
 
@@ -101,7 +101,7 @@ rule2 = Rule(@migration(SchRulel, SchGraph, begin
     l => begin
       v => src(e)
     end
-  end), yG)
+  end), yG);
 
 # We can also rewrite without a match (and let it pick an arbitrary match).
 
@@ -114,7 +114,8 @@ rule2 = Rule(@migration(SchRulel, SchGraph, begin
 rule_spo = Rule{:SPO}(l, r)  # (same data as before)
 
 @test length(get_matches(rule_spo, G)) == 4 # there are now four matches
-res = rewrite(rule_spo, G)
+m = get_matches(rule_spo, G)[1]
+res = rewrite_match(rule_spo, m)
 to_graphviz(res)
 @test is_isomorphic(res, path_graph(Graph, 3) ⊕ R)
 
@@ -127,19 +128,23 @@ to_graphviz(res)
 
 L = Graph(1)
 I = Graph(2)
-R = path_graph(Graph, 2)
+R = path_graph(Graph, 2);
 
 #=
-We can use automated homomorphism search to reduce the tedium of specifying data manually. In this case, there is a unique option.
+We can use automated homomorphism search to reduce the tedium of specifying data 
+manually. In this case, there is a unique option. In general, `homomorphism`
+will throw an error if there is *more* than one homomorphism.
 =#
 
-l = homomorphism(I, L)
+l = homomorphism(I, L);
 
 #=
-There are many constraints we can put on the search, such as being monic.
+There are many constraints we can put on the search, such as being monic. Here
+there are two monic homomorphisms (sending vertices 1 and 2 to (1,2) and (2,1)),
+so we add the keyword `any=true` to avoid throwing an error.
 =#
 
-r = homomorphism(I, R; monic=true)
+r = homomorphism(I, R; monic=true, any=true)
 
 rule_sqpo = Rule{:SqPO}(l, r) # same data as before)
 
@@ -154,56 +159,64 @@ to_graphviz(res; prog="neato")
 # # 4. PBPO+
 
 #=
-PBPO+ requires not merely a span but also additional data for L and K which can be thought of as type graphs. The graph G that we rewrite will be typed over the L' type graph to determine how it is rewritten. 
+PBPO+ requires a span just like the other kinds of rewriting.
 =#
 
 L = Graph(1)
-K = Graph(2)
-l = homomorphism(K, L)
-r = id(K)
+K = R = Graph(2)
+l, r = homomorphism(K,L), id(K);
 
-# We allow edges into and out of the matched vertex as well as edges 
-# between the vertices incident to the matched vertex 
-L′ = @acset Graph begin
-  V = 3
-  E = 6
-  src = [1, 1, 1, 2, 3, 3]
-  tgt = [1, 2, 3, 3, 3, 1]
-end
-tl = ACSetTransformation(L, L′; V=[2]) # 2 is the matched vertex
+# However, it also requires more data. The graph G that we rewrite will be typed *over* the L' type graph which controls how various parts of the context (not merely the matched pattern) are rewritten. 
+
+# 1 = root of the deep copy, 2 = children of #1, 3 = everything else 
+L′ = @acset Graph begin V=3;E=5;src=[1,2,3,3,3];tgt=[2,2,1,2,3] end
 to_graphviz(L′; node_labels=true)
 
-# The outneighbors of the matched vertex are duplicated (an edge connects the 
-# old ones to the new ones) and the matched vertex is duplicated. The new copy 
-# of the matched vertex points at the new ones. It does not have any inneighbors.
-
-K′ = @acset Graph begin
-  V = 5
-  E = 9
-  src = [1, 1, 1, 2, 3, 3, 3, 4, 5]
-  tgt = [1, 2, 3, 3, 3, 1, 5, 5, 5]
+tl = ACSetTransformation(L,L′;V=[1])
+K′ = @acset Graph begin V=5;E=9 ;
+  src=[1,2,3,3,4,3,5,3,3];tgt=[2,2,3,2,5,5,5,1,4] 
 end
-tk = ACSetTransformation(K, K′; V=[2, 4])
-to_graphviz(K′; node_labels=true)
+tk = ACSetTransformation(K,K′;V=[1,4])
+l′ = homomorphism(K′,L′; initial=(V=[1,2,3,1,2],));
 
-l′ = homomorphism(K′, L′; initial=(V=[1, 2, 3, 2, 3],))
-
-prule = PBPORule(l, r, tl, tk, l′)
-
-# Apply to an example vertex (#3) with two inneighbors and one outneighbor.
-G = @acset Graph begin
-  V = 4
-  E = 5
-  src = [1, 1, 2, 3, 4]
-  tgt = [2, 3, 3, 4, 4]
+"""Given a match L → G, compute what the typing map G → L' should be"""
+function get_adherence(m::ACSetTransformation) 
+  root, G, descendents  = only(collect(m[:V])), codom(m), Set()
+  queue = [root]
+  while !isempty(queue)
+    nxt = pop!(queue)
+    union!(descendents, outneighbors(G,nxt))
+    union!(queue, outneighbors(G,nxt))
+  end
+  return (V = map(parts(codom(m),:V)) do v_G 
+    if     v_G == root       return 1
+    elseif v_G ∈ descendents return 2
+    else                     return 3
+    end 
+  end,)
 end
+
+rule = PBPORule(l, r, tl, tk, l′; adherence=get_adherence);
+
+# Think of the following graph as a file system 
+
+G = @acset Graph begin V=8; E=8; 
+  src=[1,1,2,2,3,4,4,5]; tgt=[2,3,4,5,6,5,7,8] 
+end
+
 to_graphviz(G; node_labels=true)
 
-m = get_match(prule, G; initial=(V=[3],) => Dict())
+# Executing this rule (forcing the pattern to match at vertex 2) performs a 
+# "deepcopy" operation, copying vertex 2 and everything underneath it.
 
-res = rewrite_match(prule, m)
-# V1 is copied to V2. Outneighbor V5 (w/ loop) is copied to V6, creating an edge
-to_graphviz(res; node_labels=true)
+expected = @acset Graph begin V=13;E=14;
+  src=[7,7,7,1,1,3,3,4,2,2,10,10,11,8]; tgt=[1,2,8,3,4,5,4,6,10,11,12,11,13,9] 
+end
+
+@test is_isomorphic(expected, rewrite(rule, G; initial=(V=[2],)))
+
+to_graphviz(expected; node_labels=true)
+
 
 # # 5. Generalizing Graphs
 
@@ -213,7 +226,6 @@ Any data structure which implements the required functions we need can, in princ
 Here we'll do rewriting in graphs sliced over •⇆•, which is isomorphic to the category of (whole-grain) Petri nets, with States and Transitions.
 =#
 
-
 function graph_slice(s::Slice)
   h = s.slice
   V, E = collect.([h[:V], h[:E]])
@@ -222,10 +234,7 @@ function graph_slice(s::Slice)
   nS, nT, nI, nO = length.([S, T, I, O])
   findS, findT = [x -> findfirst(==(x), X) for X in [S, T]]
   to_graphviz(@acset AlgebraicPetri.PetriNet begin
-    S = nS
-    T = nT
-    I = nI
-    O = nO
+    S = nS; T = nT; I = nI; O = nO
     is = findS.(g[I, :src])
     it = findT.(g[I, :tgt])
     ot = findT.(g[O, :src])
@@ -236,18 +245,18 @@ end;
 # This is the graph we are slicing over.
 
 two = @acset Graph begin
-  V = 2
-  E = 2
-  src = [1, 2]
-  tgt = [2, 1]
+  V = 2; E = 2; src = [1, 2]; tgt = [2, 1]
 end
 
-# Define a rule which deletes a [T] -> S edge
+to_graphviz(two)
+
+# Define a rule which deletes a [T] -> S edge. Start with the pattern, L.
 
 L_ = path_graph(Graph, 2)
 L = Slice(ACSetTransformation(L_, two, V=[2, 1], E=[2])) # [T] ⟶ (S)
 graph_slice(L)
 
+# Then define I and R 
 I_ = Graph(1)
 I = Slice(ACSetTransformation(I_, two, V=[2])) # [T]
 R_ = Graph(2)
@@ -274,11 +283,13 @@ While the vast majority of functionality is focused on ACSets at the present mom
 #=
 We can construct commutative diagrams with certain edges left unspecified or marked with ∀ or ∃. If only one edge is left free, we can treat the diagram as a boolean function which tests whether the morphism makes the specified paths commute (or not commute). This generalizes positive/negative application conditions and lifting conditions, but because those are most common there are constructors AppCond and LiftCond to make these directly.
 
+```
          ∀ 
   [↻•]   →  ?
     ↓    ↗ ∃ ↓ 
   [↻•⟶•]  → [↻•⟶•⟵•↺]
-
+```
+`
 Every vertex with a loop also has a map to the vertex marked by the bottom map.
 =#
 
@@ -291,25 +302,19 @@ end
 
 v = homomorphism(t, looparr)
 loop_csp = @acset Graph begin
-  V = 3
-  E = 4
-  src = [1, 3, 1, 3]
-  tgt = [1, 3, 2, 2]
+  V = 3; E = 4; src = [1, 3, 1, 3]; tgt = [1, 3, 2, 2]
 end
-b = homomorphism(looparr, loop_csp; monic=true)
+b = homomorphism(looparr, loop_csp; initial=(V=[2,1],))
 constr = LiftCond(v, b)
 
-@test !apply_constraint(constr, homomorphism(t, loop_csp))
+@test !apply_constraint(constr, homomorphism(t, loop_csp; initial=(V=[1],)))
 @test apply_constraint(constr, b)
 
 # We can combining constraints with logical combinators.
 
 # match vertex iff it has 2 or 3 self loops
 one, two, three, four, five = [@acset(Graph, begin
-  V = 1
-  E = n
-  src = 1
-  tgt = 1
+  V = 1; E = n; src = 1; tgt = 1 
 end) for n in 1:5]
 
 c2 = AppCond(homomorphism(Graph(1), two); monic=true)         # PAC
@@ -343,16 +348,12 @@ L = @acset_colim yWG begin
 end
 I = WeightedGraph{Int}(2)
 R = @acset WeightedGraph{Int} begin
-  V = 2
-  E = 1
-  Weight = 1
-  src = 1
-  tgt = 2
-  weight = [AttrVar(1)]
+  V = 2; E = 1; Weight = 1
+  src = [1]; tgt = [2]; weight = [AttrVar(1)]
 end
 
-l = homomorphism(I, L; monic=true)
-r = homomorphism(I, R; monic=true)
+l = homomorphism(I, L; initial=(V=1:2,))
+r = homomorphism(I, R; initial=(V=1:2,))
 rule = Rule(l, r; monic=[:E], expr=Dict(:Weight => [xs -> xs[1] + xs[2]]))
 
 G = @acset WeightedGraph{Int} begin
@@ -363,12 +364,10 @@ G = @acset WeightedGraph{Int} begin
   weight = [10, 20, 100]
 end
 
-@test rewrite(rule, G) == @acset WeightedGraph{Int} begin
-  V = 1
-  E = 2
-  src = 1
-  tgt = 1
-  weight = [30, 100]
+m = get_matches(rule,G)[1]
+@test rewrite_match(rule, m) == @acset WeightedGraph{Int} begin
+  V = 1; E = 2
+  src = [1]; tgt = [1]; weight = [30, 100]
 end
 
 # # 8. Graph processes
@@ -381,7 +380,7 @@ via analyzing the colimit of all the partial maps induced by the rewrites.
 
 using AlgebraicRewriting.Processes: RWStep, find_deps
 
-G0, G1, G2, G3 = Graph.([0, 1, 2, 3])
+G0, G1, G2, G3 = Graph.([0, 1, 2, 3]);
 # Delete a node
 Rule1 = Span(create(G1), id(G0));
 # Merge two nodes
@@ -389,7 +388,7 @@ Rule2 = Span(id(G2), homomorphism(G2, G1));
 # Add a node
 Rule3 = Span(id(G0), create(G1))
 
-R1, R2, R3 = [Rule(l, r) for (l, r) in [Rule1, Rule2, Rule3]]
+R1, R2, R3 = [Rule(l, r) for (l, r) in [Rule1, Rule2, Rule3]];
 
 # # 9. Trajectory
 
@@ -397,32 +396,28 @@ R1, R2, R3 = [Rule(l, r) for (l, r) in [Rule1, Rule2, Rule3]]
 M1 = create(G2)
 CM1 = ACSetTransformation(G1, G3; V=[3])
 Pmap1 = Span(id(G2), ACSetTransformation(G2, G3; V=[1, 2]))
-RS1 = RWStep(Rule3, Pmap1, M1, CM1)
+RS1 = RWStep(Rule3, Pmap1, M1, CM1);
 
 # Step 2: merge node 2 and 3 to yield a G2
 M2 = ACSetTransformation(G2, G3; V=[2, 3])
 CM2 = ACSetTransformation(G1, G2; V=[2])
 Pmap2 = Span(id(G3), ACSetTransformation(G3, G2; V=[1, 2, 2]))
-RS2 = RWStep(Rule2, Pmap2, M2, CM2)
+RS2 = RWStep(Rule2, Pmap2, M2, CM2);
 
 # Step 3: delete vertex 1 
 M3 = ACSetTransformation(G1, G2; V=[1])
 CM3 = create(G1)
 Pmap3 = Span(ACSetTransformation(G1, G2; V=[2]), id(G1))
-RS3 = RWStep(Rule1, Pmap3, M3, CM3)
+RS3 = RWStep(Rule1, Pmap3, M3, CM3);
 
 
-steps = [RS1, RS2, RS3]
+steps = [RS1, RS2, RS3];
 
 g = find_deps(steps)
 to_graphviz(g; node_labels=true)
 
-expected = @acset Graph begin
-  V = 3
-  E = 1
-  src = 1
-  tgt = 2
-end
+# Confirm this what we expect
+expected = @acset Graph begin V = 3; E = 1; src = 1; tgt = 2 end
 @test expected == g
 
 # Interface that just uses rules and match morphisms:

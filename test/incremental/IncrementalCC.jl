@@ -13,7 +13,7 @@ G2 = Graph(2)
                                                                   #  • ⇉ •
 e, ee = path_graph.(Graph, 2:3)                                   #   ↘ ↙
 A = @acset Graph begin V=3; E=4; src=[1,1,1,2]; tgt=[2,2,3,3] end #    •
-A_rule = Rule(id(e), homomorphism(e, A));
+A_rule = Rule(id(e), homomorphism(e, A; initial=(E=[1],)));
 
 # Empty edge case
 #----------------
@@ -35,8 +35,8 @@ del, add = rewrite!(hset, A_rule, m)
 @test length.(match_vect(hset)) == [3,0,6]
 @test validate(hset)
 
-m = homomorphism(e, state(hset); monic=true)
-rewrite!(hset, A_rule)
+m = homomorphism(e, state(hset); initial=(V=1:2,E=[1]))
+rewrite!(hset, A_rule, m)
 @test validate(hset)
 @test length.(match_vect(hset)) == [3, 0, 6, 0, 8]
 @test !haskey(hset, 3=>7)
@@ -53,8 +53,8 @@ roundtrip = IncCCHomSet(IncSumHomSet(hset));
 #----------------
 tri = @acset Graph begin V=3;E=3;src=[1,1,2];tgt=[3,2,3]end
 X = @acset Graph begin V=2; E=2; src=[1,2]; tgt=[2,2] end
-omap = homomorphism(e, X)
-r = homomorphism(e, tri)
+omap = homomorphism(e, X; initial=(V=1:2,))
+r = homomorphism(e, tri; initial=(V=1:2,))
 hset = IncHomSet(ee, [r], X);
 addition!(hset, r, omap)
 @test validate(hset)
@@ -75,7 +75,8 @@ del = delete(Graph(1))
 mset = IncHomSet(Graph(1), [del], G2⊕T; nac=[del]);
 @test length(keys(mset)) == 2
 M_rule = Rule(id(Graph(1)), delete(Graph(1)); ac=[AppCond(del, false)])
-rewrite!(mset, M_rule)
+m = ACSetTransformation(Graph(1), G2⊕T; V=[1])
+rewrite!(mset, M_rule, m)
 @test length(keys(mset)) == 1
 rewrite!(mset, M_rule)
 @test length(keys(mset)) == 0
@@ -84,15 +85,15 @@ rewrite!(mset, M_rule)
 # Application conditions: NAC adding morphisms during deletion!
 #--------------------------------------------------------------
 del = homomorphism(⊕(Graph[fill(T, 2); Graph(1)]), 
-                   state(mset); monic=true) # delete one loop
+                   state(mset); initial=(V=1:3,)) # delete one loop
 deletion!(mset, del)
 @test length(keys(mset)) == 1
 del = homomorphism(⊕(Graph[T; G2]), 
-                   state(mset); monic=true) # delete another loop
+                   state(mset); initial=(V=1:3,)) # delete another loop
 deletion!(mset, del)
 @test length(keys(mset)) == 2
 
-del = homomorphism(Graph(3), state(mset); monic=true) # delete another loop
+del = homomorphism(Graph(3), state(mset); initial=(V=1:3,)) # delete another loop
 deletion!(mset, del)
 @test length(keys(mset)) == 3
 
@@ -101,7 +102,7 @@ deletion!(mset, del)
 edge_loop = @acset Graph begin V=2; E=2; src=[1,1]; tgt=[1,2] end
 to_edge_loop = homomorphism(e, edge_loop; monic=true)
 # rem edge, not if src has loop
-r = Rule(homomorphism(G2, e; monic=true), id(G2);
+r = Rule(homomorphism(G2, e; initial=(V=1:2,)), id(G2);
          ac=[AppCond(to_edge_loop, false; monic=true)]);
 
 mset = IncHomSet(r, edge_loop);
@@ -114,7 +115,7 @@ rewrite!(mset, r)
 # Application conditions: PAC removing morphisms during deletion!
 #----------------------------------------------------------------
 # Remove edge, only if src has loop (no monic constraint on PAC)
-r = Rule(homomorphism(G2, e; monic=true), id(G2);
+r = Rule(homomorphism(G2, e; initial=(V=1:2,)), id(G2);
          ac=[AppCond(to_edge_loop)]);
 mset = IncHomSet(r, edge_loop ⊕ e);
 m1, m2 = get_matches(r, state(mset)) # first one removes the loop

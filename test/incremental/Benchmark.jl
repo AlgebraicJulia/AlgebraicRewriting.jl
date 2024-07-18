@@ -21,10 +21,10 @@ while true
   I = rand(path_graph.(Graph, 2:4))
   NV=200
   start = erdos_renyi(Graph, NV, 2*NV)
-  l = homomorphism(I, L; monic=true)
-  r = homomorphism(I, R; monic=true)
+  l = homomorphism(I, L; monic=true, any=true)
+  r = homomorphism(I, R; monic=true, any=true)
   isnothing(r) && continue
-  m = homomorphism(I, start)
+  m = homomorphism(I, start; any=true)
   isnothing(m) && continue
   res = rewrite_match_maps(Rule(id(I), r), m);
   (pl, pr), rmap = get_pmap(:DPO, res), get_rmap(:DPO, res);
@@ -50,14 +50,14 @@ DDS(i::Int) = @acset DDS begin X=i; Φ=[rand(1:i) for _ in 1:i] end
 
 while true
   L, R, I, A, B = DDS.([5, 5, 5, 3, 3])
-  l1,l2,r1,r2 = hs = [homomorphism(x...; monic=true) for x in 
+  l1,l2,r1,r2 = hs = [homomorphism(x...; monic=true, any=true) for x in 
                       [(A,L),(A,I),(B,I),(B,R)]]
   all(!isnothing, hs) || continue
   (_, l), (r, _) = pushout(l1,l2), pushout(r1,r2)
   rand_rule = Rule(l, r)
 
   start, pattern = DDS(2000), DDS(5)
-  m = homomorphism(codom(l), start)
+  m = homomorphism(codom(l), start; any=true)
   (!isnothing(m) && isnothing(can_match(rand_rule, m))) || continue 
 
   res = rewrite_match_maps(rand_rule, m)

@@ -6,17 +6,21 @@ This is a demonstration of the game of life as an agent-based model.
 We start with importing some libraries.
 =#
 
-using AlgebraicRewriting
-using Catlab, Catlab.Graphs, Catlab.CategoricalAlgebra, Catlab.Theories
+using AlgebraicRewriting, Catlab
 import Catlab.Graphics: to_graphviz
 using Catlab.Graphics.Graphviz: Attributes, Statement, Node, Edge, Digraph
-using PrettyTables
-using Luxor
+using PrettyTables, Luxor
 
 #=
-The game of life has two rules: one which turns living things dead, and one that brings dead things to life. We model the terrain as a symmetric graph: cells are vertices. Neighboring cells have edges between them.
+The game of life has two rules: one which turns living things dead, and one that 
+brings dead things to life. We model the terrain as a symmetric graph: cells are 
+vertices. Neighboring cells have edges between them.
 
-Implementation wise, if we are going to update cells one at a time, we must keep track of two bits of information (the cell's living status for the *current* timestep and whether it will be alive in the *next* timestep). Thus we need helper rule to overwrite the "current" life status with the "next" life status at the end of each timestep.
+Implementation wise, if we are going to update cells one at a time, we must keep 
+track of two bits of information (the cell's living status for the *current* 
+timestep and whether it will be alive in the *next* timestep). Thus we need 
+helper rule to overwrite the "current" life status with the "next" life status 
+at the end of each timestep.
 =#
 
 # # Ontology
@@ -161,7 +165,7 @@ data migration, `F`.
 =#
 
 A = Life(1)
-view_life(homomorphism(F(A), init)) |> println
+view_life(homomorphism(F(A), init; any=true)) |> println
 
 #=
 We must also work with miniature game states that are *not* grids in order for 
@@ -244,7 +248,7 @@ rewrite rules.
 BirthP1 = living_neighbors(3) # must have 3 neighbors
 BirthN1 = living_neighbors(4) # forbid the cell to have 4 neighbors
 BirthN2 = Curr() # forbid the cell to be alive (i.e. it's currently dead)
-BP1, BN1, BN2 = homomorphism.(Ref(Life(1)), [BirthP1, BirthN1, BirthN2])
+BP1, BN1, BN2 = homomorphism.(Ref(Life(1)), [BirthP1, BirthN1, BirthN2]; initial=(V=[1],))
 bac = [AppCond(BP1; monic=true), AppCond.([BN1, BN2], false; monic=true)...]
 Birth = Rule(id(Life(1)), to_next(); ac=bac);
 
@@ -254,7 +258,7 @@ PersistR = @acset Life begin
 end
 PersistP1 = living_neighbors(2; alive=true)
 PersistN1 = living_neighbors(4; alive=true)
-DR, DP1, DN1 = homomorphism.(Ref(Curr()), [PersistR, PersistP1, PersistN1])
+DR, DP1, DN1 = homomorphism.(Ref(Curr()), [PersistR, PersistP1, PersistN1]; initial=(V=[1],))
 pac = [AppCond(DP1; monic=true), AppCond(DN1, false; monic=true)]
 Persist = Rule(id(Curr()), DR; ac=pac);
 

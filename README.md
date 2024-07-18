@@ -9,6 +9,10 @@ This package defines DPO, SPO, and SqPO for C-Sets, as described in
 [[Brown 2022](https://arxiv.org/abs/2111.03784)]. See the [documentation](https://algebraicjulia.github.io/AlgebraicRewriting.jl/dev/) for more details.
 
 
+To locally build the [documentation](https://algebraicjulia.github.io/AlgebraicRewriting.jl/dev) and the literate code examples, run the following in the command line:
+```
+julia --project=docs -e "using AlgebraicRewriting, LiveServer; servedocs(literate_dir=\"docs/literate\",skip_dir=\"docs/src/generated\")"
+```
 
 ## NOTE
 This library is currently under active development, and so is not yet at a

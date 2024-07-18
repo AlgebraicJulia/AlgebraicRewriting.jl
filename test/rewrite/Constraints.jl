@@ -50,10 +50,10 @@ Every vertex with a loop also has a map to the vertex marked by the bottom map.
 t = terminal(Graph)|>apex
 v = homomorphism(t, looparr)
 loop_csp = @acset Graph begin V=3;E=4; src=[1,3,1,3]; tgt=[1,3,2,2] end 
-b = homomorphism(looparr, loop_csp; monic=true)
+b = homomorphism(looparr, loop_csp; initial=(V=1:2,))
 constr = LiftCond(v, b)
 
-@test !apply_constraint(constr,homomorphism(t, loop_csp))
+@test !apply_constraint(constr,homomorphism(t, loop_csp; initial=(V=[1],)))
 @test apply_constraint(constr,b)
 
 
@@ -68,8 +68,8 @@ Every vertex mapped into the leftmost vertex must also have an outgoing edge to
 a vertex that is is mapped into the middle vertex.
 """
 
-constr = LiftCond(homomorphism(Graph(1),p2), 
-                  homomorphism(p2, loop_csp; monic=true))
+constr = LiftCond(ACSetTransformation(Graph(1),p2; V=[1]), 
+                  homomorphism(p2, loop_csp; initial=(V=[1,2],)))
 
 G = @acset Graph begin V=3; E=3; src=[1,1,3]; tgt=[1,2,3] end
 h1,h2,h3,h4 = homomorphisms(G, loop_csp; initial=(V=Dict(1=>1),))
