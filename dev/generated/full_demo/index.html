@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/><title>Full Demo · AlgebraicRewriting.jl</title><meta name="title" content="Full Demo · AlgebraicRewriting.jl"/><meta property="og:title" content="Full Demo · AlgebraicRewriting.jl"/><meta property="twitter:title" content="Full Demo · AlgebraicRewriting.jl"/><meta name="description" content="Documentation for AlgebraicRewriting.jl."/><meta property="og:description" content="Documentation for AlgebraicRewriting.jl."/><meta property="twitter:description" content="Documentation for AlgebraicRewriting.jl."/><script data-outdated-warner src="../../assets/warner.js"></script><link href="https://cdnjs.cloudflare.com/ajax/libs/lato-font/3.0.0/css/lato-font.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/juliamono/0.050/juliamono.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/fontawesome.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/solid.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/brands.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.8/katex.min.css" rel="stylesheet" type="text/css"/><script>documenterBaseURL="../.."</script><script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.6/require.min.js" data-main="../../assets/documenter.js"></script><script src="../../search_index.js"></script><script src="../../siteinfo.js"></script><script src="../../../versions.js"></script><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/catppuccin-mocha.css" data-theme-name="catppuccin-mocha"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/catppuccin-macchiato.css" data-theme-name="catppuccin-macchiato"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/catppuccin-frappe.css" data-theme-name="catppuccin-frappe"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/catppuccin-latte.css" data-theme-name="catppuccin-latte"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/documenter-dark.css" data-theme-name="documenter-dark" data-theme-primary-dark/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/documenter-light.css" data-theme-name="documenter-light" data-theme-primary/><script src="../../assets/themeswap.js"></script></head><body><div id="documenter"><nav class="docs-sidebar"><a class="docs-logo" href="../../"><img src="../../assets/logo.png" alt="AlgebraicRewriting.jl logo"/></a><div class="docs-package-name"><span class="docs-autofit"><a href="../../">AlgebraicRewriting.jl</a></span></div><button class="docs-search-query input is-rounded is-small is-clickable my-2 mx-auto py-1 px-2" id="documenter-search-query">Search docs (Ctrl + /)</button><ul class="docs-menu"><li><a class="tocitem" href="../../">AlgebraicRewriting.jl</a></li><li><span class="tocitem">Examples</span><ul><li class="is-active"><a class="tocitem" href>Full Demo</a><ul class="internal"><li class="toplevel"><a class="tocitem" href="#1.-DPO"><span>1. DPO</span></a></li><li class="toplevel"><a class="tocitem" href="#2.-SPO"><span>2. SPO</span></a></li><li class="toplevel"><a class="tocitem" href="#3.-SqPO"><span>3. SqPO</span></a></li><li class="toplevel"><a class="tocitem" href="#4.-PBPO"><span>4. PBPO+</span></a></li><li class="toplevel"><a class="tocitem" href="#5.-Generalizing-Graphs"><span>5. Generalizing Graphs</span></a></li><li class="toplevel"><a class="tocitem" href="#6.-Application-conditions"><span>6. Application conditions</span></a></li><li class="toplevel"><a class="tocitem" href="#7.-Attribute-variables"><span>7. Attribute variables</span></a></li><li class="toplevel"><a class="tocitem" href="#8.-Graph-processes"><span>8. Graph processes</span></a></li><li class="toplevel"><a class="tocitem" href="#9.-Trajectory"><span>9. Trajectory</span></a></li></ul></li><li><a class="tocitem" href="../game_of_life/">Conway&#39;s Game of Life</a></li><li><a class="tocitem" href="../lotka_volterra/">Lotka Volterra</a></li><li><a class="tocitem" href="../ptg_simple/">Slice Bread</a></li></ul></li><li><a class="tocitem" href="../../api/">Library Reference</a></li></ul><div class="docs-version-selector field has-addons"><div class="control"><span class="docs-label button is-static is-size-7">Version</span></div><div class="docs-selector control is-expanded"><div class="select is-fullwidth is-size-7"><select id="documenter-version-selector"></select></div></div></div></nav><div class="docs-main"><header class="docs-navbar"><a class="docs-sidebar-button docs-navbar-link fa-solid fa-bars is-hidden-desktop" id="documenter-sidebar-button" href="#"></a><nav class="breadcrumb"><ul class="is-hidden-mobile"><li><a class="is-disabled">Examples</a></li><li class="is-active"><a href>Full Demo</a></li></ul><ul class="is-hidden-tablet"><li class="is-active"><a href>Full Demo</a></li></ul></nav><div class="docs-right"><a class="docs-navbar-link" href="https://github.com/AlgebraicJulia/AlgebraicRewriting.jl" title="View the repository on GitHub"><span class="docs-icon fa-brands"></span><span class="docs-label is-hidden-touch">GitHub</span></a><a class="docs-navbar-link" href="https://github.com/AlgebraicJulia/AlgebraicRewriting.jl/blob/main/docs/literate/full_demo.jl" title="Edit source on GitHub"><span class="docs-icon fa-solid"></span></a><a class="docs-settings-button docs-navbar-link fa-solid fa-gear" id="documenter-settings-button" href="#" title="Settings"></a><a class="docs-article-toggle-button fa-solid fa-chevron-up" id="documenter-article-toggle-button" href="javascript:;" title="Collapse all docstrings"></a></div></header><article class="content" id="documenter-page"><h1 id="Full-Demo"><a class="docs-heading-anchor" href="#Full-Demo">Full Demo</a><a id="Full-Demo-1"></a><a class="docs-heading-anchor-permalink" href="#Full-Demo" title="Permalink"></a></h1><pre><code class="language-julia hljs">using AlgebraicRewriting, Catlab, AlgebraicPetri, DataMigrations
+<html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/><title>Full Demo · AlgebraicRewriting.jl</title><meta name="title" content="Full Demo · AlgebraicRewriting.jl"/><meta property="og:title" content="Full Demo · AlgebraicRewriting.jl"/><meta property="twitter:title" content="Full Demo · AlgebraicRewriting.jl"/><meta name="description" content="Documentation for AlgebraicRewriting.jl."/><meta property="og:description" content="Documentation for AlgebraicRewriting.jl."/><meta property="twitter:description" content="Documentation for AlgebraicRewriting.jl."/><script data-outdated-warner src="../../assets/warner.js"></script><link href="https://cdnjs.cloudflare.com/ajax/libs/lato-font/3.0.0/css/lato-font.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/juliamono/0.050/juliamono.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/fontawesome.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/solid.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/brands.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.8/katex.min.css" rel="stylesheet" type="text/css"/><script>documenterBaseURL="../.."</script><script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.6/require.min.js" data-main="../../assets/documenter.js"></script><script src="../../search_index.js"></script><script src="../../siteinfo.js"></script><script src="../../../versions.js"></script><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/catppuccin-mocha.css" data-theme-name="catppuccin-mocha"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/catppuccin-macchiato.css" data-theme-name="catppuccin-macchiato"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/catppuccin-frappe.css" data-theme-name="catppuccin-frappe"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/catppuccin-latte.css" data-theme-name="catppuccin-latte"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/documenter-dark.css" data-theme-name="documenter-dark" data-theme-primary-dark/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/documenter-light.css" data-theme-name="documenter-light" data-theme-primary/><script src="../../assets/themeswap.js"></script></head><body><div id="documenter"><nav class="docs-sidebar"><a class="docs-logo" href="../../"><img src="../../assets/logo.png" alt="AlgebraicRewriting.jl logo"/></a><div class="docs-package-name"><span class="docs-autofit"><a href="../../">AlgebraicRewriting.jl</a></span></div><button class="docs-search-query input is-rounded is-small is-clickable my-2 mx-auto py-1 px-2" id="documenter-search-query">Search docs (Ctrl + /)</button><ul class="docs-menu"><li><a class="tocitem" href="../../">AlgebraicRewriting.jl</a></li><li><span class="tocitem">Examples</span><ul><li class="is-active"><a class="tocitem" href>Full Demo</a><ul class="internal"><li class="toplevel"><a class="tocitem" href="#1.-DPO"><span>1. DPO</span></a></li><li class="toplevel"><a class="tocitem" href="#2.-SPO"><span>2. SPO</span></a></li><li class="toplevel"><a class="tocitem" href="#3.-SqPO"><span>3. SqPO</span></a></li><li class="toplevel"><a class="tocitem" href="#4.-PBPO"><span>4. PBPO+</span></a></li><li class="toplevel"><a class="tocitem" href="#5.-Generalizing-Graphs"><span>5. Generalizing Graphs</span></a></li><li class="toplevel"><a class="tocitem" href="#6.-Application-conditions"><span>6. Application conditions</span></a></li><li class="toplevel"><a class="tocitem" href="#7.-Attribute-variables"><span>7. Attribute variables</span></a></li><li class="toplevel"><a class="tocitem" href="#8.-Graph-processes"><span>8. Graph processes</span></a></li><li class="toplevel"><a class="tocitem" href="#9.-Trajectory"><span>9. Trajectory</span></a></li></ul></li><li><a class="tocitem" href="../game_of_life/">Conway&#39;s Game of Life</a></li><li><a class="tocitem" href="../lotka_volterra/">Lotka Volterra</a></li><li><a class="tocitem" href="../ptg_simple/">Slice Bread</a></li></ul></li><li><a class="tocitem" href="../../api/">Library Reference</a></li></ul><div class="docs-version-selector field has-addons"><div class="control"><span class="docs-label button is-static is-size-7">Version</span></div><div class="docs-selector control is-expanded"><div class="select is-fullwidth is-size-7"><select id="documenter-version-selector"></select></div></div></div></nav><div class="docs-main"><header class="docs-navbar"><a class="docs-sidebar-button docs-navbar-link fa-solid fa-bars is-hidden-desktop" id="documenter-sidebar-button" href="#"></a><nav class="breadcrumb"><ul class="is-hidden-mobile"><li><a class="is-disabled">Examples</a></li><li class="is-active"><a href>Full Demo</a></li></ul><ul class="is-hidden-tablet"><li class="is-active"><a href>Full Demo</a></li></ul></nav><div class="docs-right"><a class="docs-navbar-link" href="https://github.com/AlgebraicJulia/AlgebraicRewriting.jl" title="View the repository on GitHub"><span class="docs-icon fa-brands"></span><span class="docs-label is-hidden-touch">GitHub</span></a><a class="docs-navbar-link" href="https://github.com/AlgebraicJulia/AlgebraicRewriting.jl/blob/main/docs/literate/full_demo.jl" title="Edit source on GitHub"><span class="docs-icon fa-solid"></span></a><a class="docs-settings-button docs-navbar-link fa-solid fa-gear" id="documenter-settings-button" href="#" title="Settings"></a><a class="docs-article-toggle-button fa-solid fa-chevron-up" id="documenter-article-toggle-button" href="javascript:;" title="Collapse all docstrings"></a></div></header><article class="content" id="documenter-page"><h1 id="Full-Demo"><a class="docs-heading-anchor" href="#Full-Demo">Full Demo</a><a id="Full-Demo-1"></a><a class="docs-heading-anchor-permalink" href="#Full-Demo" title="Permalink"></a></h1><pre><code class="language-julia hljs">using AlgebraicRewriting, Catlab, DataMigrations, AlgebraicPetri
 using Test</code></pre><p>This is a self-contained walkthrough of the main features of AlgebraicRewriting. This is a regular julia file that can be run interactively.</p><p>Importantly:</p><ul><li>use Julia 1.10</li><li>activate the environment in AlgebraicRewriting.jl/docs</li><li>check that graphviz is installed locally (test via &quot;which dot&quot; in terminal)</li></ul><p>Table of contents:</p><ol><li>DPO</li><li>SPO</li><li>SqPO</li><li>PBPO+</li><li>Generalizing graphs: C-Sets, Slices, etc.</li><li>Application conditions</li><li>Attribute variables</li><li>Graph processes</li><li>General purpose programming / agent-based modeling</li></ol><p>a. Rewrite and Control Flow boxes   b. Agents and Query boxes   c. Data migration   d. Monadic output</p><p>The VS Code REPL makes it easy to have figures automatically pop up in a side window, so this is the preferred way of interacting with this file. However, if that is not available, your options are to 1.) copy-paste the code into a Jupyter notebook 2.) use the following <code>to_svg</code> function, which will write a graphviz output to     a SVG file and can be viewed in a browser. The Julia pipe syntax |&gt; allows     you to easily append &quot; |&gt; to_svg &quot; to a line with a visualization.</p><pre><code class="language-julia hljs">to_svg(G, filename=&quot;tmp.svg&quot;) =
   open(filename, &quot;w&quot;) do io
     show(io, &quot;image/svg+xml&quot;, G)
@@ -142,33 +142,15 @@ rule2 = Rule(@migration(SchRulel, SchGraph, begin
     l =&gt; begin
       v =&gt; src(e)
     end
-  end), yG)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">Rule{:DPO}(ACSetTransformation((V = FinFunction([2], 1, 2), E = FinFunction(Int64[], 0, 1)), Catlab.Graphs.BasicGraphs.Graph {V:1, E:0}, Catlab.Graphs.BasicGraphs.Graph {V:2, E:1}), ACSetTransformation((V = FinFunction([1], 1, 1), E = FinFunction(Int64[], 0, 1)), Catlab.Graphs.BasicGraphs.Graph {V:1, E:0}, Catlab.Graphs.BasicGraphs.Graph {V:1, E:1}), Constraint[], Symbol[], Dict{Symbol, Dict{Int64, Union{Nothing, Function}}}())</code></pre><p>We can also rewrite without a match (and let it pick an arbitrary match).</p><pre><code class="language-julia hljs">@test res == rewrite(rule, G)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi"><span class="sgr32"><span class="sgr1">Test Passed</span></span></code></pre><h1 id="2.-SPO"><a class="docs-heading-anchor" href="#2.-SPO">2. SPO</a><a id="2.-SPO-1"></a><a class="docs-heading-anchor-permalink" href="#2.-SPO" title="Permalink"></a></h1><p>Rules are by default DPO, but if we specify a type parameter we can change the semantics</p><pre><code class="language-julia hljs">rule_spo = Rule{:SPO}(l, r)  # (same data as before)
+  end), yG);</code></pre><p>We can also rewrite without a match (and let it pick an arbitrary match).</p><pre><code class="language-julia hljs">@test res == rewrite(rule, G)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi"><span class="sgr32"><span class="sgr1">Test Passed</span></span></code></pre><h1 id="2.-SPO"><a class="docs-heading-anchor" href="#2.-SPO">2. SPO</a><a id="2.-SPO-1"></a><a class="docs-heading-anchor-permalink" href="#2.-SPO" title="Permalink"></a></h1><p>Rules are by default DPO, but if we specify a type parameter we can change the semantics</p><pre><code class="language-julia hljs">rule_spo = Rule{:SPO}(l, r)  # (same data as before)
 
 @test length(get_matches(rule_spo, G)) == 4 # there are now four matches
-res = rewrite(rule_spo, G)
+m = get_matches(rule_spo, G)[1]
+res = rewrite_match(rule_spo, m)
 to_graphviz(res)
 @test is_isomorphic(res, path_graph(Graph, 3) ⊕ R)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi"><span class="sgr32"><span class="sgr1">Test Passed</span></span></code></pre><p><strong>Note</strong>: ⊕ and ⊗ are shorthand for (co)products <em>Tip: Julia lets you easily write unicode symbols via &quot;\&quot; followed by a LaTeX name, then hit &quot;Tab&quot; to convert the symbol</em></p><h1 id="3.-SqPO"><a class="docs-heading-anchor" href="#3.-SqPO">3. SqPO</a><a id="3.-SqPO-1"></a><a class="docs-heading-anchor-permalink" href="#3.-SqPO" title="Permalink"></a></h1><p>If we duplicate a vertex with an incident edge, it will duplicate the edge</p><pre><code class="language-julia hljs">L = Graph(1)
 I = Graph(2)
-R = path_graph(Graph, 2)</code></pre><div class="c-set">
-<span class="c-set-summary">Catlab.Graphs.BasicGraphs.Graph {V:2, E:1}</span>
-<table>
-  <thead>
-    <tr class = "header headerLastRow">
-      <th class = "rowLabel" style = "font-weight: bold; text-align: right;">E</th>
-      <th style = "text-align: right;">src</th>
-      <th style = "text-align: right;">tgt</th>
-    </tr>
-  </thead>
-  <tbody>
-    <tr>
-      <td class = "rowLabel" style = "font-weight: bold; text-align: right;">1</td>
-      <td style = "text-align: right;">1</td>
-      <td style = "text-align: right;">2</td>
-    </tr>
-  </tbody>
-</table>
-</div>
-<p>We can use automated homomorphism search to reduce the tedium of specifying data manually. In this case, there is a unique option.</p><pre><code class="language-julia hljs">l = homomorphism(I, L)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">ACSetTransformation((V = FinFunction([1, 1], 2, 1), E = FinFunction(Int64[], 0, 0)), Catlab.Graphs.BasicGraphs.Graph {V:2, E:0}, Catlab.Graphs.BasicGraphs.Graph {V:1, E:0})</code></pre><p>There are many constraints we can put on the search, such as being monic.</p><pre><code class="language-julia hljs">r = homomorphism(I, R; monic=true)
+R = path_graph(Graph, 2);</code></pre><p>We can use automated homomorphism search to reduce the tedium of specifying data manually. In this case, there is a unique option. In general, <code>homomorphism</code> will throw an error if there is <em>more</em> than one homomorphism.</p><pre><code class="language-julia hljs">l = homomorphism(I, L);</code></pre><p>There are many constraints we can put on the search, such as being monic. Here there are two monic homomorphisms (sending vertices 1 and 2 to (1,2) and (2,1)), so we add the keyword <code>any=true</code> to avoid throwing an error.</p><pre><code class="language-julia hljs">r = homomorphism(I, R; monic=true, any=true)
 
 rule_sqpo = Rule{:SqPO}(l, r) # same data as before)
 
@@ -292,252 +274,326 @@ to_graphviz(res; prog=&quot;neato&quot;)</code></pre><img src='data:image/svg+xm
 </g>
 </g>
 </svg>
-'/><h1 id="4.-PBPO"><a class="docs-heading-anchor" href="#4.-PBPO">4. PBPO+</a><a id="4.-PBPO-1"></a><a class="docs-heading-anchor-permalink" href="#4.-PBPO" title="Permalink"></a></h1><p>PBPO+ requires not merely a span but also additional data for L and K which can be thought of as type graphs. The graph G that we rewrite will be typed over the L&#39; type graph to determine how it is rewritten.</p><pre><code class="language-julia hljs">L = Graph(1)
-K = Graph(2)
-l = homomorphism(K, L)
-r = id(K)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">ACSetTransformation((V = id(FinSet(2)), E = id(FinSet(0))), Catlab.Graphs.BasicGraphs.Graph {V:2, E:0}, Catlab.Graphs.BasicGraphs.Graph {V:2, E:0})</code></pre><p>We allow edges into and out of the matched vertex as well as edges between the vertices incident to the matched vertex</p><pre><code class="language-julia hljs">L′ = @acset Graph begin
-  V = 3
-  E = 6
-  src = [1, 1, 1, 2, 3, 3]
-  tgt = [1, 2, 3, 3, 3, 1]
+'/><h1 id="4.-PBPO"><a class="docs-heading-anchor" href="#4.-PBPO">4. PBPO+</a><a id="4.-PBPO-1"></a><a class="docs-heading-anchor-permalink" href="#4.-PBPO" title="Permalink"></a></h1><p>PBPO+ requires a span just like the other kinds of rewriting.</p><pre><code class="language-julia hljs">L = Graph(1)
+K = R = Graph(2)
+l, r = homomorphism(K,L), id(K);</code></pre><p>However, it also requires more data. The graph G that we rewrite will be typed <em>over</em> the L&#39; type graph which controls how various parts of the context (not merely the matched pattern) are rewritten.</p><p>1 = root of the deep copy, 2 = children of #1, 3 = everything else</p><pre><code class="language-julia hljs">L′ = @acset Graph begin V=3;E=5;src=[1,2,3,3,3];tgt=[2,2,1,2,3] end
+to_graphviz(L′; node_labels=true)
+
+tl = ACSetTransformation(L,L′;V=[1])
+K′ = @acset Graph begin V=5;E=9 ;
+  src=[1,2,3,3,4,3,5,3,3];tgt=[2,2,3,2,5,5,5,1,4]
 end
-tl = ACSetTransformation(L, L′; V=[2]) # 2 is the matched vertex
-to_graphviz(L′; node_labels=true)</code></pre><img src='data:image/svg+xml;utf-8,<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+tk = ACSetTransformation(K,K′;V=[1,4])
+l′ = homomorphism(K′,L′; initial=(V=[1,2,3,1,2],));
+
+&quot;&quot;&quot;Given a match L → G, compute what the typing map G → L&#39; should be&quot;&quot;&quot;
+function get_adherence(m::ACSetTransformation)
+  root, G, descendents  = only(collect(m[:V])), codom(m), Set()
+  queue = [root]
+  while !isempty(queue)
+    nxt = pop!(queue)
+    union!(descendents, outneighbors(G,nxt))
+    union!(queue, outneighbors(G,nxt))
+  end
+  return (V = map(parts(codom(m),:V)) do v_G
+    if     v_G == root       return 1
+    elseif v_G ∈ descendents return 2
+    else                     return 3
+    end
+  end,)
+end
+
+rule = PBPORule(l, r, tl, tk, l′; adherence=get_adherence);</code></pre><p>Think of the following graph as a file system</p><pre><code class="language-julia hljs">G = @acset Graph begin V=8; E=8;
+  src=[1,1,2,2,3,4,4,5]; tgt=[2,3,4,5,6,5,7,8]
+end
+
+to_graphviz(G; node_labels=true)</code></pre><img src='data:image/svg+xml;utf-8,<?xml version="1.0" encoding="UTF-8" standalone="no"?>
 <!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN"
  "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
 <!-- Generated by graphviz version 2.43.0 (0)
  -->
 <!-- Title: G Pages: 1 -->
-<svg width="144pt" height="77pt"
- viewBox="0.00 0.00 144.03 77.21" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
-<g id="graph0" class="graph" transform="scale(1 1) rotate(0) translate(4 73.21)">
+<svg width="258pt" height="107pt"
+ viewBox="0.00 0.00 258.07 107.21" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+<g id="graph0" class="graph" transform="scale(1 1) rotate(0) translate(4 103.21)">
 <title>G</title>
-<polygon fill="white" stroke="transparent" points="-4,4 -4,-73.21 140.03,-73.21 140.03,4 -4,4"/>
+<polygon fill="white" stroke="transparent" points="-4,4 -4,-103.21 254.07,-103.21 254.07,4 -4,4"/>
 <!-- n1 -->
 <g id="node1" class="node">
 <title>n1</title>
-<ellipse fill="none" stroke="black" cx="10.67" cy="-10.61" rx="10.71" ry="10.71"/>
-<text text-anchor="middle" x="10.67" y="-6.91" font-family="Times,serif" font-size="14.00">1</text>
-</g>
-<!-- n1&%2345;&gt;n1 -->
-<g id="edge1" class="edge">
-<title>n1&%2345;&gt;n1</title>
-<path fill="none" stroke="black" d="M3.13,-18.51C-2.56,-28.03 -0.05,-39.21 10.67,-39.21 19.54,-39.21 22.79,-31.55 20.41,-23.5"/>
-<polygon fill="black" stroke="black" points="21.83,-22.38 18.2,-18.51 18.63,-23.79 21.83,-22.38"/>
+<ellipse fill="none" stroke="black" cx="10.61" cy="-29.61" rx="10.71" ry="10.71"/>
+<text text-anchor="middle" x="10.61" y="-25.91" font-family="Times,serif" font-size="14.00">1</text>
 </g>
 <!-- n2 -->
 <g id="node2" class="node">
 <title>n2</title>
-<ellipse fill="none" stroke="black" cx="67.88" cy="-58.61" rx="10.71" ry="10.71"/>
-<text text-anchor="middle" x="67.88" y="-54.91" font-family="Times,serif" font-size="14.00">2</text>
+<ellipse fill="none" stroke="black" cx="67.82" cy="-49.61" rx="10.71" ry="10.71"/>
+<text text-anchor="middle" x="67.82" y="-45.91" font-family="Times,serif" font-size="14.00">2</text>
 </g>
 <!-- n1&%2345;&gt;n2 -->
-<g id="edge2" class="edge">
+<g id="edge1" class="edge">
 <title>n1&%2345;&gt;n2</title>
-<path fill="none" stroke="black" d="M19.34,-17.28C28.66,-25.38 44.45,-39.1 55.25,-48.5"/>
-<polygon fill="black" stroke="black" points="54.35,-50.03 59.27,-51.99 56.64,-47.39 54.35,-50.03"/>
+<path fill="none" stroke="black" d="M20.72,-32.91C29.38,-36.05 42.53,-40.81 52.58,-44.45"/>
+<polygon fill="black" stroke="black" points="52.21,-46.17 57.5,-46.23 53.4,-42.88 52.21,-46.17"/>
 </g>
 <!-- n3 -->
 <g id="node3" class="node">
 <title>n3</title>
-<ellipse fill="none" stroke="black" cx="125.09" cy="-10.61" rx="10.71" ry="10.71"/>
-<text text-anchor="middle" x="125.09" y="-6.91" font-family="Times,serif" font-size="14.00">3</text>
+<ellipse fill="none" stroke="black" cx="67.82" cy="-10.61" rx="10.71" ry="10.71"/>
+<text text-anchor="middle" x="67.82" y="-6.91" font-family="Times,serif" font-size="14.00">3</text>
 </g>
 <!-- n1&%2345;&gt;n3 -->
-<g id="edge3" class="edge">
-<title>n1&%2345;&gt;n3</title>
-<path fill="none" stroke="black" d="M20.87,-6.69C40.48,-3.18 86.52,-2.93 109.92,-5.94"/>
-<polygon fill="black" stroke="black" points="109.87,-7.7 115.08,-6.73 110.4,-4.24 109.87,-7.7"/>
-</g>
-<!-- n2&%2345;&gt;n3 -->
-<g id="edge4" class="edge">
-<title>n2&%2345;&gt;n3</title>
-<path fill="none" stroke="black" d="M76.56,-51.93C85.87,-43.84 101.66,-30.11 112.47,-20.71"/>
-<polygon fill="black" stroke="black" points="113.86,-21.83 116.48,-17.22 111.56,-19.18 113.86,-21.83"/>
-</g>
-<!-- n3&%2345;&gt;n1 -->
-<g id="edge6" class="edge">
-<title>n3&%2345;&gt;n1</title>
-<path fill="none" stroke="black" d="M115.08,-14.48C95.63,-18.02 49.6,-18.29 26.07,-15.3"/>
-<polygon fill="black" stroke="black" points="26.07,-13.53 20.87,-14.52 25.55,-16.99 26.07,-13.53"/>
-</g>
-<!-- n3&%2345;&gt;n3 -->
-<g id="edge5" class="edge">
-<title>n3&%2345;&gt;n3</title>
-<path fill="none" stroke="black" d="M117.56,-18.51C111.86,-28.03 114.37,-39.21 125.09,-39.21 133.97,-39.21 137.22,-31.55 134.84,-23.5"/>
-<polygon fill="black" stroke="black" points="136.25,-22.38 132.63,-18.51 133.05,-23.79 136.25,-22.38"/>
-</g>
-</g>
-</svg>
-'/><p>The outneighbors of the matched vertex are duplicated (an edge connects the old ones to the new ones) and the matched vertex is duplicated. The new copy of the matched vertex points at the new ones. It does not have any inneighbors.</p><pre><code class="language-julia hljs">K′ = @acset Graph begin
-  V = 5
-  E = 9
-  src = [1, 1, 1, 2, 3, 3, 3, 4, 5]
-  tgt = [1, 2, 3, 3, 3, 1, 5, 5, 5]
-end
-tk = ACSetTransformation(K, K′; V=[2, 4])
-to_graphviz(K′; node_labels=true)
-
-l′ = homomorphism(K′, L′; initial=(V=[1, 2, 3, 2, 3],))
-
-prule = PBPORule(l, r, tl, tk, l′)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">PBPORule(ACSetTransformation((V = FinFunction([1, 1], 2, 1), E = FinFunction(Int64[], 0, 0)), Catlab.Graphs.BasicGraphs.Graph {V:2, E:0}, Catlab.Graphs.BasicGraphs.Graph {V:1, E:0}), ACSetTransformation((V = id(FinSet(2)), E = id(FinSet(0))), Catlab.Graphs.BasicGraphs.Graph {V:2, E:0}, Catlab.Graphs.BasicGraphs.Graph {V:2, E:0}), ACSetTransformation((V = FinFunction([2], 1, 3), E = FinFunction(Int64[], 0, 6)), Catlab.Graphs.BasicGraphs.Graph {V:1, E:0}, Catlab.Graphs.BasicGraphs.Graph {V:3, E:6}), ACSetTransformation((V = FinFunction([2, 4], 2, 5), E = FinFunction(Int64[], 0, 9)), Catlab.Graphs.BasicGraphs.Graph {V:2, E:0}, Catlab.Graphs.BasicGraphs.Graph {V:5, E:9}), ACSetTransformation((V = FinFunction([1, 2, 3, 2, 3], 5, 3), E = FinFunction([1, 2, 3, 4, 5, 6, 5, 4, 5], 9, 6)), Catlab.Graphs.BasicGraphs.Graph {V:5, E:9}, Catlab.Graphs.BasicGraphs.Graph {V:3, E:6}), false, Constraint[], Constraint[], Dict{Any, Any}(), Dict{Any, Any}(), nothing)</code></pre><p>Apply to an example vertex (#3) with two inneighbors and one outneighbor.</p><pre><code class="language-julia hljs">G = @acset Graph begin
-  V = 4
-  E = 5
-  src = [1, 1, 2, 3, 4]
-  tgt = [2, 3, 3, 4, 4]
-end
-to_graphviz(G; node_labels=true)
-
-m = get_match(prule, G; initial=(V=[3],) =&gt; Dict())
-
-res = rewrite_match(prule, m)</code></pre><div class="c-set">
-<span class="c-set-summary">Catlab.Graphs.BasicGraphs.Graph {V:6, E:8}</span>
-<table>
-  <thead>
-    <tr class = "header headerLastRow">
-      <th class = "rowLabel" style = "font-weight: bold; text-align: right;">E</th>
-      <th style = "text-align: right;">src</th>
-      <th style = "text-align: right;">tgt</th>
-    </tr>
-  </thead>
-  <tbody>
-    <tr>
-      <td class = "rowLabel" style = "font-weight: bold; text-align: right;">1</td>
-      <td style = "text-align: right;">3</td>
-      <td style = "text-align: right;">4</td>
-    </tr>
-    <tr>
-      <td class = "rowLabel" style = "font-weight: bold; text-align: right;">2</td>
-      <td style = "text-align: right;">3</td>
-      <td style = "text-align: right;">1</td>
-    </tr>
-    <tr>
-      <td class = "rowLabel" style = "font-weight: bold; text-align: right;">3</td>
-      <td style = "text-align: right;">4</td>
-      <td style = "text-align: right;">1</td>
-    </tr>
-    <tr>
-      <td class = "rowLabel" style = "font-weight: bold; text-align: right;">4</td>
-      <td style = "text-align: right;">1</td>
-      <td style = "text-align: right;">5</td>
-    </tr>
-    <tr>
-      <td class = "rowLabel" style = "font-weight: bold; text-align: right;">5</td>
-      <td style = "text-align: right;">5</td>
-      <td style = "text-align: right;">5</td>
-    </tr>
-    <tr>
-      <td class = "rowLabel" style = "font-weight: bold; text-align: right;">6</td>
-      <td style = "text-align: right;">5</td>
-      <td style = "text-align: right;">6</td>
-    </tr>
-    <tr>
-      <td class = "rowLabel" style = "font-weight: bold; text-align: right;">7</td>
-      <td style = "text-align: right;">2</td>
-      <td style = "text-align: right;">6</td>
-    </tr>
-    <tr>
-      <td class = "rowLabel" style = "font-weight: bold; text-align: right;">8</td>
-      <td style = "text-align: right;">6</td>
-      <td style = "text-align: right;">6</td>
-    </tr>
-  </tbody>
-</table>
-</div>
-<p>V1 is copied to V2. Outneighbor V5 (w/ loop) is copied to V6, creating an edge</p><pre><code class="language-julia hljs">to_graphviz(res; node_labels=true)</code></pre><img src='data:image/svg+xml;utf-8,<?xml version="1.0" encoding="UTF-8" standalone="no"?>
-<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN"
- "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
-<!-- Generated by graphviz version 2.43.0 (0)
- -->
-<!-- Title: G Pages: 1 -->
-<svg width="258pt" height="105pt"
- viewBox="0.00 0.00 258.39 105.21" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
-<g id="graph0" class="graph" transform="scale(1 1) rotate(0) translate(4 101.21)">
-<title>G</title>
-<polygon fill="white" stroke="transparent" points="-4,4 -4,-101.21 254.39,-101.21 254.39,4 -4,4"/>
-<!-- n1 -->
-<g id="node1" class="node">
-<title>n1</title>
-<ellipse fill="none" stroke="black" cx="125.03" cy="-29.61" rx="10.71" ry="10.71"/>
-<text text-anchor="middle" x="125.03" y="-25.91" font-family="Times,serif" font-size="14.00">1</text>
-</g>
-<!-- n5 -->
-<g id="node5" class="node">
-<title>n5</title>
-<ellipse fill="none" stroke="black" cx="182.25" cy="-29.61" rx="10.71" ry="10.71"/>
-<text text-anchor="middle" x="182.25" y="-25.91" font-family="Times,serif" font-size="14.00">5</text>
-</g>
-<!-- n1&%2345;&gt;n5 -->
-<g id="edge4" class="edge">
-<title>n1&%2345;&gt;n5</title>
-<path fill="none" stroke="black" d="M135.65,-29.61C144.1,-29.61 156.52,-29.61 166.27,-29.61"/>
-<polygon fill="black" stroke="black" points="166.37,-31.36 171.37,-29.61 166.37,-27.86 166.37,-31.36"/>
-</g>
-<!-- n2 -->
-<g id="node2" class="node">
-<title>n2</title>
-<ellipse fill="none" stroke="black" cx="182.25" cy="-86.61" rx="10.71" ry="10.71"/>
-<text text-anchor="middle" x="182.25" y="-82.91" font-family="Times,serif" font-size="14.00">2</text>
-</g>
-<!-- n6 -->
-<g id="node6" class="node">
-<title>n6</title>
-<ellipse fill="none" stroke="black" cx="239.46" cy="-57.61" rx="10.71" ry="10.71"/>
-<text text-anchor="middle" x="239.46" y="-53.91" font-family="Times,serif" font-size="14.00">6</text>
-</g>
-<!-- n2&%2345;&gt;n6 -->
-<g id="edge7" class="edge">
-<title>n2&%2345;&gt;n6</title>
-<path fill="none" stroke="black" d="M191.87,-82.08C200.82,-77.38 214.91,-69.98 225.25,-64.54"/>
-<polygon fill="black" stroke="black" points="226.1,-66.08 229.71,-62.2 224.47,-62.98 226.1,-66.08"/>
-</g>
-<!-- n3 -->
-<g id="node3" class="node">
-<title>n3</title>
-<ellipse fill="none" stroke="black" cx="10.61" cy="-29.61" rx="10.71" ry="10.71"/>
-<text text-anchor="middle" x="10.61" y="-25.91" font-family="Times,serif" font-size="14.00">3</text>
-</g>
-<!-- n3&%2345;&gt;n1 -->
 <g id="edge2" class="edge">
-<title>n3&%2345;&gt;n1</title>
-<path fill="none" stroke="black" d="M21.39,-29.88C30.63,-30.13 44.86,-30.47 57.21,-30.61 66.64,-30.71 69,-30.71 78.43,-30.61 88.66,-30.49 100.18,-30.24 109.08,-30.02"/>
-<polygon fill="black" stroke="black" points="109.29,-31.76 114.25,-29.88 109.2,-28.26 109.29,-31.76"/>
+<title>n1&%2345;&gt;n3</title>
+<path fill="none" stroke="black" d="M20.97,-26.38C29.67,-23.39 42.74,-18.89 52.71,-15.46"/>
+<polygon fill="black" stroke="black" points="53.43,-17.06 57.59,-13.78 52.29,-13.75 53.43,-17.06"/>
 </g>
 <!-- n4 -->
 <g id="node4" class="node">
 <title>n4</title>
-<ellipse fill="none" stroke="black" cx="67.82" cy="-10.61" rx="10.71" ry="10.71"/>
-<text text-anchor="middle" x="67.82" y="-6.91" font-family="Times,serif" font-size="14.00">4</text>
+<ellipse fill="none" stroke="black" cx="125.03" cy="-49.61" rx="10.71" ry="10.71"/>
+<text text-anchor="middle" x="125.03" y="-45.91" font-family="Times,serif" font-size="14.00">4</text>
+</g>
+<!-- n2&%2345;&gt;n4 -->
+<g id="edge3" class="edge">
+<title>n2&%2345;&gt;n4</title>
+<path fill="none" stroke="black" d="M78.44,-49.61C86.88,-49.61 99.31,-49.61 109.06,-49.61"/>
+<polygon fill="black" stroke="black" points="109.15,-51.36 114.15,-49.61 109.15,-47.86 109.15,-51.36"/>
+</g>
+<!-- n5 -->
+<g id="node5" class="node">
+<title>n5</title>
+<ellipse fill="none" stroke="black" cx="182.25" cy="-88.61" rx="10.71" ry="10.71"/>
+<text text-anchor="middle" x="182.25" y="-84.91" font-family="Times,serif" font-size="14.00">5</text>
+</g>
+<!-- n2&%2345;&gt;n5 -->
+<g id="edge4" class="edge">
+<title>n2&%2345;&gt;n5</title>
+<path fill="none" stroke="black" d="M77.76,-53.96C86.85,-58.28 101.41,-64.93 114.43,-69.61 132.06,-75.95 152.9,-81.59 166.56,-85.05"/>
+<polygon fill="black" stroke="black" points="166.33,-86.79 171.6,-86.3 167.17,-83.39 166.33,-86.79"/>
+</g>
+<!-- n6 -->
+<g id="node6" class="node">
+<title>n6</title>
+<ellipse fill="none" stroke="black" cx="125.03" cy="-10.61" rx="10.71" ry="10.71"/>
+<text text-anchor="middle" x="125.03" y="-6.91" font-family="Times,serif" font-size="14.00">6</text>
+</g>
+<!-- n3&%2345;&gt;n6 -->
+<g id="edge5" class="edge">
+<title>n3&%2345;&gt;n6</title>
+<path fill="none" stroke="black" d="M78.44,-10.61C86.88,-10.61 99.31,-10.61 109.06,-10.61"/>
+<polygon fill="black" stroke="black" points="109.15,-12.36 114.15,-10.61 109.15,-8.86 109.15,-12.36"/>
+</g>
+<!-- n4&%2345;&gt;n5 -->
+<g id="edge6" class="edge">
+<title>n4&%2345;&gt;n5</title>
+<path fill="none" stroke="black" d="M134.18,-55.36C143.31,-61.81 158.23,-72.35 168.82,-79.83"/>
+<polygon fill="black" stroke="black" points="167.97,-81.37 173.07,-82.83 169.99,-78.51 167.97,-81.37"/>
+</g>
+<!-- n7 -->
+<g id="node7" class="node">
+<title>n7</title>
+<ellipse fill="none" stroke="black" cx="182.25" cy="-49.61" rx="10.71" ry="10.71"/>
+<text text-anchor="middle" x="182.25" y="-45.91" font-family="Times,serif" font-size="14.00">7</text>
+</g>
+<!-- n4&%2345;&gt;n7 -->
+<g id="edge7" class="edge">
+<title>n4&%2345;&gt;n7</title>
+<path fill="none" stroke="black" d="M135.65,-49.61C144.1,-49.61 156.52,-49.61 166.27,-49.61"/>
+<polygon fill="black" stroke="black" points="166.37,-51.36 171.37,-49.61 166.37,-47.86 166.37,-51.36"/>
+</g>
+<!-- n8 -->
+<g id="node8" class="node">
+<title>n8</title>
+<ellipse fill="none" stroke="black" cx="239.46" cy="-88.61" rx="10.71" ry="10.71"/>
+<text text-anchor="middle" x="239.46" y="-84.91" font-family="Times,serif" font-size="14.00">8</text>
+</g>
+<!-- n5&%2345;&gt;n8 -->
+<g id="edge8" class="edge">
+<title>n5&%2345;&gt;n8</title>
+<path fill="none" stroke="black" d="M192.86,-88.61C201.31,-88.61 213.74,-88.61 223.48,-88.61"/>
+<polygon fill="black" stroke="black" points="223.58,-90.36 228.58,-88.61 223.58,-86.86 223.58,-90.36"/>
+</g>
+</g>
+</svg>
+'/><p>Executing this rule (forcing the pattern to match at vertex 2) performs a &quot;deepcopy&quot; operation, copying vertex 2 and everything underneath it.</p><pre><code class="language-julia hljs">expected = @acset Graph begin V=13;E=14;
+  src=[7,7,7,1,1,3,3,4,2,2,10,10,11,8]; tgt=[1,2,8,3,4,5,4,6,10,11,12,11,13,9]
+end
+
+@test is_isomorphic(expected, rewrite(rule, G; initial=(V=[2],)))
+
+to_graphviz(expected; node_labels=true)</code></pre><img src='data:image/svg+xml;utf-8,<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN"
+ "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+<!-- Generated by graphviz version 2.43.0 (0)
+ -->
+<!-- Title: G Pages: 1 -->
+<svg width="275pt" height="191pt"
+ viewBox="0.00 0.00 275.04 191.21" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+<g id="graph0" class="graph" transform="scale(1 1) rotate(0) translate(4 187.21)">
+<title>G</title>
+<polygon fill="white" stroke="transparent" points="-4,4 -4,-187.21 271.04,-187.21 271.04,4 -4,4"/>
+<!-- n1 -->
+<g id="node1" class="node">
+<title>n1</title>
+<ellipse fill="none" stroke="black" cx="67.82" cy="-133.61" rx="10.71" ry="10.71"/>
+<text text-anchor="middle" x="67.82" y="-129.91" font-family="Times,serif" font-size="14.00">1</text>
+</g>
+<!-- n3 -->
+<g id="node3" class="node">
+<title>n3</title>
+<ellipse fill="none" stroke="black" cx="127.86" cy="-133.61" rx="10.71" ry="10.71"/>
+<text text-anchor="middle" x="127.86" y="-129.91" font-family="Times,serif" font-size="14.00">3</text>
+</g>
+<!-- n1&%2345;&gt;n3 -->
+<g id="edge4" class="edge">
+<title>n1&%2345;&gt;n3</title>
+<path fill="none" stroke="black" d="M78.67,-133.61C87.81,-133.61 101.55,-133.61 112.02,-133.61"/>
+<polygon fill="black" stroke="black" points="112.16,-135.36 117.16,-133.61 112.16,-131.86 112.16,-135.36"/>
+</g>
+<!-- n4 -->
+<g id="node4" class="node">
+<title>n4</title>
+<ellipse fill="none" stroke="black" cx="190.73" cy="-172.61" rx="10.71" ry="10.71"/>
+<text text-anchor="middle" x="190.73" y="-168.91" font-family="Times,serif" font-size="14.00">4</text>
+</g>
+<!-- n1&%2345;&gt;n4 -->
+<g id="edge5" class="edge">
+<title>n1&%2345;&gt;n4</title>
+<path fill="none" stroke="black" d="M77.73,-138.04C86.8,-142.43 101.34,-149.12 114.43,-153.61 134.87,-160.62 159.24,-166.3 174.6,-169.57"/>
+<polygon fill="black" stroke="black" points="174.58,-171.35 179.83,-170.66 175.3,-167.92 174.58,-171.35"/>
+</g>
+<!-- n2 -->
+<g id="node2" class="node">
+<title>n2</title>
+<ellipse fill="none" stroke="black" cx="67.82" cy="-72.61" rx="10.71" ry="10.71"/>
+<text text-anchor="middle" x="67.82" y="-68.91" font-family="Times,serif" font-size="14.00">2</text>
+</g>
+<!-- n10 -->
+<g id="node10" class="node">
+<title>n10</title>
+<ellipse fill="none" stroke="black" cx="127.86" cy="-52.61" rx="13.37" ry="13.37"/>
+<text text-anchor="middle" x="127.86" y="-48.91" font-family="Times,serif" font-size="14.00">10</text>
+</g>
+<!-- n2&%2345;&gt;n10 -->
+<g id="edge9" class="edge">
+<title>n2&%2345;&gt;n10</title>
+<path fill="none" stroke="black" d="M78.15,-69.39C86.74,-66.43 99.69,-61.97 110.08,-58.39"/>
+<polygon fill="black" stroke="black" points="110.79,-60 114.95,-56.71 109.65,-56.69 110.79,-60"/>
+</g>
+<!-- n11 -->
+<g id="node11" class="node">
+<title>n11</title>
+<ellipse fill="none" stroke="black" cx="190.73" cy="-91.61" rx="13.37" ry="13.37"/>
+<text text-anchor="middle" x="190.73" y="-87.91" font-family="Times,serif" font-size="14.00">11</text>
+</g>
+<!-- n2&%2345;&gt;n11 -->
+<g id="edge10" class="edge">
+<title>n2&%2345;&gt;n11</title>
+<path fill="none" stroke="black" d="M78.71,-74.16C99.14,-77.37 146.24,-84.77 172.04,-88.83"/>
+<polygon fill="black" stroke="black" points="171.99,-90.59 177.2,-89.64 172.53,-87.13 171.99,-90.59"/>
 </g>
 <!-- n3&%2345;&gt;n4 -->
-<g id="edge1" class="edge">
+<g id="edge7" class="edge">
 <title>n3&%2345;&gt;n4</title>
-<path fill="none" stroke="black" d="M20.97,-26.38C29.67,-23.39 42.74,-18.89 52.71,-15.46"/>
-<polygon fill="black" stroke="black" points="53.43,-17.06 57.59,-13.78 52.29,-13.75 53.43,-17.06"/>
+<path fill="none" stroke="black" d="M137.33,-139.03C147.59,-145.61 165,-156.76 176.91,-164.39"/>
+<polygon fill="black" stroke="black" points="176.19,-166.01 181.34,-167.23 178.07,-163.06 176.19,-166.01"/>
 </g>
-<!-- n4&%2345;&gt;n1 -->
-<g id="edge3" class="edge">
-<title>n4&%2345;&gt;n1</title>
-<path fill="none" stroke="black" d="M78.19,-13.83C86.88,-16.82 99.96,-21.32 109.92,-24.75"/>
-<polygon fill="black" stroke="black" points="109.51,-26.46 114.81,-26.43 110.65,-23.15 109.51,-26.46"/>
+<!-- n5 -->
+<g id="node5" class="node">
+<title>n5</title>
+<ellipse fill="none" stroke="black" cx="190.73" cy="-133.61" rx="10.71" ry="10.71"/>
+<text text-anchor="middle" x="190.73" y="-129.91" font-family="Times,serif" font-size="14.00">5</text>
 </g>
-<!-- n5&%2345;&gt;n5 -->
-<g id="edge5" class="edge">
-<title>n5&%2345;&gt;n5</title>
-<path fill="none" stroke="black" d="M174.71,-37.51C169.02,-47.03 171.53,-58.21 182.25,-58.21 191.12,-58.21 194.37,-50.55 191.99,-42.5"/>
-<polygon fill="black" stroke="black" points="193.41,-41.38 189.78,-37.51 190.21,-42.79 193.41,-41.38"/>
-</g>
-<!-- n5&%2345;&gt;n6 -->
+<!-- n3&%2345;&gt;n5 -->
 <g id="edge6" class="edge">
-<title>n5&%2345;&gt;n6</title>
-<path fill="none" stroke="black" d="M192.12,-34.11C201.02,-38.62 214.86,-45.64 225.09,-50.83"/>
-<polygon fill="black" stroke="black" points="224.54,-52.51 229.79,-53.21 226.12,-49.39 224.54,-52.51"/>
+<title>n3&%2345;&gt;n5</title>
+<path fill="none" stroke="black" d="M138.64,-133.61C148.35,-133.61 163.35,-133.61 174.6,-133.61"/>
+<polygon fill="black" stroke="black" points="174.77,-135.36 179.77,-133.61 174.77,-131.86 174.77,-135.36"/>
 </g>
-<!-- n6&%2345;&gt;n6 -->
+<!-- n6 -->
+<g id="node6" class="node">
+<title>n6</title>
+<ellipse fill="none" stroke="black" cx="253.6" cy="-172.61" rx="10.71" ry="10.71"/>
+<text text-anchor="middle" x="253.6" y="-168.91" font-family="Times,serif" font-size="14.00">6</text>
+</g>
+<!-- n4&%2345;&gt;n6 -->
 <g id="edge8" class="edge">
-<title>n6&%2345;&gt;n6</title>
-<path fill="none" stroke="black" d="M231.92,-65.51C226.23,-75.03 228.74,-86.21 239.46,-86.21 248.34,-86.21 251.58,-78.55 249.2,-70.5"/>
-<polygon fill="black" stroke="black" points="250.62,-69.38 247,-65.51 247.42,-70.79 250.62,-69.38"/>
+<title>n4&%2345;&gt;n6</title>
+<path fill="none" stroke="black" d="M201.51,-172.61C211.22,-172.61 226.22,-172.61 237.47,-172.61"/>
+<polygon fill="black" stroke="black" points="237.64,-174.36 242.64,-172.61 237.64,-170.86 237.64,-174.36"/>
+</g>
+<!-- n7 -->
+<g id="node7" class="node">
+<title>n7</title>
+<ellipse fill="none" stroke="black" cx="10.61" cy="-72.61" rx="10.71" ry="10.71"/>
+<text text-anchor="middle" x="10.61" y="-68.91" font-family="Times,serif" font-size="14.00">7</text>
+</g>
+<!-- n7&%2345;&gt;n1 -->
+<g id="edge1" class="edge">
+<title>n7&%2345;&gt;n1</title>
+<path fill="none" stroke="black" d="M18.38,-80.09C27.9,-90.6 45.32,-109.86 56.47,-122.18"/>
+<polygon fill="black" stroke="black" points="55.34,-123.53 59.99,-126.07 57.94,-121.18 55.34,-123.53"/>
+</g>
+<!-- n7&%2345;&gt;n2 -->
+<g id="edge2" class="edge">
+<title>n7&%2345;&gt;n2</title>
+<path fill="none" stroke="black" d="M21.22,-72.61C29.67,-72.61 42.1,-72.61 51.84,-72.61"/>
+<polygon fill="black" stroke="black" points="51.94,-74.36 56.94,-72.61 51.94,-70.86 51.94,-74.36"/>
+</g>
+<!-- n8 -->
+<g id="node8" class="node">
+<title>n8</title>
+<ellipse fill="none" stroke="black" cx="67.82" cy="-32.61" rx="10.71" ry="10.71"/>
+<text text-anchor="middle" x="67.82" y="-28.91" font-family="Times,serif" font-size="14.00">8</text>
+</g>
+<!-- n7&%2345;&gt;n8 -->
+<g id="edge3" class="edge">
+<title>n7&%2345;&gt;n8</title>
+<path fill="none" stroke="black" d="M19.75,-66.7C28.89,-60.09 43.8,-49.28 54.4,-41.61"/>
+<polygon fill="black" stroke="black" points="55.62,-42.88 58.64,-38.53 53.56,-40.05 55.62,-42.88"/>
+</g>
+<!-- n9 -->
+<g id="node9" class="node">
+<title>n9</title>
+<ellipse fill="none" stroke="black" cx="127.86" cy="-10.61" rx="10.71" ry="10.71"/>
+<text text-anchor="middle" x="127.86" y="-6.91" font-family="Times,serif" font-size="14.00">9</text>
+</g>
+<!-- n8&%2345;&gt;n9 -->
+<g id="edge14" class="edge">
+<title>n8&%2345;&gt;n9</title>
+<path fill="none" stroke="black" d="M77.89,-29.17C87.29,-25.61 102.1,-19.99 112.98,-15.87"/>
+<polygon fill="black" stroke="black" points="113.61,-17.5 117.66,-14.09 112.37,-14.23 113.61,-17.5"/>
+</g>
+<!-- n10&%2345;&gt;n11 -->
+<g id="edge12" class="edge">
+<title>n10&%2345;&gt;n11</title>
+<path fill="none" stroke="black" d="M139.46,-59.4C149.12,-65.59 163.5,-74.8 174.4,-81.78"/>
+<polygon fill="black" stroke="black" points="173.69,-83.4 178.84,-84.63 175.57,-80.46 173.69,-83.4"/>
+</g>
+<!-- n12 -->
+<g id="node12" class="node">
+<title>n12</title>
+<ellipse fill="none" stroke="black" cx="190.73" cy="-46.61" rx="13.37" ry="13.37"/>
+<text text-anchor="middle" x="190.73" y="-42.91" font-family="Times,serif" font-size="14.00">12</text>
+</g>
+<!-- n10&%2345;&gt;n12 -->
+<g id="edge11" class="edge">
+<title>n10&%2345;&gt;n12</title>
+<path fill="none" stroke="black" d="M141.47,-51.36C150.29,-50.49 162.18,-49.32 171.96,-48.36"/>
+<polygon fill="black" stroke="black" points="172.33,-50.08 177.14,-47.85 171.99,-46.6 172.33,-50.08"/>
+</g>
+<!-- n13 -->
+<g id="node13" class="node">
+<title>n13</title>
+<ellipse fill="none" stroke="black" cx="253.6" cy="-91.61" rx="13.37" ry="13.37"/>
+<text text-anchor="middle" x="253.6" y="-87.91" font-family="Times,serif" font-size="14.00">13</text>
+</g>
+<!-- n11&%2345;&gt;n13 -->
+<g id="edge13" class="edge">
+<title>n11&%2345;&gt;n13</title>
+<path fill="none" stroke="black" d="M204.34,-91.61C213.16,-91.61 225.05,-91.61 234.83,-91.61"/>
+<polygon fill="black" stroke="black" points="235.01,-93.36 240.01,-91.61 235.01,-89.86 235.01,-93.36"/>
 </g>
 </g>
 </svg>
@@ -549,49 +605,86 @@ res = rewrite_match(prule, m)</code></pre><div class="c-set">
   nS, nT, nI, nO = length.([S, T, I, O])
   findS, findT = [x -&gt; findfirst(==(x), X) for X in [S, T]]
   to_graphviz(@acset AlgebraicPetri.PetriNet begin
-    S = nS
-    T = nT
-    I = nI
-    O = nO
+    S = nS; T = nT; I = nI; O = nO
     is = findS.(g[I, :src])
     it = findT.(g[I, :tgt])
     ot = findT.(g[O, :src])
     os = findS.(g[O, :tgt])
   end)
 end;</code></pre><p>This is the graph we are slicing over.</p><pre><code class="language-julia hljs">two = @acset Graph begin
-  V = 2
-  E = 2
-  src = [1, 2]
-  tgt = [2, 1]
-end</code></pre><div class="c-set">
-<span class="c-set-summary">Catlab.Graphs.BasicGraphs.Graph {V:2, E:2}</span>
-<table>
-  <thead>
-    <tr class = "header headerLastRow">
-      <th class = "rowLabel" style = "font-weight: bold; text-align: right;">E</th>
-      <th style = "text-align: right;">src</th>
-      <th style = "text-align: right;">tgt</th>
-    </tr>
-  </thead>
-  <tbody>
-    <tr>
-      <td class = "rowLabel" style = "font-weight: bold; text-align: right;">1</td>
-      <td style = "text-align: right;">1</td>
-      <td style = "text-align: right;">2</td>
-    </tr>
-    <tr>
-      <td class = "rowLabel" style = "font-weight: bold; text-align: right;">2</td>
-      <td style = "text-align: right;">2</td>
-      <td style = "text-align: right;">1</td>
-    </tr>
-  </tbody>
-</table>
-</div>
-<p>Define a rule which deletes a [T] -&gt; S edge</p><pre><code class="language-julia hljs">L_ = path_graph(Graph, 2)
-L = Slice(ACSetTransformation(L_, two, V=[2, 1], E=[2])) # [T] ⟶ (S)
-graph_slice(L)
+  V = 2; E = 2; src = [1, 2]; tgt = [2, 1]
+end
 
-I_ = Graph(1)
+to_graphviz(two)</code></pre><img src='data:image/svg+xml;utf-8,<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN"
+ "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+<!-- Generated by graphviz version 2.43.0 (0)
+ -->
+<!-- Title: G Pages: 1 -->
+<svg width="51pt" height="22pt"
+ viewBox="0.00 0.00 51.20 22.19" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+<g id="graph0" class="graph" transform="scale(1 1) rotate(0) translate(4 18.19)">
+<title>G</title>
+<polygon fill="white" stroke="transparent" points="-4,4 -4,-18.19 47.2,-18.19 47.2,4 -4,4"/>
+<!-- n1 -->
+<g id="node1" class="node">
+<title>n1</title>
+<ellipse fill="black" stroke="black" cx="1.8" cy="-7.09" rx="1.8" ry="1.8"/>
+</g>
+<!-- n2 -->
+<g id="node2" class="node">
+<title>n2</title>
+<ellipse fill="black" stroke="black" cx="41.4" cy="-7.09" rx="1.8" ry="1.8"/>
+</g>
+<!-- n1&%2345;&gt;n2 -->
+<g id="edge1" class="edge">
+<title>n1&%2345;&gt;n2</title>
+<path fill="none" stroke="black" d="M3.22,-5.51C6.4,0.17 26.68,1.17 35.88,-2.51"/>
+<polygon fill="black" stroke="black" points="34.97,-4.02 40.03,-5.6 37.06,-1.21 34.97,-4.02"/>
+</g>
+<!-- n2&%2345;&gt;n1 -->
+<g id="edge2" class="edge">
+<title>n2&%2345;&gt;n1</title>
+<path fill="none" stroke="black" d="M40.03,-8.58C37.04,-14.31 16.79,-15.36 7.48,-11.73"/>
+<polygon fill="black" stroke="black" points="8.3,-10.17 3.22,-8.67 6.26,-13.01 8.3,-10.17"/>
+</g>
+</g>
+</svg>
+'/><p>Define a rule which deletes a [T] -&gt; S edge. Start with the pattern, L.</p><pre><code class="language-julia hljs">L_ = path_graph(Graph, 2)
+L = Slice(ACSetTransformation(L_, two, V=[2, 1], E=[2])) # [T] ⟶ (S)
+graph_slice(L)</code></pre><img src='data:image/svg+xml;utf-8,<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN"
+ "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+<!-- Generated by graphviz version 2.43.0 (0)
+ -->
+<!-- Title: G Pages: 1 -->
+<svg width="126pt" height="44pt"
+ viewBox="0.00 0.00 126.00 44.00" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+<g id="graph0" class="graph" transform="scale(1 1) rotate(0) translate(4 40)">
+<title>G</title>
+<polygon fill="white" stroke="transparent" points="-4,4 -4,-40 122,-40 122,4 -4,4"/>
+<!-- n1 -->
+<g id="node1" class="node">
+<title>n1</title>
+<ellipse fill="%236c9ac3" stroke="%236c9ac3" cx="100" cy="-18" rx="18" ry="18"/>
+<text text-anchor="middle" x="100" y="-14.3" font-family="Times,serif" font-size="14.00">1</text>
+</g>
+<!-- n2 -->
+<g id="node2" class="node">
+<title>n2</title>
+<polygon fill="%23e28f41" stroke="%23e28f41" points="36,-36 0,-36 0,0 36,0 36,-36"/>
+<text text-anchor="middle" x="18" y="-14.3" font-family="Times,serif" font-size="14.00">1</text>
+</g>
+<!-- n2&%2345;&gt;n1 -->
+<g id="edge1" class="edge">
+<title>n2&%2345;&gt;n1</title>
+<path fill="none" stroke="black" d="M36.36,-18C46.7,-18 60.06,-18 71.78,-18"/>
+<polygon fill="black" stroke="black" points="71.95,-21.5 81.95,-18 71.95,-14.5 71.95,-21.5"/>
+<text text-anchor="middle" x="59" y="-21.8" font-family="Times,serif" font-size="14.00">1</text>
+</g>
+</g>
+</svg>
+'/><p>Then define I and R</p><pre><code class="language-julia hljs">I_ = Graph(1)
 I = Slice(ACSetTransformation(I_, two, V=[2])) # [T]
 R_ = Graph(2)
 R = Slice(ACSetTransformation(R_, two, V=[2, 1])) # [T]  (S)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">Catlab.CategoricalAlgebra.SliceCategories.Slice{Catlab.CategoricalAlgebra.CSets.StructTightACSetTransformation{ACSets.Schemas.TypeLevelBasicSchema{Symbol, Tuple{:V, :E}, Tuple{(:src, :E, :V), (:tgt, :E, :V)}, Tuple{}, Tuple{}, Tuple{}}, @NamedTuple{V::Catlab.CategoricalAlgebra.FinSets.FinDomFunctionVector{Int64, Vector{Int64}, Catlab.CategoricalAlgebra.FinSets.FinSetInt}, E::Catlab.CategoricalAlgebra.FinSets.FinDomFunctionVector{Int64, Vector{Int64}, Catlab.CategoricalAlgebra.FinSets.FinSetInt}}, Catlab.Graphs.BasicGraphs.Graph, Catlab.Graphs.BasicGraphs.Graph}}(ACSetTransformation((V = FinFunction([2, 1], 2, 2), E = FinFunction(Int64[], 0, 2)), Catlab.Graphs.BasicGraphs.Graph {V:2, E:0}, Catlab.Graphs.BasicGraphs.Graph {V:2, E:2}))</code></pre><p>Using homomorphism search in the slice category</p><pre><code class="language-julia hljs">rule = Rule(homomorphism(I, L), homomorphism(I, R))
@@ -639,7 +732,10 @@ graph_slice(res)</code></pre><img src='data:image/svg+xml;utf-8,<?xml version="1
 </g>
 </g>
 </svg>
-'/><p>While the vast majority of functionality is focused on ACSets at the present moment, but there is nothing in principle which limits this.</p><h1 id="6.-Application-conditions"><a class="docs-heading-anchor" href="#6.-Application-conditions">6. Application conditions</a><a id="6.-Application-conditions-1"></a><a class="docs-heading-anchor-permalink" href="#6.-Application-conditions" title="Permalink"></a></h1><p>We can construct commutative diagrams with certain edges left unspecified or marked with ∀ or ∃. If only one edge is left free, we can treat the diagram as a boolean function which tests whether the morphism makes the specified paths commute (or not commute). This generalizes positive/negative application conditions and lifting conditions, but because those are most common there are constructors AppCond and LiftCond to make these directly.</p><pre><code class="nohighlight hljs">     ∀</code></pre><p>[↻•]   →  ?     ↓    ↗ ∃ ↓   [↻•⟶•]  → [↻•⟶•⟵•↺]</p><p>Every vertex with a loop also has a map to the vertex marked by the bottom map.</p><pre><code class="language-julia hljs">t = terminal(Graph) |&gt; apex
+'/><p>While the vast majority of functionality is focused on ACSets at the present moment, but there is nothing in principle which limits this.</p><h1 id="6.-Application-conditions"><a class="docs-heading-anchor" href="#6.-Application-conditions">6. Application conditions</a><a id="6.-Application-conditions-1"></a><a class="docs-heading-anchor-permalink" href="#6.-Application-conditions" title="Permalink"></a></h1><p>We can construct commutative diagrams with certain edges left unspecified or marked with ∀ or ∃. If only one edge is left free, we can treat the diagram as a boolean function which tests whether the morphism makes the specified paths commute (or not commute). This generalizes positive/negative application conditions and lifting conditions, but because those are most common there are constructors AppCond and LiftCond to make these directly.</p><pre><code class="nohighlight hljs">         ∀
+  [↻•]   →  ?
+    ↓    ↗ ∃ ↓
+  [↻•⟶•]  → [↻•⟶•⟵•↺]</code></pre><p>` Every vertex with a loop also has a map to the vertex marked by the bottom map.</p><pre><code class="language-julia hljs">t = terminal(Graph) |&gt; apex
 looparr = @acset_colim yG begin
   (e1, e2)::E
   src(e1) == tgt(e1)
@@ -648,20 +744,14 @@ end
 
 v = homomorphism(t, looparr)
 loop_csp = @acset Graph begin
-  V = 3
-  E = 4
-  src = [1, 3, 1, 3]
-  tgt = [1, 3, 2, 2]
+  V = 3; E = 4; src = [1, 3, 1, 3]; tgt = [1, 3, 2, 2]
 end
-b = homomorphism(looparr, loop_csp; monic=true)
+b = homomorphism(looparr, loop_csp; initial=(V=[2,1],))
 constr = LiftCond(v, b)
 
-@test !apply_constraint(constr, homomorphism(t, loop_csp))
+@test !apply_constraint(constr, homomorphism(t, loop_csp; initial=(V=[1],)))
 @test apply_constraint(constr, b)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi"><span class="sgr32"><span class="sgr1">Test Passed</span></span></code></pre><p>We can combining constraints with logical combinators.</p><p>match vertex iff it has 2 or 3 self loops</p><pre><code class="language-julia hljs">one, two, three, four, five = [@acset(Graph, begin
-  V = 1
-  E = n
-  src = 1
-  tgt = 1
+  V = 1; E = n; src = 1; tgt = 1
 end) for n in 1:5]
 
 c2 = AppCond(homomorphism(Graph(1), two); monic=true)         # PAC
@@ -680,16 +770,12 @@ L = @acset_colim yWG begin
 end
 I = WeightedGraph{Int}(2)
 R = @acset WeightedGraph{Int} begin
-  V = 2
-  E = 1
-  Weight = 1
-  src = 1
-  tgt = 2
-  weight = [AttrVar(1)]
+  V = 2; E = 1; Weight = 1
+  src = [1]; tgt = [2]; weight = [AttrVar(1)]
 end
 
-l = homomorphism(I, L; monic=true)
-r = homomorphism(I, R; monic=true)
+l = homomorphism(I, L; initial=(V=1:2,))
+r = homomorphism(I, R; initial=(V=1:2,))
 rule = Rule(l, r; monic=[:E], expr=Dict(:Weight =&gt; [xs -&gt; xs[1] + xs[2]]))
 
 G = @acset WeightedGraph{Int} begin
@@ -700,80 +786,69 @@ G = @acset WeightedGraph{Int} begin
   weight = [10, 20, 100]
 end
 
-@test rewrite(rule, G) == @acset WeightedGraph{Int} begin
-  V = 1
-  E = 2
-  src = 1
-  tgt = 1
-  weight = [30, 100]
+m = get_matches(rule,G)[1]
+@test rewrite_match(rule, m) == @acset WeightedGraph{Int} begin
+  V = 1; E = 2
+  src = [1]; tgt = [1]; weight = [30, 100]
 end</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi"><span class="sgr32"><span class="sgr1">Test Passed</span></span></code></pre><h1 id="8.-Graph-processes"><a class="docs-heading-anchor" href="#8.-Graph-processes">8. Graph processes</a><a id="8.-Graph-processes-1"></a><a class="docs-heading-anchor-permalink" href="#8.-Graph-processes" title="Permalink"></a></h1><p>A sequence of rewrite applications can be given a poset structure where α ≤ β means that the rule application α needed to occur before β.  This is computed via analyzing the colimit of all the partial maps induced by the rewrites.</p><pre><code class="language-julia hljs">using AlgebraicRewriting.Processes: RWStep, find_deps
 
-G0, G1, G2, G3 = Graph.([0, 1, 2, 3])</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">4-element Vector{Catlab.Graphs.BasicGraphs.Graph}:
- Catlab.Graphs.BasicGraphs.Graph:
-  V = 1:0
-  E = 1:0
-  src : E → V = Int64[]
-  tgt : E → V = Int64[]
- Catlab.Graphs.BasicGraphs.Graph:
-  V = 1:1
-  E = 1:0
-  src : E → V = Int64[]
-  tgt : E → V = Int64[]
- Catlab.Graphs.BasicGraphs.Graph:
-  V = 1:2
-  E = 1:0
-  src : E → V = Int64[]
-  tgt : E → V = Int64[]
- Catlab.Graphs.BasicGraphs.Graph:
-  V = 1:3
-  E = 1:0
-  src : E → V = Int64[]
-  tgt : E → V = Int64[]</code></pre><p>Delete a node</p><pre><code class="language-julia hljs">Rule1 = Span(create(G1), id(G0));</code></pre><p>Merge two nodes</p><pre><code class="language-julia hljs">Rule2 = Span(id(G2), homomorphism(G2, G1));</code></pre><p>Add a node</p><pre><code class="language-julia hljs">Rule3 = Span(id(G0), create(G1))
+G0, G1, G2, G3 = Graph.([0, 1, 2, 3]);</code></pre><p>Delete a node</p><pre><code class="language-julia hljs">Rule1 = Span(create(G1), id(G0));</code></pre><p>Merge two nodes</p><pre><code class="language-julia hljs">Rule2 = Span(id(G2), homomorphism(G2, G1));</code></pre><p>Add a node</p><pre><code class="language-julia hljs">Rule3 = Span(id(G0), create(G1))
 
-R1, R2, R3 = [Rule(l, r) for (l, r) in [Rule1, Rule2, Rule3]]</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">3-element Vector{Rule{:DPO}}:
- Rule{:DPO}(ACSetTransformation((V = FinFunction(Int64[], 0, 1), E = FinFunction(Int64[], 0, 0)), Catlab.Graphs.BasicGraphs.Graph {V:0, E:0}, Catlab.Graphs.BasicGraphs.Graph {V:1, E:0}), ACSetTransformation((V = id(FinSet(0)), E = id(FinSet(0))), Catlab.Graphs.BasicGraphs.Graph {V:0, E:0}, Catlab.Graphs.BasicGraphs.Graph {V:0, E:0}), Constraint[], Symbol[], Dict{Symbol, Dict{Int64, Union{Nothing, Function}}}())
- Rule{:DPO}(ACSetTransformation((V = id(FinSet(2)), E = id(FinSet(0))), Catlab.Graphs.BasicGraphs.Graph {V:2, E:0}, Catlab.Graphs.BasicGraphs.Graph {V:2, E:0}), ACSetTransformation((V = FinFunction([1, 1], 2, 1), E = FinFunction(Int64[], 0, 0)), Catlab.Graphs.BasicGraphs.Graph {V:2, E:0}, Catlab.Graphs.BasicGraphs.Graph {V:1, E:0}), Constraint[], Symbol[], Dict{Symbol, Dict{Int64, Union{Nothing, Function}}}())
- Rule{:DPO}(ACSetTransformation((V = id(FinSet(0)), E = id(FinSet(0))), Catlab.Graphs.BasicGraphs.Graph {V:0, E:0}, Catlab.Graphs.BasicGraphs.Graph {V:0, E:0}), ACSetTransformation((V = FinFunction(Int64[], 0, 1), E = FinFunction(Int64[], 0, 0)), Catlab.Graphs.BasicGraphs.Graph {V:0, E:0}, Catlab.Graphs.BasicGraphs.Graph {V:1, E:0}), Constraint[], Symbol[], Dict{Symbol, Dict{Int64, Union{Nothing, Function}}}())</code></pre><h1 id="9.-Trajectory"><a class="docs-heading-anchor" href="#9.-Trajectory">9. Trajectory</a><a id="9.-Trajectory-1"></a><a class="docs-heading-anchor-permalink" href="#9.-Trajectory" title="Permalink"></a></h1><p>Step 1: add node 3 to G2</p><pre><code class="language-julia hljs">M1 = create(G2)
+R1, R2, R3 = [Rule(l, r) for (l, r) in [Rule1, Rule2, Rule3]];</code></pre><h1 id="9.-Trajectory"><a class="docs-heading-anchor" href="#9.-Trajectory">9. Trajectory</a><a id="9.-Trajectory-1"></a><a class="docs-heading-anchor-permalink" href="#9.-Trajectory" title="Permalink"></a></h1><p>Step 1: add node 3 to G2</p><pre><code class="language-julia hljs">M1 = create(G2)
 CM1 = ACSetTransformation(G1, G3; V=[3])
 Pmap1 = Span(id(G2), ACSetTransformation(G2, G3; V=[1, 2]))
-RS1 = RWStep(Rule3, Pmap1, M1, CM1)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">AlgebraicRewriting.Processes.RWStep(Catlab.CategoricalAlgebra.FreeDiagrams.Multispan{Catlab.Graphs.BasicGraphs.Graph, Catlab.CategoricalAlgebra.CSets.StructTightACSetTransformation{ACSets.Schemas.TypeLevelBasicSchema{Symbol, Tuple{:V, :E}, Tuple{(:src, :E, :V), (:tgt, :E, :V)}, Tuple{}, Tuple{}, Tuple{}}, Comp, Catlab.Graphs.BasicGraphs.Graph, Catlab.Graphs.BasicGraphs.Graph} where Comp&lt;:NamedTuple, StaticArraysCore.SVector{2, Catlab.CategoricalAlgebra.CSets.StructTightACSetTransformation{ACSets.Schemas.TypeLevelBasicSchema{Symbol, Tuple{:V, :E}, Tuple{(:src, :E, :V), (:tgt, :E, :V)}, Tuple{}, Tuple{}, Tuple{}}, Comp, Catlab.Graphs.BasicGraphs.Graph, Catlab.Graphs.BasicGraphs.Graph} where Comp&lt;:NamedTuple}}(Catlab.Graphs.BasicGraphs.Graph:
-  V = 1:0
-  E = 1:0
-  src : E → V = Int64[]
-  tgt : E → V = Int64[], Catlab.CategoricalAlgebra.CSets.StructTightACSetTransformation{ACSets.Schemas.TypeLevelBasicSchema{Symbol, Tuple{:V, :E}, Tuple{(:src, :E, :V), (:tgt, :E, :V)}, Tuple{}, Tuple{}, Tuple{}}, Comp, Catlab.Graphs.BasicGraphs.Graph, Catlab.Graphs.BasicGraphs.Graph} where Comp&lt;:NamedTuple[ACSetTransformation((V = id(FinSet(0)), E = id(FinSet(0))), Catlab.Graphs.BasicGraphs.Graph {V:0, E:0}, Catlab.Graphs.BasicGraphs.Graph {V:0, E:0}), ACSetTransformation((V = FinFunction(Int64[], 0, 1), E = FinFunction(Int64[], 0, 0)), Catlab.Graphs.BasicGraphs.Graph {V:0, E:0}, Catlab.Graphs.BasicGraphs.Graph {V:1, E:0})]), Catlab.CategoricalAlgebra.FreeDiagrams.Multispan{Catlab.Graphs.BasicGraphs.Graph, Catlab.CategoricalAlgebra.CSets.StructTightACSetTransformation{ACSets.Schemas.TypeLevelBasicSchema{Symbol, Tuple{:V, :E}, Tuple{(:src, :E, :V), (:tgt, :E, :V)}, Tuple{}, Tuple{}, Tuple{}}, Comp, Catlab.Graphs.BasicGraphs.Graph, Catlab.Graphs.BasicGraphs.Graph} where Comp&lt;:NamedTuple, StaticArraysCore.SVector{2, Catlab.CategoricalAlgebra.CSets.StructTightACSetTransformation{ACSets.Schemas.TypeLevelBasicSchema{Symbol, Tuple{:V, :E}, Tuple{(:src, :E, :V), (:tgt, :E, :V)}, Tuple{}, Tuple{}, Tuple{}}, Comp, Catlab.Graphs.BasicGraphs.Graph, Catlab.Graphs.BasicGraphs.Graph} where Comp&lt;:NamedTuple}}(Catlab.Graphs.BasicGraphs.Graph:
-  V = 1:2
-  E = 1:0
-  src : E → V = Int64[]
-  tgt : E → V = Int64[], Catlab.CategoricalAlgebra.CSets.StructTightACSetTransformation{ACSets.Schemas.TypeLevelBasicSchema{Symbol, Tuple{:V, :E}, Tuple{(:src, :E, :V), (:tgt, :E, :V)}, Tuple{}, Tuple{}, Tuple{}}, Comp, Catlab.Graphs.BasicGraphs.Graph, Catlab.Graphs.BasicGraphs.Graph} where Comp&lt;:NamedTuple[ACSetTransformation((V = id(FinSet(2)), E = id(FinSet(0))), Catlab.Graphs.BasicGraphs.Graph {V:2, E:0}, Catlab.Graphs.BasicGraphs.Graph {V:2, E:0}), ACSetTransformation((V = FinFunction([1, 2], 2, 3), E = FinFunction(Int64[], 0, 0)), Catlab.Graphs.BasicGraphs.Graph {V:2, E:0}, Catlab.Graphs.BasicGraphs.Graph {V:3, E:0})]), ACSetTransformation((V = FinFunction(Int64[], 0, 2), E = FinFunction(Int64[], 0, 0)), Catlab.Graphs.BasicGraphs.Graph {V:0, E:0}, Catlab.Graphs.BasicGraphs.Graph {V:2, E:0}), ACSetTransformation((V = FinFunction([3], 1, 3), E = FinFunction(Int64[], 0, 0)), Catlab.Graphs.BasicGraphs.Graph {V:1, E:0}, Catlab.Graphs.BasicGraphs.Graph {V:3, E:0}))</code></pre><p>Step 2: merge node 2 and 3 to yield a G2</p><pre><code class="language-julia hljs">M2 = ACSetTransformation(G2, G3; V=[2, 3])
+RS1 = RWStep(Rule3, Pmap1, M1, CM1);</code></pre><p>Step 2: merge node 2 and 3 to yield a G2</p><pre><code class="language-julia hljs">M2 = ACSetTransformation(G2, G3; V=[2, 3])
 CM2 = ACSetTransformation(G1, G2; V=[2])
 Pmap2 = Span(id(G3), ACSetTransformation(G3, G2; V=[1, 2, 2]))
-RS2 = RWStep(Rule2, Pmap2, M2, CM2)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">AlgebraicRewriting.Processes.RWStep(Catlab.CategoricalAlgebra.FreeDiagrams.Multispan{Catlab.Graphs.BasicGraphs.Graph, Catlab.CategoricalAlgebra.CSets.StructTightACSetTransformation{ACSets.Schemas.TypeLevelBasicSchema{Symbol, Tuple{:V, :E}, Tuple{(:src, :E, :V), (:tgt, :E, :V)}, Tuple{}, Tuple{}, Tuple{}}, Comp, Catlab.Graphs.BasicGraphs.Graph, Catlab.Graphs.BasicGraphs.Graph} where Comp&lt;:NamedTuple, StaticArraysCore.SVector{2, Catlab.CategoricalAlgebra.CSets.StructTightACSetTransformation{ACSets.Schemas.TypeLevelBasicSchema{Symbol, Tuple{:V, :E}, Tuple{(:src, :E, :V), (:tgt, :E, :V)}, Tuple{}, Tuple{}, Tuple{}}, Comp, Catlab.Graphs.BasicGraphs.Graph, Catlab.Graphs.BasicGraphs.Graph} where Comp&lt;:NamedTuple}}(Catlab.Graphs.BasicGraphs.Graph:
-  V = 1:2
-  E = 1:0
-  src : E → V = Int64[]
-  tgt : E → V = Int64[], Catlab.CategoricalAlgebra.CSets.StructTightACSetTransformation{ACSets.Schemas.TypeLevelBasicSchema{Symbol, Tuple{:V, :E}, Tuple{(:src, :E, :V), (:tgt, :E, :V)}, Tuple{}, Tuple{}, Tuple{}}, Comp, Catlab.Graphs.BasicGraphs.Graph, Catlab.Graphs.BasicGraphs.Graph} where Comp&lt;:NamedTuple[ACSetTransformation((V = id(FinSet(2)), E = id(FinSet(0))), Catlab.Graphs.BasicGraphs.Graph {V:2, E:0}, Catlab.Graphs.BasicGraphs.Graph {V:2, E:0}), ACSetTransformation((V = FinFunction([1, 1], 2, 1), E = FinFunction(Int64[], 0, 0)), Catlab.Graphs.BasicGraphs.Graph {V:2, E:0}, Catlab.Graphs.BasicGraphs.Graph {V:1, E:0})]), Catlab.CategoricalAlgebra.FreeDiagrams.Multispan{Catlab.Graphs.BasicGraphs.Graph, Catlab.CategoricalAlgebra.CSets.StructTightACSetTransformation{ACSets.Schemas.TypeLevelBasicSchema{Symbol, Tuple{:V, :E}, Tuple{(:src, :E, :V), (:tgt, :E, :V)}, Tuple{}, Tuple{}, Tuple{}}, Comp, Catlab.Graphs.BasicGraphs.Graph, Catlab.Graphs.BasicGraphs.Graph} where Comp&lt;:NamedTuple, StaticArraysCore.SVector{2, Catlab.CategoricalAlgebra.CSets.StructTightACSetTransformation{ACSets.Schemas.TypeLevelBasicSchema{Symbol, Tuple{:V, :E}, Tuple{(:src, :E, :V), (:tgt, :E, :V)}, Tuple{}, Tuple{}, Tuple{}}, Comp, Catlab.Graphs.BasicGraphs.Graph, Catlab.Graphs.BasicGraphs.Graph} where Comp&lt;:NamedTuple}}(Catlab.Graphs.BasicGraphs.Graph:
-  V = 1:3
-  E = 1:0
-  src : E → V = Int64[]
-  tgt : E → V = Int64[], Catlab.CategoricalAlgebra.CSets.StructTightACSetTransformation{ACSets.Schemas.TypeLevelBasicSchema{Symbol, Tuple{:V, :E}, Tuple{(:src, :E, :V), (:tgt, :E, :V)}, Tuple{}, Tuple{}, Tuple{}}, Comp, Catlab.Graphs.BasicGraphs.Graph, Catlab.Graphs.BasicGraphs.Graph} where Comp&lt;:NamedTuple[ACSetTransformation((V = id(FinSet(3)), E = id(FinSet(0))), Catlab.Graphs.BasicGraphs.Graph {V:3, E:0}, Catlab.Graphs.BasicGraphs.Graph {V:3, E:0}), ACSetTransformation((V = FinFunction([1, 2, 2], 3, 2), E = FinFunction(Int64[], 0, 0)), Catlab.Graphs.BasicGraphs.Graph {V:3, E:0}, Catlab.Graphs.BasicGraphs.Graph {V:2, E:0})]), ACSetTransformation((V = FinFunction([2, 3], 2, 3), E = FinFunction(Int64[], 0, 0)), Catlab.Graphs.BasicGraphs.Graph {V:2, E:0}, Catlab.Graphs.BasicGraphs.Graph {V:3, E:0}), ACSetTransformation((V = FinFunction([2], 1, 2), E = FinFunction(Int64[], 0, 0)), Catlab.Graphs.BasicGraphs.Graph {V:1, E:0}, Catlab.Graphs.BasicGraphs.Graph {V:2, E:0}))</code></pre><p>Step 3: delete vertex 1</p><pre><code class="language-julia hljs">M3 = ACSetTransformation(G1, G2; V=[1])
+RS2 = RWStep(Rule2, Pmap2, M2, CM2);</code></pre><p>Step 3: delete vertex 1</p><pre><code class="language-julia hljs">M3 = ACSetTransformation(G1, G2; V=[1])
 CM3 = create(G1)
 Pmap3 = Span(ACSetTransformation(G1, G2; V=[2]), id(G1))
-RS3 = RWStep(Rule1, Pmap3, M3, CM3)
+RS3 = RWStep(Rule1, Pmap3, M3, CM3);
 
 
-steps = [RS1, RS2, RS3]
+steps = [RS1, RS2, RS3];
 
 g = find_deps(steps)
-to_graphviz(g; node_labels=true)
-
-expected = @acset Graph begin
-  V = 3
-  E = 1
-  src = 1
-  tgt = 2
-end
+to_graphviz(g; node_labels=true)</code></pre><img src='data:image/svg+xml;utf-8,<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN"
+ "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+<!-- Generated by graphviz version 2.43.0 (0)
+ -->
+<!-- Title: G Pages: 1 -->
+<svg width="86pt" height="68pt"
+ viewBox="0.00 0.00 86.43 68.21" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+<g id="graph0" class="graph" transform="scale(1 1) rotate(0) translate(4 64.21)">
+<title>G</title>
+<polygon fill="white" stroke="transparent" points="-4,4 -4,-64.21 82.43,-64.21 82.43,4 -4,4"/>
+<!-- n1 -->
+<g id="node1" class="node">
+<title>n1</title>
+<ellipse fill="none" stroke="black" cx="10.61" cy="-10.61" rx="10.71" ry="10.71"/>
+<text text-anchor="middle" x="10.61" y="-6.91" font-family="Times,serif" font-size="14.00">1</text>
+</g>
+<!-- n2 -->
+<g id="node2" class="node">
+<title>n2</title>
+<ellipse fill="none" stroke="black" cx="67.82" cy="-10.61" rx="10.71" ry="10.71"/>
+<text text-anchor="middle" x="67.82" y="-6.91" font-family="Times,serif" font-size="14.00">2</text>
+</g>
+<!-- n1&%2345;&gt;n2 -->
+<g id="edge1" class="edge">
+<title>n1&%2345;&gt;n2</title>
+<path fill="none" stroke="black" d="M21.22,-10.61C29.67,-10.61 42.1,-10.61 51.84,-10.61"/>
+<polygon fill="black" stroke="black" points="51.94,-12.36 56.94,-10.61 51.94,-8.86 51.94,-12.36"/>
+</g>
+<!-- n3 -->
+<g id="node3" class="node">
+<title>n3</title>
+<ellipse fill="none" stroke="black" cx="10.61" cy="-49.61" rx="10.71" ry="10.71"/>
+<text text-anchor="middle" x="10.61" y="-45.91" font-family="Times,serif" font-size="14.00">3</text>
+</g>
+</g>
+</svg>
+'/><p>Confirm this what we expect</p><pre><code class="language-julia hljs">expected = @acset Graph begin V = 3; E = 1; src = 1; tgt = 2 end
 @test expected == g</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi"><span class="sgr32"><span class="sgr1">Test Passed</span></span></code></pre><p>Interface that just uses rules and match morphisms: The matches needed to be updated to reflect the particular isomorph that DPO rewriting produces when applying the rule.</p><pre><code class="language-julia hljs">σ₂ = ACSetTransformation(G2, G2; V=[2, 1])
 σ₃ = ACSetTransformation(G3, G3; V=[3, 1, 2])
 
 g′ = find_deps([R3 =&gt; M1, R2 =&gt; M2 ⋅ σ₃, R1 =&gt; M3 ⋅ σ₂])
-@test g′ == g</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi"><span class="sgr32"><span class="sgr1">Test Passed</span></span></code></pre></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../../">« AlgebraicRewriting.jl</a><a class="docs-footer-nextpage" href="../game_of_life/">Conway&#39;s Game of Life »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="auto">Automatic (OS)</option><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option><option value="catppuccin-latte">catppuccin-latte</option><option value="catppuccin-frappe">catppuccin-frappe</option><option value="catppuccin-macchiato">catppuccin-macchiato</option><option value="catppuccin-mocha">catppuccin-mocha</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 1.5.0 on <span class="colophon-date" title="Wednesday 26 June 2024 23:03">Wednesday 26 June 2024</span>. Using Julia version 1.10.4.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
+@test g′ == g</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi"><span class="sgr32"><span class="sgr1">Test Passed</span></span></code></pre></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../../">« AlgebraicRewriting.jl</a><a class="docs-footer-nextpage" href="../game_of_life/">Conway&#39;s Game of Life »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="auto">Automatic (OS)</option><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option><option value="catppuccin-latte">catppuccin-latte</option><option value="catppuccin-frappe">catppuccin-frappe</option><option value="catppuccin-macchiato">catppuccin-macchiato</option><option value="catppuccin-mocha">catppuccin-mocha</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 1.5.0 on <span class="colophon-date" title="Thursday 18 July 2024 00:17">Thursday 18 July 2024</span>. Using Julia version 1.10.4.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
