@@ -147,11 +147,11 @@ end
 
 init = make_grid(3,  true)
 view_life(init) |&gt; println</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">| o | x | o |
-| x | x | x |
-| x | o | x |</code></pre><p>We can also visualize a grid with a distinguished <em>agent</em>. Here an agent living in a game state <code>X</code> is a map <code>A → X</code> where <code>A</code> is the shape of the agent. The only kind of agent we&#39;ll consider in this model is that of a lone vertex.</p><p>Note that <code>A</code> below is defined without coordinates, whereas <code>init</code> is an instance of <code>LifeCoords</code>. So in order to relate them via a mapping (which requires them to share a schema) we promote <code>A</code> to <code>LifeCoords</code> using the data migration, <code>F</code>.</p><pre><code class="language-julia hljs">A = Life(1)
+| o | x | o |
+| x | x | x |</code></pre><p>We can also visualize a grid with a distinguished <em>agent</em>. Here an agent living in a game state <code>X</code> is a map <code>A → X</code> where <code>A</code> is the shape of the agent. The only kind of agent we&#39;ll consider in this model is that of a lone vertex.</p><p>Note that <code>A</code> below is defined without coordinates, whereas <code>init</code> is an instance of <code>LifeCoords</code>. So in order to relate them via a mapping (which requires them to share a schema) we promote <code>A</code> to <code>LifeCoords</code> using the data migration, <code>F</code>.</p><pre><code class="language-julia hljs">A = Life(1)
 view_life(homomorphism(F(A), init; any=true)) |&gt; println</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">| o. | x | o |
-|  x | x | x |
-|  x | o | x |</code></pre><p>We must also work with miniature game states that are <em>not</em> grids in order for us to define the dynamics, as they are what the patterns and replacements of rewrite rules are made of. In order to visualize these, we will use another visualization function.</p><pre><code class="language-julia hljs">function view_life_graph(X::Union{Life,LifeCoords}, pth=tempname(); star=nothing)
+|  o | x | o |
+|  x | x | x |</code></pre><p>We must also work with miniature game states that are <em>not</em> grids in order for us to define the dynamics, as they are what the patterns and replacements of rewrite rules are made of. In order to visualize these, we will use another visualization function.</p><pre><code class="language-julia hljs">function view_life_graph(X::Union{Life,LifeCoords}, pth=tempname(); star=nothing)
   pg = PropertyGraph{Any}(; prog=&quot;neato&quot;, graph=Dict(),
     node=Dict(:shape =&gt; &quot;circle&quot;, :style =&gt; &quot;filled&quot;, :margin =&gt; &quot;0&quot;),
     edge=Dict(:dir =&gt; &quot;none&quot;, :minlen =&gt; &quot;1&quot;))
@@ -190,7 +190,7 @@ view_life_graph(init)</code></pre><img src='data:image/svg+xml;utf-8,<?xml versi
 <!-- n2 -->
 <g id="node2" class="node">
 <title>n2</title>
-<ellipse fill="red" stroke="black" cx="154.28" cy="-139.8" rx="18" ry="18"/>
+<ellipse fill="green" stroke="black" cx="154.28" cy="-139.8" rx="18" ry="18"/>
 </g>
 <!-- n1&%2345;&gt;n2 -->
 <g id="edge2" class="edge">
@@ -240,7 +240,7 @@ view_life_graph(init)</code></pre><img src='data:image/svg+xml;utf-8,<?xml versi
 <!-- n6 -->
 <g id="node6" class="node">
 <title>n6</title>
-<ellipse fill="green" stroke="black" cx="139.88" cy="-55.13" rx="18" ry="18"/>
+<ellipse fill="red" stroke="black" cx="139.88" cy="-55.13" rx="18" ry="18"/>
 </g>
 <!-- n2&%2345;&gt;n6 -->
 <g id="edge6" class="edge">
@@ -275,7 +275,7 @@ view_life_graph(init)</code></pre><img src='data:image/svg+xml;utf-8,<?xml versi
 <!-- n8 -->
 <g id="node8" class="node">
 <title>n8</title>
-<ellipse fill="red" stroke="black" cx="55.55" cy="-69.79" rx="18" ry="18"/>
+<ellipse fill="green" stroke="black" cx="55.55" cy="-69.79" rx="18" ry="18"/>
 </g>
 <!-- n4&%2345;&gt;n8 -->
 <g id="edge12" class="edge">
@@ -749,16 +749,16 @@ view_sched(next_step)</code></pre><img src='data:image/svg+xml;utf-8,<?xml versi
 </svg>
 '/><p>We then compose these together and wrap in an overall <code>for</code> loop with a counter.</p><pre><code class="language-julia hljs">life(n::Int) = for_schedule(update_next ⋅ next_step, n) |&gt; F
 
-const L = life(1) # Game of life simulation that runs just one (global) timestep
+const L1 = life(1) # Game of life simulation that runs just one (global) timestep
 
-view_sched(L)</code></pre><img src="f4218140.svg" alt="Example block output"/><h2 id="Running-the-simulation"><a class="docs-heading-anchor" href="#Running-the-simulation">Running the simulation</a><a id="Running-the-simulation-1"></a><a class="docs-heading-anchor-permalink" href="#Running-the-simulation" title="Permalink"></a></h2><p>Make an initial state</p><pre><code class="language-julia hljs">G = make_grid([1 0 1 0 1; 0 1 0 1 0; 0 1 0 1 0; 1 0 1 0 1; 1 0 1 0 1])
+view_sched(L1)</code></pre><img src="f4218140.svg" alt="Example block output"/><h2 id="Running-the-simulation"><a class="docs-heading-anchor" href="#Running-the-simulation">Running the simulation</a><a id="Running-the-simulation-1"></a><a class="docs-heading-anchor-permalink" href="#Running-the-simulation" title="Permalink"></a></h2><p>Make an initial state</p><pre><code class="language-julia hljs">G = make_grid([1 0 1 0 1; 0 1 0 1 0; 0 1 0 1 0; 1 0 1 0 1; 1 0 1 0 1])
 
 view_life_graph(G)</code></pre><img src="a9979819.svg" alt="Example block output"/><p>(or, viewed in plaintext)</p><pre><code class="language-julia hljs">view_life(G) |&gt; println</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">| o | x | x | o | o |
 | x | o | o | x | x |
 | o | x | x | o | o |
 | x | o | o | x | x |
-| o | x | x | o | o |</code></pre><p>Run the simulation</p><pre><code class="language-julia hljs">res = interpret(L, G; maxstep=1000);</code></pre><p>Look at the end state</p><pre><code class="language-julia hljs">res[end][1] |&gt; codom |&gt; view_life |&gt; println</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">| x | o | o | o | x |
+| o | x | x | o | o |</code></pre><p>Run the simulation</p><pre><code class="language-julia hljs">res = interpret(L1, G; maxstep=1000);</code></pre><p>Look at the end state</p><pre><code class="language-julia hljs">res[end][1] |&gt; codom |&gt; view_life |&gt; println</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">| x | o | o | o | x |
 | o | o | o | x | x |
 | o | x | x | o | x |
 | o | o | o | x | x |
-| x | o | o | o | x |</code></pre><p>Visualize the results in the <code>traj</code> folder</p><pre><code class="language-julia hljs">view_traj(L, res[1:10], view_life; agent=true)</code></pre></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../full_demo/">« Full Demo</a><a class="docs-footer-nextpage" href="../lotka_volterra/">Lotka Volterra »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="auto">Automatic (OS)</option><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option><option value="catppuccin-latte">catppuccin-latte</option><option value="catppuccin-frappe">catppuccin-frappe</option><option value="catppuccin-macchiato">catppuccin-macchiato</option><option value="catppuccin-mocha">catppuccin-mocha</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 1.5.0 on <span class="colophon-date" title="Thursday 18 July 2024 00:17">Thursday 18 July 2024</span>. Using Julia version 1.10.4.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
+| x | o | o | o | x |</code></pre><p>Visualize the results in the <code>traj</code> folder</p><pre><code class="language-julia hljs">view_traj(L1, res[1:10], view_life; agent=true)</code></pre></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../full_demo/">« Full Demo</a><a class="docs-footer-nextpage" href="../lotka_volterra/">Lotka Volterra »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="auto">Automatic (OS)</option><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option><option value="catppuccin-latte">catppuccin-latte</option><option value="catppuccin-frappe">catppuccin-frappe</option><option value="catppuccin-macchiato">catppuccin-macchiato</option><option value="catppuccin-mocha">catppuccin-mocha</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 1.5.0 on <span class="colophon-date" title="Friday 19 July 2024 22:08">Friday 19 July 2024</span>. Using Julia version 1.10.4.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
