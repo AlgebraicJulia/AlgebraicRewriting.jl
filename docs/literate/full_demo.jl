@@ -354,20 +354,15 @@ end
 
 l = homomorphism(I, L; initial=(V=1:2,))
 r = homomorphism(I, R; initial=(V=1:2,))
-rule = Rule(l, r; monic=[:E], expr=Dict(:Weight => [xs -> xs[1] + xs[2]]))
+rule = Rule(l, r; monic=[:E], expr=Dict(:Weight => [((w₁,w₂),) -> w₁ + w₂]))
 
 G = @acset WeightedGraph{Int} begin
-  V = 1
-  E = 3
-  src = 1
-  tgt = 1
-  weight = [10, 20, 100]
+  V = 1; E = 3; src = 1; tgt = 1; weight = [10, 20, 100]
 end
 
-m = get_matches(rule,G)[1]
+m = homomorphism(L, G; initial=(E=1:2,))
 @test rewrite_match(rule, m) == @acset WeightedGraph{Int} begin
-  V = 1; E = 2
-  src = [1]; tgt = [1]; weight = [30, 100]
+  V = 1; E = 2; src = [1]; tgt = [1]; weight = [30, 100]
 end
 
 # # 8. Graph processes

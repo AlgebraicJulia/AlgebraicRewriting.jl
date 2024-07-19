@@ -170,8 +170,13 @@ function add(::Rule, c::Compiler, ob::Symbol, part::Int)
 end
 
 function init(r::Rule, c::Compiler, attrtype::Symbol, var::Int)
+  preim = preimage(right(r)[attrtype], AttrVar(var))
+
   initializer = if var ∈ keys(r.exprs[attrtype])
+    isempty(preim) || error("Cannot give expr to preserved variable")
      Compute(r.exprs[attrtype][var])
+  elseif !isempty(preim)
+    Compute(vs -> vs[left(r)[attrtype](AttrVar(only(preim))).val])
   else
     # Fresh()
     error(

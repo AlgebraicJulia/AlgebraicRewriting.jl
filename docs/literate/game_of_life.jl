@@ -315,9 +315,9 @@ view_sched(next_step)
 
 life(n::Int) = for_schedule(update_next ⋅ next_step, n) |> F
 
-const L = life(1) # Game of life simulation that runs just one (global) timestep
+const L1 = life(1) # Game of life simulation that runs just one (global) timestep
 
-view_sched(L)
+view_sched(L1)
 
 # ## Running the simulation
 
@@ -331,11 +331,11 @@ view_life_graph(G)
 view_life(G) |> println
 
 # Run the simulation
-res = interpret(L, G; maxstep=1000);
+res = interpret(L1, G; maxstep=1000);
 
 # Look at the end state
 
 res[end][1] |> codom |> view_life |> println
 
 # Visualize the results in the `traj` folder
-view_traj(L, res[1:10], view_life; agent=true)
+view_traj(L1, res[1:10], view_life; agent=true)

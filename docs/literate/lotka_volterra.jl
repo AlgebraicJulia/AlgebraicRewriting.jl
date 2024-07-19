@@ -48,8 +48,10 @@ be oriented in a particular direction at any point in time.
   (Sheep, Wolf)::Ob
   sheep_loc::Hom(Sheep, V); wolf_loc::Hom(Wolf, V)
 
-  (Time, Eng)::AttrType
-  countdown::Attr(V, Time); 
+  Time::Ob 
+  countdown::Hom(Time, V); 
+
+  Eng::AttrType
   sheep_eng::Attr(Sheep, Eng); wolf_eng::Attr(Wolf, Eng)
   
   Dir::AttrType
@@ -59,7 +61,7 @@ end
 ## efficient ABM rewriting uses BitSetParts rather than DenseParts to allow 
 ## in-place pushout rewriting, rather than pure/non-mutating pushouts.)
 @acset_type LV_Generic(SchLV, part_type=BitSetParts) <: HasGraph
-const LV = LV_Generic{Int, Int, Symbol}
+const LV = LV_Generic{Int, Symbol}
 
 to_graphviz(SchLV; prog="dot")
 
@@ -77,7 +79,7 @@ unnecessary when doing the actual agent-based modeling. So what we will do is
 end
 
 @acset_type LV′_Generic(SchLV′, part_type=BitSetParts) <: HasGraph
-const LV′ = LV′_Generic{Int, Int, Symbol, Tuple{Int,Int}};
+const LV′ = LV′_Generic{Int, Symbol, Tuple{Int,Int}};
 
 #=
 We will be representing directions as `Symbol`s and encode the geometry via 
@@ -123,7 +125,7 @@ obtain the analogous actions for wolves.
 =#
 
 F = Migrate(
-  Dict(:Sheep => :Wolf, :Wolf => :Sheep),
+  Dict(:Sheep => :Wolf, :Wolf => :Sheep, :Time=>:Time),
   Dict([:sheep_loc => :wolf_loc, :wolf_loc => :sheep_loc,
     :sheep_eng => :wolf_eng, :wolf_eng => :sheep_eng, :countdown => :countdown,
     :sheep_dir => :wolf_dir, :wolf_dir => :sheep_dir,]), SchLV, LV);
@@ -148,7 +150,8 @@ function create_grid(n::Int)
   coords = Dict()
   for i in 0:n-1  # Initialize grass 50% green, 50% uniformly between 0-30
     for j in 0:n-1
-      coords[i=>j] = add_part!(lv, :V; countdown=max(0, rand(-30:30)), coord=(i, j))
+      coords[i=>j] = add_part!(lv, :V; coord=(i, j))
+      add_parts!(lv, :Time, max(0, rand(-30:30)); countdown=coords[i=>j])
     end
   end
   for i in 0:n-1
@@ -210,7 +213,7 @@ function view_LV(p::LV′, pth=tempname(); name="G", title="", star=nothing)
   stmts = Statement[]
   for s in 1:nv(p)
     st = (star == (:V => s)) ? "*" : ""
-    gv = p[s, :countdown]
+    gv = length(incident(p, s, :countdown))
     col = gv == 0 ? "lightgreen" : "tan"
     push!(stmts, Node("v$s", Attributes(
       :label => gv == 0 ? "" : string(gv) * st,
@@ -266,8 +269,8 @@ obtain a generic LV′ sheep. We use this as the domain of a hom that
 assigns the sheep to Sheep #2 of the world state `init` from above.
 =#
 
-S = @acset LV begin V=1; Sheep=1; Dir=1; Eng=1; Time=1;
-  sheep_loc=1; sheep_dir=[AttrVar(1)]; sheep_eng=[AttrVar(1)]; countdown=[AttrVar(1)]
+S = @acset LV begin V=1; Sheep=1; Dir=1; Eng=1;
+  sheep_loc=1; sheep_dir=[AttrVar(1)]; sheep_eng=[AttrVar(1)];
 end
 
 view_LV(hom(F2(S), init; initial=(Sheep=[2],)))
@@ -285,6 +288,9 @@ yLV = yoneda_cache(LV; clear=false); # cache=false means reuse cached results
 I = LV() # Empty agent type
 S = @acset_colim yLV begin s::Sheep end # Generic sheep agent
 W = F(S) # Generic wolf agent, obtained via the swapping `F` data migration
+E = @acset_colim yLV begin e::Eng end
+D = @acset_colim yLV begin d::Dir end
+T = @acset_colim yLV begin t::Time end
 G = @acset_colim yLV begin v::V end # Generic grass agent
 N = Names(Dict("W" => W, "S" => S, "G" => G, "" => I)); # give these ACSets names
 
@@ -319,11 +325,12 @@ single ACSet along with an `expr` dictionary which states how attributes
 change.
 =#
 
-rl = Rule(S; expr=(Dir=[xs -> left(only(xs))],));
-rr = Rule(S; expr=(Dir=[xs -> right(only(xs))],));
+GS_Eng = hom(G⊕E, S; monic=true)
+rl = Rule(GS_Eng,GS_Eng; expr=(Dir=[((s,),) -> left(s)],));
+rr = Rule(GS_Eng,GS_Eng; expr=(Dir=[((s,),) -> right(s)],));
 
-sheep_rotate_l = tryrule(RuleApp(:turn_left, rl, S));
-sheep_rotate_r = tryrule(RuleApp(:turn_right, rr, S));
+sheep_rotate_l = tryrule(RuleApp(:turn_left, rl, id(S), id(S)));
+sheep_rotate_r = tryrule(RuleApp(:turn_right, rr, id(S), id(S)));
 
 # We can imagine executing these rules in sequence 
 seq_sched = (sheep_rotate_l ⋅ sheep_rotate_r);
@@ -336,8 +343,8 @@ view_sched(par_sched; names=N)
 # #### Test rotation
 begin
   ex = @acset LV begin 
-    E=1; Sheep=1; V=2
-    src=1; tgt=2; dir=:W; countdown = [0, 0]
+    E=1; Sheep=1; V=2; Time=2
+    src=1; tgt=2; dir=:W; countdown = [1, 2]
     sheep_loc=1; sheep_eng=100; sheep_dir=:N
   end;
 
@@ -382,8 +389,8 @@ sheep_fwd = tryrule(RuleApp(:move_fwd, sheep_fwd_rule,
 
 begin
   ex = @acset LV begin
-    V=3; E=2; Sheep=1; 
-    countdown=[0,0,0]
+    V=3; E=2; Sheep=1; Time=4 
+    countdown=[1,2,2,3]
     src=[1,2]; tgt=[2,3]; dir=[:N,:W]
     sheep_loc=1; sheep_dir=:N; sheep_eng = 10
   end
@@ -397,24 +404,38 @@ end;
 
 # ### Sheep eat grass
 
-s_eat_pac = @acset_colim yLV begin s::Sheep; countdown(sheep_loc(s)) == 0 end;
+function add_time(lv::LV, n::Int) 
+  res = deepcopy(lv)
+  add_parts!(res, :Time, n; countdown=1)
+  res
+end
 
-se_rule = Rule(S; expr=(Eng=[vs -> only(vs) + 4], Time=[vs -> 30],),
-  ac=[AppCond(hom(S, s_eat_pac))]);
+s_eat_nac = @acset_colim yLV begin 
+  s::Sheep; t::Time; countdown(t) == sheep_loc(s) 
+end;
 
-sheep_eat = tryrule(RuleApp(:Sheep_eat, se_rule, S));
+GS_Dir = hom(G⊕D, S; monic=true)
+GS_Dir30 = hom(G⊕D, add_time(S, 30); monic=true)
+
+se_rule = Rule(GS_Dir,GS_Dir30; expr=(Eng=[vs -> only(vs) + 4],),
+  ac=[AppCond(hom(S, s_eat_nac), false)]);
+
+S_to_S30 = hom(S, add_time(S, 30))
+sheep_eat = tryrule(RuleApp(:Sheep_eat, se_rule, id(S), S_to_S30));
 
 # #### Sheep eating test
 begin
   ex = @acset LV begin
-    E=1; V=2; Sheep=1; 
-    src=1; tgt=2; dir=:S; countdown=[10, 0]
+    E=1; V=2; Sheep=1; Time=2 
+    src=1; tgt=2; dir=:S; countdown=[1,1]
     sheep_loc = 2; sheep_eng = 3; sheep_dir=:W
   end
 
-  expected = copy(ex)
-  expected[2,:countdown] = 30
-  expected[1,:sheep_eng] = 7
+  expected = @acset LV begin
+    E=1; V=2; Sheep=1; Time=32 
+    src=1; tgt=2; dir=:S; countdown=[1,1, fill(2, 30)...]
+    sheep_loc = 2; sheep_eng = 7; sheep_dir=:W
+  end
 
   @test is_isomorphic(expected, rewrite(se_rule, ex))
   rewrite!(se_rule, ex)
@@ -428,15 +449,17 @@ w_eat_l = @acset_colim yLV begin
   sheep_loc(s) == wolf_loc(w)
 end;
 
-we_rule = Rule(hom(W, w_eat_l), id(W); expr=(Eng=[vs -> vs[2] + 20],));
+GWS_Dir = hom(G⊕D, w_eat_l; initial=(Dir=[AttrVar(2)],))
+GW_Dir = hom(G⊕D, W; monic=true,)
+we_rule = Rule(GWS_Dir, GW_Dir, expr=(Eng=[vs -> vs[2] + 20],));
 
-wolf_eat = tryrule(RuleApp(:Wolf_eat, we_rule, W));
+wolf_eat = tryrule(RuleApp(:Wolf_eat, we_rule, hom(W, w_eat_l), id(W)));
 
 # #### Wolf eating test
 begin
   ex = @acset LV begin 
-    Sheep=1; Wolf=1; V=3; E=2; 
-    src=[1,2]; tgt=[2,3]; countdown=[9,10,11]; dir=[:N,:N]; 
+    Sheep=1; Wolf=1; V=3; E=2; Time=3;
+    src=[1,2]; tgt=[2,3]; countdown=[1,2,3]; dir=[:N,:N]; 
     sheep_loc=2; sheep_eng=[3]; sheep_dir=[:N]
     wolf_loc=[2];  wolf_eng=[16];  wolf_dir=[:S]
   end
@@ -463,8 +486,8 @@ sheep_starve = (RuleApp(:starve, sheep_die_rule,
 
 begin
   ex = @acset LV begin 
-    V=1; Sheep=1; Wolf=1
-    countdown=20;
+    V=1; Sheep=1; Wolf=1; Time=1
+    countdown=[1];
     sheep_loc=1; sheep_eng=0; sheep_dir=:W
     wolf_loc=1; wolf_eng=10; wolf_dir=:S
   end
@@ -486,8 +509,8 @@ end;
 sheep_reprod_rule = Rule(
   hom(G, S),
   hom(G, s_reprod_r);
-  expr=(Dir=fill(vs->only(vs) ,2), 
-        Eng=fill(vs -> round(Int, vs[1] / 2, RoundUp), 2),)
+  expr=(Dir=fill(((dₛ,),)->dₛ ,2), 
+        Eng=fill(((eₛ,),) -> round(Int, eₛ / 2, RoundUp), 2),)
 );
 
 sheep_reprod = RuleApp(:reproduce, sheep_reprod_rule,
@@ -497,8 +520,8 @@ sheep_reprod = RuleApp(:reproduce, sheep_reprod_rule,
 
 begin # test
   ex = @acset LV begin 
-    Sheep=1; Wolf=1; V=2; 
-    countdown=[20,30]
+    Sheep=1; Wolf=1; V=2; Time=2
+    countdown=[1,2]
     sheep_loc=1; sheep_eng=10; sheep_dir=:W 
     wolf_loc=2; wolf_eng=5; wolf_dir=:N
   end
@@ -509,6 +532,7 @@ begin # test
   expected[:sheep_loc] = [1, 1]
   expected[:sheep_dir] = [:W, :W]
 
+  rewrite(sheep_reprod_rule,ex)
   @test is_isomorphic(rewrite(sheep_reprod_rule,ex),expected)
   rewrite!(sheep_reprod_rule,ex)
   @test is_isomorphic(ex, expected)
@@ -516,13 +540,7 @@ end;
   
 # ### Grass increments
 
-g_inc_n = deepcopy(G)
-set_subpart!(g_inc_n, 1, :countdown, 0)
-rem_part!(g_inc_n, :Time, 1);
-
-g_inc_rule = Rule(id(G), id(G);
-  ac=[AppCond(hom(G, g_inc_n), false)],
-  expr=(Time=[vs -> only(vs) - 1],));
+g_inc_rule = Rule(hom(G, T), id(G));
 
 g_inc = RuleApp(:GrassIncrements, g_inc_rule, G) |> tryrule;
 
@@ -530,20 +548,15 @@ g_inc = RuleApp(:GrassIncrements, g_inc_rule, G) |> tryrule;
 
 begin
   ex = @acset LV begin
-    Sheep = 1; V = 3; E = 2
+    Sheep = 1; V = 3; E = 2; Time=3
     src = [1, 2]; tgt = [2, 3]
     sheep_loc = 2; sheep_eng = [3]; sheep_dir = [:N]
-    countdown = [1, 10, 2]; dir = fill(:N, 2)  
+    countdown = [2,2,2]; dir = fill(:N, 2)  
   end
-  expected = @acset LV begin
-    Sheep = 1; V = 3; E = 2
-    src = [1, 2]; tgt = [2, 3]
-    sheep_loc = 2; sheep_eng = [3]; sheep_dir = [:N]
-    countdown = [0, 10, 2]; dir = fill(:N, 2)
-  end
-  m = get_matches(g_inc_rule, ex)[1]
-  @test is_isomorphic(rewrite_match(g_inc_rule, m), expected)
-  rewrite_match!(g_inc_rule, m)
+  expected = deepcopy(ex);
+  rem_part!(expected, :Time, 1)
+  @test is_isomorphic(rewrite(g_inc_rule, ex), expected)
+  rewrite!(g_inc_rule, ex)
   @test is_isomorphic(ex, expected)
 end;
 

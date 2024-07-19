@@ -2,7 +2,7 @@ name = "AlgebraicRewriting"
 uuid = "725a01d3-f174-5bbd-84e1-b9417bad95d9"
 license = "MIT"
 authors = ["Kris Brown <kris@topos.institute>"]
-version = "0.3.6"
+version = "0.3.7"
 
 [deps]
 ACSets = "227ef7b5-1206-438b-ac65-934d6da304b8"

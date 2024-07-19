@@ -220,17 +220,16 @@ rewrite!(hset, Rule(id(I), r), m)
 @present SchLSet(FreeSchema) begin X::Ob; D::AttrType; f::Attr(X,D) end
 @acset_type LSet(SchLSet){Symbol}
 rep = @acset LSet begin X=1; D=1; f=[AttrVar(1)] end # representable X
-X = @acset LSet begin X=1; f=[:X] end
-Y = @acset LSet begin X=1; f=[:Y] end
-to_X, to_Y = homomorphism.(Ref(rep),[X,Y]);
+rep2 = @acset LSet begin X=2;D=1;f=[AttrVar(1),AttrVar(1)] end
+start = @acset LSet begin X=1; f=[:X] end
 
-hset = IncHomSet(X, [to_X, to_Y], X);
-@test isempty(hset.static.overlaps[to_Y]) # Y cannot generate new matches
-@test length(hset.static.overlaps[to_X])==1
+f = homomorphism(rep, rep2; any=true)
+hset = IncHomSet(start, [f], start);
+@test length(hset.static.overlaps[f])==1
 @test length(keys(hset)) == 1;
-rewrite!(hset, Rule(to_X,to_Y))
+rewrite!(hset, Rule(id(rep), f))
 validate(hset)
-rewrite!(hset, Rule(to_Y,to_X))
+rewrite!(hset, Rule(id(rep), f))
 validate(hset)
 
 end # module

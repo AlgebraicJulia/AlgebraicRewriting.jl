@@ -3,14 +3,18 @@ using Test
 # Test package extension loading
 using AlgebraicRewriting
 @test length(methods(view_traj)) == 1
-@test length(methods(Rule)) == 2
+@test length(methods(Rule)) == 1
 using Luxor
 @test length(methods(view_traj)) > 1
 using DataMigrations
-@test length(methods(Rule)) > 2
+@test length(methods(Rule)) > 1
 
 # Demos
 #######
+
+@testset "Full Demo" begin
+  include("../docs/literate/full_demo.jl")
+end
 
 @testset "Lotka Volterra" begin
   include("../docs/literate/lotka_volterra.jl")
