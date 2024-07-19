@@ -151,11 +151,6 @@ finite sets. If any of the pointwise identification conditions fail (in FinSet),
 this method will raise an error. If the dangling condition fails, the resulting
 C-set will be only partially defined. To check all these conditions in advance,
 use the function [`can_pushout_complement`](@ref).
-
-In the absence of AttrVars, K is a subobject of G. But we want to be able to 
-change the value of attributes. So any variables in I are not concretized by 
-the I->K map. However, AttrVars may be merged together if `m: L -> G` merges 
-parts together.
 """
 function pushout_complement(pair::ComposablePair{<:ACSet, <:TightACSetTransformation})
   l, m = pair 
@@ -163,46 +158,20 @@ function pushout_complement(pair::ComposablePair{<:ACSet, <:TightACSetTransforma
   S = acset_schema(I)
   all(at->nparts(G, at)==0, attrtypes(S)) || error("Cannot rewrite with AttrVars in G")
   # Compute pushout complements pointwise in FinSet.
-  comps = NamedTuple(Dict(map(ob(S)) do o 
+  comps = NamedTuple(Dict(map(types(S)) do o 
       o => pushout_complement(ComposablePair(l[o], m[o]))
   end))
+
   k_components = Dict{Symbol,Any}(pairs(map(first, comps)))
-  g_components = Dict{Symbol,Any}(pairs(map(last, comps)))
+  g_components = Dict{Symbol,Any}(k => k ∈ ob(S) ? v : FinFunction(v) 
+                                  for (k,v) in pairs(map(last, comps)))
 
-  # Reassemble components into natural transformations.
-  g = hom(Subobject(G, NamedTuple(Dict(o => g_components[o] for o in ob(S)))))
-  K = dom(g)
-
-  var_eq = var_eqs(l, m) # equivalence class of attrvars
-  for at in attrtypes(S)
-    eq = var_eq[at]
-    roots = unique(find_root!.(Ref(eq), 1:length(eq)))
-    add_parts!(K, at, length(roots))
-    k_components[at] = map(parts(I, at)) do pᵢ
-      attrvar = AttrVar(findfirst(==(find_root!(eq, pᵢ)), roots))
-      for (a, d, _) in attrs(S; to=at)
-        for p in incident(I, AttrVar(pᵢ), a)
-          K[k_components[d](p), a] = attrvar
-        end
-      end
-      attrvar
-    end
-    T = Union{AttrVar, attrtype_type(G, at)}
-    g_components[at] = Vector{T}(map(parts(K, at)) do v
-      try 
-        f, o, val = var_reference(K, at, v)
-        G[g_components[o](val), f]
-      catch e 
-        vᵢ = findfirst(==(AttrVar(v)), k_components[at])
-        m[at](l[at](AttrVar(vᵢ)))
-      end 
-    end)
-  end
-
-  k = ACSetTransformation(I, K; k_components...)
-  g = ACSetTransformation(K, G; g_components...)
+  # # Reassemble components into natural transformations.
+  g = hom(Subobject(G, NamedTuple(g_components)))
+  k = ACSetTransformation(I, dom(g); k_components...)
   kg, lm = force.(compose.([k,l], [g, m]))
-  kg == lm || error("Square doesn't commute: \n\t$(components(kg)) \n!= \n\t$(components(lm))")
+  kg == lm || error(
+    "Square doesn't commute: \n\t$(components(kg)) \n!= \n\t$(components(lm))")
   is_natural(k) || error("k unnatural $k")
   is_natural(g) || error("g unnatural")
   return ComposablePair(k, g)

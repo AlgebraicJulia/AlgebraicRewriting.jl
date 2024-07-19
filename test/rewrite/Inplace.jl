@@ -29,7 +29,7 @@ Pat = mk_switch()
 # toggle rule 
 flip(xs) = !only(xs)
 
-toggle = Rule(id(Pat), id(Pat); expr=(State=[flip],))
+toggle = Rule(create(Pat), create(Pat); expr=(State=[flip],))
 
 # Apply rewrite
 prog = compile_rewrite(toggle)
@@ -38,7 +38,7 @@ prog = compile_rewrite(toggle)
 
 m= homomorphism(Pat, T)
 rewrite_match!(toggle, m; prog);
-@test T == F
+@test is_isomorphic(T, F)
 
 
 # Sum parallel edges of Weighted Graph 

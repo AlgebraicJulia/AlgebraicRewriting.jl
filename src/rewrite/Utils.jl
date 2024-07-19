@@ -16,6 +16,9 @@ using ..Constraints
 using ...CategoricalAlgebra
 using ...CategoricalAlgebra.CSets: invert_hom
 
+import Catlab.CategoricalAlgebra.FinSets: is_monic
+is_monic(f::SliceHom) = is_monic(f.f) # UPSTREAM
+
 
 # RULES 
 #######
@@ -40,54 +43,59 @@ condition(s)
   monic::Vector{Symbol} # further constraint on match morphism
   exprs::Dict{Symbol, Dict{Int,Union{Nothing,Function}}}
 
-  function Rule{T}(L, R; ac=nothing, monic=false, expr=nothing, freevar=false) where {T}
-    S = acset_schema(dom(L))
+  function Rule{T}(l, r; ac=nothing, monic=false, expr=nothing, freevar=false) where {T}
+    L, R, I, I′ = codom(l), codom(r), dom(l), dom(r)
+    S = acset_schema(L)
     monic = monic isa Bool ? (monic ? ob(S) : []) : monic
-    dom(L) == dom(R) || error("L<->R not a span")
+    expr = isnothing(expr) ? Dict() : expr
+    T==:SqPO || is_monic(l) || error("Left leg must be monic $(components(l))")
+    I == I′ || error("L<->R not a span")
     ACs = isnothing(ac) ? [] : deepcopy.(ac)
     exprs = isnothing(expr) ? Dict() : Dict(pairs(expr))
-    map(enumerate([L,R,])) do (i, f)
-      if !is_natural(f)
-        error("unnatural map #$i: $f")
-      end
+    for (lbl, f) in ["left"=>l, "right"=>r]
+      is_natural(f) || error("unnatural $lbl map: $f")
     end
+
+    # Check the application conditions are maps out of L
     for (i,cond) in enumerate(ACs)
       λ = findfirst(==(1), cond.g[:elabel])
       λv = cond.g[λ, :src]
       λs = cond.g[λv,:vlabel]
-      err = "Condition $i: source $λs \n != match L $(codom(L))\nE#$λ V#$λv"
-      λs == codom(L) || error(err)
+      err = "Condition $i: source $λs \n != match L $(L)\nE#$λ V#$λv"
+      λs == L || error(err)
     end 
-    # For the case of ACSet rewriting, address variable substitution in R
-    if !(dom(L) isa ACSet)
-      exprs = Dict()
-    else 
-      exprs = Dict(map(attrtypes(S)) do o
-        binding = Dict()
-        for r_var in parts(codom(R), o)
-          # User explicitly provides a function to evaluate for this variable
-          if !isnothing(expr) && haskey(expr, o) && r_var ∈ keys(expr[o])
-            binding[r_var] = expr[o][r_var]
-          else # try to see if the value is determined by the partial map
-            preim = preimage(R[o],AttrVar(r_var))
-            pr = unique(L[o].(AttrVar.(preimage(R[o],AttrVar(r_var)))))
-            if length(pr) == 1 
-              binding[r_var] = vs -> vs[only(pr).val] 
-            elseif freevar # We are ok with introducing free variables
-              continue 
-            else 
-              error("Unbound variable in R $o#$r_var")
-            end 
+
+    # For the case of ACSet rewriting, address variable assignment in R
+    exprs = !(L isa ACSet) ? Dict() : Dict(map(attrtypes(S)) do o
+      binding = Dict()
+      is_monic(r[o]) || error("I→R AttrType component must be monic $(r[o])")
+      for r_var in parts(R, o)
+        preim = preimage(r[o], AttrVar(r_var))
+        x = get′(expr, o, r_var)
+        if !isempty(preim) # the value of this attrvar is preserved
+          isnothing(x) || error(
+            "Cannot manually set AttrVar value for a preserved attribute")
+        else # value of this attr is set explicitly (or a freevar is introduced)
+          if !isnothing(x)
+            binding[r_var] = x
+          elseif freevar continue 
+          else 
+            error(
+            "Must set AttrVar value for newly introduced attribute via `exprs`")
           end
         end
-        o => binding
-      end)
-    end
-    new{T}(deepcopy(L), deepcopy(R), ACs, monic, exprs)
+      end
+      o => binding
+    end)
+    new{T}(deepcopy(l), deepcopy(r), ACs, monic, exprs)
   end
 end
 
-Rule(X::ACSet; kw...) = Rule(id(X), id(X); kw...) # only changing attributes
+get′(d::Union{NamedTuple,AbstractDict}, o::Symbol, i::Int) =  
+  haskey(d, o) && haskey′(d[o], i) ? d[o][i] : nothing 
+haskey′(d::AbstractDict{Int}, k::Int) = haskey(d, k) 
+haskey′(d::AbstractVector, k::Int) = length(d) ≥ k 
+
 Rule(l, r; kw...) = Rule{:DPO}(l, r; kw...) # Assume DPO by default
 ruletype(::Rule{T}) where T = T
 left(r::Rule{T}) where T = r.L
@@ -171,10 +179,10 @@ function can_match(r::Rule{T}, m; homsearch=false, initial=Dict()) where T
       return ("Gluing conditions failed", gc)
     end
 
-    meq = check_match_var_eqs(r, m)
-    if !isempty(meq)
-      return ("Induced attrvar equation failed", meq)
-    end
+    # meq = check_match_var_eqs(r, m)
+    # if !isempty(meq)
+    #   return ("Induced attrvar equation failed", meq)
+    # end
   end
 
   for (nᵢ, N) in enumerate(r.conditions)
@@ -237,17 +245,8 @@ function get_expr_binding_map(r::Rule{T}, m::ACSetTransformation, res) where T
   X = codom(rmap)
   comps = Dict(map(attrtypes(acset_schema(X))) do at 
       bound_vars = Vector{Any}(collect(m[at]))
-      binding = Dict()
-      for prt in parts(X, at)
-        exprs = filter(!isnothing, map(preimage(rmap[at], AttrVar(prt))) do rprt 
-          get(r.exprs[at], rprt, nothing)
-        end)
-        if !isempty(exprs)
-          
-          binding[prt] = only(unique([expr(bound_vars) for expr in exprs]))
-        end 
-      end
-      return at => binding
+      at => Dict(rmap[at](AttrVar(i)).val => xpr(bound_vars) 
+                 for (i, xpr) in r.exprs[at])
   end)
   sub_vars(X, comps)
 end

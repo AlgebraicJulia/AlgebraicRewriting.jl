@@ -75,4 +75,15 @@ function id_condition(pair::ComposablePair{<:FinSet{Int}})
            if m(l_imageᶜ[i]) == m(l_imageᶜ[j])))
 end
 
+
+"""
+Given a monic VarFunction (which only sends AttrVars to AttrVars) and a 
+VarFunction which only sends AttrVars to concrete values, we have a unique 
+means of first sending vars to concrete 
+
+"""
+function pushout_complement(pair::ComposablePair{<:VarSet{T}}) where T 
+  f, g = pair 
+  return ComposablePair(f ⋅ g, id(codom(g)))
+end 
 end # module

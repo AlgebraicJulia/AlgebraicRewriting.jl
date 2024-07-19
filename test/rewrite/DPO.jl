@@ -172,29 +172,23 @@ z_ = @acset UndirectedBipartiteGraph begin
   V₁=2; V₂=2; E=3; src= [1,2,2]; tgt= [1,1,2]
 end
 
-line = UndirectedBipartiteGraph()
-add_vertices₁!(line, 1)
-add_vertices₂!(line, 2)
-add_edges!(line, [1], [1])
+line = @acset UndirectedBipartiteGraph begin 
+  V₁=1; V₂=2; E=1; src=[1]; tgt=[1] 
+end
 
-parallel = UndirectedBipartiteGraph()
-add_vertices₁!(parallel, 2)
-add_vertices₂!(parallel, 2)
-add_edges!(parallel, [1,2], [1,2])
+parallel =  @acset UndirectedBipartiteGraph begin 
+  V₁=2; V₂=2; E=2; src=[1,2]; tgt=[1,2] 
+end
 
-merge = UndirectedBipartiteGraph()
-add_vertices₁!(merge, 2)
-add_vertices₂!(merge, 2)
-add_edges!(merge, [1,2], [1,1])
+merge = @acset UndirectedBipartiteGraph begin 
+  V₁=2; V₂=2; E=2; src=[1,2]; tgt=[1,1] 
+end
 
-Lspan = UndirectedBipartiteGraph()
-add_vertices₁!(Lspan, 1)
-add_vertices₂!(Lspan, 2)
-add_edges!(Lspan, [1,1],[1,2])
+Lspan =  @acset UndirectedBipartiteGraph begin 
+  V₁=1; V₂=2; E=2; src=[1,1]; tgt=[1,2] 
+end
 
-I = UndirectedBipartiteGraph()
-add_vertices₁!(I, 1)
-add_vertices₂!(I, 2)
+I =  @acset UndirectedBipartiteGraph begin V₁=1; V₂=2; end
 
 L = ACSetTransformation(I, Lspan, V₁=[1], V₂=[1,2])
 R = ACSetTransformation(I, line, V₁=[1], V₂=[1,2])
@@ -219,11 +213,8 @@ end
 
 quadrangle = @acset SSet begin
     T=2; E=5; V=4
-    d1=[1,1]
-    d2=[2,3]
-    d3=[4,5]
-    src=[1,1,1,2,3]
-    tgt=[4,2,3,4,4]
+    d1=[1,1]; d2=[2,3]; d3=[4,5]
+    src=[1,1,1,2,3];  tgt=[4,2,3,4,4]
 end
 
 L = quadrangle  # We defined quadrilateral above.
@@ -234,11 +225,8 @@ I = @acset SSet begin
 end
 R = @acset SSet begin
   T=2; E=5; V=4
-  d1=[2,3]
-  d2=[1,5]
-  d3=[5,4]
-  src=[1,1,2,3,2]
-  tgt=[2,3,4,4,3]
+  d1=[2,3]; d2=[1,5]; d3=[5,4]
+  src=[1,1,2,3,2]; tgt=[2,3,4,4,3]
 end
 edge = @acset SSet begin E=1; V=2; src=[1]; tgt=[2] end
 edge_left = only(homomorphisms(edge, L; initial=Dict([:V=>[1,3]])))
@@ -279,7 +267,7 @@ X = @acset WeightedGraph{Int} begin
 end
 rule = Rule(id(WeightedGraph{Int}()), create(X); freevar=true)
 G = @acset WeightedGraph{Int} begin V=1; E=3; src=1; tgt=1; weight=[10,20,100] end
-G2 = rewrite(rule,G)
+G2 = rewrite(rule, G)
 
 L = @acset WeightedGraph{Int} begin V=2; E=2; Weight=2; src=1; tgt=2; 
                                     weight=AttrVar.(1:2) end
@@ -302,37 +290,6 @@ rule = Rule(l, r; monic=[:E], freevar=true)
 m = get_matches(rule, G)[1]
 @test rewrite_match(rule, m) == @acset WeightedGraph{Int} begin 
   V=1; E=2; Weight=1; src=1; tgt=1; weight=[AttrVar(1), 100] end
-
-# Rewriting with induced equations between AttrVars in the rule
-#--------------------------------------------------------------
-
-@present SchFoo(FreeSchema) begin X::Ob; D::AttrType; f::Attr(X,D) end
-@acset_type AbsFoo(SchFoo)
-const Foo = AbsFoo{Bool}
-
-L = @acset Foo begin X=2; f=[false, false] end 
-I = @acset Foo begin X=2;D=2; f=AttrVar.(1:2) end 
-R = @acset Foo begin X=2; f=[false, true]end 
-rule = Rule(homomorphism(I, L; initial=(X=1:2,)), 
-            homomorphism(I, R; initial=(X=1:2,)))
-
-# we cannot match both X of L to the same part in G because this would yield 
-# an inconsistent result
-@test length(get_matches(rule, L)) == 2
-m = get_matches(rule, L)[1]
-res = rewrite_match(rule, m)
-@test is_isomorphic(res, R)
-
-# Now with arbitrary functions
-
-rule = Rule(I; expr=(D=[((x₁, x₂),) -> x₁ && x₂, ((x₁, x₂),) -> x₁ ≤ x₂],))
-
-# We can match (1,2) and (2,1) no matter what because those impose no constraints
-# (1,1) and (2,2) do unify the variables of the rule, so it is only a valid 
-# match if the two expressions evaluate to the same value. Because ⊥∧⊥ ≠ ⊥⟹⊥
-# (whereas ⊤∧⊤ = ⊤⟹⊤), the only match where both X's are mapped to a single 
-# value is the case where they are mapped to the one with the attribute ⊤.
-@test collect.(getindex.(components.(get_matches(rule, R)), :X)) == [[1,2],[2,1],[2,2]]
 
 
 end # module 

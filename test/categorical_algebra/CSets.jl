@@ -1,8 +1,5 @@
 module TestCSets
-using Test
-using Catlab, Catlab.Graphs, Catlab.CategoricalAlgebra
-using AlgebraicRewriting
-
+using Test, Catlab, AlgebraicRewriting
 
 # Pushout complement 
 ####################
@@ -34,8 +31,8 @@ G = @acset LSet begin X=2; f=[:x,:y] end
 f = homomorphism(I,G; initial=(X=[1],))
 
 kg = last(pushout_complement(id(I),f))
-@test dom(kg) == @acset LSet begin X=2; D=1; f=[AttrVar(1),:y] end
-@test collect(kg[:D]) == [:x]
+@test dom(kg) == @acset LSet begin X=2; f=[:x,:y] end
+@test nparts(kg|> dom, :D) == 0
 
 # Slices 
 ########
