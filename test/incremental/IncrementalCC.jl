@@ -74,7 +74,7 @@ rewrite!(mset, M_rule)
 del = delete(Graph(1))
 mset = IncHomSet(Graph(1), [del], G2⊕T; nac=[del]);
 @test length(keys(mset)) == 2
-M_rule = Rule(id(Graph(1)), delete(Graph(1)); ac=[AppCond(del, false)])
+M_rule = Rule(id(Graph(1)), delete(Graph(1)); ac=[NAC(del)])
 m = ACSetTransformation(Graph(1), G2⊕T; V=[1])
 rewrite!(mset, M_rule, m)
 @test length(keys(mset)) == 1
@@ -103,7 +103,7 @@ edge_loop = @acset Graph begin V=2; E=2; src=[1,1]; tgt=[1,2] end
 to_edge_loop = homomorphism(e, edge_loop; monic=true)
 # rem edge, not if src has loop
 r = Rule(homomorphism(G2, e; initial=(V=1:2,)), id(G2);
-         ac=[AppCond(to_edge_loop, false; monic=true)]);
+         ac=[NAC(to_edge_loop; monic=true)]);
 
 mset = IncHomSet(r, edge_loop);
 @test length(keys(mset)) == 1
@@ -116,7 +116,7 @@ rewrite!(mset, r)
 #----------------------------------------------------------------
 # Remove edge, only if src has loop (no monic constraint on PAC)
 r = Rule(homomorphism(G2, e; initial=(V=1:2,)), id(G2);
-         ac=[AppCond(to_edge_loop)]);
+         ac=[PAC(to_edge_loop)]);
 mset = IncHomSet(r, edge_loop ⊕ e);
 m1, m2 = get_matches(r, state(mset)) # first one removes the loop
 rewrite!(mset, r, m1)
@@ -132,8 +132,8 @@ rewrite!(mset, r)
 edge_loop′ = @acset Graph begin V=2; E=2; src=[1,2]; tgt=[2,2] end
 to_edge_loop′ = homomorphism(e, edge_loop′; monic=true)
 r = Rule(id(e), to_edge_loop′;
-         ac=[AppCond(to_edge_loop; monic=true), 
-             AppCond(to_edge_loop′, false; monic=true)]);
+         ac=[PAC(to_edge_loop; monic=true), 
+             NAC(to_edge_loop′; monic=true)]);
 G = @acset Graph begin V=4; E=4; src=[1,1,2,3]; tgt=[1,2,3,4] end
 mset = IncHomSet(r, G);
 # there is just one 'way' in which apply R unlocks new matches from this PAC
@@ -195,7 +195,6 @@ expected = @acset WeightedGraph{Bool} begin
 end
 @test is_isomorphic(expected, state(hset))
 
-get_matches(A_rule, state(hset))
 rewrite!(hset, A_rule)
 @test validate(hset)
 end
@@ -231,5 +230,30 @@ rewrite!(hset, Rule(id(rep), f))
 validate(hset)
 rewrite!(hset, Rule(id(rep), f))
 validate(hset)
+
+
+# SPO-inspired example
+#---------------------
+
+@present SchFirm(FreeSchema) begin 
+  (P,F,J,V)::Ob; 
+  v::Hom(V,F); p::Hom(J,P); f::Hom(J,F)
+end
+@acset_type Firm(SchFirm)
+P = @acset Firm begin P=1 end
+F = @acset Firm begin P=1 end
+J = @acset Firm begin J=1;F=1;P=1;f=1;p=1 end
+V = @acset Firm begin V=1;F=1;v=1 end
+
+nac = homomorphism(P⊕V, J⊕V)
+
+init =@acset Firm begin F=2; J=1; P=2; V=1; f=[1]; p=[2]; v=[2] end
+next = @acset Firm begin F=2; P=1; V=1; v=[2] end
+upd = homomorphism(next, init; initial=(F=1:2,P=[1]))
+
+# We look for Person+Vacancy pairs such that the person isn't already employed
+mset = IncHomSet(P⊕V, ACSetTransformation[], init; nac=[nac]);
+deletion!(mset, upd)
+validate(mset)
 
 end # module

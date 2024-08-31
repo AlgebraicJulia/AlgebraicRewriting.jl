@@ -1,7 +1,7 @@
 module Constraints 
 export apply_constraint, Constraint, CGraph, arity,
        ∀, ∃, ∃!, True, False, Commutes,
-       AppCond, LiftCond, Trivial
+       AppCond, LiftCond, Trivial, PAC, NAC
 using Catlab
 import Catlab.Theories: ⊗, ⊕
 import Catlab.CategoricalAlgebra: ¬
@@ -457,7 +457,8 @@ function AppCond(f::ACSetTransformation, pos::Bool=true; monic=false)
   return Constraint(cg, pos ? expr : ¬(expr))
 end
 
-
+NAC(f; kw...) = AppCond(f, false; kw...)
+PAC(f; kw...) = AppCond(f, true; kw...)
 
 """
       ∀₂ 

@@ -317,8 +317,8 @@ one, two, three, four, five = [@acset(Graph, begin
   V = 1; E = n; src = 1; tgt = 1 
 end) for n in 1:5]
 
-c2 = AppCond(homomorphism(Graph(1), two); monic=true)         # PAC
-c3 = AppCond(homomorphism(Graph(1), four), false; monic=true) # NAC
+c2 = PAC(homomorphism(Graph(1), two); monic=true)         # PAC
+c3 = NAC(homomorphism(Graph(1), four); monic=true) # NAC
 constr = c2 ⊗ c3 # logical conjunction: 2 ≤ |E| < 4
 
 rule = Rule(id(Graph(1)), id(Graph(1)); ac=[constr])
