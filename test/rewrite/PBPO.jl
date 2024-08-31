@@ -223,7 +223,7 @@ tk = ACSetTransformation(K, K′; V=[1,2])
 l′ = homomorphism(K′,L′; monic=true, initial=(V=[1,2,3,4],)) 
 
 loop = @acset WG begin V=1;E=1;Weight=1;src=1;tgt=1;weight=[AttrVar(1)]end 
-ac = AppCond(homomorphism(L,loop), false) # cannot bind pattern to loop
+ac = NAC(homomorphism(L,loop)) # cannot bind pattern to loop
 
 """
         ∀

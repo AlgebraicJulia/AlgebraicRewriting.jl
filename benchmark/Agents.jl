@@ -278,7 +278,7 @@ sheep_fwd = tryrule(RuleApp(:move_fwd, sheep_fwd_rule,
 s_eat_pac = @acset_colim yWS begin s::Sheep; countdown(sheep_loc(s)) == 0 end
 
 se_rule = Rule(S; expr=(Eng=[vs -> vs[1] + 4, vs -> 30],),
-               ac=[AppCond(hom(S, s_eat_pac))])
+               ac=[PAC(hom(S, s_eat_pac))])
 sheep_eat = tryrule(RuleApp(:Sheep_eat, se_rule, S))
 
 # Eat sheep
@@ -310,7 +310,7 @@ g_inc_n = deepcopy(G)
 set_subpart!(g_inc_n, 1, :countdown, 0)
 rem_part!(g_inc_n, :Eng, 1)
 
-g_inc_rule = Rule(G; ac=[AppCond(hom(G, g_inc_n), false)],
+g_inc_rule = Rule(G; ac=[NAC(hom(G, g_inc_n))],
                   expr=(Eng=[vs -> only(vs) - 1],))
 g_inc = RuleApp(:GrassIncrements, g_inc_rule, G) |> tryrule
 

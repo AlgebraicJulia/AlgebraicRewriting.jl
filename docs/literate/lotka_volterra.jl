@@ -378,7 +378,7 @@ end;
 sheep_fwd_rule = Rule(
   hom(s_fwd_i, s_fwd_l; monic=true),
   hom(s_fwd_i, s_fwd_r; monic=true),
-  ac=[AppCond(hom(s_fwd_l, s_n), false)],
+  ac=[NAC(hom(s_fwd_l, s_n))],
   expr=(Eng=[vs -> only(vs) - 1],))
 ;
 
@@ -418,7 +418,7 @@ GS_Dir = hom(G⊕D, S; monic=true)
 GS_Dir30 = hom(G⊕D, add_time(S, 30); monic=true)
 
 se_rule = Rule(GS_Dir,GS_Dir30; expr=(Eng=[vs -> only(vs) + 4],),
-  ac=[AppCond(hom(S, s_eat_nac), false)]);
+  ac=[NAC(hom(S, s_eat_nac))]);
 
 S_to_S30 = hom(S, add_time(S, 30))
 sheep_eat = tryrule(RuleApp(:Sheep_eat, se_rule, id(S), S_to_S30));

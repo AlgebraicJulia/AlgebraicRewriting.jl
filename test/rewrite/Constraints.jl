@@ -27,7 +27,7 @@ Positive application condition: a particular matched vertex must have self loop.
 looparr = @acset Graph begin V=2; E=2; src=[1,1]; tgt=[1,2] end 
 p2 = path_graph(Graph, 2)
 f=homomorphism(p2,looparr; monic=true)
-constr = AppCond(f, true)
+constr = PAC(f)
 
 G = @acset Graph begin V=1;E=1;src=1;tgt=1 end
 f = homomorphism(p2, G)
@@ -89,8 +89,8 @@ to_graphviz(constr)
 two_loops = @acset Graph begin V=1; E=2; src=1; tgt=1 end
 three_loops = @acset Graph begin V=1; E=3; src=1; tgt=1 end
 
-c2 = AppCond(homomorphism(Graph(1), two_loops); monic=true)
-c3 = AppCond(homomorphism(Graph(1), three_loops); monic=true)
+c2 = PAC(homomorphism(Graph(1), two_loops); monic=true)
+c3 = PAC(homomorphism(Graph(1), three_loops); monic=true)
 constr = c2 ⊕ c3
 to_graphviz(constr)
 

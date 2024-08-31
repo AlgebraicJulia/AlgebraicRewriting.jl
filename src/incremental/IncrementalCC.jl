@@ -270,30 +270,53 @@ end
 """
 General method for discovering the newly added homs that arise from deleting 
 some part of the world due to a NAC.
+
+This function does NOT assume we have done DPO rewriting, where the possible 
+deletions are subobjects of the pattern. Deletion can extend
+beyond some statically known context, a less efficient algorithm is needed.
+
+Given an overlap which has been constructed to have *some* part intersecting 
+with the *deleted* portion of X, we extend this to a full match N->X. This is 
+done by forcing the overlap triangle to commute, and forcing everything not in 
+the overlap (as well as everything in the image of `n`, even if it is in the 
+overlap) to go to non-deleted portions of X. Every such morphism, g, is then
+pulled back to X', and then precomposed with n to get a new match from P that 
+was made possible due to the deletion X ↢ X'.
+
+```
+                                     n
+                              O  → N ← P
+                              ↓ ↙g ↓ ↙
+                              X  ← X'
+                                f
+```
 """
 function new_nac_homs!(runt::IncCCRuntime, constr::IncConstraints, nac::NAC, 
                        f::ACSetTransformation, new_keys, new_matches,
                        X_nondeleted::Dict{Symbol, Set{Int}})
   N, X = codom(nac), codom(f)
   Ob = ob(acset_schema(N))
+  nac_image = Dict(o => collect(nac.m[o]) for o in Ob)
   for spn in nac_overlap(nac, f) # N ↢ overlap -> X ↢ X'
     overlap = apex(spn)
     overlap_N = Dict(o=>Set(collect(left(spn)[o])) for o in Ob)
     # everything that is not in overlap is forced to go to a non-deleted thing
     predicates = Dict(map(Ob) do o 
       o => Dict([p => X_nondeleted[o] for p in parts(N, o) 
-                 if p ∉ overlap_N[o]])
+                 if p ∉ overlap_N[o] || p ∈ nac_image[o]])
     end)
     # force the triangle to commute
     initial = Dict(map(Ob) do o 
-      o=>Dict(map(parts(overlap, o)) do p
+      o => Dict(map(parts(overlap, o)) do p
         left(spn)[o](p) => right(spn)[o](p)
       end)
     end)
+
     # get *new* matches that were blocked from existing by this NAC
-    for h in homomorphisms(N, X; monic=nac.monic, predicates, initial)
-      h′ = pull_back(f, nac.m ⋅ h) # constrained search so that this must work
-      add_match!(runt, constr, new_keys, new_matches, h′)
+    for g in homomorphisms(N, X; monic=nac.monic, predicates, initial)
+      h = pull_back(f, nac.m ⋅ g) # constrained search so that this must work
+      isnothing(h) && error("Error in new_nac_homs!")
+      add_match!(runt, constr, new_keys, new_matches, h)
     end
   end
 end
