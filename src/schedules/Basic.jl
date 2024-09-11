@@ -7,7 +7,7 @@ using Catlab.CategoricalAlgebra, Catlab.Theories
 
 using ...Rewrite
 using ...Rewrite.Inplace: interp_program!
-using ...CategoricalAlgebra.CSets: Migrate
+
 using ..Poly
 using ..Wiring: AgentBox
 import ..Wiring: input_ports, output_ports, initial_state, color, update!
@@ -28,7 +28,7 @@ input_ports(r::Weaken) = [codom(r.agent)]
 output_ports(r::Weaken) = [dom(r.agent)]
 initial_state(::Weaken) = nothing 
 color(::Weaken) = "lavender"
-(F::Migrate)(a::Weaken) =  Weaken(a.name,F(a.agent))
+(F::SimpleMigration)(a::Weaken) =  Weaken(a.name,F(a.agent))
 sparsify(a::Weaken) = Weaken(a.name, sparsify(a.agent))
 
 function update!(::Ref, boxdata::Weaken, g::ACSetTransformation, inport::Int)
@@ -60,7 +60,7 @@ input_ports(r::Strengthen) = [dom(r.agent)]
 output_ports(r::Strengthen) = [codom(r.agent)]
 initial_state(::Strengthen) = nothing 
 color(::Strengthen) = "lightgreen"
-(F::Migrate)(a::Strengthen) =  Strengthen(a.name,F(a.agent))
+(F::SimpleMigration)(a::Strengthen) =  Strengthen(a.name,F(a.agent))
 sparsify(a::Strengthen) = Strengthen(a.name, sparsify(a.agent))
 
 function update!(::Ref, boxdata::Strengthen, g::ACSetTransformation, inport::Int)
@@ -88,7 +88,8 @@ input_ports(r::Initialize) = isnothing(r.in_agent) ? [] : [r.in_agent]
 output_ports(r::Initialize) = [typeof(r.state)()]
 initial_state(::Initialize) = nothing 
 color(::Initialize) = "gray"
-(F::Migrate)(a::Initialize) = Initialize(a.name,F(a.state),F(a.in_agent))
+(F::SimpleMigration)(a::Initialize) = 
+  Initialize(a.name,F(a.state),F(a.in_agent))
 sparsify(a::Initialize) = Initialize(a.name, sparsify([a.state,a.in_agent])...)
 
 function update(i::Initialize, t::PMonad)
@@ -119,7 +120,7 @@ initial_state(::Fail) = nothing
 
 color(::Fail) = "red"
 
-(F::Migrate)(a::Fail) = Fail(F(a.agent), a.silent, a.name)
+(F::SimpleMigration)(a::Fail) = Fail(F(a.agent), a.silent, a.name)
 
 sparsify(a::Fail) = Fail(sparsify(a.agent), a.silent, a.name)
 

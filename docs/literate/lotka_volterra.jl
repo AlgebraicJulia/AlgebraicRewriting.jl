@@ -124,11 +124,12 @@ migration, we can define them in terms of sheep and then migrate along `F` to
 obtain the analogous actions for wolves.
 =#
 
-F = Migrate(
-  Dict(:Sheep => :Wolf, :Wolf => :Sheep, :Time=>:Time),
-  Dict([:sheep_loc => :wolf_loc, :wolf_loc => :sheep_loc,
-    :sheep_eng => :wolf_eng, :wolf_eng => :sheep_eng, :countdown => :countdown,
-    :sheep_dir => :wolf_dir, :wolf_dir => :sheep_dir,]), SchLV, LV);
+F = ΔMigration(FinFunctor(
+  Dict(:V=>:V, :E=>:E, :Eng=>:Eng, :Dir=>:Dir, :Sheep => :Wolf, :Wolf => :Sheep, :Time=>:Time),
+  Dict(:src=>:src, :tgt=>:tgt, :dir=>:dir, 
+       :sheep_loc => :wolf_loc, :wolf_loc => :sheep_loc,
+       :sheep_eng => :wolf_eng, :wolf_eng => :sheep_eng, :countdown => :countdown,
+       :sheep_dir => :wolf_dir, :wolf_dir => :sheep_dir), SchLV, SchLV), LV);
 
 #=
 We ought to be able to take a state of the world (with no coordinate information)
@@ -136,7 +137,7 @@ and obtain a state of the world with coordinates (the canonical way to do this
 is to assign "variables" for the values of the coordinates).
 =#
 
-F2 = Migrate(SchLV, LV, SchLV′, LV′; delta=false);
+F2 = ΣMigration(FinFunctor(SchLV, SchLV′), LV′);
 
 # # Initializing and visualizing world states
 
@@ -479,8 +480,7 @@ s_die_l = @acset_colim yLV begin s::Sheep; sheep_eng(s) == 0 end;
 sheep_die_rule = Rule(hom(G, s_die_l), id(G))
 sheep_starve = (RuleApp(:starve, sheep_die_rule,
   hom(S, s_die_l), create(G))
-                ⋅
-                (id([I]) ⊗ Weaken(create(S))) ⋅ merge_wires(I));
+  ⋅ (id([I]) ⊗ Weaken(create(S))) ⋅ merge_wires(I));
 
 # #### Sheep starvation test
 

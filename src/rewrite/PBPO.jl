@@ -3,7 +3,7 @@ export PBPORule
 
 using Catlab, Catlab.CategoricalAlgebra
 import Catlab.CategoricalAlgebra: left, right
-using Catlab.CategoricalAlgebra.CSets: abstract_attributes
+using Catlab.CategoricalAlgebra.CSets: abstract_attributes, sub_vars
 using Catlab.CategoricalAlgebra.HomSearch: backtracking_search
 using Catlab.CategoricalAlgebra.Chase: extend_morphism_constraints  
 
@@ -69,7 +69,7 @@ ruletype(::PBPORule) = :PBPO
 left(r::PBPORule) = r.l 
 right(r::PBPORule) = r.r
 
-(F::Migrate)(r::PBPORule) =
+(F::SimpleMigration)(r::PBPORule) =
   PBPORule(F(r.l), F(r.r), F(r.tl), F(r.tk), F(r.l′); monic=r.monic,
            acs=F.(r.acs), lcs=F.(r.lcs), expr=F(r.exprs), k_expr=F(r.k_exprs), 
            adherence=r.adherence)

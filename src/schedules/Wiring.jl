@@ -4,6 +4,7 @@ export Schedule, Names, mk_sched, typecheck, merge_wires,
 
 using Catlab, Catlab.CategoricalAlgebra, Catlab.WiringDiagrams, Catlab.Programs,
       Catlab.Theories
+
 import Catlab.WiringDiagrams.DirectedWiringDiagrams: input_ports,output_ports
 import Catlab.Theories: Ob,Hom,id, create, compose, otimes, ⋅, ⊗, ∇,□, trace, 
                         munit, braid, dom, codom, mmerge
@@ -42,7 +43,9 @@ function Base.setindex!(n::Names{T}, y::T, x::String) where T
   n.from_name[x] = y 
   n.to_name[y] = x
 end
-(F::Migrate)(n::Names) = Names(F(n.from_name))
+(F::SimpleMigration)(n::Names) = Names(Dict(map(collect(n.from_name)) do (k,v)
+  k => F(v)
+end))
 sparsify(n::Names) = Names(sparsify(n.from_name))
 
 # General wiring diagram utilities
@@ -189,7 +192,7 @@ otimes(x::Schedule, y::AgentBox) = otimes(x, singleton(y))
 
 
 """Map a functor over the data of a schedule"""
-function (F::Migrate)(wd_::Schedule) 
+function (F::SimpleMigration)(wd_::Schedule) 
   wd = deepcopy(wd_.d)
   for x in [:value, Symbol.(["$(x)_port_type" for x in 
                             [:outer_in,:outer_out,:out,:in]])...,
@@ -209,8 +212,14 @@ function sparsify(wd_::Schedule)
   end 
   return Schedule(wd,wd_.x)
 end
-(F::Migrate)(x::T) where {T<:TM.Ob} = T(F.(x.args), F.(x.type_args))
-(F::Migrate)(x::T) where {T<:TM.Hom} = T(F.(x.args), F.(x.type_args))
+
+function (F::SimpleMigration)(x::T) where {T<:TM.Ob} 
+  T(F.(x.args), F.(x.type_args))
+end
+  
+function (F::SimpleMigration)(x::T) where {T<:TM.Hom} 
+  T([a isa Symbol || a isa String ? a : F(a) for a in x.args], F.(x.type_args))
+end 
 
 const wnames = [
   # Begin   End          Val            BeginType             EndType

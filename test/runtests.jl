@@ -13,11 +13,11 @@ using DataMigrations
 #######
 
 @testset "Full Demo" begin
-  # include("../docs/literate/full_demo.jl")
+  include("../docs/literate/full_demo.jl")
 end
 
 @testset "Lotka Volterra" begin
-  # include("../docs/literate/lotka_volterra.jl")
+  include("../docs/literate/lotka_volterra.jl")
 end
 
 @testset "Game of Life" begin

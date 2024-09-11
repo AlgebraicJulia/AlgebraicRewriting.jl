@@ -3,7 +3,6 @@ export CallbackBox
 
 using Catlab, StructEquality
 
-using ...CategoricalAlgebra.CSets: Migrate
 using ..Poly
 using ..Wiring: AgentBox
 import ACSets: sparsify
@@ -25,7 +24,7 @@ initial_state(::CallbackBox) = nothing
 color(b::CallbackBox) = "purple"
 
 # Warning that the callback function cannot be functorially migrated
-(F::Migrate)(b::CallbackBox) = CallbackBox(b.name, b.callback, F(b.agent))
+(F::SimpleMigration)(b::CallbackBox) = CallbackBox(b.name, b.callback, F(b.agent))
 
 sparsify(b::CallbackBox) = CallbackBox(b.name, b.callback, sparsify(b.agent))
 

@@ -5,16 +5,17 @@ export Rule, ruletype,rewrite, rewrite_match, rewrite_full_output,
 
 using Catlab, Catlab.Theories
 using Catlab.CategoricalAlgebra
+using Catlab.CategoricalAlgebra.CSets: sub_vars
 using Catlab.CategoricalAlgebra.HomSearch: backtracking_search
 import Catlab.CategoricalAlgebra: left, right
 import ACSets: sparsify, acset_schema
 
-using Random
+using Random, DataStructures
 using StructEquality
 
 using ..Constraints
 using ...CategoricalAlgebra
-using ...CategoricalAlgebra.CSets: invert_hom
+using ...CategoricalAlgebra.CSets: invert_hom, var_reference
 
 import Catlab.CategoricalAlgebra.FinSets: is_monic
 is_monic(f::SliceHom) = is_monic(f.f) # UPSTREAM
@@ -81,7 +82,7 @@ condition(s)
           elseif freevar continue 
           else 
             error(
-            "Must set AttrVar value for newly introduced attribute via `exprs`")
+            "Must set AttrVar value for newly-introduced AttrVar $o#$r_var via `exprs` ($exprs)")
           end
         end
       end
@@ -104,8 +105,61 @@ pattern(r::Rule) = codom(left(r))
 acset_schema(r::Rule) = acset_schema(pattern(r))
 
 
-(F::Migrate)(r::Rule{T}) where {T} =
-  Rule{T}(F(r.L), F(r.R); ac=F.(r.conditions), expr=F(r.exprs), monic=r.monic)
+"""
+Some rules involve deleting something and re-adding it. This means Σ
+migrations can introduce variables in L and R that morally should be 
+linked. If not linked, the rule will be invalid (due to introducing 
+variables in R). This can be addressed by 'connecting' the variables via
+adding AttrVars to I and mapping to the left and right. 
+
+This is just a band-aid until patch-graph rewriting or something analogous 
+allows us to avoid spurious deletion + addition rules.
+"""
+function (F::SimpleMigration)(r::Rule{T}; connect=true) where {T}
+  expr = Dict(Symbol(ob_map(functor(F), k)) => v for (k,v) in pairs(r.exprs))
+  Fl, Fr = F(r.L), F(r.R)
+  FL, FR = codom(Fl), codom(Fr)
+  S = acset_schema(FL)
+  connect_dict = DefaultDict(()->[])
+  if connect 
+    for o in attrtypes(S)
+      for r_var in parts(FR, o)
+        preim = preimage(Fr[o], AttrVar(r_var))
+        if isempty(preim) && isnothing(get′(expr, o, r_var))
+          # Assume: new var is *not* floating
+          (f, c, jᵣ) = var_reference(FR, o, r_var) 
+          # Assume: part it's attached to uniquely identified w/ something in L
+          jₗ = only([p for p in parts(FL, c) if isempty(preimage(Fl[c], p))])
+          # And that thing has a fresh attrvar too
+          if isempty(preimage(Fl[o], FL[jₗ, f]))
+            p = add_part!(dom(Fl),o)
+            p2 = add_part!(dom(Fr),o)
+            p == p2 || error("p $p p2 $p2")
+            push!(connect_dict[o], (p, FL[jₗ, f], AttrVar(r_var)))
+          end
+        end
+      end
+    end
+  end 
+  Fl, Fr = map([(Fl,1), (Fr,2)]) do (FMap, var)
+    initial = Dict{Any,Any}(map(types(S)) do t 
+      p(x::Int) = t ∈ ob(S) ? x : AttrVar(x)
+      d =Dict{Any,Any}(map(connect_dict[t]) do (z, lr...)
+        z => lr[var]
+      end)
+      for i in parts(dom(FMap), t)
+        if !haskey(d, i)
+          d[i] = FMap[t](p(i))
+        end
+      end
+      t => d
+    end)
+    homomorphism(dom(FMap), codom(FMap); initial)
+  end
+
+  Rule{T}(Fl, Fr; ac=F.(r.conditions), expr, monic=r.monic)
+end
+
 sparsify(r::Rule{T}) where T = 
   Rule{T}(sparsify(r.L), sparsify(r.R); ac=sparsify.(r.conditions), 
           expr=r.exprs, monic=r.monic)
@@ -277,4 +331,5 @@ rewrite_match(r::AbsRule, m; kw...) =
 
 
 function check_match_var_eqs end # implement in DPO.jl
+
 end # module
