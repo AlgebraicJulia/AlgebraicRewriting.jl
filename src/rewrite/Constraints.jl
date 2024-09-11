@@ -4,10 +4,10 @@ export apply_constraint, Constraint, CGraph, arity,
        AppCond, LiftCond, Trivial, PAC, NAC
 using Catlab
 import Catlab.Theories: ⊗, ⊕
-import Catlab.CategoricalAlgebra: ¬
+import Catlab.CategoricalAlgebra: ¬, incident
 import Catlab.Graphics: to_graphviz
+import Catlab: getvalue
 using StructEquality
-import ...CategoricalAlgebra.CSets: Migrate
 import ACSets: sparsify
 
 """
@@ -40,37 +40,44 @@ end
 @acset_type VELabeledGraph(SchVELabeledGraph) <: AbstractGraph
 @acset_type VLabeledGraph(SchVLabeledGraph) <: AbstractGraph
 
+const CGraphACSet = VELabeledGraph{Union{Nothing, ACSet},
+                                   Union{Nothing, Int, ACSetTransformation}}
 """
 "nothing" means something that will be determined via a quantifier
 Ints are explicit arguments provided when apply_constraint is called
 """
-const CGraph = VELabeledGraph{Union{Nothing, ACSet},
-                              Union{Nothing, Int, ACSetTransformation}}
+@struct_hash_equal struct CGraph 
+  val::CGraphACSet
+  CGraph(val=CGraphACSet()) = new(val)
+end
+getvalue(c::CGraph) = c.val
+Base.getindex(c::CGraph, i...) = getindex(getvalue(c), i...)
+incident(c::CGraph, x...) = incident(getvalue(c), x...)
 
 """Number of variables in a constraint graph"""
 arity(g::CGraph) = maximum(filter(v->v isa Int, g[:elabel]); init=0) 
 
 """Apply migration to all literals in the constraint"""
-function (F::Migrate)(c::CGraph)
-  c = deepcopy(c)
+function (F::SimpleMigration)(c::CGraph)
+  c = deepcopy(getvalue(c))
   c[:vlabel] = [x isa ACSet ? F(x) : x for x in c[:vlabel]]
   c[:elabel] = [x isa ACSetTransformation ? F(x) : x for x in c[:elabel]]
-  return c
+  return CGraph(c)
 end
 function sparsify(c::CGraph)
-  c = deepcopy(c)
+  c = deepcopy(getvalue(c))
   c[:vlabel] = [x isa ACSet ? sparsify(x) : x for x in c[:vlabel]]
   c[:elabel] = [x isa ACSetTransformation ? sparsify(x) : x for x in c[:elabel]]
-  return c
+  return CGraph(c)
 end
 
 """
 Take two CGraphs and merge them along their overlapping vertices and edges
 Returns an ACSetColimit
 """
-function merge_graphs(g1,g2)
+function merge_graphs(g1::CGraphACSet, g2::CGraphACSet)
   # Vertices with literal acsets on them that match
-  overlap_g = CGraph()
+  overlap_g = CGraphACSet()
   p1, p2 = [Dict(:V=>Int[], :E=>Int[]) for _ in 1:2]
   # Merge vertices
   for (v1,X) in filter(x->x[2] isa ACSet, collect(enumerate(g1[:vlabel])))
@@ -339,9 +346,9 @@ map_edges(f,c::Quantifier) = Quantifier(f[:E](c.e),c.kind,map_edges(f,c.expr);
 @struct_hash_equal struct Constraint
   g::CGraph 
   d::BoolExpr 
-  function Constraint(g,d)
-    nparts(g,:VLabel) == 0 || error("No vertex variables allowed")
-    nparts(g,:ELabel) == 0 || error("No edge variables allowed")
+  function Constraint(g::CGraph,d::BoolExpr)
+    nparts(getvalue(g),:VLabel) == 0 || error("No vertex variables allowed")
+    nparts(getvalue(g),:ELabel) == 0 || error("No edge variables allowed")
     # check that all of the object assignments match the defined morphisms 
     for (eind, (s, t, h)) in enumerate(zip(g[:src], g[:tgt], g[:elabel]))
       sv, tv = [g[x,:vlabel] for x in [s,t]]
@@ -366,7 +373,7 @@ map_edges(f,c::Quantifier) = Quantifier(f[:E](c.e),c.kind,map_edges(f,c.expr);
 end
 arity(g::Constraint) = arity(g.g)
 
-(F::Migrate)(c::Constraint) = Constraint(F(c.g),c.d)
+(F::SimpleMigration)(c::Constraint) = Constraint(F(c.g),c.d)
 sparsify(c::Constraint) = Constraint(sparsify(c.g), c.d)
 const Trivial = Constraint(CGraph(), True)
 const Trivial′ = Constraint(CGraph(), False)
@@ -375,15 +382,13 @@ const Trivial′ = Constraint(CGraph(), False)
 Combine two constraints conjunctively, sharing as much of the computation graph 
 as possible (i.e. pushout along the maximum common subgraph)
 """
-function ⊗(c1::Constraint,c2::Constraint) 
-  if c1 == Trivial′ || c2 == Trivial′ return Trivial′ end 
-  if c1 == Trivial  return c2 
-  elseif c2 == Trivial return c1 
-  end  
+function ⊗(c1::Constraint, c2::Constraint) 
+  (c1 == Trivial′ || c2 == Trivial′) && return Trivial′ 
+  c1 == Trivial && return c2 
+  c2 == Trivial && return c1 
 
-  new_g = merge_graphs(c1.g, c2.g)
-  l1, l2 = legs(new_g)
-  Constraint(apex(new_g), map_edges(l1,c1.d) ⊗ map_edges(l2,c2.d))
+  l1, l2 = new_g = merge_graphs(getvalue(c1.g), getvalue(c2.g))
+  Constraint(CGraph(apex(new_g)), map_edges(l1, c1.d) ⊗ map_edges(l2, c2.d))
 end
 
 ⊗(cs::Constraint...) = reduce(⊗, cs; init=Trivial) 
@@ -393,14 +398,13 @@ Combine two constraints disjunctively, sharing as much of the computation graph
 as possible.
 """
 function ⊕(c1::Constraint,c2::Constraint) 
-  if c1 == Trivial || c2 == Trivial return Trivial end 
-  if c1 == Trivial′  return c2 
-  elseif c2 == Trivial′ return c1 
-  end  
-  new_g = merge_graphs(c1.g, c2.g)
-  l1, l2 = legs(new_g)
-  new_d = map_edges(l1,c1.d) ⊕ map_edges(l2,c2.d)
-  Constraint(apex(new_g), new_d)
+  (c1 == Trivial || c2 == Trivial) && return Trivial 
+  c1 == Trivial′ && return c2 
+  c2 == Trivial′ && return c1 
+
+  l1, l2 = new_g = merge_graphs(getvalue(c1.g), getvalue(c2.g))
+  new_d = map_edges(l1, c1.d) ⊕ map_edges(l2, c2.d)
+  Constraint(CGraph(apex(new_g)), new_d)
 end
 
 ⊕(cs::Constraint...) = reduce(⊕, cs; init=Trivial′) 
@@ -410,14 +414,14 @@ end
 
 """Get the C-Set associated with a vertex in a CGraph"""
 function get_ob(c::CGraph, v_i::Int, curr::Assgn)
-  if c[v_i, :vlabel] isa ACSet return c[v_i, :vlabel]  end
+  c[v_i, :vlabel] isa ACSet && return c[v_i, :vlabel]
   for e_out in incident(c, v_i, :src)
-    if !isnothing(curr[e_out]) return dom(curr[e_out]) end 
+    isnothing(curr[e_out]) || return dom(curr[e_out]) 
   end
   for e_in in incident(c, v_i, :tgt)
-    if !isnothing(curr[e_in]) return codom(curr[e_in]) end 
+    isnothing(curr[e_in]) || return codom(curr[e_in]) 
   end
-  error("Failed to get ob")
+  error("Failed to get ob $v_i from $c w/ curr $curr")
 end
 
 function apply_constraint(c::Constraint, fs...)
@@ -450,9 +454,9 @@ triangle commuting.
       (3)
 """
 function AppCond(f::ACSetTransformation, pos::Bool=true; monic=false)
-  cg = @acset CGraph begin V=3; E=3; src=[2,1,2]; tgt=[1,3,3];
+  cg = CGraph(@acset CGraphACSet begin V=3; E=3; src=[2,1,2]; tgt=[1,3,3];
     vlabel=[codom(f), dom(f), nothing]; elabel=[f, nothing, 1]
-  end
+  end)
   expr = ∃(2, Commutes([1,2],[3]); monic=monic)
   return Constraint(cg, pos ? expr : ¬(expr))
 end
@@ -473,28 +477,28 @@ function LiftCond(vertical::ACSetTransformation, bottom::ACSetTransformation;
                   monic_all=false, monic_exists=false)
   codom(vertical) == dom(bottom) || error("Composable pair required")
   A, B = dom.([vertical, bottom]); Y = codom(bottom)
-  cg = @acset CGraph begin V=4; E=5; src=[1,1,2,2,3]; tgt=[2,3,3,4,4]
+  g = CGraph(@acset CGraphACSet begin V=4; E=5; src=[1,1,2,2,3]; tgt=[2,3,3,4,4]
     vlabel=[A,B,nothing,Y]; elabel=[vertical, nothing, nothing, bottom, 1]
-  end
+  end)
   expr = ∀(2, ∃(3, Commutes([1,3],[2]) ⊗ Commutes([3,5],[4]); 
                 monic=monic_exists);
            st=Commutes([2,5],[1,4]), monic=monic_all)
-  return Constraint(cg, expr)
+  return Constraint(g, expr)
 end
 
 # Visualize constraints
 #######################
 
 function to_graphviz(c::Constraint)
-  pg = to_graphviz_property_graph(c.g; node_labels=true,
+  pg = to_graphviz_property_graph(getvalue(c.g); node_labels=true,
                                   graph_attrs=Dict(:label=>sprint(show, c.d)))
 
-  for v in vertices(c.g)
+  for v in vertices(getvalue(c.g))
     x = isnothing(c.g[v, :vlabel]) ? "λ" : ""
     set_vprop!(pg, v, :label, "$x$v")
   end
 
-  for e in edges(c.g)
+  for e in edges(getvalue(c.g))
     x = if     c.g[e, :elabel] isa Int    "(λ$(c.g[e, :elabel]))"
         elseif isnothing(c.g[e, :elabel]) getquantifier(c.d, e)
         else                              ""

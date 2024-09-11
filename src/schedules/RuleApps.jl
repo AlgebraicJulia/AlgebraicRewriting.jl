@@ -8,7 +8,7 @@ using Catlab.CategoricalAlgebra, Catlab.Theories
 using ...Rewrite
 using ...Rewrite.Utils: AbsRule, get_rmap, get_pmap, get_expr_binding_map
 using ...Rewrite.Inplace: interp_program!
-using ...CategoricalAlgebra.CSets: Migrate, extend_morphism_constraints
+using ...CategoricalAlgebra.CSets: extend_morphism_constraints
 using ..Wiring, ..Poly, ..Eval, ..Basic
 using ..Wiring: str_hom, mk_sched
 import ..Wiring: AgentBox, input_ports, output_ports, initial_state, color, update!
@@ -56,7 +56,7 @@ input_ports(r::RuleApp) = [dom(r.in_agent)]
 output_ports(r::RuleApp) = [dom(r.out_agent), dom(r.in_agent)]
 color(::RuleApp) = "lightblue"
 initial_state(::RuleApp) = nothing 
-(F::Migrate)(a::RuleApp) = 
+(F::SimpleMigration)(a::RuleApp) = 
   RuleApp(a.name,F(a.rule), F(a.in_agent), F(a.out_agent))
 sparsify(a::RuleApp) = 
   RuleApp(a.name,sparsify(a.rule), sparsify(a.in_agent), sparsify(a.out_agent))

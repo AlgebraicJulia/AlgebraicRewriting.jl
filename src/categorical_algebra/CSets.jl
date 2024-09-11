@@ -1,8 +1,7 @@
 module CSets
 export extend_morphism, pushout_complement,
        can_pushout_complement, dangling_condition, invert_hom, check_pb,
-       gluing_conditions, extend_morphisms, sub_vars,
-       Migrate, invert_iso, deattr, var_pullback
+       gluing_conditions, invert_iso, deattr, var_pullback
 
 using CompTime
 
@@ -305,53 +304,11 @@ function cascade_subobj(X::ACSet, sub)
   end 
   return Dict([k => collect(v) for (k,v) in pairs(sub)])
 end
-
-  
   
 # Variables
 ###########
 
-"""
-Given a value for each variable, create a morphism X → X′ which applies the 
-substitution. We do this via pushout.
-
-  O --> X    where C has AttrVars for `merge` equivalence classes 
-  ↓          and O has only AttrVars (sent to concrete values or eq classes 
-  C          in the map to C.
-
-`subs` and `merge` are dictionaries keyed by attrtype names
-
-`subs` values are int-keyed dictionaries indicating binding, e.g. 
-`; subs = (Weight = Dict(1 => 3.20, 5 => 2.32), ...)`
-
-`merge` values are vectors of vectors indicating equivalence classes, e.g.
-`; merge = (Weight = [[2,3], [4,6]], ...)`
-"""
-function sub_vars(X::ACSet, subs::AbstractDict=Dict(), merge::AbstractDict=Dict()) 
-  S = acset_schema(X)
-  O, C = [constructor(X)() for _ in 1:2]
-  ox_, oc_ = Dict{Symbol, Any}(), Dict{Symbol,Any}()
-  for at in attrtypes(S)
-    d = get(subs, at, Dict())
-    ox_[at] = AttrVar.(filter(p->p ∈ keys(d) && !(d[p] isa AttrVar), parts(X,at)))
-    oc_[at] = Any[d[p.val] for p in ox_[at]]
-    add_parts!(O, at, length(oc_[at]))
-
-    for eq in get(merge, at, [])
-      isempty(eq) && error("Cannot have empty eq class")
-      c = AttrVar(add_part!(C, at))
-      for var in eq
-        add_part!(O, at)
-        push!(ox_[at], AttrVar(var))
-        push!(oc_[at], c)
-      end
-    end
-  end
-  ox = ACSetTransformation(O,X; ox_...)
-  oc = ACSetTransformation(O,C; oc_...)
-  return first(legs(pushout(ox, oc)))
-end 
-
+# TODO check if this can be replaced by pullbacks of CSetTransformations
 """
 Take an ACSet pullback combinatorially and freely add variables for all 
 attribute subparts.
@@ -416,80 +373,13 @@ function homomorphisms(X::Slice,Y::Slice; kw...)
   end |> collect
 end
 
-function homomorphism(X::Slice,Y::Slice; kw...)
+function homomorphism(X::Slice, Y::Slice; kw...)
   hs = homomorphisms(X,Y; kw...)
   return isempty(hs) ? nothing : first(hs)
 end
 
-# Simple Δ migrations (or limited case Σ)
-#########################################
-
-"""TODO: check if functorial"""
-@struct_hash_equal struct Migrate
-  obs::Dict{Symbol, Symbol}
-  homs::Dict{Symbol, Symbol}
-  P1::Presentation
-  T1::Type 
-  P2::Presentation
-  T2::Type 
-  delta::Bool 
-end 
-
-Migrate(s1::Presentation, t1::Type, s2=nothing, t2=nothing; delta=true) = 
-Migrate(Dict(x => x for x in Symbol.(generators(s1, :Ob))),
-        Dict(x => x for x in Symbol.(generators(s1, :Hom))),
-        s1, t1, s2, t2; delta)
-
-Migrate(o::Dict, h::Dict, s1::Presentation, t1::Type, s2=nothing, t2=nothing; 
-        delta::Bool=true) = Migrate(Dict(collect(pairs(o))),
-                                    Dict(collect(pairs(h))), s1, t1, 
-                                    isnothing(s2) ? s1 : s2, 
-                                    isnothing(t2) ? t1 : t2, 
-                                    delta)
-
-
 sparsify(d::Dict{V,<:ACSet}) where V = Dict([k=>sparsify(v) for (k,v) in collect(d)])
 sparsify(d::Dict{<:ACSet,V}) where V = Dict([sparsify(k)=>v for (k,v) in collect(d)])
 sparsify(::Nothing) = nothing
-
-(F::Migrate)(d::Dict{V,<:ACSet}) where V = Dict([k=>F(v) for (k,v) in collect(d)])
-(F::Migrate)(d::Dict{<:ACSet,V}) where V = Dict([F(k)=>v for (k,v) in collect(d)])
-(m::Migrate)(::Nothing) = nothing
-(m::Migrate)(s::Union{String,Symbol}) = s
-function (m::Migrate)(Y::ACSet)
-  if m.delta
-     typeof(Y) <: m.T1 || error("Cannot Δ migrate a $(typeof(Y))")
-  end
-  S = acset_schema(Y)
-  X = m.T2()
-  partsX = Dict(c => add_parts!(X, c, nparts(Y, get(m.obs,c,c)))
-                for c in ob(S) ∪ attrtypes(S))
-  for (f,c,d) in homs(S)
-    set_subpart!(X, partsX[c], f, partsX[d][subpart(Y, get(m.homs,f,f))])
-  end
-  for (f,c,_) in attrs(S)
-    set_subpart!(X, partsX[c], f, subpart(Y, get(m.homs,f,f)))
-  end
-  if !m.delta 
-    # undefined attrs (Σ migration) get replaced with free variables
-    for (f,c,d) in attrs(acset_schema(X))
-      for i in setdiff(parts(X,c), X.subparts[f].m.defined)
-        X[i,f] = AttrVar(add_part!(X,d))
-      end
-    end
-  end 
-  return X
-end 
-
-function (F::Migrate)(f::ACSetTransformation)
-  d = Dict(map(collect(pairs(components(f)))) do (k,v)
-    get(F.obs,k,k) => collect(v)
-  end)
-  only(homomorphisms(F(dom(f)), F(codom(f)), initial=d))
-end
-
-(F::Migrate)(s::Multispan) = Multispan(apex(s), F.(collect(s)))
-(F::Migrate)(s::Multicospan) = Multicospan(apex(s), F.(collect(s)))
-(F::Migrate)(d::AbstractDict) = Dict(get(F.obs,k, k)=>v for (k,v) in collect(d))
 
 end # module

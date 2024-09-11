@@ -5,7 +5,6 @@ using StructEquality
 
 using Catlab.CategoricalAlgebra, Catlab.WiringDiagrams
 
-using ...CategoricalAlgebra.CSets: Migrate
 using ..Wiring, ..Poly
 using ..Wiring: AgentBox
 import ACSets: sparsify
@@ -49,7 +48,7 @@ color(::Conditional) = "lightpink"
 
 # WARNING: the update/prob functions hide their ACSet dependence in code, so 
 # data migration cannot update these parts which may cause runtime errors.
-(F::Migrate)(a::Conditional) = 
+(F::SimpleMigration)(a::Conditional) = 
   Conditional(a.prob, a.n, F(a.agent); update=a.update, name=a.name, init=a.init)
 
 sparsify(a::Conditional) = 

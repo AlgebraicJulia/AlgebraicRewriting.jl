@@ -207,12 +207,14 @@ const WS = WS_Generic{Int}
 @acset_type WS′_Generic(TheoryWS′, part_type=BitSetParts) <: HasGraph
 const WS′ = WS′_Generic{Int,Tuple{Int,Int}}
 
-F = Migrate(
-  Dict(:Sheep => :Wolf, :Wolf => :Sheep),
-  Dict([:sheep_loc => :wolf_loc, :wolf_loc => :sheep_loc,
-    :sheep_eng => :wolf_eng, :wolf_eng => :sheep_eng,
-    :countdown => :countdown]), TheoryWS, WS)
-F2 = Migrate(TheoryWS, WS, TheoryWS′, WS′; delta=false)
+F = ΔMigration(FinFunctor(
+  Dict(:V=>:V, :E=>:E, :Eng=>:Eng, :Dir=>:Dir, :Sheep => :Wolf, :Wolf => :Sheep, :Time=>:Time),
+  Dict(:src=>:src, :tgt=>:tgt, :dir=>:dir, 
+       :sheep_loc => :wolf_loc, :wolf_loc => :sheep_loc,
+       :sheep_eng => :wolf_eng, :wolf_eng => :sheep_eng, :countdown => :countdown,
+       :sheep_dir => :wolf_dir, :wolf_dir => :sheep_dir), SchLV, SchLV), LV);
+
+F2 = ΣMigration(FinFunctor(SchLV, SchLV′), LV′);
 
 #=
 Create an n × n grid with periodic boundary conditions. Edges in each cardinal

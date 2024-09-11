@@ -3,6 +3,7 @@ module TestPBPO
 using Test, AlgebraicRewriting, Catlab
 
 using AlgebraicRewriting.Rewrite.PBPO: partial_abstract
+using AlgebraicRewriting.Rewrite.Constraints: CGraphACSet
 
 # Partial abstract
 ##################
@@ -113,10 +114,11 @@ vertical = ACSetTransformation(G1, arr; V=[2])
 bottom_5 = homomorphism(arr, L′; initial=(V=[1,2],))
 bottom_6 = homomorphism(arr, L′;initial=(V=[2,2],))
 
-cg = @acset CGraph begin V=4; E=6; src=[2,1,3,1,3,3]; tgt=[4,2,2,3,4,4];
+cg = CGraph(@acset CGraphACSet begin V=4; E=6; 
+  src=[2,1,3,1,3,3]; tgt=[4,2,2,3,4,4];
   vlabel=[G1, nothing, arr, L′]; 
   elabel=[1, nothing,  nothing, vertical, bottom_5, bottom_6]
-end
+end)
 
 expr = ∀(2, ∃(3, 
               ⊗(Commutes([4,3],[2]), 
