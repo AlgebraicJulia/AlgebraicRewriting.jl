@@ -4,7 +4,7 @@ using Test
 using Catlab
 using AlgebraicRewriting.Incremental.Algorithms: 
   connected_acset_components, all_subobjects, subobject_cache, 
-  to_subobj, deattr
+  to_subobj, deattr, pull_back
 
 # test connected_acset_components
 #--------------------------------
@@ -37,5 +37,23 @@ G = SymmetricGraph(3) ⊕ cycle_graph(SymmetricGraph, 3)
 #--------
 @test deattr(SchWeightedGraph) == SchGraph
 
+# Pull_back
+#----------
+@present SchAttr(FreeSchema) begin 
+  X::Ob; D::AttrType; f::Attr(X,D); Y::Ob
+end
+@acset_type Attr(SchAttr)
+D1 = @acset Attr{Symbol} begin X=1; f=[AttrVar(1)]; D=1 end
+DXY = @acset Attr{Symbol} begin X=2; f=[:X,:Y] end
+DX = @acset Attr{Symbol} begin X=1; f=[:X] end
+toX,toY = homomorphisms(D1,DXY)
+subX = homomorphism(DX,DXY)
+toSubX = homomorphism(D1, DX)
+
+pb = pull_back(subX, toX)
+@test dom(pb) == dom(toX)
+@test codom(pb) == dom(subX)
+@test pb == toSubX
+@test isnothing(pull_back(subX, toY))
 
 end # module

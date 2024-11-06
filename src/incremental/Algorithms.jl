@@ -3,6 +3,7 @@ module Algorithms
 using Catlab 
 using ...CategoricalAlgebra.CSets: invert_iso, var_reference
 using ...Rewrite.Migration: pres_hash
+using ACSets.DenseACSets: attrtype_type
 
 """
 Break an ACSet into connected components, represented as a coproduct and an 
@@ -175,7 +176,7 @@ function nac_overlap(nac, update::ACSetTransformation)
 end 
 
 """
-Given f: L->X and m: X' ↣ X, find the unique map L -> X' making the triangle 
+Given f: X' ↣ X, m: L->X , find the unique map L -> X' making the triangle 
 commute, if it exists.
 
 TODO rewrite with @comptime
@@ -185,11 +186,12 @@ function pull_back(f::ACSetTransformation, m::ACSetTransformation
   L, X′ = dom.([m, f])
   comps, S = Dict(), acset_schema(L)
   for o in ob(S)
-    vec = []
+    vec = Int[]
     for i in parts(L, o)
       pre = preimage(f[o], m[o](i))
+      # Given that `m` is monic, preimage is empty or singleton
       length(pre) == 1 || return nothing
-      all(attrs(S; from=o)) do (atr, _, _)
+      all(attrs(S; from=o, just_names=true)) do atr
         L[i, atr] isa AttrVar || L[i,atr] == X′[only(pre), atr]
       end || return nothing
       push!(vec, only(pre))
@@ -199,6 +201,7 @@ function pull_back(f::ACSetTransformation, m::ACSetTransformation
   # Check that attribute variables in L are mapped consistently
   # i.e. L->X' doesn't send the variable to two different values.
   for o in attrtypes(S)
+    T = attrtype_type(L, o)
     comps[o] = map(AttrVar.(parts(L, o))) do i 
       vals = Set()
       for (f, c, _) in attrs(S; to=o)
@@ -207,9 +210,9 @@ function pull_back(f::ACSetTransformation, m::ACSetTransformation
         end
       end
       return only(vals)
-    end
+    end |> Vector{T}
   end
-  ACSetTransformation(dom(m), dom(f); comps...)
+  ACSetTransformation(L, X′; comps...)
 end
 
 """Get the pairs for each component of the image and its component"""

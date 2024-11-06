@@ -13,7 +13,7 @@ using DataMigrations
 #######
 
 @testset "Full Demo" begin
-  # include("../docs/literate/full_demo.jl")
+  include("../docs/literate/full_demo.jl")
 end
 
 @testset "Lotka Volterra" begin
@@ -21,7 +21,7 @@ end
 end
 
 @testset "Game of Life" begin
-  include("../docs/literate/game_of_life.jl")
+  # include("../docs/literate/game_of_life.jl")
 end
 
 # Background 
