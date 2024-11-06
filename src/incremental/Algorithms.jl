@@ -197,7 +197,6 @@ function pull_back(f::ACSetTransformation, m::ACSetTransformation
       push!(vec, only(pre))
     end
     comps[o] = vec
-    @show typeof(vec)
   end
   # Check that attribute variables in L are mapped consistently
   # i.e. L->X' doesn't send the variable to two different values.
