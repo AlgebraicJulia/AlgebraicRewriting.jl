@@ -47,14 +47,14 @@ de = loop_rule(RuleApp(:del_edge, Rule(g2ar, id(g2))))
 coin = uniform(2, z)
 sched = coin ⋅ (tryrule(av) ⊗ id([z])) ⋅ merge_wires(z) ⋅ de
 
-view_sched(sched, name="Simple schedule", names=N)
+# view_sched(sched, name="Simple schedule", names=N)
 G = path_graph(Grph, 2)
 
 @test interpret!(sched, G) isa ACSetTransformation
 @test ne(G) == 0
 
 res = interpret(sched, path_graph(Grph, 2))
-view_traj(sched, res, view_graph; agent=true, names=N)
+# view_traj(sched, res, view_graph; agent=true, names=N)
 
 # Query workflow (add loop to each vertex)
 ##########################################
@@ -83,9 +83,9 @@ sched = mk_sched((o=Dot,), (i=:Z,), N, Dict(:rule=>al, :query=>q),
 
 typecheck(sched)
 
-view_sched(sched; names=N)
+# view_sched(sched; names=N)
 res = interpret(sched, Grph(3));
-view_traj(sched, res, view_graph; agent=true, names=N)
+# view_traj(sched, res, view_graph; agent=true, names=N)
 
 
 # Dependent query workflow 
@@ -111,18 +111,18 @@ quote
   return [trace1, trace2], out
 end);
 
-view_sched(sched; names=N)
+# view_sched(sched; names=N)
 
 G = @acset Grph begin V=5; E=4; src=[1,2,2,5];tgt=[2,3,4,2] end
 arr_start = homomorphism(ar, G; initial=(V=[1,2],))
 res = interpret(sched, arr_start);
-view_traj(sched, res, view_graph; agent=true, names=N)
+# view_traj(sched, res, view_graph; agent=true, names=N)
 @test interpret!(sched, arr_start) isa ACSetTransformation
 
 # For-loop: add 3 loops
 #######################
 sched = for_schedule(maybe_add_loop ⋅ merge_wires(g1), 3);
-view_sched(sched)
+# view_sched(sched)
 interpret!(sched, id(g1)) |> codom
 
 # TODO add an attributed example
