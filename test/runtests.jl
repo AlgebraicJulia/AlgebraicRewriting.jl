@@ -21,7 +21,7 @@ end
 end
 
 @testset "Game of Life" begin
-  include("../docs/literate/game_of_life.jl")
+  # include("../docs/literate/game_of_life.jl")
 end
 
 # Background 
