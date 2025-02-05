@@ -22,7 +22,7 @@ while true
   NV=200
   start = erdos_renyi(Graph, NV, 2*NV)
   l = homomorphism(I, L; monic=true, any=true)
-  r = homomorphism(I, R; monic=true, any=true)
+  r = homomorphism(I, R; any=true)
   isnothing(r) && continue
   m = homomorphism(I, start; any=true)
   isnothing(m) && continue
@@ -49,9 +49,20 @@ end
 DDS(i::Int) = @acset DDS begin X=i; Φ=[rand(1:i) for _ in 1:i] end
 
 while true
+  """ Construct a random rewrite rule via two pushouts 
+        A    B
+      ↙  ↘  ↙ ↘
+    L'    I    R'
+        ↙  ↘  
+       L    R
+     m ↓
+     start
+       
+  """
+
   L, R, I, A, B = DDS.([5, 5, 5, 3, 3])
-  l1,l2,r1,r2 = hs = [homomorphism(x...; monic=true, any=true) for x in 
-                      [(A,L),(A,I),(B,I),(B,R)]]
+  l1,l2,r1,r2 = hs = [homomorphism(d,c; monic, any=true) for (d,c,monic) in 
+                      [(A,L,true),(A,I,false),(B,I,false),(B,R,false)]]
   all(!isnothing, hs) || continue
   (_, l), (r, _) = pushout(l1,l2), pushout(r1,r2)
   rand_rule = Rule(l, r)

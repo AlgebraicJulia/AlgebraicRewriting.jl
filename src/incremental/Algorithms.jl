@@ -1,9 +1,11 @@
 module Algorithms 
 
-using Catlab 
+using DataStructures
+using Catlab
 using ...CategoricalAlgebra.CSets: invert_iso, var_reference
 using ...Rewrite.Migration: pres_hash
 using ACSets.DenseACSets: attrtype_type
+using ...Rewrite.Migration: pres_hash, repr_dict
 
 """
 Break an ACSet into connected components, represented as a coproduct and an 
@@ -50,9 +52,13 @@ function connected_acset_components(X::ACSet)
 end
 
 """
+Given a pattern ACSet `L` and a rewrite rule addition: `I_R: I -> R`
+
+
 Find all partial maps from the pattern to the addition, with some restrictions:
+
 1. *Something* must be mapped into the newly added material.
-2. Anything in L incident to a part mapped onto newly added material must be 
+2. Anything in `L` incident to a part mapped onto newly added material must be 
    mapped to newly added material
 """
 function compute_overlaps(L::ACSet, I_R::ACSetTransformation; monic=[],   
@@ -67,6 +73,81 @@ function compute_overlaps(L::ACSet, I_R::ACSetTransformation; monic=[],
   end
   return overlaps
 end
+
+"""
+Given a pattern ACSet `L` and a rewrite rule addition: `I_R: I -> R`
+
+
+Find all partial maps from the pattern to the addition, with some restrictions:
+
+1. *Something* must be mapped into the merged material.
+2. Anything in `L` incident to a part mapped onto merged material must be 
+   mapped to merged material
+"""
+function compute_merge_overlaps(L::ACSet, I_R::ACSetTransformation; monic=[],   
+                                )::Vector{Span}
+  overlaps = Span[]
+  for subobj in all_subobjects(L)
+    is_isomorphic(dom(subobj), L) && continue
+    abs_subobj = abstract_attributes(dom(subobj))  
+    for h in homomorphisms(dom(abs_subobj), codom(I_R); monic)
+      lft = abs_subobj ⋅ subobj
+      good_merge_overlap(lft, h, I_R) && push!(overlaps, Span(lft, h))
+    end
+  end
+  return overlaps
+end
+
+"""
+        subobj
+        O ↣ L
+        ↓h
+    I ↣ R
+
+Subobject O is presumed to be abstract, i.e. has only (distinct) variables
+"""
+function good_merge_overlap(subobj::ACSetTransformation, h::ACSetTransformation, 
+                            I_R::ACSetTransformation)
+  S = acset_schema(dom(h))
+  L = codom(subobj)
+  O = dom(subobj) # for "overlap"
+  O == dom(h) || error("subobj + h should be a span")
+  # Parts of O which assign parts of L to newly added material via partial map
+  merged_mat = Dict(k => Set{Int}() for k in types(S)) 
+
+  for k in ob(S)
+    for p in parts(O, k)
+      rₚ = h[k](p)
+      length(preimage(I_R[k], rₚ)) > 1 && push!(merged_mat[k], p)
+    end
+  end
+  for k in attrtypes(S)
+    for p in parts(O, k)
+      rₚ = I_R[k](p)
+      rₚ isa AttrVar || continue
+      length(preimage(I_R[k], rₚ)) > 1 && push!(merged_mat[k], p)
+    end
+  end
+  all(isempty, values(merged_mat)) && return false # fail condition 1
+  # parts of L which are sent to merged parts of R
+  L_merged = Dict(map(collect(pairs(merged_mat))) do (k, vs)
+    k => Set(map(collect(vs)) do v 
+      subobj[k](k ∈ ob(S) ? v : AttrVar(v))
+    end)
+  end)
+  # check that for all f:A->B, that a ∈ L_merged implies f(a) ∈ L_merged
+  # unclear we get this automatically, ought check that this filters out anything
+  all(ob(S)) do k
+    all(L_merged[k]) do p 
+       all(homs(S; from=k)) do (f, _, cd) # for all things unmerged material depends on
+        L[p, f] ∈ L_merged[cd] # fail condition 2
+      end
+      all(attrs(S; from=k)) do (f, _, cd) 
+        L[p, f] isa AttrVar && L[p, f] ∈ L_merged[cd]
+      end
+    end
+  end
+end 
 
 """
         subobj
@@ -176,8 +257,12 @@ function nac_overlap(nac, update::ACSetTransformation)
 end 
 
 """
-Given f: X' ↣ X, m: L->X , find the unique map L -> X' making the triangle 
-commute, if it exists.
+Given       m
+          L ↣ X
+              ↑ f
+              X'
+
+Find the unique map L -> X' making the triangle commute, if it exists.
 
 TODO rewrite with @comptime
 """
@@ -268,6 +353,7 @@ end
 function all_subobjects(X::ACSet; cache="cache")
   Ω = subobject_cache(typeof(X); cache) 
   isnothing(Ω) && return hom.(subobject_graph(X)[2]) # compute the slow way
+  @show "using subobject classifier"
   S = acset_schema(X)
   X′ = typeof(Ω)()
   copy_parts!(X′, X)
@@ -311,4 +397,144 @@ function is_combinatorially_monic(f::ACSetTransformation)
     length(attrimg) == length(unique(attrimg))
   end
 end
+
+
+function ACSetTransformation(X::ACSet, canon::CSetNautyRes)
+  ACSetTransformation(X, canon.canon; canon.canonmap...)
+end
+
+
+function all_epis(X::ACSet)
+  S = acset_schema(X)
+
+  # Create schema for arrow category, where domain is NOT up to iso
+  S′ = copy(Presentation(S))
+  gens = Dict(o => add_generator!(S′, Ob(FreeSchema, eq(o))) for o in ob(S))
+  _Fix = add_generator!(S′, AttrType(FreeSchema.AttrType, :_Fix))
+  for o in ob(S)
+    add_generator!(S′, Catlab.Hom(alpha(o), Ob(FreeSchema,o), gens[o]))
+    add_generator!(S′, Catlab.Attr(Symbol("$(o)_fix"), Ob(FreeSchema,o), _Fix))
+  end
+  for (f, c, d) in homs(S)
+    add_generator!(S′, Catlab.Hom(eq(f), gens[c], gens[d]))
+  end
+
+  # Helper functions
+  """Pushforward S -> S' along the codom inclusion of the collage"""
+  function cheap_sigma(Z::ACSet)
+    Z′ = AnonACSet(S′; type_assignment=Dict(:_Fix=>Int))
+    for o in ob(S)
+      add_parts!(Z′, eq(o), nparts(Z, o))
+    end  
+    for h in homs(S; just_names=true)
+      Z′[eq(h)] = Z[h]
+    end
+    return Z′  
+  end
+  
+  """Convert an ACSet with schema S' into an epimorphism in schema S"""
+  function cheap_uncurry(Z::ACSet)
+    Z′ = constructor(X)()
+    comps = map(ob(S)) do o 
+      add_parts!(Z′, o, nparts(Z, eq(o)))
+      o => Z[alpha(o)]
+    end
+    for (h,c,d) in homs(S)
+      Z′[h] = map(parts(Z,eq(c))) do cᵢ
+        c′ = first(incident(Z, cᵢ, alpha(c)))
+        Z[Z[c′,h],alpha(d)]
+      end
+    end
+    ACSetTransformation(X, Z′; comps...)
+  end
+
+
+  # Initial partition (nothing merged)
+  X′ = cheap_sigma(X)
+  copy_parts!(X′, X)
+  for o in ob(S)
+    X′[Symbol("$(o)_fix")] = X′[alpha(o)] = parts(X, o)
+  end
+  
+  epis, queue = Dict{String, ACSet}("" => X′), Set{ACSet}([X′])
+
+  # All possible pairwise mergings of eq classes, tree search
+  while !isempty(queue)
+    Q = pop!(queue)
+    for o in ob(S)
+      for i ∈ 1:(nparts(Q, eq(o))-1)
+        for j ∈ (i+1):nparts(Q, eq(o))
+          Q′ = recursive_merge(Q, eq(o), i, j)
+          hsh = call_nauty(Q′).strhsh
+          if !(haskey(epis, hsh))
+            push!(queue, Q′)
+            epis[hsh] = Q′
+          end
+        end
+      end
+    end
+  end
+  return cheap_uncurry.(collect(values(epis)))
+end
+
+eq(x::Symbol) = Symbol("$(x)_eq")
+alpha(x::Symbol) = Symbol("$(x)_α")
+
+""" In general if we wish to merge c#i and c#j in some ACSet X, where c in Ob C, we can get two maps: R(c)→X by the universal property of representables and then take the codom of the coequalizer of these. However, not all of our schemas have finite representables, so a low-level function is needed.
+"""
+function recursive_merge(X::ACSet, c::Symbol, i::Int, j::Int)
+  S = acset_schema(X)
+  queue = [(c, i, j)]
+  eq_classes = Dict(c => IntDisjointSets(nparts(X, c)) for c in ob(S))
+  while !isempty(queue)
+    c, i, j = pop!(queue)
+    for (f, _, _) in attrs(S; from=c)
+      X[f, i] == X[f, j] || error("CANNOT MERGE $c #$i and $j")
+    end
+    union!(eq_classes[c], i, j)
+    for (f, _, d) in homs(S; from=c)
+      fi, fj = X[i, f], X[j, f]
+      if !in_same_set(eq_classes[d], fi, fj)
+        push!(queue, (d, fi, fj))
+      end
+    end
+  end
+
+  reprs = Dict() # ordered list of eq class reprs in X
+  roots = Dict() # send parts of X to their equivalence class index (part in res)
+  for o in ob(S)
+    roots′ = [find_root!(eq_classes[o],p) for p in parts(X, o)]
+    reprs[o] = sort(unique(roots′))
+    reprs_inv = Dict(v=>i for (i,v) in enumerate(reprs[o]))
+    roots[o] = [reprs_inv[r] for r in roots′]
+  end
+  res = constructor(X)()
+
+  for o in ob(S)
+    add_parts!(res, o, length(reprs[o]))
+  end
+  for (f, c, d) in homs(S)
+    res[f] = map(parts(res, c)) do cᵢ
+      roots[d][X[reprs[c][cᵢ], f]]
+    end
+  end
+  for (f, c, _) in attrs(S)
+    res[f] = map(parts(res, c)) do cᵢ
+      X[reprs[c][cᵢ], f]
+    end
+  end
+
+  res 
+end
+
+
+# """Unique map from the representable `o` to the i'th `o` equivalence class"""
+# function get_map(Z::ACSet, o::Symbol, i::Int)::ACSetTransformation
+#   R, ι = reprs[o]
+#   homomorphism(cheap_sigma(R), Z; initial=Dict(eq(o) => Dict(ι=>i)))
+# end
+# f = get_map(Q, o, i)
+# g = get_map(Q, o, j)
+# Q′ = codom(first(coequalizer(f, g)))
+
 end # module

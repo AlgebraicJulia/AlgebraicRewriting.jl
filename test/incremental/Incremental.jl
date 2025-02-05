@@ -1,8 +1,7 @@
 module TestIncremental 
 
 include("Algorithms.jl")
-include("IncrementalCC.jl")
-include("IncrementalSum.jl")
+include("IHS.jl")
 include("Benchmark.jl")
 
 end # module 
