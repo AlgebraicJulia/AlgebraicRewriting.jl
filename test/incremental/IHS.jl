@@ -25,7 +25,7 @@ f = homomorphism(L, R; initial=(V=[1,3],))
 G = path_graph(Graph, 4)
 m = homomorphism(L, G; initial=(E=[2],))
 ihs = IHS(X,f, G);
-rewrite!(ihs, [m], [f]; alt=true)
+rewrite!(ihs, [m], [f])
 validate(ihs)
 
 X = path_graph(Graph, 3)
@@ -33,7 +33,7 @@ f2 = homomorphism(Graph(2), L; monic=true, any=true)
 G = Graph(3)
 ms = [ACSetTransformation(Graph(2), Graph(3); V=x) for x in [[1,2],[2,3]]]
 ihs = IHS(X,[f2], G);
-rewrite!(ihs, ms, [f2,f2]; alt=true)
+rewrite!(ihs, ms, [f2,f2])
 validate(ihs)
 
 
@@ -47,7 +47,7 @@ G = @acset Graph begin V=2; E=2; src=[1,2]; tgt=2 end
 m = homomorphism(L, G; initial=(E=[2],))
 
 ihs = IHS(X,f, G);
-Δ, H, ms = rewrite!(ihs, [m], [f]; alt=true)
+Δ, H, ms = rewrite!(ihs, [m], [f])
 @test length(matches(ihs)) == 7
 @test validate(ihs)
 
@@ -64,7 +64,7 @@ while true
                               random=true, any=true)
   isnothing(random_match) && continue
   hset = IHS(random_pattern, [random_rule], random_state);
-  rewrite!(hset, [random_match], [random_rule]; alt=true)
+  rewrite!(hset, [random_match], [random_rule])
   try validate(hset)
     println("SUCCESS: $(length(matches(hset)))")
   catch e
@@ -82,7 +82,6 @@ end
 # Batch application
 ###################
 
-
 X = path_graph(Graph, 3)
 L1 = path_graph(Graph, 2)
 R1 = @acset Graph begin V=3; E=3; src=[1,1,2]; tgt=[2,3,3] end
@@ -92,7 +91,7 @@ G = path_graph(Graph, 2) ⊕ Graph(1)
 ms = [homomorphism(L1, G; initial=(E=[1],)),
       ACSetTransformation(Graph(2), G; V=[2,3])]
 ihs = IHS(X,[f1,f2], G);
-Δ, H, new_ms = rewrite!(ihs, ms, [f1,f2]; alt=true)
+Δ, H, new_ms = rewrite!(ihs, ms, [f1,f2])
 validate(ihs)
 
 # Pattern 
@@ -115,7 +114,7 @@ ms = [homomorphism(L, G; initial=(E=[1],)),
 # Rewrite incrementally
 #----------------------
 ihs = IHS(X, [f1,f2], G);
-rewrite!(ihs, ms, rs; alt=true)
+rewrite!(ihs, ms, rs)
 @test validate(ihs)
 
 # Non-monic
@@ -127,8 +126,12 @@ ms = [homomorphism(L, G; initial=(E=[1],)),
       ACSetTransformation(Graph(2),G; V=[2,3])]
 
 ihs = IHS(X,[f1,f2], G);
-Δ, H, new_ms = rewrite!(ihs, ms, rs; alt=true)
-@test validate(ihs) 
+@time rewrite!(ihs, ms, rs; optimize=true);
+
+ihs = IHS(X,[f1,f2], G);
+@time rewrite!(ihs, ms, rs; optimize=false);
+
+@test validate(ihs)
 
 
 # Random
@@ -143,7 +146,7 @@ while true
   random_matches = [homomorphism(dom(random_rule), random_state; random=true, any=true) for _ in 1:NR]
   any(isnothing, random_matches) && continue
   hset = IHS(random_pattern, [random_rule], random_state);
-  rewrite!(hset, random_matches, fill(random_rule, NR); alt=true)
+  rewrite!(hset, random_matches, fill(random_rule, NR))
   try validate(hset)
     println("SUCCESS: $(length(matches(hset)))")
   catch e
@@ -176,7 +179,7 @@ stat=DDS([1,1])
 f=ACSetTransformation(L,R;X=[1])
 m=ACSetTransformation(L,stat;X=[1])
 ihs = IHS(X,[f],stat);
-nm = rewrite!(ihs, [m], [f]; alt=true);
+nm = rewrite!(ihs, [m], [f]);
 validate(ihs)
 
 # In this scenario, the ONLY way for there to be new morphisms is for the match morphism to not be monic
@@ -188,7 +191,7 @@ stat = DDS([1])
 f = homomorphism(L,R; initial=(X = [1, 2],))
 m = homomorphism(L, stat; any=true)
 ihs = IHS(P, [f], stat)
-rewrite!(ihs, [m], [f]; alt=true);
+rewrite!(ihs, [m], [f]);
 validate(ihs)
 
 
@@ -204,7 +207,7 @@ f=ACSetTransformation(L,R;X=[1])
 m=ACSetTransformation(L,stat;X=[1])
 ihs = IHS(X,[f],stat);
 m1 = homomorphism(L, stat)
-nm = rewrite!(ihs, [m,m], [f,f]; alt=true);
+nm = rewrite!(ihs, [m,m], [f,f]);
 validate(ihs)
 
 # Random
@@ -225,7 +228,7 @@ for _ in 1:5
     any(isnothing, random_matches) && continue
     hset = IHS(random_pattern, random_rules, random_state);
 
-    rewrite!(hset, random_matches, random_rules; alt=true)
+    rewrite!(hset, random_matches, random_rules)
     validate(hset)
     println("SUCCESS $(length(matches(hset)))")
     break

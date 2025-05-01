@@ -18,17 +18,29 @@ using ..IHSModify: inc_curr!, set_state!, merge_profile, subobj_incl
 
 # User-facing interface
 #######################
+""" 
+Rewrite with a single match, presuming we have a single rule and a single 
+state we are tracking. 
+"""
 rewrite!(h::IHS, m::ACSetTransformation; kw...) = 
   rewrite!(h, m, h[only(incident(h, empty_profile(h), :profile)),:qrule]; kw...)
 
+""" 
+Rewrite with a single match + rule pair, assuming we have just one state
+we are tracking 
+"""
 rewrite!(h::IHS, m::ACSetTransformation, f::ACSetTransformation; kw...) = 
   rewrite!(h, [m], only(states(h)), [f]; kw...)
 
-
+""" 
+Rewrite with a list of match+rule pairs (provided as a pair of lists), assuming 
+there is just one state we are tracking 
+"""
 rewrite!(h::IHS, m::Vector{<:ACSetTransformation}, 
          fs::Vector{<:ACSetTransformation}; kw...) = 
   rewrite!(h, m, only(states(h)), fs; kw...)
 
+""" Apply a batch rewrite to a particular state """
 rewrite!(h::IHS, m::Vector{<:ACSetTransformation}, iₛ::Int, 
          fs::Vector{<:ACSetTransformation}; kw...) = 
   rewrite_matches!(h, m, iₛ, [rule(h, f) for f in fs]; kw...)
@@ -80,7 +92,7 @@ rules, qLᵢ↣qRᵢ, which are equivalent when applied with a monic match.
 `iᵣs` is a vector of rule IDs (for the unquotiented rules, Lᵢ↣Rᵢ)
 """
 function rewrite_matches!(h::IHS, ms::Vector{<:ACSetTransformation}, iₛ::Int, 
-                          iᵣs::Vector{Int}; alt=false)
+                          iᵣs::Vector{Int}; optimize=true)
   # Check matches have the current state as their codom.
   allequal([state(h, iₛ), codom.(ms)...]) || error("Matches aren't into state")
 
@@ -100,11 +112,7 @@ function rewrite_matches!(h::IHS, ms::Vector{<:ACSetTransformation}, iₛ::Int,
     end)
   end
 
-  if alt # use experimental algorithm which only relies on adhesivity cube
-    rewrite_bulk_monic_matches(h, ms′, iₛ, qs)
-  else
-    rewrite_monic_matches!(h, ms′, iₛ, qs) # algorithm with complements
-  end
+  rewrite_bulk_monic_matches(h, ms′, iₛ, qs; optimize)
 end
 
 """ Compute the effect of a batch rewrite by putting the rules in parallel """
@@ -115,90 +123,6 @@ function apply_batch_rewrite(f_batch, matches)
   (ΣL, ΣR, Σm, ΣΔ, Σr)
 end
 
-####################################
-# Batch rewriting with complements #
-####################################
-
-
-"""
-Loop over: 
-- all patterns, X
-- all decompositions of X ≅ X_old + ΣᵢXᵢ (subtasks which together cover X∖X_old)
-- our possibilities for interactions applied rules and the ΣᵢXᵢ
-"""
-function rewrite_monic_matches!(h::IHS, matches::Vector{<:ACSetTransformation}, 
-                                iₛ::Int, ruleapps::Vector{Int})
-
-  args = apply_batch_rewrite(h[ruleapps, :qrule], matches)
-
-  for pattern_cc_id in pattern_ccs(h)
-    for subobj_id in subobjs(h, pattern_cc_id)
-      is_epic(h[subobj_id, :subobj]) && continue # XOld≅X recovers old matches
-
-      for decomp_id in decomps(h, subobj_id)
-        colim, σ = h[decomp_id, :decomp_colim], h[decomp_id, :decomp_iso]
-        d_elems = decomp_elems(h, decomp_id)
-        inters = map(d_elems) do decomp_elem
-          # all of the scenarios we should be prepared for
-          vcat(map(enumerate(ruleapps)) do (i_app,rule_id)
-            is = interactions(h, h[decomp_elem, :decomp_src], rule_id)
-            tuple.(i_app, is)
-          end...)
-        end
-        # a combo is a list of DecompElem => (RuleAppIdx × Interaction)
-        for combo in reverse(collect.(Iterators.product(inters...)))
-          for m in find_new_matches_combo!(h, subobj_id, args..., colim, combo)
-            # Process results
-            #----------------
-            match = components(σ⋅m)
-            iₘ = add_part!(h, :Match; match, match_state=iₛ, match_time=h[iₛ,:curr]+1)
-            iₓ = add_part!(h, :CreatedMatch; created_match=iₘ)
-            for (πDecomp,(_, πInteraction)) in zip(decomp_elems(h, decomp_id),combo) 
-              add_part!(h, :DecompInteraction; match_interaction=iₓ, πDecomp, πInteraction)
-            end
-          end
-        end
-      end
-    end
-  end
-  inc_curr!(h, iₛ)
-  set_state!(h, iₛ, codom(last(args)))
-end
-
-"""
-Find all new matches X → H assuming a particular subobject Xold ↣ X as living in 
-the old graph G and a particular decomposition of the remainder of X into 
-subtasks and assuming an assignment of rule applications from the batch update 
-to the subtask they are supposed to address (given by `combo`).
-"""
-function find_new_matches_combo!(h::IHS, subobj_id::Int, ΣL, ΣR, Σm, ΣΔ, Σr,
-                                 colim, combo::Vector{Tuple{Int,Int}})
-  # can only use each rewrite once per DecompElem
-  length(unique(first.(values(combo)))) == length(combo) || return [] 
-
-  G = dom(ΣΔ)
-  Old = dom(h[subobj_id, :subobj]) # assume f(Old) ⊆ Δ
-  old_maps = map(combo) do (ruleapp_idx, interaction_id)
-    comp_to_lᵢ = h[interaction_id, :iL]# :interactionL]
-    comp_to_lᵢ ⋅ legs(ΣL)[ruleapp_idx] ⋅ Σm
-  end
-
-  # Get a map from the base A into the OLD graph
-  constr = get_old_map_contraints(colim.diagram, old_maps)
-
-  isnothing(constr) && return [] # unsatisfiable constraints
-
-  new_maps = map(combo) do (ruleapp_idx, interaction_id) 
-    comp_to_rᵢ = h[interaction_id, :iR]# :interactionR]
-    comp_to_rᵢ ⋅ legs(ΣR)[ruleapp_idx] ⋅ Σr
-  end
-
-  map(homomorphisms(Old, G; initial=constr)) do m
-    universal(colim, Multicospan([m ⋅ ΣΔ; new_maps]))
-  end
-end
-
-
 ##########################################
 # Batch rewriting with adhesive property #
 ##########################################
@@ -208,48 +132,51 @@ Loop over:
 - all patterns, X
 - all decompositions of X ≅ X_old + ΣᵢXᵢ (subtasks which together cover X∖X_old)
 - our possibilities for interactions applied rules and the ΣᵢXᵢ
+
+We can `optimize` by filtering to only consider decompositions where:
+                      XRᵢ = ~ (XG Vᵢ XRⱼ) (for j ≠ i)
+In which case, `get_runtime_matches` is told to NOT filter via a pullback 
+constraint. 
+
 """
 function rewrite_bulk_monic_matches(ihs::IHS, m::Vector{<:ACSetTransformation},
-                                    iₛ::Int, ifs::Vector{Int})
+                                    iₛ::Int, ifs::Vector{Int}; optimize)
   res, G, fs = [], ihs[iₛ, :state], ihs[ifs, :qrule]
   dom.(m) == dom.(fs) || error("Bad $(dom.(m)) \n\n $(dom.(fs))")
   ΣL, ΣR, Σm, ΣΔ, Σr = apply_batch_rewrite(fs, m)
   N = length(fs)
-  N1 = N == 1 
+
   for iₚ in parts(ihs, :SubPattern)
     Old = ihs[iₚ, :subobj]
-    Old_Comp = force(hom(~Subobject(Old)))
-    pat_id = ihs[iₚ,:subpattern]
-    other_ids = incident(ihs, pat_id, :subpattern)
-    other_so = force.(ihs[other_ids, :subobj])
-    Old_Comp_id = other_ids[findfirst(other_so) do so 
-      any(isomorphisms(dom(so), dom(Old_Comp))) do σ
-        force(σ ⋅ Old_Comp) == so
-      end
-    end]
-    for d in incident(ihs, iₚ, :decomp_tgt2)
+    for d in incident(ihs, iₚ, :decomp_tgt)
       # Colimit of the diagram : XR₁ ← XL₁ → XG ← XLₙ → XRₙ ...
-      colim, σ = ihs[d, :decomp_colim2], ihs[d, :decomp_iso2]
+      colim, σ = ihs[d, :decomp_colim], ihs[d, :decomp_iso]
       dom(σ) == codom(ihs[iₚ, :subobj]) || error("Bad")
-      elems = incident(ihs, d, :decomp2)
+      elems = incident(ihs, d, :decomp)
       ND = length(elems)
       getindex.(Ref(ihs), elems, :decomp_elem_idx) == collect(1:ND) || error(
         "Decomp out of order!")
       LRs = map(elems) do elem 
         (ihs[elem, :decomp_elem_L], ihs[elem, :decomp_elem_R] )
       end
-      OPTIMIZE = last.(LRs) == [Old_Comp_id]
-      N1 && !OPTIMIZE && continue
+      N < ND && continue # ignore decompositions that require too many rules
+
+
+      OPTIMIZE = ihs[d, :is_minimal]
+      
+      # @show (OPTIMIZE, iₚ, LRs)
+      
+      optimize && !OPTIMIZE && continue
       # assign a rule application to each component of the decomposition
       for combo in permutations(1:N,ND)
         # for each rule + decomp pair, consider all compatible interactions
         interactions = map(zip(LRs, combo)) do ((L,R), iᶠ)
           intersect(incident.(Ref(ihs), [L, R, ifs[iᶠ]], 
-                              [:idata_L, :idata_R, :i_rule3])...)
+                              [:idata_L, :idata_R, :i_rule])...)
         end
         for interaction_choice in Iterators.product(interactions...)
           get_runtime_matches(ihs, res, iₛ, G, m, ΣL, ΣR, Σm, ΣΔ, Σr, Old, 
-                              colim, σ, combo, interaction_choice)
+                              colim, σ, combo, interaction_choice; optimize)
         end
       end
     end
@@ -282,12 +209,11 @@ we initial=constr, and then filter by those which form pullback
 squares with all the rules.
 """
 function get_runtime_matches(ihs, res, iₛ, G, m, ΣL, ΣR, Σm, ΣΔ, Σr, Old, 
-                             colim, σ, combo, interaction_choice)
+                             colim, σ, combo, interaction_choice; optimize=false)
   old_maps = map(zip(interaction_choice, combo, ob₁(colim.diagram))) do (int,iᶠ, XL)
     dom(ihs[int, :idata_iL] ) == XL || error("Unexpected domain")
     ihs[int, :idata_iL] ⋅ legs(ΣL)[iᶠ] ⋅ Σm
   end
-
 
   # Get a map from the base A into the OLD graph
   constr = get_old_map_contraints(colim.diagram, old_maps)
@@ -298,8 +224,10 @@ function get_runtime_matches(ihs, res, iₛ, G, m, ΣL, ΣR, Σm, ΣΔ, Σr, Old
     ihs[int, :idata_iR] ⋅ legs(ΣR)[iᶠ] ⋅ Σr
   end
 
-  hs = filter(homomorphisms(dom(Old), G; initial=constr)) do hg
-    (length(m)==1) && return true 
+  hs = homomorphisms(dom(Old), G; initial=constr)
+  # if we haven't already filtered for minimal interactions, we have to restrict 
+  # ourselves to hg maps which form pullback squares (else we'll double count).
+  optimize || filter!(hs) do hg
     all(zip(interaction_choice, combo)) do (int, iᶠ)
       ι = subobj_incl(ihs[int, (:idata_L, :subobj)], Old) |> force
       hₗ = ihs[int, :idata_iL] |> force
@@ -314,8 +242,8 @@ function get_runtime_matches(ihs, res, iₛ, G, m, ΣL, ΣR, Σm, ΣΔ, Σr, Old
     u = universal(colim, Multicospan([compose(h, ΣΔ); new_maps]))
     push!(res, σ ⋅ u)
     match = components(σ ⋅ u)
-    created_match3 = add_part!(ihs, :Match; match,match_state=iₛ, match_time=ihs[iₛ,:curr]+1 )
-    matchdecomp_match = add_part!(ihs, :CreatedMatch3; created_match3)
+    created_match = add_part!(ihs, :Match; match,match_state=iₛ, match_time=ihs[iₛ,:curr]+1 )
+    matchdecomp_match = add_part!(ihs, :CreatedMatch; created_match)
 
     z = zip(interaction_choice, components.(new_maps))
     for (matchdecomp_interaction, matchdecomp_hom) in z

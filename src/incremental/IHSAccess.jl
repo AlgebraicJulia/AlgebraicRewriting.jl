@@ -82,7 +82,7 @@ end
 function get_match_pattern(ihs::IHS, iₘ::Int)::Int
   i = incident(ihs, iₘ, :initial_match)
   !isempty(i) && return ihs[only(i),(:match_pattern, :pattern_cc)]
-  i = incident(ihs, iₘ, :created_match3)
+  i = incident(ihs, iₘ, :created_match)
   !isempty(i) && return ihs[first(incident(ihs, only(i), :matchdecomp_match)),
                             (:matchdecomp_interaction, :idata_L, :subpattern)]
   error("Need to cover other cases $iₘ")
@@ -114,15 +114,13 @@ end
 Matches into a state for a particular connected component 
 
 These come from one of two sources. Initial matches or CreatedMatches.
-(Also from CreatedMatch3)
+(Also from CreatedMatch)
 """
 function cc_matches(h::IHS, iₛ::Int, cc::Int)
   mₛ = incident(h, iₛ, :match_state)
-  cms = incident(h, cc, (:πInteraction, :patrule, :πpat, :subpattern))
-  mcc = h[cms, (:match_interaction, :created_match)]
   mz = h[incident(h, cc, :match_pattern), :initial_match]
-  m3 = h[incident(h, cc, (:matchdecomp_interaction, :idata_L, :subpattern)), (:matchdecomp_match, :created_match3)]
-  mₛ ∩ (mcc ∪ mz ∪ m3)
+  m3 = h[incident(h, cc, (:matchdecomp_interaction, :idata_L, :subpattern)), (:matchdecomp_match, :created_match)]
+  mₛ ∩ (mz ∪ m3)
 end
 
 """ Total number of matches for a pattern """
@@ -182,13 +180,13 @@ end
 
 function interaction_square(ihs::IHS, i::Int)
   LR = subobj_incl(ihs, ihs[i,:idata_L], ihs[i,:idata_R])
-  f = ihs[i, (:i_rule3, :qrule)]
+  f = ihs[i, (:i_rule, :qrule)]
   f, ihs[i, :idata_iL], ihs[i, :idata_iR], LR
 end
 
 function decomp_match(ihs::IHS, iₘ::Int)
   S = ihs[iₘ, (:match_state, :state)]
-  match_decomps = incident(ihs, iₘ, (:matchdecomp_match, :created_match3))
+  match_decomps = incident(ihs, iₘ, (:matchdecomp_match, :created_match))
   ints = ihs[match_decomps, :matchdecomp_interaction]
   XR_idxs = ihs[ints, :idata_R]
   XRs = dom.(ihs[XR_idxs, :subobj])
@@ -223,6 +221,5 @@ subobj_lt(X::Subobject{<:ACSet}, Y::Subobject{<:ACSet}) =
 
 subobj_lt(A::ACSetTransformation, B::ACSetTransformation) = 
   !isnothing(subobj_incl(A,B))
-
 
 end # module
