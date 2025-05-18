@@ -59,7 +59,7 @@ res = interpret(sched, path_graph(Grph, 2))
 # Query workflow (add loop to each vertex)
 ##########################################
 al = succeed(RuleApp(:add_loop, Rule(id(g1), homomorphism(g1,loop)), g1));
-q = Query(:Vertex, g1)
+q = AlgebraicRewriting.Query(:Vertex, g1)
 
 bad_sched = mk_sched((trace_arg=Dot,), (i=:Z,), N, (rule=al, query=q), quote 
     q1,q2,q3 = query(i,trace_arg)
@@ -93,7 +93,7 @@ res = interpret(sched, Grph(3));
 ##############################################################################
 s_hom, t_hom = [ACSetTransformation(g1, ar; V=[i]) for i in 1:2]
 
-q2 = Query(Span(t_hom,s_hom), :OutEdges, g1)
+q2 = AlgebraicRewriting.Query(Span(t_hom,s_hom), :OutEdges, g1)
 ws = Weaken(:Switch_to_src, s_hom)
 wt = Weaken(:Switch_to_tgt, t_hom)
 str = Strengthen(:Add_outedge, s_hom)
