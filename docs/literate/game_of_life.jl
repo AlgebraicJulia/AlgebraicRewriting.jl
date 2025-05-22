@@ -80,8 +80,7 @@ and obtain a state of the world with coordinates (the canonical way to do this
 is to assign "variables" for the values of the coordinates).
 =#
 
-F = Migrate(SchLifeCoords, LifeCoords; delta=false); # adds coordinates
-# F⁻¹ = DeltaMigration(FinFunctor(idₒ, idₘ, SchLife, SchLifeCoords)); # removes coordinates
+F = ΣMigration(FinFunctor(SchLife, SchLifeCoords), LifeCoords); # adds coordinates
 
 # # Helper functions
 

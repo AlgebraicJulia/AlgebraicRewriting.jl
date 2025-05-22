@@ -1,13 +1,11 @@
 module TestConstraints 
-using AlgebraicRewriting
-using Catlab
-using Test 
-
+using AlgebraicRewriting, Catlab, Test 
+using AlgebraicRewriting.Rewrite.Constraints: CGraphACSet
 # Testing arity 2 constraints
 #############################
-cg = @acset CGraph begin V=3; E=3; src=[1,1,2]; tgt=[3,2,3]; 
+cg = (@acset CGraphACSet begin V=3; E=3; src=[1,1,2]; tgt=[3,2,3]; 
   vlabel=Graph.([2,2,2]); elabel=[1,2,nothing] 
-end
+end) |> CGraph
 c = Constraint(cg, ∃(3, Commutes([1],[2,3])))
 h1, hid, hnot, _ = homomorphisms(Graph.([2,2])...)
 @test !apply_constraint(c, hid, h1)

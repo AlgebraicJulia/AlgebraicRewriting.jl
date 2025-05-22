@@ -6,7 +6,7 @@ using StructEquality
 using Catlab, Catlab.CategoricalAlgebra, Catlab.WiringDiagrams
 
 using ...Rewrite
-using ...CategoricalAlgebra.CSets: Migrate
+using ...Rewrite.Constraints: CGraphACSet
 using ..Basic: Fail
 using ..Wiring, ..Poly, ..Eval
 using ..Wiring: AgentBox,  str_hom
@@ -63,10 +63,10 @@ and purported new agent. (the new agent is the first argument to the constraint)
   """
   function Query(a::Span, n::Symbol=:Query, ret=nothing; constraint=Trivial)
     in_shape, agent_shape = codom.([left(a),right(a)])
-    cg = @acset CGraph begin V=4; E=4; src=[1,1,2,3]; tgt=[2,3,4,4]
+    cg = CGraph(@acset CGraphACSet begin V=4; E=4; src=[1,1,2,3]; tgt=[2,3,4,4]
       vlabel=[apex(a), in_shape, agent_shape, nothing]
       elabel=[a...,2,1]
-    end
+    end)
     constr = Constraint(cg, Commutes([1,3],[2,4])) ⊗ constraint
     rshape = isnothing(ret) ? agent_shape : ret
     new(n, in_shape, agent_shape, rshape, constr)
@@ -82,10 +82,10 @@ and purported new agent. (the new agent is the first argument to the constraint)
   """
   function Query(a::ACSetTransformation, n::Symbol=:Query, ret=nothing; constraint=Trivial)
     in_shape, agent_shape = [dom(a),codom(a)]
-    cg = @acset CGraph begin V=3; E=3; src=[1,2,1]; tgt=[2,3,3]
+    cg = CGraph(@acset CGraphACSet begin V=3; E=3; src=[1,2,1]; tgt=[2,3,3]
       vlabel=[in_shape, agent_shape, nothing]
       elabel=[a,2,1]
-    end
+    end)
     constr = Constraint(cg, Commutes([3],[1,2])) ⊗ constraint
     rshape = isnothing(ret) ? agent_shape : ret
     new(n, in_shape, agent_shape, rshape, constr)
@@ -110,7 +110,7 @@ color(::Query) = "yellow"
 input_ports(c::Query) = [c.agent, c.return_type] 
 output_ports(c::Query) = [c.agent, c.subagent, typeof(c.agent)()]
 initial_state(c::Query) = (constructor(c.agent)(), ACSetTransformation[])
-(F::Migrate)(a::Query) =  Query(F(a.subagent), F(a.agent), a.name, 
+(F::SimpleMigration)(a::Query) =  Query(F(a.subagent), F(a.agent), a.name, 
                                 F(a.return_type); constraint=F(a.constraint))
 sparsify(q::Query) = Query(q.name, sparsify.([q.subagent,q.agent,q.return_type])...; 
                            constraint=sparsify(q.constraint))
