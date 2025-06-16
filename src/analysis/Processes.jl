@@ -26,9 +26,9 @@ struct RWStep
 end
 
 """Convert a vector of rewrite rule followed by match morphism to RWSteps"""
-function rw_steps(steps::AbstractVector)
+function rw_steps(steps::AbstractVector; cat)
   map(steps) do (r, m)
-    d = rewrite_match_maps(r, m)
+    d = rewrite_match_maps(r, m; cat)
     RWStep(Span(r.L, r.R), Span(d[:kg], d[:kh]), m, d[:rh])
   end
 end
@@ -38,7 +38,7 @@ For a concrete sequence of rewrites applications [a₁,a₂...aₙ], compute a p
 on the set of applications which reflects their casual connections, where a < b
 mean that a must occur temporaly before b.
 """
-function find_deps(seq::Vector{RWStep})
+function find_deps(seq::Vector{RWStep}; cat)
   # Construct a diagram which identifies parts across different rewrite steps
   n   = length(seq)
   ob₁ = [apex(s.g) for s in seq];
@@ -47,7 +47,7 @@ function find_deps(seq::Vector{RWStep})
   src = vcat([fill(i,2) for i in 1:n]...); # [1, 1, 2, 2, 3, 3, ..., n, n]
   tgt = [1,vcat([fill(i,2) for i in 2:n]...)...,n+1] # [1, 2, 2, ..., n, n, n+1]
   hs  = collect(zip(hom, src, tgt))
-  clim = colimit(BipartiteFreeDiagram(ob₁, ob₂, hs))
+  clim = colimit[cat](BipartiteFreeDiagram(ob₁, ob₂, hs))
   clegs = legs(clim)
 
   # Identify which things are preserved, deleted, and created for each part
@@ -57,9 +57,11 @@ function find_deps(seq::Vector{RWStep})
     pres[o], del[o], cre[o] = [[] for _ in 1:3]
     img(f) = Set(collect(f[o])) # the image of a map
     for (i,s) in enumerate(seq)
-      push!(pres[o], img(left(s.rule) ⋅ s.match ⋅ clegs[i]))
-      push!(del[o], setdiff(img(s.match ⋅ clegs[i]), pres[o][end]))
-      push!(cre[o], setdiff(img(s.comatch ⋅ clegs[i+1]), pres[o][end]))
+      push!(pres[o], @withmodel cat (⋅) begin 
+        img(left(s.rule) ⋅ s.match ⋅ clegs[i])
+      end)
+      push!(del[o], setdiff(img(compose[cat](s.match, clegs[i])), pres[o][end]))
+      push!(cre[o], setdiff(img(compose[cat](s.comatch, clegs[i+1])), pres[o][end]))
     end
   end 
 
@@ -79,6 +81,6 @@ function find_deps(seq::Vector{RWStep})
   return deps 
 end
 
-find_deps(s::AbstractVector) = s |> rw_steps |> find_deps
+find_deps(s::AbstractVector; cat) = find_deps(rw_steps(s; cat); cat)
 
 end # module 

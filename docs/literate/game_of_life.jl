@@ -53,6 +53,8 @@ end
 
 @acset_type Life(SchLife, part_type=BitSetParts) <: AbstractSymmetricGraph
 
+const 𝒞 = ACSetCategory(MADCSetCat(Life()))
+
 to_graphviz(SchLife; prog="dot")
 
 #=
@@ -72,6 +74,8 @@ end
 
 const LifeCoords = AbsLifeCoords{Tuple{Int,Int}};
 
+const 𝒟 = ACSetCategory(MADVarACSetCat(LifeCoords()))
+
 # # Data migration functors
 
 #=
@@ -80,7 +84,7 @@ and obtain a state of the world with coordinates (the canonical way to do this
 is to assign "variables" for the values of the coordinates).
 =#
 
-F = Migrate(SchLifeCoords, LifeCoords; delta=false); # adds coordinates
+F = Migrate(𝒟, SchLifeCoords, LifeCoords; delta=false); # adds coordinates
 # F⁻¹ = DeltaMigration(FinFunctor(idₒ, idₘ, SchLife, SchLifeCoords)); # removes coordinates
 
 # # Helper functions
@@ -250,7 +254,7 @@ BirthN1 = living_neighbors(4) # forbid the cell to have 4 neighbors
 BirthN2 = Curr() # forbid the cell to be alive (i.e. it's currently dead)
 BP1, BN1, BN2 = homomorphism.(Ref(Life(1)), [BirthP1, BirthN1, BirthN2]; initial=(V=[1],))
 bac = [PAC(BP1; monic=true), NAC.([BN1, BN2]; monic=true)...]
-Birth = Rule(id(Life(1)), to_next(); ac=bac);
+Birth = Rule(id[𝒞](Life(1)), to_next(); ac=bac, cat=𝒞);
 
 # ### A living cell stays alive iff 2 or 3 living neighbors
 PersistR = @acset Life begin
@@ -260,16 +264,16 @@ PersistP1 = living_neighbors(2; alive=true)
 PersistN1 = living_neighbors(4; alive=true)
 DR, DP1, DN1 = homomorphism.(Ref(Curr()), [PersistR, PersistP1, PersistN1]; initial=(V=[1],))
 pac = [PAC(DP1; monic=true), NAC(DN1; monic=true)]
-Persist = Rule(id(Curr()), DR; ac=pac);
+Persist = Rule(id[𝒞](Curr()), DR; ac=pac, cat=𝒞);
 
 # ### remove "Curr" status
-ClearCurr = Rule(to_curr(), id(Life(1)));
+ClearCurr = Rule(to_curr(), id[𝒞](Life(1)); cat=𝒞);
 
 # ### remove "Next" status
-ClearNext = Rule(to_next(), id(Life(1)));
+ClearNext = Rule(to_next(), id[𝒞](Life(1)); cat=𝒞);
 
 # ### Copy "Next" to "Curr"
-CopyNext = Rule(to_next(), to_curr());
+CopyNext = Rule(to_next(), to_curr(); cat=𝒞);
 
 
 
@@ -307,7 +311,7 @@ update_next = agent(rBirth ⋅ rPersist, Life(1); n=:Cell)
 view_sched(update_next)
 
 # The second `for` loop is overwriting `curr` with `next` for all cells
-next_step = agent(compose(rClearCurr, rCopyNext, rClearNext), Life(1); n=:Cell)
+next_step = agent(compose(rClearCurr, compose(rCopyNext, rClearNext)), Life(1); n=:Cell)
 
 view_sched(next_step)
 
@@ -315,7 +319,7 @@ view_sched(next_step)
 
 life(n::Int) = for_schedule(update_next ⋅ next_step, n) |> F
 
-const L1 = life(1) # Game of life simulation that runs just one (global) timestep
+const L1 = life(1); # Game of life simulation that runs just one (global) timestep
 
 view_sched(L1)
 
@@ -331,7 +335,7 @@ view_life_graph(G)
 view_life(G) |> println
 
 # Run the simulation
-res = interpret(L1, G; maxstep=1000);
+res = interpret(L1, G; maxstep=1000, cat=𝒟);
 
 # Look at the end state
 

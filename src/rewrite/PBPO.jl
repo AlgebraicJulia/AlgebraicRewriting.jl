@@ -3,7 +3,6 @@ export PBPORule
 
 using Catlab, Catlab.CategoricalAlgebra
 import Catlab.CategoricalAlgebra: left, right
-using Catlab.CategoricalAlgebra.CSets: abstract_attributes
 using Catlab.CategoricalAlgebra.HomSearch: backtracking_search
 using Catlab.CategoricalAlgebra.Chase: extend_morphism_constraints  
 
@@ -43,20 +42,26 @@ function of the match morphism.
   exprs::Dict 
   k_exprs::Dict
   adherence::Union{Nothing, Function}
-  function PBPORule(l,r,tl,tk,l′; monic=false, acs=[], lcs=[], 
+  function PBPORule(l,r,tl,tk,l′; cat=nothing, monic=false, acs=[], lcs=[], 
                     expr=nothing,k_expr=nothing, adherence=nothing)
     # check things match up
-    S = acset_schema(dom(l))
+    cat = isnothing(cat) ? infer_acset_cat(l) : cat
+    S = acset_schema(dom[cat](l))
     monic = monic === true ? collect(ob(S)) : monic
 
-    all(is_natural, [l,r,tl,tk,l′]) || error("Unnatural")
-    dom(l) == dom(r) == dom(tk) || error("bad K")
-    codom(l) == dom(tl) || error("bad L")
-    codom(tk) == dom(l′) || error("bad K'")
-    codom(l′) == codom(tl) || error("bad L'")
-    check_pb(deattr.([tl,l′,l,tk])...) || error("(l,tk) not the pullback of (tl,l′)")
-    all(o->is_monic(tl[o]), ob(S)) || error("tl map must be monic $tl")
-    all(o->is_monic(tk[o]), ob(S)) || error("tk map must be monic $tk")
+    all([is_natural(x; cat) for x in  [l,r,tl,tk,l′]]) || error("Unnatural")
+    dom[cat](l) == dom[cat](r) == dom[cat](tk) || error("bad K")
+    codom[cat](l) == dom[cat](tl) || error("bad L")
+    codom[cat](tk) == dom[cat](l′) || error("bad K'")
+    codom[cat](l′) == codom[cat](tl) || error("bad L'")
+
+    dtl, dl′, dl, dtk = deattr.([tl,l′,l,tk])
+    deattr_cat = infer_acset_cat(dom(dtl))
+
+    check_pb(dtl, dl′, dl, dtk; cat=deattr_cat) || error(
+      "(l,tk) not the pullback of (tl,l′)")
+    all(o->is_monic[FinSetC()](tl[o]), ob(S)) || error("tl map must be monic $tl")
+    all(o->is_monic[FinSetC()](tk[o]), ob(S)) || error("tk map must be monic $tk")
     # check adherence conditions?
     exprs = isnothing(expr) ? Dict() : Dict(pairs(expr))
     k_exprs = isnothing(k_expr) ? Dict() : Dict(pairs(k_expr))
@@ -116,7 +121,7 @@ The "strong match" condition we enforce is that: tl⁻¹(α(A)) = a⁻¹(A). Thi
 we can deduce precisely what m is by looking at α.
 
 """
-function get_matches(rule::PBPORule, G::ACSet;  initial=(;), 
+function get_matches(rule::PBPORule, G::ACSet;  cat, initial=(;), 
                      α_unique=true, random=false, take=nothing)
   res = [] # Quadruples of of (m, Labs, abs, α)
   L = codom(left(rule))
@@ -124,9 +129,9 @@ function get_matches(rule::PBPORule, G::ACSet;  initial=(;),
   # Search for each match morphism
   backtracking_search(L, G; monic=rule.monic, initial=initial, random) do ms
     for m in ms       
-      all(ac -> apply_constraint(ac, m), rule.acs) || continue
+      all(ac -> apply_constraint(ac, m; cat), rule.acs) || continue
       # Construct partially-abtract version of G. Labs: L->A and abs: A->G 
-      Labs, abs = partial_abstract(m)
+      Labs, abs = partial_abstract(m; cat)
       A = codom(Labs)
       
       # If we have a built in function to deduce the adherence from the match
@@ -148,7 +153,7 @@ function get_matches(rule::PBPORule, G::ACSet;  initial=(;),
           (take = isnothing(take) ? nothing : take-length(res),)
         end
         for α in homomorphisms(A, codom(rule.tl); initial=init, kwargs...,
-                               filter=test_adherence(rule, Labs)) 
+                               filter=test_adherence(rule, Labs; cat)) 
           push!(res, deepcopy((m, Labs, abs, α)))
           length(res) == take && return true
         end
@@ -160,21 +165,22 @@ function get_matches(rule::PBPORule, G::ACSet;  initial=(;),
 end
 
 """ See `get_matches(::PBPORule, ::ACSet)` """
-function test_adherence(rule::PBPORule, Labs::ACSetTransformation)
+function test_adherence(rule::PBPORule, Labs::ACSetTransformation; cat)
   A = codom(Labs)
   S = acset_schema(A)
   """ For use in the homomorphism search for adherence morphisms """
   function filter(α::ACSetTransformation)::Bool
     # Check strong match condition
     strong_match = all(types(S)) do o
-      prt = o ∈ ob(S) ? identity : AttrVar
-      all(prt.(parts(A, o))) do i 
-        p1 = preimage(rule.tl[o],α[o](i))
-        p2 = preimage(Labs[o], i)
+      prt = o ∈ ob(S) ? identity : Left
+      all(parts(A, o)) do i 
+        α_fun = o ∈ ob(S) ? α[o] : get(α[o])
+        p1 = preimage(rule.tl[o],α_fun(i))
+        p2 = preimage(Labs[o], prt(i))
         p1 == p2
       end
     end
-    return strong_match && all(lc -> apply_constraint(lc, α), rule.lcs)
+    return strong_match && all(lc -> apply_constraint(lc, α; cat), rule.lcs)
   end
 end
 
@@ -224,11 +230,11 @@ This is the factorization system arising from a coreflective subcategory.
  and https://blog.algebraicjulia.org/post/2023/06/varacsets/)
 
 """
-function partial_abstract(lg::ACSetTransformation)
-  L, G = dom(lg), codom(lg)
+function partial_abstract(lg::ACSetTransformation; cat)
+  L, G = dom[cat](lg), codom[cat](lg)
   S = acset_schema(L)
   abs_G = abstract_attributes(G)
-  A = dom(abs_G)
+  A = dom[cat](abs_G)
 
   # Construct partially-abstracted G 
   #---------------------------------
@@ -251,11 +257,11 @@ function partial_abstract(lg::ACSetTransformation)
     subs[at] = subdict
     merges[at] = collect(filter(l->!isempty(l), collect(values(mergelist))))
   end
-  pabs_G = sub_vars(dom(abs_G), subs, merges)
+  pabs_G = sub_vars(dom[cat](abs_G), subs, merges; cat)
   
   # Construct maps 
   #---------------
-  prt(o) = o ∈ ob(S) ? identity : AttrVar
+  prt(o) = o ∈ ob(S) ? identity : Left
   T(o) = o ∈ ob(S) ? Int : Union{AttrVar,attrtype_type(L, o)}
 
   # The quotienting via `sub_vars` means L->PA determined purely by ob components
@@ -267,7 +273,15 @@ function partial_abstract(lg::ACSetTransformation)
 
   from_pabs_comps = Dict(map(types(S)) do o
     comp = Vector{T(o)}(map(prt(o).(parts(codom(pabs_G), o))) do Pᵢ
-      only(unique([abs_G[o](prt(o)(pi)) for pi in preimage(pabs_G[o], Pᵢ)]))
+      fun_abs_G = o ∈ ob(S) ? abs_G[o] : get(abs_G[o])
+      res = only(unique([fun_abs_G(pi) for pi in preimage(pabs_G[o], Pᵢ)]))
+      if res isa Right 
+        getvalue(res) 
+      elseif res isa Left 
+        AttrVar(getvalue(res))
+      else 
+        res 
+      end
     end)
     o => comp 
   end)
@@ -297,16 +311,16 @@ m ↓     ↓
 See Lemma 7.2 of "TERMINATION OF GRAPH TRANSFORMATION SYSTEMS USING WEIGHTED 
 SUBGRAPH COUNTING" by Overbeek and Endrullis (2023)
 """
-function rewrite_match_maps(rule::PBPORule, mα; kw...)
+function rewrite_match_maps(rule::PBPORule, mα; cat, kw...)
   _, _, _, α = mα 
-  S = acset_schema(dom(left(rule)))
+  S = acset_schema(dom[cat](left(rule)))
   gl, u′ = var_pullback(Cospan(α, rule.l′)) # A <-- Gk --> K'
-  abs_K = abstract_attributes(dom(left(rule))) # absK -> K 
+  abs_K = abstract_attributes(dom[cat](left(rule))) # absK -> K 
   v, i = var_pullback(Cospan(u′, rule.tk))
-  u = invert_iso(i) ⋅ v
-  abs_r = homomorphism(dom(abs_K), codom(right(rule)); 
+  u = compose[cat](invert_iso(i), v)
+  abs_r = homomorphism(dom[cat](abs_K), codom[cat](right(rule)); 
                        initial=Dict(o=>collect(right(rule)[o]) for o in ob(S)))
-  w, gr = pushout(abs_r, u)
+  w, gr = pushout[cat](abs_r, u)
 
   return Dict(:gl=>gl, :u′=>u′, :u=>u, :gr=>gr, :w=>w)
 end
@@ -315,23 +329,25 @@ end
 """
 Use exprs and k_exprs to fill in variables introduced by applying the rw rule.
 """
-function get_expr_binding_map(rule::PBPORule, mtch, res) 
+function get_expr_binding_map(rule::PBPORule, mtch, res; cat) 
   # unpack data
-  X = codom(res[:w])
+  X = codom[cat](res[:w])
   (m, _, ab, _) = mtch
 
   comps = Dict(map(attrtypes(acset_schema(X))) do at 
+    T = attrtype_type(X, at)
     # match morphism data
-    bound_vars = Vector{Any}(collect(m[at]))
+    bound_vars = Vector{T}(getvalue.(collect(get(m[at]))))
     # For each variable in the intermediate rewrite state, determine what 
     # it refers to in the original graph and what in K′ it refers to, too.
-    G_bound_vars = Vector{Any}(collect(compose(res[:gl][at],ab[at])))
-    K_bound_vars = [k isa AttrVar ? k.val : k for k in collect(res[:u′][at])]
+    cmp = compose[SkelKleisli(T)](res[:gl][at],ab[at])
+    G_bound_vars = Vector{Any}(getvalue.(collect(get(cmp))))
+    K_bound_vars = getvalue.(collect(get(res[:u′][at])))
     # Functions we associate with K′ variables 
     exprs = haskey(rule.k_exprs,at) ? rule.k_exprs[at] : Dict()
     # Compute a value for each variable in the result
     at => map(parts(X, at)) do x 
-      p_r = preimage(res[:w][at], AttrVar(x))
+      p_r = preimage(res[:w][at], Left(x))
       # If the variable was introduced via R, try to use rule.exprs
       if !isempty(p_r) 
         v = only(p_r)
@@ -344,7 +360,7 @@ function get_expr_binding_map(rule::PBPORule, mtch, res)
         end
       end 
       # Try to get value via the intermediate graph
-      p_k = only(preimage(res[:gr][at], AttrVar(x)))
+      p_k = only(preimage(res[:gr][at], Left(x)))
       ik = K_bound_vars[p_k]
       k_expr = exprs isa AbstractVector ? exprs[ik] : get(exprs, ik, nothing)
       if isnothing(k_expr)
@@ -354,7 +370,7 @@ function get_expr_binding_map(rule::PBPORule, mtch, res)
       end
     end
   end)
-  return sub_vars(X, comps)
+  return sub_vars(X, comps; cat)
 end
 
 end # module 

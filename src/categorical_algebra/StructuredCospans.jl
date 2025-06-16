@@ -21,14 +21,17 @@ struct StructuredMultiCospanHom{L}
     t::StructuredMulticospan{L}, m::Vector{<:ACSetTransformation}) where {L}
     length(m) == length(legs(s)) + 1 || error("bad # maps")
     length(m) == length(legs(t)) + 1 || error("bad # maps")
-
+    𝒞 = get_ACS(L)
+    ⋅(a,b) = force(compose[𝒞](a,b))
+    eq(f) = (dom(f), codom(f), [k=>collect(v) for (k,v) in pairs(components(f))])
     for (i,(s_leg, t_leg, st_map)) in enumerate(zip(legs(s), legs(t), m[2:end]))
       ms, mt = force(s_leg ⋅ m[1]), force(st_map ⋅ t_leg)
       dom(ms) == dom(mt) || error("domain error $(dom(ms)) $(dom(mt))")
       codom(ms) == codom(mt) || error("codomain error $(codom(ms)) $(codom(mt))")
-      ms == mt || error(
+      eq(ms) == eq(mt) || error(
         "diagram $i does not commute")
-      force(st_map) ∈ isomorphisms(dom(st_map), codom(st_map)) || error(
+
+      is_monic(st_map) && is_epic(st_map) || error(
         "leg map $i is not iso: $st_map")
       is_natural(s_leg)  || error("src leg $i not natural")
       is_natural(t_leg)  || error("tgt leg $i not natural")
@@ -102,7 +105,8 @@ end
 function can_open_pushout_complement(f::StructuredMultiCospanHom{L},
                                      g::StructuredMultiCospanHom{L}
                                      )::Bool where L
-  all([can_pushout_complement(ComposablePair(a,b))
+  𝒞 = get_ACS(L)
+  all([can_pushout_complement[𝒞](ComposablePair(a,b))
        for (a,b) in zip(f.maps, g.maps)])
 end
 
@@ -110,6 +114,8 @@ end
 struct openrule
   data::Span # Intended to be span of StructuredMulticospanHoms
 end
+
+get_ACS(L) = infer_acset_cat(typeof(L()).parameters[2]())
 
 # Functions for the double category of structured multicospan rewrites
 #---------------------------------------------------------------------
@@ -119,14 +125,14 @@ end
 
 function idH_(a::StructuredCospanOb{L}) where {L}
   x = L(FinSet(a.ob))
-  i = id(x)
+  i = id[get_ACS(L)](x)
   return StructuredCospan{L}(Cospan(x, i, i), a, a)
 end
 
 """Vertical arrows are spans of invertible finfunctions"""
 function idV_(a::StructuredCospanOb{L}) where {L}
   x = L(FinSet(a.ob))
-  i = id(x)
+  i = id[get_ACS(L)](x)
   return Span(i, i)
 end
 
@@ -162,7 +168,7 @@ end
 
 function id2V_(f::StructuredMulticospan{L})::openrule where {L}
   m = StructuredMultiCospanHom(f, f,
-        vcat([id(apex(f))], [id(dom(x)) for x in legs(f)]))
+        vcat([id[get_ACS(L)](apex(f))], [id[get_ACS(L)](dom(x)) for x in legs(f)]))
   return openrule(Span(m,m))
 end
 
@@ -177,22 +183,29 @@ compose two rewrite rules horizontally (via pushouts) as shown below:
 function composeH_(f::openrule, g::openrule)::openrule
   λ, ρ = f.data;
   χ, ζ = g.data;
-  force(λ.maps[end]) == force(χ.maps[2]) || error("cannot horizontally compose")
-  force(ρ.maps[end]) == force(ζ.maps[2]) || error("cannot horizontally compose")
+  L = typeof(f.data).parameters[1].parameters[1]
+  𝒞 = get_ACS(L)
+
+  # we only care about equality up to i/o behavior (== considers indexing)
+  non_indexed(x) = (dom(x), codom(x), collect.(values(components(x))))
+  non_indexed(λ.maps[end]) == non_indexed(χ.maps[2]) || error(
+    "cannot horizontally compose")
+  non_indexed(ρ.maps[end]) == non_indexed(ζ.maps[2]) || error(
+    "cannot horizontally compose")
   λapex, ρapex, χapex, ζapex = [m.maps[1] for m in [λ, ρ, χ, ζ]]
   IY = compose(dom(λ), dom(χ));
   LX = compose(codom(λ), codom(χ));
   RZ = compose(codom(ρ), codom(ζ));
   IY_pushout, LX_pushout, RZ_pushout = [
-    pushout(legs(left_cospan)[end],legs(right_cospan)[1])
+    pushout[𝒞](legs(left_cospan)[end],legs(right_cospan)[1])
      for (left_cospan,right_cospan) in
      [λ.src => χ.src, λ.tgt => χ.tgt,  ρ.tgt => ζ.tgt]];
 
   # Universal property, mapping out of a coproduct (into another coproduct)
-  IY_LX = universal(IY_pushout, Cospan(compose(λapex, legs(LX_pushout)[1]),
-                                       compose(χapex, legs(LX_pushout)[2])));
-  IY_RZ = universal(IY_pushout, Cospan(compose(ρapex, legs(RZ_pushout)[1]),
-                                       compose(ζapex, legs(RZ_pushout)[2])));
+  IY_LX = universal[𝒞](IY_pushout, Cospan(compose[𝒞](λapex, legs(LX_pushout)[1]),
+                                       compose[𝒞](χapex, legs(LX_pushout)[2])));
+  IY_RZ = universal[𝒞](IY_pushout, Cospan(compose[𝒞](ρapex, legs(RZ_pushout)[1]),
+                                       compose[𝒞](ζapex, legs(RZ_pushout)[2])));
   IY_LX_maps = vcat([IY_LX], λ.maps[2:end-1], χ.maps[3:end])
   IY_RZ_maps = vcat([IY_RZ], ρ.maps[2:end-1], ζ.maps[3:end])
   IL = StructuredMultiCospanHom(IY, LX, IY_LX_maps);
@@ -218,14 +231,15 @@ compose two rewrite rules vertically with pullbacks, as shown below:
 function composeV_(f_::openrule, g_::openrule)
   (lf, rf), (lg, rg) = (f, g) = f_.data, g_.data;
   L = typeof(left(f)).parameters[1];
+  ACS = get_ACS(L)
   V= L.parameters[1]
   force(left(g).tgt) == force(right(f).tgt) || error("cannot compose $f and $g")
-  pbs = [pullback(rf,lg) for (rf,lg) in zip(right(f).maps, left(g).maps)];
-  upmaps = [compose(legs(pb)[1], lfm) for (pb, lfm) in zip(pbs, lf.maps)];
-  dnmaps = [compose(legs(pb)[2], rgm) for (pb, rgm) in zip(pbs, rg.maps)];
-  Imaps  = [compose(legs(pb)[1], im) for (pb, im) in zip(pbs[2:end], legs(lf.src))];
-  Θmaps  = [compose(legs(pb)[2], θm) for (pb, θm) in zip(pbs[2:end], legs(rg.src))];
-  xmaps  = [universal(pbs[1], Span(im, θm)) for (im, θm) in zip(Imaps, Θmaps)];
+  pbs = [pullback[ACS](rf,lg) for (rf,lg) in zip(right(f).maps, left(g).maps)];
+  upmaps = [compose[ACS](legs(pb)[1], lfm) for (pb, lfm) in zip(pbs, lf.maps)];
+  dnmaps = [compose[ACS](legs(pb)[2], rgm) for (pb, rgm) in zip(pbs, rg.maps)];
+  Imaps  = [compose[ACS](legs(pb)[1], im) for (pb, im) in zip(pbs[2:end], legs(lf.src))];
+  Θmaps  = [compose[ACS](legs(pb)[2], θm) for (pb, θm) in zip(pbs[2:end], legs(rg.src))];
+  xmaps  = [universal[ACS](pbs[1], Span(im, θm)) for (im, θm) in zip(Imaps, Θmaps)];
   newcenter = StructuredMulticospan{L}(
     apex(pbs[1]), Multicospan([xm[V] for xm in xmaps]));
   newl = StructuredMultiCospanHom(newcenter, lf.tgt, upmaps);
@@ -265,15 +279,17 @@ function open_pushout_complement(
   ob = L_.parameters[1]
   λ, ρ = rule.data;
   I, R, G = dom(ρ), codom(ρ), codom(μ);
-
+  𝒞 = get_ACS(L_)
   # Compute pushouts and pushout complements
-  ik_γ = [pushout_complement(λᵢ,μᵢ) for (λᵢ, μᵢ) in zip(λ.maps, μ.maps)];
-  rh_η = [legs(pushout(ρᵢ,ikᵢ)) for (ρᵢ, (ikᵢ, _)) in zip(ρ.maps, ik_γ)];
+  ik_γ = [pushout_complement[𝒞](λᵢ,μᵢ) for (λᵢ, μᵢ) in zip(λ.maps, μ.maps)];
+  rh_η = [legs(pushout[𝒞](ρᵢ,ikᵢ)) for (ρᵢ, (ikᵢ, _)) in zip(ρ.maps, ik_γ)];
   rh, ik = rh_η[1][1], ik_γ[1][1]
-  k = [compose(invert_iso(ikᵢ, [ob]), iᵢ, ik) for (iᵢ, (ikᵢ, _))
-       in zip(legs(I), ik_γ[2:end])]
-  h = [compose(invert_iso(rhᵢ, [ob]), r₍, rh) for (r₍, (rhᵢ, _))
-       in zip(legs(R), rh_η[2:end])]
+  k = map(zip(legs(I), ik_γ[2:end])) do (iᵢ, (ikᵢ, _)) 
+    foldl(compose[𝒞], [invert_iso(ikᵢ, [ob]), iᵢ, ik]) 
+  end
+  h = map(zip(legs(R), rh_η[2:end])) do (r₍, (rhᵢ, _))
+    foldl(compose[𝒞], [invert_iso(rhᵢ, [ob]), r₍, rh]) 
+  end
 
   # Reassemble resulting data into span of multicospans
   feetK = [FinSet(nparts(codom(ikᵢ), ob)) for (ikᵢ, _) in ik_γ[2:end]]

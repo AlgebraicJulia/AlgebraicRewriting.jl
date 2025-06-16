@@ -31,9 +31,9 @@ color(::Weaken) = "lavender"
 (F::Migrate)(a::Weaken) =  Weaken(a.name,F(a.agent))
 sparsify(a::Weaken) = Weaken(a.name, sparsify(a.agent))
 
-function update!(::Ref, boxdata::Weaken, g::ACSetTransformation, inport::Int)
+function update!(::Ref, boxdata::Weaken, g::ACSetTransformation, inport::Int; cat)
   inport == 1 || error("Weaken has exactly 1 input")
-  boxdata.agent ⋅ g, 1, ""
+  compose[cat](boxdata.agent, g), 1, ""
 end
 
 # Strengthening
@@ -50,8 +50,10 @@ Adds to both agent and the state of the world via a pushout.
   name::Symbol 
   agent::ACSetTransformation # map A₁ -> A₂
   prog::RewriteProgram
-  function Strengthen(n::Symbol, agent::ACSetTransformation)
-    new(n, deepcopy(agent), compile_rewrite(Rule(id(dom(agent)), agent)))
+  function Strengthen(n::Symbol, agent::ACSetTransformation; cat=nothing)
+    cat = isnothing(cat) ? infer_acset_cat(agent) : cat
+
+    new(n, deepcopy(agent), compile_rewrite(Rule(id[cat](dom(agent)), agent)))
   end
 end  
 Strengthen(agent::ACSetTransformation) = Strengthen(Symbol(""), agent)
@@ -63,10 +65,10 @@ color(::Strengthen) = "lightgreen"
 (F::Migrate)(a::Strengthen) =  Strengthen(a.name,F(a.agent))
 sparsify(a::Strengthen) = Strengthen(a.name, sparsify(a.agent))
 
-function update!(::Ref, boxdata::Strengthen, g::ACSetTransformation, inport::Int)
+function update!(::Ref, boxdata::Strengthen, g::ACSetTransformation, inport::Int; cat)
   inport == 1 || error("Strengthen has exactly 1 input")
-  rmap = interp_program!(boxdata.prog, g.components, codom(g))
-  new_agent = ACSetTransformation(rmap, codom(boxdata.agent), codom(g))
+  rmap = interp_program!(boxdata.prog, g.components, codom[cat](g))
+  new_agent = ACSetTransformation(rmap, codom[cat](boxdata.agent), codom[cat](g); cat)
   new_agent, 1, ""
 end
 

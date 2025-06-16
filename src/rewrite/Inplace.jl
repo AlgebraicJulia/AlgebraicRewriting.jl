@@ -4,7 +4,7 @@ export compile_rewrite, RewriteProgram, rewrite!, rewrite_match!
 using MLStyle
 using ACSets
 using ACSets.DenseACSets: attrtype_type
-using Catlab.CategoricalAlgebra
+using Catlab.BasicSets, Catlab.CategoricalAlgebra
 using ..Utils
 import ..Utils: rewrite_match_maps
 
@@ -113,9 +113,11 @@ function interp_program!(prog::RewriteProgram, hom::NamedTuple,
     m[inst.reg] = add_part!(state, inst.type)
   end
   for inst in prog.inits
+    fdf = get(hom[inst.attrtype])
+    vals = [getvalue(fdf(v)) for v in sort(collect(dom(fdf)))]
     m[inst.reg] = @match inst.value begin
       Fresh() => AttrVar(add_part!(state, inst.attrtype))
-      Compute(f) => f(collect(hom[inst.attrtype]))
+      Compute(f) => f(vals)
     end
   end
   for inst in prog.set_homs
@@ -170,13 +172,13 @@ function add(::Rule, c::Compiler, ob::Symbol, part::Int)
 end
 
 function init(r::Rule, c::Compiler, attrtype::Symbol, var::Int)
-  preim = preimage(right(r)[attrtype], AttrVar(var))
+  preim = preimage(right(r)[attrtype], Left(var))
 
   initializer = if var ∈ keys(r.exprs[attrtype])
     isempty(preim) || error("Cannot give expr to preserved variable")
-     Compute(r.exprs[attrtype][var])
+    Compute(r.exprs[attrtype][var])
   elseif !isempty(preim)
-    Compute(vs -> vs[left(r)[attrtype](AttrVar(only(preim))).val])
+    Compute(vs -> vs[get(left(r)[attrtype])(only(preim)).val])
   else
     # Fresh()
     error(
@@ -208,8 +210,9 @@ function del(::Rule, ::Compiler, ob::Symbol, i::Int)
   Del(HomValue(ob, i))
 end
 
-function compile_rewrite(r::Rule{:DPO})
-  is_monic(r.L) && is_monic(r.R) ||
+function compile_rewrite(r::Rule{:DPO}; cat=nothing)
+  cat = isnothing(cat) ? infer_acset_cat(codom(left(r))) : cat
+  is_monic[cat](r.L) && is_monic[cat](r.R) ||
     error("both sides of rule must be monic in order to compile")
 
   c = Compiler()
@@ -285,15 +288,15 @@ end
 Apply a DPO rewrite to a specific match morphism. This will modify the codom
 of the match morphism and returns a map from the R of the rule into the result.
 """
-function rewrite_match!(r::Rule{:DPO}, m::ACSetTransformation; prog=nothing)
-  prog = isnothing(prog) ? compile_rewrite(r) : prog
-  res_comps = interp_program!(prog, components(m), codom(m))
-  ACSetTransformation(res_comps, codom(right(r)), codom(m))
+function rewrite_match!(r::Rule{:DPO}, m::ACSetTransformation; cat, prog=nothing)
+  prog = isnothing(prog) ? compile_rewrite(r; cat) : prog
+  res_comps = interp_program!(prog, components(m), codom[cat](m))
+  ACSetTransformation(res_comps, codom[cat](right(r)), codom[cat](m); cat)
 end
 
 rewrite_match!(r::Rule{:DPO}, ::Nothing; kw...) = nothing
 
-rewrite!(r::Rule{:DPO}, G; initial=(;), random=false, kw...) =
-  rewrite_match!(r, get_match(r, G; initial, random); kw...)
+rewrite!(r::Rule{:DPO}, G; cat, initial=(;), random=false, kw...) =
+  rewrite_match!(r, get_match(r, G; initial, random, cat); cat, kw...)
 
 end

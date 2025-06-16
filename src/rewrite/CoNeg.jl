@@ -1,5 +1,5 @@
 module CoNeg 
-using Catlab.CategoricalAlgebra
+using Catlab.CategoricalAlgebra, GATlab
 
 using ...CategoricalAlgebra.CSets
 using ..Utils
@@ -34,14 +34,16 @@ Match morphisms which bind attribute variables are not monic, hence we this
 form of rewriting doesn't support VarACSets. Intuitively, it feels like this 
 restriction could be relaxed.
 """
-function rewrite_match_maps(r::Rule{:CoNeg}, m; check::Bool=false)
+function rewrite_match_maps(r::Rule{:CoNeg}, m; cat, check::Bool=false)
   !check || is_monic(m) || error("Can only use CoNeg rewriting with monic matches: $m")
-  L = codom(m)
+  L = codom[cat](m)
   L′ = Subobject(L, m)
-  I′ = Subobject(L, compose(left(r), m))
-  K′ = ~L′ ∨ I′
-  ik = hom(Subobject(dom(hom(K′)), hom(I′)))
-  rh, kh = pushout(right(r), ik)
+  I′ = Subobject(L, compose[cat](left(r), m))
+  K′ = @withmodel cat (~, ∨) begin 
+    ~L′ ∨ I′
+  end
+  ik = hom(Subobject(dom[cat](hom(K′)), hom(I′)))
+  rh, kh = pushout[cat](right(r), ik)
   Dict(:ik => ik, :kg => hom(K′), :rh => rh, :kh => kh)
 end
 

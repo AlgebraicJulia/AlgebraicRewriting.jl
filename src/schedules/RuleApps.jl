@@ -34,23 +34,29 @@ identical to I, take the id map, otherwise take the unique morphism into I).
   out_agent::ACSetTransformation # map A --> R
   prog::RewriteProgram
   """Give the data explicitly"""
-  function RuleApp(n,r::AbsRule, i::ACSetTransformation, o::ACSetTransformation) 
+  function RuleApp(n,r::AbsRule, i::ACSetTransformation, o::ACSetTransformation; cat=nothing)
+    cat = isnothing(cat) ? infer_acset_cat(i) : cat
     codom(i) == codom(left(r)) || error("Bad i for ruleapp $n")
     codom(o) == codom(right(r)) || error("Bad o for ruleapp $n")
-    return new(n,r,i,o,compile_rewrite(r))
+    return new(n,r,i,o,compile_rewrite(r; cat))
   end
   """Implicitly give data via a map A->I"""
-  RuleApp(n,r::AbsRule, a::ACSetTransformation) = 
-    RuleApp(n,r,a⋅left(r), a⋅right(r))
+  function RuleApp(n,r::AbsRule, a::ACSetTransformation; cat=nothing) 
+    cat = isnothing(cat) ? infer_acset_cat(a) : cat
+    RuleApp(n, r, compose[cat](a,left(r)), compose[cat](a,right(r)); cat)
+  end
   """Implicitly give map A->I via just A"""
-  function RuleApp(n,r::AbsRule, a::StructACSet)
+  function RuleApp(n,r::AbsRule, a::StructACSet; cat=nothing)
+    cat = isnothing(cat) ? infer_acset_cat(a) : cat
     I = dom(left(r))
-    h = (a == I) ? id(I) : only(homomorphisms(a, I))
-    RuleApp(n, r, h)
+    h = (a == I) ? id[cat](I) : only(homomorphisms(a, I))
+    RuleApp(n, r, h; cat)
   end
   """Empty agent by default"""
-  RuleApp(n,r::AbsRule) = 
-    RuleApp(n,r,create(dom(left(r))))
+  function RuleApp(n,r::AbsRule; cat) 
+    cat = isnothing(cat) ? infer_acset_cat(a) : cat
+    RuleApp(n,r,create[cat](dom(left(r))); cat)
+  end
 end  
 input_ports(r::RuleApp) = [dom(r.in_agent)] 
 output_ports(r::RuleApp) = [dom(r.out_agent), dom(r.in_agent)]
@@ -61,23 +67,23 @@ initial_state(::RuleApp) = nothing
 sparsify(a::RuleApp) = 
   RuleApp(a.name,sparsify(a.rule), sparsify(a.in_agent), sparsify(a.out_agent))
 
-function update!(::Ref, r::RuleApp, g::ACSetTransformation, inport::Int)
+function update!(::Ref, r::RuleApp, g::ACSetTransformation, inport::Int; cat)
   inport == 1 || error("Rule app has only one in port")
-  m = update_match(r, g)
+  m = update_match(r, g; cat)
   if isnothing(m)
     return (g, 2, "No match")
   else
     rmap_components = interp_program!(r.prog, m.components, codom(g))
     rmap = ACSetTransformation(rmap_components, codom(r.rule.R), codom(g))
-    return (compose(r.out_agent, rmap), 1, "Success")
+    return (compose[cat](r.out_agent, rmap), 1, "Success")
   end
 end
 
 
 # """Helper function for `update`"""
-function update_match(r::RuleApp, agent::ACSetTransformation; kwargs...)
+function update_match(r::RuleApp, agent::ACSetTransformation; cat, kwargs...)
   init = extend_morphism_constraints(agent, r.in_agent)
-  get_match(r.rule, codom(agent); initial=init, kwargs...)
+  get_match(r.rule, codom(agent); cat, initial=init, kwargs...)
 end 
 
 """

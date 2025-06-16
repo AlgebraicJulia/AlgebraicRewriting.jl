@@ -29,16 +29,16 @@ m ↓      ↓ n
      g
 
 """
-function final_pullback_complement(fm::ComposablePair;
+function final_pullback_complement(fm::ComposablePair; cat,
     pres::Union{Nothing, Presentation}=nothing, check=false)::ComposablePair
   f, m = fm
-  A, B = dom(f), codom(f)
-  m_bar = partial_map_classifier_universal_property(m, id(B); pres=pres)
+  A, B = dom[cat](f), codom[cat](f)
+  m_bar = partial_map_classifier_universal_property(m, id[cat](B); cat, pres=pres)
   T_f = partial_map_functor_hom(f; pres=pres)
-  pb_2 = pullback(T_f, m_bar)
+  pb_2 = pullback[cat](T_f, m_bar)
   _, g = pb_2.cone
-  s = Span(partial_map_classifier_eta(A; pres=pres), compose(f,m))
-  n = universal(pb_2, s)
+  s = Span(partial_map_classifier_eta(A; cat, pres=pres), compose[cat](f,m))
+  n = universal[cat](pb_2, s)
   !check || is_isomorphic(apex(pullback(m,g)), A) || error("incorrect")
   return ComposablePair(n, g)
 end
@@ -53,9 +53,9 @@ m ↓    ↓k   ↓ r
   I <- • ->⌜O
      i   o
 """
-function rewrite_match_maps(r::Rule{:SqPO},m; pres::Union{Nothing, Presentation}=nothing)
-  k, i = final_pullback_complement(ComposablePair(r.L, m); pres=pres)
-  r, o = pushout(r.R, k)
+function rewrite_match_maps(r::Rule{:SqPO},m; cat, pres::Union{Nothing, Presentation}=nothing)
+  k, i = final_pullback_complement(ComposablePair(r.L, m); cat, pres=pres)
+  r, o = pushout[cat](r.R, k)
   return Dict(:r => r, :o=>o, :k=>k, :i=>i)
 end
 

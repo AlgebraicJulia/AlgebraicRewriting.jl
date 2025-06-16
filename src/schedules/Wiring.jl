@@ -57,7 +57,8 @@ function mk_sched(t_args::NamedTuple,args::NamedTuple,names::Names{T},
                   kw::Union{NamedTuple,AbstractDict}, wd::Expr) where T
   n_trace=length(t_args)
   os = Dict{Symbol, T}(Symbol(k)=>v for (k,v) in collect(names.from_name))
-  hs = Dict{Symbol, Schedule}(Symbol(k)=>v isa AgentBox ? singleton(v) : v for (k,v) in pairs(kw))
+  hs = Dict{Symbol, Schedule}(Symbol(k)=>v isa AgentBox ? singleton(v) : v 
+                              for (k,v) in pairs(kw))
   P = Presentation(TM)
   os_ = Dict(v=>add_generator!(P, Ob(TM,k)) for (k,v) in collect(os))
 
@@ -65,10 +66,12 @@ function mk_sched(t_args::NamedTuple,args::NamedTuple,names::Names{T},
     i = (isempty(input_ports(v)) 
         ? munit(TM.Ob) 
         : otimes([os_[ip] for ip in input_ports(v)]))
-    o = (isempty(output_ports(v)) ? munit(TM.Ob) : otimes([os_[op] for op in output_ports(v)]))
+    o = (isempty(output_ports(v)) ? munit(TM.Ob) 
+                 : otimes([os_[op] for op in output_ports(v)]))
     add_generator!(P, Hom(k, i, o))
   end
-  args_ = Expr(:tuple,[Expr(Symbol("::"), k,v) for (k,v) in pairs(merge(t_args,args))]...)
+  args_ = Expr(:tuple,[Expr(Symbol("::"), k,v) 
+                       for (k,v) in pairs(merge(t_args,args))]...)
   tmp = parse_wiring_diagram(P, args_, wd)
   Xports = Ports{ThTracedMonoidalWithBidiagonals}(input_ports(tmp)[1:n_trace])
   newer_x = Ob(TM,Xports) # arbitrary gatexpr
@@ -157,7 +160,6 @@ output_ports(s::Schedule)::Vector{StructACSet} = output_ports(s.d)
 
 
 @instance ThTracedMonoidalWithBidiagonals{SPorts, Schedule} begin
-  @import dom, codom
 
   id(A::SPorts) =  Schedule(id(A.p), to_hom_expr(TM,id(A.p)))
   compose(f::Schedule, g::Schedule) = Schedule(f.d ⋅ g.d, f.x ⋅ g.x)

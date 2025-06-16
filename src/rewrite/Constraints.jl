@@ -40,12 +40,14 @@ end
 @acset_type VELabeledGraph(SchVELabeledGraph) <: AbstractGraph
 @acset_type VLabeledGraph(SchVLabeledGraph) <: AbstractGraph
 
+
 """
 "nothing" means something that will be determined via a quantifier
 Ints are explicit arguments provided when apply_constraint is called
 """
 const CGraph = VELabeledGraph{Union{Nothing, ACSet},
                               Union{Nothing, Int, ACSetTransformation}}
+𝒞CGrph = ACSetCategory(VarACSetCat(CGraph()))
 
 """Number of variables in a constraint graph"""
 arity(g::CGraph) = maximum(filter(v->v isa Int, g[:elabel]); init=0) 
@@ -110,12 +112,12 @@ function merge_graphs(g1,g2)
     add_edge!(overlap_g, s, t; elabel=v)
     push!(p1[:E], e1); push!(p2[:E], e2); 
   end 
-  ps = [ACSetTransformation(overlap_g, g; p...) for (g,p) in [(g1,p1),(g2,p2)]]
+  ps = [ACSetTransformation(overlap_g, g; p..., cat=𝒞CGrph) for (g,p) in [(g1,p1),(g2,p2)]]
   for (i,p) in enumerate(ps) 
-    errs = naturality_failures(p)
+    errs = naturality_failures(p; cat=𝒞CGrph)
     all(isempty,values(errs)) || error( "UNNATURAL $i: $errs\n$(components(p))")
   end
-  return colimit(Span(ps...))
+  return colimit[𝒞CGrph](Span(ps...))
 end
 
 # Interpreter for boolean algebra
@@ -127,8 +129,8 @@ paren(x) = "($x)"
 abstract type BoolExpr end 
 check_expr(::CGraph, ::BoolExpr) = error("Method undefined")
 bound(::BoolExpr) = error("Method undefined")
-eval_boolexpr(::BoolExpr, ::CGraph, ::Assgn) = error("Method undefined")
-map_edges(f,c::BoolExpr) = error("Method undefined")
+eval_boolexpr(::BoolExpr, ::CGraph, ::Assgn; cat) = error("Method undefined")
+map_edges(_, _::BoolExpr) = error("Method undefined")
 subexprs(::BoolExpr) = error("Method undefined")
 
 """
@@ -278,29 +280,32 @@ bound(b::BoolNot) = bound(b.expr)
 bound(b::Quantifier) = Set([b.e]) ∪ bound(b.expr)
 bound(::Commutes) = Set{Int}([])
 
-eval_boolexpr(c::BoolConst, ::CGraph, ::Assgn) = c.val
-eval_boolexpr(c::BoolNot, g::CGraph, m::Assgn) = 
-  !eval_boolexpr(c.expr, g, m)
-eval_boolexpr(c::BoolAnd, g::CGraph, m::Assgn) = 
-  all(eval_boolexpr(x, g, m) for x in c.exprs)
-eval_boolexpr(c::BoolOr, g::CGraph, m::Assgn) = 
-  any(eval_boolexpr(x, g, m) for x in c.exprs)
+eval_boolexpr(c::BoolConst, ::CGraph, ::Assgn; cat) = c.val
+eval_boolexpr(c::BoolNot, g::CGraph, m::Assgn; cat) = 
+  !eval_boolexpr(c.expr, g, m; cat)
+eval_boolexpr(c::BoolAnd, g::CGraph, m::Assgn; cat) = 
+  all(eval_boolexpr(x, g, m; cat) for x in c.exprs)
+eval_boolexpr(c::BoolOr, g::CGraph, m::Assgn; cat) = 
+  any(eval_boolexpr(x, g, m; cat) for x in c.exprs)
 
 """Check whether homs are equal by looping over domain."""
-function eval_boolexpr(c::Commutes, ::CGraph, ms::Assgn)
-  paths = [length(p)==1 ? ms[p[1]] : compose(ms[p]...) for p in c.pths]
+function eval_boolexpr(c::Commutes, ::CGraph, ms::Assgn; cat)
+  paths = map(c.pths) do p 
+    foldl(compose[cat], ms[p]) 
+  end
   doms = dom.(paths)
   allequal(doms) || error("Paths should all have same domain")
   d, S = first(doms), acset_schema(first(doms))
   c.commutes == all(types(S)) do o
-    f = o ∈ ob(S) ? identity : AttrVar
-    all(parts(d, o)) do p 
-      allequal([pth[o](f(p)) for pth in paths])
+    𝒞 = entity_attr_cat(cat, o)
+    all(parts(d, o)) do p
+      p′ = o ∈ ob(S) ? p : Left(p)
+      allequal([hom_map[𝒞](pth[o])(p′) for pth in paths])
     end
   end
 end 
 
-function eval_boolexpr(q::Quantifier, g::CGraph, curr::Assgn)
+function eval_boolexpr(q::Quantifier, g::CGraph, curr::Assgn; cat)
   d, cd = [get_ob(g,x,curr) for x in [g[q.e, :src], g[q.e, :tgt]]]
   cands = []
   @debug "$(q.kind) ($(q.e))"
@@ -309,13 +314,13 @@ function eval_boolexpr(q::Quantifier, g::CGraph, curr::Assgn)
     x = deepcopy(curr)
     x[q.e] = h 
     @debug "candidate morphism $(components(h))"
-    if eval_boolexpr(q.st, g, x)
+    if eval_boolexpr(q.st, g, x; cat)
       @debug "successful candidate!"
       push!(cands, x)
     end
   end 
   n = length(cands)
-  suc = [eval_boolexpr(q.expr, g, cand) for cand in cands]
+  suc = [eval_boolexpr(q.expr, g, cand; cat) for cand in cands]
   n_success = sum([0, suc...])
   @debug "$(q.kind) ($(q.e)) n $n success $suc"
   if     q.kind == :Exists  return n_success > 0
@@ -329,7 +334,7 @@ map_edges(f,c::BoolConst) = c
 map_edges(f,c::BoolNot) = BoolNot(map_edges(f,c.expr))
 map_edges(f,c::BoolAnd) = BoolAnd([map_edges(f,x) for x in c.exprs]...)
 map_edges(f,c::BoolOr) = BoolOr([map_edges(f,x) for x in c.exprs]...)
-map_edges(f,c::Commutes) = Commutes([f[:E](p) for p in c.pths]...; commutes=c.commutes)
+map_edges(f,c::Commutes) = Commutes([f[:E].(p) for p in c.pths]...; commutes=c.commutes)
 map_edges(f,c::Quantifier) = Quantifier(f[:E](c.e),c.kind,map_edges(f,c.expr); 
                                         st = map_edges(f,c.st),monic=c.monic)
 
@@ -420,7 +425,7 @@ function get_ob(c::CGraph, v_i::Int, curr::Assgn)
   error("Failed to get ob")
 end
 
-function apply_constraint(c::Constraint, fs...)
+function apply_constraint(c::Constraint, fs...; cat=nothing)
   # populate assignment of ACSetTransformations 
   ms = Assgn(map(enumerate(c.g[:elabel])) do (i, e) 
     if e isa ACSetTransformation 
@@ -435,7 +440,7 @@ function apply_constraint(c::Constraint, fs...)
       return f
     end # Assignment has "nothing" for variables that are quantified
   end)
-  return eval_boolexpr(c.d, c.g, ms)  # Evaluate expression
+  return eval_boolexpr(c.d, c.g, ms; cat)  # Evaluate expression
 end
 
 # Special forms of constraints

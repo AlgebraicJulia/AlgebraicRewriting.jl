@@ -4,26 +4,54 @@ export extend_morphism, pushout_complement,
        gluing_conditions, extend_morphisms, sub_vars,
        Migrate, invert_iso, deattr, var_pullback
 
-using CompTime
-
-using Catlab
-using Catlab.CategoricalAlgebra.FinSets: IdentityFunction, VarSet
-using Catlab.CategoricalAlgebra.Chase: extend_morphism, extend_morphism_constraints
-using Catlab.CategoricalAlgebra.CSets: unpack_diagram, type_components, abstract_attributes, var_reference
-import ..FinSets: pushout_complement, can_pushout_complement, id_condition
-import ACSets: acset_schema
-import Catlab.CategoricalAlgebra.FinSets: predicate
-import Catlab.CategoricalAlgebra: is_natural, Slice, SliceHom, components,
-                                  LooseACSetTransformation, homomorphisms, 
-                                  homomorphism
-using ACSets.DenseACSets: attrtype_type, datatypes, constructor
-import ACSets: sparsify
-import Base: getindex
 using DataStructures: OrderedSet, DefaultDict, IntDisjointSets, find_root!
 using StructEquality
 
+using CompTime
+
+using ACSets.DenseACSets: attrtype_type, datatypes, constructor
+import ACSets: sparsify
+import ACSets: acset_schema
+
+using Catlab
+using Catlab.BasicSets
+
+using Catlab.CategoricalAlgebra.Chase: 
+  extend_morphism, extend_morphism_constraints
+
+using Catlab.CategoricalAlgebra.Pointwise
+
+import Catlab.CategoricalAlgebra: is_natural, components,
+                                  homomorphisms, homomorphism, predicate
+using ..Theories 
+using ..FinSets: id_condition
+
 # Morphism search 
 #################
+
+"""
+Given   f: A->C and g: B->C, find all morphisms A->B that make the triangle commute 
+```
+                ??? 
+              A  ⇉  B 
+              f ↘ ↙ g
+                 C
+```
+"""
+function lift_morphism_constraints(f::ACSetTransformation, g::ACSetTransformation)
+  Ob = ob(acset_schema(dom(f)))
+  predicates = Dict()
+  for o in Ob
+    preds = Dict{Int,Set{Int}}()
+    for p in parts(dom(f), o)
+      pred = Set(preimage(g[o], f[o](p)))
+      isempty(pred) && return nothing
+      preds[p] = pred
+    end
+    predicates[o] = preds
+  end
+  return predicates
+end
 
 """
 Invert some (presumed iso) components of an ACSetTransformation (given by s)
@@ -83,19 +111,19 @@ Check whether (X, f_,g_) is the pullback of (f,g), up to isomorphism (i.e. the
 pullback of f and g produces (Y,π₁,π₂), where Y is isomorphic to X and 
 i⋅f_ = π₁ & i⋅g_ = π₂.
 """
-function check_pb(f,g,f_,g_)
+function check_pb(f,g,f_,g_; cat)
   @debug "checking pb with f $f\ng $g\nf_ $f_\ng_ $g_"
-  codom(f)==codom(g) || error("f,g must be cospan")
-  dom(f_)==dom(g_)   || error("f_,g_ must be span")
-  codom(f_)==dom(f)  || error("f_,f must compose")
-  codom(g_)==dom(g)  || error("g_,g must compose")
+  codom[cat](f)==codom[cat](g) || error("f,g must be cospan")
+  dom[cat](f_)==dom[cat](g_)   || error("f_,g_ must be span")
+  codom[cat](f_)==dom[cat](f)  || error("f_,f must compose")
+  codom[cat](g_)==dom[cat](g)  || error("g_,g must compose")
 
-  pb_check = limit(Cospan(f, g))
+  pb_check = limit[cat](Cospan(f, g))
   @debug "apex(pb_check) $(apex(pb_check))"
-  isos = isomorphisms(apex(pb_check), dom(f_))
+  isos = isomorphisms(apex(pb_check), dom[cat](f_))
   return any(isos) do i
-    all(zip(force.(legs(pb_check)), [f_, g_])) do (leg, h)
-      i ⋅ h == leg
+    all(zip(legs(pb_check), [f_, g_])) do (leg, h)
+      force(compose[cat](i, h)) == force(leg)
     end
   end 
 end
@@ -122,8 +150,6 @@ end
 unions!(i::IntDisjointSets, xs::Vector{Int}) = if length(xs) > 1 
   [union!(i, x, y) for (x,y) in zip(xs, xs[2:end])]
 end
-
-getvalue(a::AttrVar) = a.val
 
 """Further induced equations between AttrVars, given a specific match morphism"""
 function var_eqs(l::ACSetTransformation, m::ACSetTransformation)
@@ -152,92 +178,99 @@ this method will raise an error. If the dangling condition fails, the resulting
 C-set will be only partially defined. To check all these conditions in advance,
 use the function [`can_pushout_complement`](@ref).
 """
-function pushout_complement(pair::ComposablePair{<:ACSet, <:TightACSetTransformation})
-  l, m = pair 
-  I, G = dom(l), codom(m)
-  S = acset_schema(I)
-  all(at->nparts(G, at)==0, attrtypes(S)) || error("Cannot rewrite with AttrVars in G")
-  # Compute pushout complements pointwise in FinSet.
-  comps = NamedTuple(Dict(map(types(S)) do o 
-      o => pushout_complement(ComposablePair(l[o], m[o]))
-  end))
+@instance ThPushoutComplement{ACSet,ACSetTransformation
+                             } [model::ACSetCategory] begin 
+  function pushout_complement(pair::ComposablePair) 
+    l, m = pair 
+    lm = compose[model](l,m)
+    I, G = dom(l), codom(m)
+    S = acset_schema(I)
+    𝒞 = entity_cat(model)
+    om(x, o) = ob_map[𝒞](get_ob(model, x, o))
 
-  k_components = Dict{Symbol,Any}(pairs(map(first, comps)))
-  g_components = Dict{Symbol,Any}(k => k ∈ ob(S) ? v : FinFunction(v) 
-                                  for (k,v) in pairs(map(last, comps)))
+    all(at->nparts(G, at)==0, attrtypes(S)) || error("Cannot rewrite with AttrVars in G")
+    # Compute pushout complements pointwise in FinSet.
+    comps = NamedTuple(Dict(map(ob(S)) do o 
+      𝒟 = entity_attr_cat(model, o)
+      component_pair = ComposablePair(l[o], m[o]; cat=𝒟)
+      pc = pushout_complement[𝒟](component_pair)
+      o => pc
+    end))
+    k_components = Dict{Symbol,Any}(pairs(map(first, comps)))
+    g_components = Dict{Symbol,Any}(pairs(map(last, comps)))
+    # # Reassemble components into natural transformations.
+    K = constructor(model)
+    Ks = Dict(k=>dom[entity_attr_cat(model, k)](v) for (k,v) in g_components)
+    mapping = DefaultDict(() -> Dict())
+    for k in ob(S)
+      for i in ob_map[entity_cat(model)](Ks[k])
+        mapping[k][i] = add_part!(K, k)
+      end
+    end
+    mapping_inv = Dict(o=>Dict(v=>k for (k,v) in mapping[o]) for o in keys(mapping))
+    g_components2 = Dict(map(collect(g_components)) do (o, comp)
+      f = if haskey(mapping_inv, o)
+        FinFunction(Dict(k=>comp(v) for (k,v) in mapping_inv[o]), om(K,o), om(G,o))
+      else 
+        nothing
+      end
+      o => f
+    end)
+    g_components2 = Dict(map(collect(g_components)) do (o, comp)
+      f = if haskey(mapping_inv, o)
+        FinFunction(Dict(k=>comp(v) for (k,v) in mapping_inv[o]), om(K,o), om(G,o))
+      else 
+        nothing
+      end
+      o => f
+    end)
 
-  # # Reassemble components into natural transformations.
-  g = hom(Subobject(G, NamedTuple(g_components)))
-  k = ACSetTransformation(I, dom(g); k_components...)
-  kg, lm = force.(compose.([k,l], [g, m]))
-  kg == lm || error(
-    "Square doesn't commute: \n\t$(components(kg)) \n!= \n\t$(components(lm))")
-  is_natural(k) || error("k unnatural $k")
-  is_natural(g) || error("g unnatural")
-  return ComposablePair(k, g)
-end
+    for (h,d,c) in arrows(S)
+      g_c, g_d = get(g_components2, c, nothing), g_components2[d]
+      for p in parts(K, d)
+        res = G[g_d(p), h]
+        K[p, h] = c ∈ ob(S) ? only(preimage(g_c, res)) : res
+      end
+    end
+    k_components2 = Dict{Symbol,Any}(map(collect(k_components)) do (o, comp)
+      f = FinFunction(mapping[o], codom(comp), om(K,o))
+      o => postcompose(comp, f)
+    end)
+    for k in attrtypes(S)
+      k_components2[k] = lm[k]
+    end
 
+    # need to reindex the components in light of the actual part IDs in K
+    g = ACSetTransformation(g_components2, K, G; cat=model)
+    k = ACSetTransformation(I, K; cat=model, k_components2...)
 
-function can_pushout_complement(pair::ComposablePair{<:ACSet})
-  S = acset_schema(dom(pair))
-  Ts = datatypes(dom(pair))
-  all(is_natural, pair) || error("Unnatural inputs")
+    # Optional sanity check
+    # kg, lm = force.(compose[model].([k,l], [g, m]))
+    # kg == lm || error(
+    #   "Square doesn't commute: \n\t$(components(kg)) \n!= \n\t$(components(lm))")
 
-  all(can_pushout_complement, unpack_diagram(pair; S=S, Ts=Ts)) &&
-    isempty(dangling_condition(pair))
-end
+    is_natural(k; cat=model) || error(
+      "k unnatural $k $(naturality_failures(k; cat=model))")
+    
+    is_natural(g; cat=model) || error(
+      "g unnatural $(naturality_failures(g; cat=model))")
 
-gluing_conditions(pair::ComposablePair{<:Slice}) =
-  gluing_conditions(ComposablePair(pair[1].f, pair[2].f))
-
-"""Check both id condition and dangling condition"""
-function gluing_conditions(pair::ComposablePair{<:ACSet})
-  viols = []
-  S = acset_schema(dom(pair))
-  Ts = datatypes(dom(pair))
-  for (k,x) in pairs(unpack_diagram(pair; S=S, Ts=Ts))
-    a,b = collect.(id_condition(x))
-    append!(viols, [("Id: nondeleted ↦ deleted ", k, aa) for aa in a])
-    append!(viols,[("Id: nonmonic deleted", k, bb) for bb in b])
+    return ComposablePair(k, g; cat=model)
   end
-  append!(viols, [("Dangling", d...) for d in dangling_condition(pair)])
-  return viols
+
+  function pushout_complement_violations(pair::ComposablePair)
+    viols = []
+    for k in keys(components(pair[1]))
+      # @show k, typeof(pair[1][k])
+      a,b = id_condition(pair[1][k], pair[2][k])
+      append!(viols, [("Id: nondeleted ↦ deleted ", k, aa) for aa in a])
+      append!(viols,[("Id: nonmonic deleted", k, bb) for bb in b])
+    end
+    append!(viols, [("Dangling", d...) for d in dangling_condition(pair)])
+    return viols
+  end
 end
 
-
-"""    pushout_complement(f::SliceHom, g::SliceHom)
-Compute a pushout complement in a slice category by using the pushout complement
-in the underlying category.
-
-     f
-  B <-- A ---⌝
-  | ↘ ↙      |
- g|  X       | f′
-  ↓ ↗  ↖ cx  |
-  D <--- C <--
-      g′
-
-"""
-function pushout_complement(fg::ComposablePair{<:Slice})
-  f, g = fg
-  f′, g′ = pushout_complement(ComposablePair(f.f, g.f))
-  D = codom(g)
-  C = Slice(compose(g′, D.slice))
-  return SliceHom(dom(f), C, f′) => SliceHom(C, D, g′)
-end
-
-""" Pushout complement: extend composable pair to a pushout square.
-
-[Pushout complements](https://ncatlab.org/nlab/show/pushout+complement) are the
-essential ingredient for double pushout (DPO) rewriting.
-"""
-pushout_complement(f, g) = pushout_complement(ComposablePair(f, g))
-
-""" Can a pushout complement be constructed for a composable pair?
-
-Even in nice categories, this is not generally possible.
-"""
-can_pushout_complement(f, g) = can_pushout_complement(ComposablePair(f, g))
 
 """
 Check the dangling condition for a pushout comlement: m doesn't map a deleted
@@ -327,7 +360,7 @@ substitution. We do this via pushout.
 `merge` values are vectors of vectors indicating equivalence classes, e.g.
 `; merge = (Weight = [[2,3], [4,6]], ...)`
 """
-function sub_vars(X::ACSet, subs::AbstractDict=Dict(), merge::AbstractDict=Dict()) 
+function sub_vars(X::ACSet, subs::AbstractDict=Dict(), merge::AbstractDict=Dict(); cat) 
   S = acset_schema(X)
   O, C = [constructor(X)() for _ in 1:2]
   ox_, oc_ = Dict{Symbol, Any}(), Dict{Symbol,Any}()
@@ -347,9 +380,9 @@ function sub_vars(X::ACSet, subs::AbstractDict=Dict(), merge::AbstractDict=Dict(
       end
     end
   end
-  ox = ACSetTransformation(O,X; ox_...)
-  oc = ACSetTransformation(O,C; oc_...)
-  return first(legs(pushout(ox, oc)))
+  ox = ACSetTransformation(O,X; ox_..., cat)
+  oc = ACSetTransformation(O,C; oc_..., cat)
+  return first(legs(pushout[cat](ox, oc)))
 end 
 
 """
@@ -360,7 +393,8 @@ This relies on implementation details of `abstract`.
 """
 function var_pullback(c::Cospan{<:StructACSet{S,Ts}}) where {S,Ts}
   f, g = deattr.(c)
-  legs = pullback(f,g)
+  cat = ACSetCategory(dom(f))
+  legs = pullback[cat](f,g)
   new_apex = typeof(dom(first(c)))()
   copy_parts!(new_apex, dom(first(legs))) # has everything except attributes
   for at in attrtypes(S) add_part!(new_apex, at) end 
@@ -373,7 +407,7 @@ function var_pullback(c::Cospan{<:StructACSet{S,Ts}}) where {S,Ts}
     attr_components = Dict(map(attrtypes(S)) do at
       comp = Union{AttrVar,attrtype_instantiation(S,Ts,at)}[]
       for (f, c, _) in attrs(S; to=at)
-        append!(comp, X[f][collect(A[c]⋅p[c])])
+        append!(comp, X[f][collect(compose[FinSetC()](A[c],p[c]))])
       end
       return at => comp
     end)
@@ -399,33 +433,12 @@ function deattr(f::ACSetTransformation)
   return ACSetTransformation(X,Y; Dict(o=>f[o] for o in ob(S))...)
 end 
 
-# Slices
-########
-acset_schema(x::Slice) = acset_schema(dom(x))
-is_natural(x::SliceHom) = is_natural(x.f)
-components(x::SliceHom) = components(x.f)
-Base.getindex(x::SliceHom, c) = x.f[c]
-
-"""
-This could be made more efficient as a constraint during homomorphism finding.
-"""
-function homomorphisms(X::Slice,Y::Slice; kw...)
-  map(filter(h->force(X.slice)==force(h⋅Y.slice),
-         homomorphisms(dom(X), dom(Y); kw...)) ) do h
-    SliceHom(X, Y, h)
-  end |> collect
-end
-
-function homomorphism(X::Slice,Y::Slice; kw...)
-  hs = homomorphisms(X,Y; kw...)
-  return isempty(hs) ? nothing : first(hs)
-end
-
 # Simple Δ migrations (or limited case Σ)
 #########################################
 
 """TODO: check if functorial"""
 @struct_hash_equal struct Migrate
+  cat::ACSetCategory
   obs::Dict{Symbol, Symbol}
   homs::Dict{Symbol, Symbol}
   P1::Presentation
@@ -435,13 +448,13 @@ end
   delta::Bool 
 end 
 
-Migrate(s1::Presentation, t1::Type, s2=nothing, t2=nothing; delta=true) = 
-Migrate(Dict(x => x for x in Symbol.(generators(s1, :Ob))),
+Migrate(cat::ACSetCategory, s1::Presentation, t1::Type, s2=nothing, t2=nothing; delta=true) = 
+Migrate(cat, Dict(x => x for x in Symbol.(generators(s1, :Ob))),
         Dict(x => x for x in Symbol.(generators(s1, :Hom))),
         s1, t1, s2, t2; delta)
 
-Migrate(o::Dict, h::Dict, s1::Presentation, t1::Type, s2=nothing, t2=nothing; 
-        delta::Bool=true) = Migrate(Dict(collect(pairs(o))),
+Migrate(cat::ACSetCategory, o::Dict, h::Dict, s1::Presentation, t1::Type, s2=nothing, t2=nothing; 
+        delta::Bool=true) = Migrate(cat, Dict(collect(pairs(o))),
                                     Dict(collect(pairs(h))), s1, t1, 
                                     isnothing(s2) ? s1 : s2, 
                                     isnothing(t2) ? t1 : t2, 
@@ -456,7 +469,7 @@ sparsify(::Nothing) = nothing
 (F::Migrate)(d::Dict{<:ACSet,V}) where V = Dict([F(k)=>v for (k,v) in collect(d)])
 (m::Migrate)(::Nothing) = nothing
 (m::Migrate)(s::Union{String,Symbol}) = s
-function (m::Migrate)(Y::ACSet)
+function (m::Migrate)(Y::ACSet; cat=nothing)
   if m.delta
      typeof(Y) <: m.T1 || error("Cannot Δ migrate a $(typeof(Y))")
   end
@@ -483,9 +496,22 @@ end
 
 function (F::Migrate)(f::ACSetTransformation)
   d = Dict(map(collect(pairs(components(f)))) do (k,v)
-    get(F.obs,k,k) => collect(v)
+    fun = v isa CopairedFinDomFunction ? get(v) : v
+    get(F.obs,k,k) => map(sort(collect(dom(fun)))) do i 
+      e = fun(i)
+      if e isa Left
+        AttrVar(getvalue(e))
+      elseif e isa Right 
+        getvalue(e)
+      else 
+        e 
+      end
+    end
   end)
-  only(homomorphisms(F(dom(f)), F(codom(f)), initial=d))
+  # show(stdout,"text/plain",F(dom(f)))
+  # show(stdout,"text/plain",F(codom(f)))
+  # @show d
+  homomorphism(F(dom(f)), F(codom(f)); initial=d, cat=F.cat)
 end
 
 (F::Migrate)(s::Multispan) = Multispan(apex(s), F.(collect(s)))

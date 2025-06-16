@@ -1,11 +1,13 @@
 
 module TestSqPO 
 
-using Test, Catlab, AlgebraicRewriting 
+using Test, Catlab, AlgebraicRewriting
 using AlgebraicRewriting.Rewrite.SqPO: final_pullback_complement
 
 # Sesqui Pushout Tests
 ######################
+
+Grph = ACSetCategory(Graph())
 
 # partial map classifier test
 #############################
@@ -14,17 +16,17 @@ X = path_graph(Graph, 2)
 B = @acset Graph begin V = 1; E = 1; src=[1]; tgt=[1] end
 m = ACSetTransformation(X,A,V=[4,1],E=[1])
 f = ACSetTransformation(X,B,V=[1,1],E=[1])
-phi = partial_map_classifier_universal_property(m,f)
+phi = partial_map_classifier_universal_property(m,f; cat=Grph)
 
 # check pullback property
-m_, f_ = pullback(phi, partial_map_classifier_eta(B)).cone
+m_, f_ = pullback[Grph](phi, partial_map_classifier_eta(B; cat=Grph)).cone
 
 # This is isomorphic, but it's a particular implementation detail which
 # isomorphism is produced. At the time of writing this test, it turns out we get
 # an identical span if we reverse the arrow of the apex X
 iso = ACSetTransformation(X,X;V=[2,1], E=[1])
-@test force(compose(iso, m_)) == m
-@test force(compose(iso, f_)) == f
+@test force(compose[Grph](iso, m_)) == m
+@test force(compose[Grph](iso, f_)) == f
 
 # Another test
 #------------
@@ -36,8 +38,8 @@ toLoop = @acset Graph begin
   V=2; E=2; src=[1,2]; tgt=[2,2] end
 f = ACSetTransformation(loop, fromLoop, V=[1],E=[2])
 m = ACSetTransformation(loop, toLoop, V=[2],E=[2])
-u = partial_map_classifier_universal_property(m,f)
-m_,f_ = pullback(u, partial_map_classifier_eta(codom(f))).cone
+u = partial_map_classifier_universal_property(m,f; cat=Grph)
+m_,f_ = pullback[Grph](u, partial_map_classifier_eta(codom[Grph](f); cat=Grph)).cone
 @test force.([m_,f_]) == [m,f]
 
 
@@ -47,7 +49,7 @@ A, B, C = Graph(2), Graph(1), path_graph(Graph, 2)
 f = ACSetTransformation(A,B;V=[1,1])
 m = ACSetTransformation(B,C; V=[2])
 
-fpc = final_pullback_complement(ComposablePair(f,m))
+fpc = final_pullback_complement(ComposablePair(f,m); cat=Grph)
 
 # Sesqui-pushout rewriting
 ###########################
@@ -60,9 +62,9 @@ L, I, R = Graph.([1,2,2])
 G = @acset Graph begin V=3; E=2; src=1; tgt=[2,3] end
 m = ACSetTransformation(L, G; V=[1])
 l = ACSetTransformation(I, L; V=[1,1])
-r = id(I)
+r = id[Grph](I)
 
-rw = rewrite_match(Rule{:SqPO}(l, r), m)
+rw = rewrite_match(Rule{:SqPO}(l, r), m; cat=Grph)
 @test is_isomorphic(rw, @acset Graph begin
   V=4; E=4; src=[1,1,2,2]; tgt=[3,4,3,4] end)
 
@@ -72,9 +74,9 @@ rw = rewrite_match(Rule{:SqPO}(l, r), m)
 # reflecting edges: but this l morphism is not regular.
 L, I, R = path_graph(Graph, 2), Graph(2), Graph(2)
 G = @acset Graph begin V=3; E=3; src=1; tgt=[2,2,3] end
-l, r = ACSetTransformation(I, L; V=[1,2]), id(I)
+l, r = ACSetTransformation(I, L; V=[1,2]), id[Grph](I)
 m = ACSetTransformation(L, G; V=[1,2], E=[1])
-rw = rewrite_match(Rule{:SqPO}(l,r), m)
+rw = rewrite_match(Rule{:SqPO}(l,r), m; cat=Grph)
 @test is_isomorphic(rw, @acset Graph begin V=3; E=2; src=1; tgt=[2,3] end)
 
 # (Figure 1) Example that would be dangling condition violation for DPO
@@ -83,7 +85,7 @@ G= @acset Graph begin V=4; E=3; src=[1,3,3]; tgt=[2,2,4] end
 L,I,R = Graph.([1,0,0])
 l, r = ACSetTransformation(I,L), ACSetTransformation(I,R)
 m = ACSetTransformation(L, G; V=[3])
-rw = rewrite_match(Rule{:SqPO}(l,r), m)
+rw = rewrite_match(Rule{:SqPO}(l,r), m; cat=Grph)
 @test is_isomorphic(rw, @acset Graph begin V=3; E=1; src=1; tgt=2 end)
 
 
@@ -100,6 +102,8 @@ rw = rewrite_match(Rule{:SqPO}(l,r), m)
 end
 @acset_type SSet(ThSemisimplicialSet)
 
+𝒞 = ACSetCategory(SSet())
+
 Tri = @acset SSet begin
   T=1; E=3; V=3;
   d1=[1]; d2=[2]; d3=[3];
@@ -108,12 +112,12 @@ end
 
 L = @acset SSet begin V=1 end
 I = @acset SSet begin V=2 end
-r =Rule{:SqPO}(homomorphism(I,L),id(I))
+r =Rule{:SqPO}(homomorphism(I,L),id[𝒞](I))
 m = ACSetTransformation(L, Tri, V=[1]);
 # We get 4 'triangles' when we ignore equations
-@test nparts(rewrite_match(r, m), :T) == 4
+@test nparts(rewrite_match(r, m; cat=𝒞), :T) == 4
 
-resSqPO= rewrite_match(r, m; pres=ThSemisimplicialSet) # pass in the equations
+resSqPO= rewrite_match(r, m; cat=𝒞, pres=ThSemisimplicialSet) # pass in the equations
 @test nparts(resSqPO, :T) == 2 # the right number of triangles
 
 end # module 

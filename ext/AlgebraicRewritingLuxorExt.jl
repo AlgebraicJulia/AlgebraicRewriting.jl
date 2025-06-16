@@ -65,7 +65,7 @@ function view_traj(sched_::Schedule, traj::AbstractVector, viewer, n::Int;
   height = sum(heights)
   # Helper functions
   p(h) = Point(width/2,h)
-  hline(h) = line(Point(0,h),Point(width,h), :stroke)
+  hline(h) = Luxor.line(Point(0,h),Point(width,h), :stroke)
   pimg(i,h) = placeimage(svgs[i],p(h); centered=true)
   # Draw image 
   Drawing(width, height+SPACE*2, "$out/$n.png")

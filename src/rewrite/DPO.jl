@@ -19,12 +19,12 @@ using a match morphism `m` which indicates where to apply the rewrite.
 
 This works for any type that implements `pushout_complement` and `pushout`
 """
-function rewrite_match_maps(r::Rule{:DPO}, m; check::Bool=false)
+function rewrite_match_maps(r::Rule{:DPO}, m; cat, check::Bool=false)
   if check
-    can_pushout_complement(left(r), m) || error("Can't pushout complement $r\n$m")
+    can_pushout_complement[cat](left(r), m) || error("Can't pushout complement $r\n$m")
   end
-  ik, kg = pushout_complement(left(r), m)  
-  rh, kh = pushout(right(r), ik) 
+  ik, kg = pushout_complement[cat](left(r), m)  
+  rh, kh = pushout[cat](right(r), ik) 
   Dict(:ik=>ik, :kg=>kg, :rh=>rh, :kh=>kh)
 end
 

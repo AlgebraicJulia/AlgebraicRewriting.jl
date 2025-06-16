@@ -10,10 +10,10 @@ import ..Utils: rewrite_match_maps
 # Single-pushout rewriting
 ##########################
 
-function rewrite_match_maps(r::Rule{:SPO}, m)
+function rewrite_match_maps(r::Rule{:SPO}, m; cat)
   e = "SPO rule is not a partial morphism. Left leg not monic."
-  is_monic(r.L) || error(e)
-  (rmono, rmap),(gmono, gmap)  = partial_pushout(Span(r.L, r.R), Span(id(dom(m)), m))
+  is_monic[cat](r.L) || error(e)
+  (rmono, rmap),(gmono, gmap)  = partial_pushout(Span(r.L, r.R), Span(id[cat](dom(m)), m); cat)
   return Dict(:rmono=>rmono, :rmap=>rmap, :gmono=>gmono, :gmap=>gmap)
 end
 
@@ -28,12 +28,12 @@ C ↩ Cfg -> D
 Implementation of Construction 6 in Löwe's 
 "Algebraic approach to SPO graph transformation"
 """
-function partial_pushout(f::Span, g::Span)
+function partial_pushout(f::Span, g::Span; cat)
   AfA, AfB = f
   AgA, AgC = g 
-  A, B, A_, C = codom.([AfA, AfB, AgA, AgC])
+  A, B, A_, C = codom[cat].([AfA, AfB, AgA, AgC])
   A == A_ || error("f and g do not share common domain")
-  all(is_monic, [AfA, AgA]) || error("f and g must be *partial* maps")
+  all(is_monic[cat], [AfA, AgA]) || error("f and g must be *partial* maps")
   S = acset_schema(A)
   ι(o) = (o ∈ ob(S) ? identity : AttrVar)
   κ(o) = vs -> o ∈ ob(S) ? vs : Set([v.val for v in vs if v isa AttrVar])
@@ -41,7 +41,8 @@ function partial_pushout(f::Span, g::Span)
   #-------------
   # Step 1: compute Af ∩ Ag
   glue = Dict{Symbol,Set{Int}}(map(types(S)) do o 
-    o => κ(o)(intersect(Set.(collect.([AfA[o],AgA[o]]))...))
+    funs = [o in ob(S) ? x : get(x) for x in [AfA[o], AgA[o]]]
+    o => κ(o)(intersect(Set.(collect.(funs))...))
   end)
 
   # Step 2: add any elements which are mapped to the same elems by f or g 
@@ -63,17 +64,18 @@ function partial_pushout(f::Span, g::Span)
   #---------------------------
   Bgf_B, Cfg_C = map([f,g]) do (mono, ϕ) 
     sub = Dict{Symbol,Vector{Int}}(map(types(S)) do o 
-      x1 = setdiff(parts(codom(ϕ),o),collect(ϕ[o])) # e.g. C - g(A)
+      ϕfun = o ∈ ob(S) ? ϕ[o] : get(ϕ[o])
+      x1 = setdiff(parts(codom(ϕ),o),collect(ϕfun)) # e.g. C - g(A)
       pre = [preimage(mono[o], fg_A[o](i)) for i in parts(fg,o)]
       x2 = Set(collect(ϕ[o].(vcat(pre...))))  # e.g. g(f ∇ g)
       o => sort(collect(x1 ∪ x2))
     end)
 
-    hom(Subobject(codom(ϕ), NamedTuple(cascade_subobj(codom(ϕ), sub))))
+    hom(Subobject(codom[cat](ϕ), NamedTuple(cascade_subobj(codom[cat](ϕ), sub))))
   end
-  codom(Cfg_C) == C || error("Not C ")
-  codom(Bgf_B) == B || error("Not B ") 
-  Cfg, Bgf = dom.([Cfg_C,Bgf_B])
+  codom[cat](Cfg_C) == C || error("Not C ")
+  codom[cat](Bgf_B) == B || error("Not B ") 
+  Cfg, Bgf = dom[cat].([Cfg_C,Bgf_B])
   fg_Bgf, fg_Cfg = map(zip([f,g], [Bgf_B, Cfg_C])) do ((mono, ϕ),cod)
     
     init = Dict(map(ob(S)) do o 
@@ -82,12 +84,12 @@ function partial_pushout(f::Span, g::Span)
         return findfirst(==(c_index), collect(cod[o]))
       end
     end)
-    only(homomorphisms(fg, dom(cod); initial=init))
+    only(homomorphisms(fg, dom(cod); cat, initial=init))
   end
 
-  Bd,Cd = pushout(fg_Bgf,fg_Cfg)
-  dom(Bd) == Bgf || error("bad dom1")
-  dom(Cd) == Cfg || error("bad dom2")
+  Bd,Cd = pushout[cat](fg_Bgf,fg_Cfg)
+  dom[cat](Bd) == Bgf || error("bad dom1")
+  dom[cat](Cd) == Cfg || error("bad dom2")
   return Span(Bgf_B,Bd), Span(Cfg_C,Cd)
 end
 

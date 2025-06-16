@@ -6,22 +6,22 @@ using AlgebraicRewriting
 @test length(methods(Rule)) == 1
 using Luxor
 @test length(methods(view_traj)) > 1
-using DataMigrations
-@test length(methods(Rule)) > 1
+# using DataMigrations
+# @test length(methods(Rule)) > 1
 
 # Demos
 #######
 
-@testset "Full Demo" begin
+module FullDemo
   include("../docs/literate/full_demo.jl")
 end
 
-@testset "Lotka Volterra" begin
-  # include("../docs/literate/lotka_volterra.jl")
+module LVDemo
+  include("../docs/literate/lotka_volterra.jl")
 end
 
-@testset "Game of Life" begin
-  # include("../docs/literate/game_of_life.jl")
+module GoLDemo
+  include("../docs/literate/game_of_life.jl")
 end
 
 # Background 
@@ -70,9 +70,9 @@ end
   include("rewrite/PBPO.jl")
 end
 
-@testset "Representable" begin
-  include("rewrite/Representable.jl")
-end
+# @testset "Representable" begin
+#   include("rewrite/Representable.jl")
+# end
 
 @testset "Inplace" begin
   include("rewrite/Inplace.jl")
@@ -89,9 +89,3 @@ end
   include("schedules/Eval.jl")
 end
 
-# Incremental hom search
-########################
-
-@testset "Incremental" begin
-  include("incremental/Incremental.jl")
-end

@@ -16,8 +16,6 @@ using ..Constraints
 using ...CategoricalAlgebra
 using ...CategoricalAlgebra.CSets: invert_hom
 
-import Catlab.CategoricalAlgebra.FinSets: is_monic
-is_monic(f::SliceHom) = is_monic(f.f) # UPSTREAM
 
 
 # RULES 
@@ -43,17 +41,18 @@ condition(s)
   monic::Vector{Symbol} # further constraint on match morphism
   exprs::Dict{Symbol, Dict{Int,Union{Nothing,Function}}}
 
-  function Rule{T}(l, r; ac=nothing, monic=false, expr=nothing, freevar=false) where {T}
-    L, R, I, I′ = codom(l), codom(r), dom(l), dom(r)
+  function Rule{T}(l, r; cat=nothing, ac=nothing, monic=false, expr=nothing, freevar=false) where {T}
+    cat = isnothing(cat) ? infer_acset_cat(l) : cat
+    L, R, I, I′ = codom[cat](l), codom[cat](r), dom[cat](l), dom[cat](r)
     S = acset_schema(L)
     monic = monic isa Bool ? (monic ? ob(S) : []) : monic
     expr = isnothing(expr) ? Dict() : expr
-    T==:SqPO || is_monic(l) || error("Left leg must be monic $(components(l))")
+    T==:SqPO || is_monic[cat](l) || error("Left leg must be monic $(components(l))")
     I == I′ || error("L<->R not a span")
     ACs = isnothing(ac) ? [] : deepcopy.(ac)
     exprs = isnothing(expr) ? Dict() : Dict(pairs(expr))
     for (lbl, f) in ["left"=>l, "right"=>r]
-      is_natural(f) || error("unnatural $lbl map: $f")
+      is_natural(f;cat) || error("unnatural $lbl map: $f")
     end
 
     # Check the application conditions are maps out of L
@@ -67,10 +66,11 @@ condition(s)
 
     # For the case of ACSet rewriting, address variable assignment in R
     exprs = !(L isa ACSet) ? Dict() : Dict(map(attrtypes(S)) do o
+      𝒟 = attr_cat(cat, o)
       binding = Dict()
-      is_monic(r[o]) || error("I→R AttrType component must be monic $(r[o])")
+      is_monic[𝒟](r[o]) || error("I→R AttrType component must be monic $(r[o])")
       for r_var in parts(R, o)
-        preim = preimage(r[o], AttrVar(r_var))
+        preim = preimage(r[o], Left(r_var))
         x = get′(expr, o, r_var)
         if !isempty(preim) # the value of this attrvar is preserved
           isnothing(x) || error(
@@ -115,17 +115,17 @@ sparsify(r::Rule{T}) where T =
 DPO′ = [:DPO, :CoNeg] # these have identical diagrams
 
 """Extract the map from the R to the result from the full output data"""
-function get_rmap(sem::Symbol, maps)
+function get_rmap(sem::Symbol, maps; cat)
   if isnothing(maps)  nothing
   elseif sem ∈ DPO′  maps[:rh]
-  elseif sem == :SPO  invert_hom(maps[:rmono], epic=false) ⋅ maps[:rmap]
+  elseif sem == :SPO  compose[cat](invert_hom(maps[:rmono], epic=false), maps[:rmap])
   elseif sem == :SqPO maps[:r]
   elseif sem == :PBPO maps[:w]
   else   error("Rewriting semantics $sem not supported")
   end
 end
 
-get_result(sem::Symbol, maps) = codom(get_rmap(sem, maps))
+get_result(sem::Symbol, maps; cat) = codom[cat](get_rmap(sem, maps; cat))
 
 """Extract the partial map (derived rule) from full output data"""
 function get_pmap(sem::Symbol, maps)
@@ -156,8 +156,8 @@ rule, otherwise returns the reason why it should be rejected
 homsearch = if we know ahead of time that m was obtained m via automatic hom 
             search, then we do not need to make certain checks
 """
-function can_match(r::Rule{T}, m; homsearch=false, initial=Dict()) where T
-  S = acset_schema(dom(m))
+function can_match(r::Rule{T}, m; cat, homsearch=false, initial=Dict()) where T
+  S = acset_schema(dom[cat](m))
   if !homsearch
     for k in ob(S)
       if has_comp(r.monic, k) && !is_monic(m[k])
@@ -170,11 +170,11 @@ function can_match(r::Rule{T}, m; homsearch=false, initial=Dict()) where T
         return ("Initial condition violated", k, errs)
       end
     end
-    is_natural(m) || return ("Match is not natural", m)
+    is_natural(m; cat) || return ("Match is not natural", m)
   end
 
   if T == :DPO
-    gc = gluing_conditions(ComposablePair(r.L, m))
+    gc = pushout_complement_violations[cat](ComposablePair(r.L, m; cat))
     if !isempty(gc)
       return ("Gluing conditions failed", gc)
     end
@@ -186,7 +186,7 @@ function can_match(r::Rule{T}, m; homsearch=false, initial=Dict()) where T
   end
 
   for (nᵢ, N) in enumerate(r.conditions)
-    if !apply_constraint(N, m)
+    if !apply_constraint(N, m; cat)
       return ("Constraint $nᵢ failed", nᵢ)
     end
   end
@@ -195,7 +195,7 @@ function can_match(r::Rule{T}, m; homsearch=false, initial=Dict()) where T
 end
 
 """Get one match (if any exist) otherwise return """
-get_match(args...; kw...) = let x = get_matches(args...; take=1, kw...);
+get_match(args...; cat, kw...) = let x = get_matches(args...; cat, take=1, kw...);
   isempty(x) ? nothing : only(x) end 
 
 """
@@ -205,16 +205,18 @@ This function has the same behavior as the generic `get_matches`, but it is
 more performant because we do not have to query all homomorphisms before finding 
 a valid match, in case n=1. 
 """
-get_matches(r::Rule, G::ACSet; kw...) =
-  homomorphisms(codom(r.L), G; kw..., monic=r.monic, 
-                filter= m -> isnothing(can_match(r, m; homsearch=true)))
+function get_matches(r::Rule, G::ACSet; cat=nothing, kw...) 
+  cat = isnothing(cat) ? infer_acset_cat(G) : cat
+  homomorphisms(codom(r.L), G; cat, kw..., monic=r.monic, 
+                filter= m -> isnothing(can_match(r, m; cat, homsearch=true)))
+end
 
 """If not rewriting ACSets, we have to compute entire Hom(L,G)."""
-function get_matches(r::Rule, G; take=nothing, kw...)
-  ms = homomorphisms(codom(left(r)), G; kw..., monic=r.monic)
+function get_matches(r::Rule, G; cat, take=nothing, kw...)
+  ms = homomorphisms(codom[cat](left(r)), G; cat, kw..., monic=r.monic)
   res = []
   for m in ms 
-    if (isnothing(take) || length(res) < take) && isnothing(can_match(r, m))
+    if (isnothing(take) || length(res) < take) && isnothing(can_match(r, m; cat))
       push!(res, m)
     end
   end
@@ -240,19 +242,24 @@ m ↓    ↓    ↓ res
             ↓  
             X′
 """
-function get_expr_binding_map(r::Rule{T}, m::ACSetTransformation, res) where T
-  rmap = get_rmap(T, res)
-  X = codom(rmap)
+function get_expr_binding_map(r::Rule{T}, m::ACSetTransformation, res; cat) where T
+  rmap = get_rmap(T, res; cat)
+  X = codom[cat](rmap)
   comps = Dict(map(attrtypes(acset_schema(X))) do at 
-      bound_vars = Vector{Any}(collect(m[at]))
-      at => Dict(rmap[at](AttrVar(i)).val => xpr(bound_vars) 
+      atfun = hom_map[attr_cat(cat, at)](m[at])
+      bound_vars = Vector{Any}(map(parts(dom(m), at)) do i 
+        atfun(Left(i))
+      end) 
+      rfun = hom_map[attr_cat(cat, at)](rmap[at])
+      at => Dict(rfun(Left(i)).val => xpr(getvalue.(bound_vars)) 
                  for (i, xpr) in r.exprs[at])
   end)
-  sub_vars(X, comps)
+  sub_vars(X, comps; cat)
 end
 
 """Don't bind variables for things that are not ACSets"""
-get_expr_binding_map(r::Rule{T}, m, X) where T =  id(get_result(ruletype(r), X))
+get_expr_binding_map(r::Rule{T}, m, X; cat) where T = 
+  id[cat](get_result(ruletype(r), X; cat))
 
 
 # Rewriting functions that just get the final result
@@ -263,18 +270,21 @@ function rewrite_match_maps end  # to be implemented for each T
 """    rewrite(r::Rule, G; kw...)
 Perform a rewrite (automatically finding an arbitrary match) and return result.
 """
-function rewrite(r::AbsRule, G; initial=(;), random=false, kw...)
-  m = get_match(r, G; initial, random)
-  isnothing(m) ? nothing : rewrite_match(r, m; kw...)
+function rewrite(r::AbsRule, G; cat=nothing, initial=(;), random=false, kw...)
+  cat = isnothing(cat) ? infer_acset_cat(G) : cat
+  m = get_match(r, G; cat, initial, random)
+  isnothing(m) ? nothing : rewrite_match(r, m; cat, kw...)
 end
 
 
 """    rewrite_match(r::Rule, m; kw...)
 Perform a rewrite (with a supplied match morphism) and return result.
 """
-rewrite_match(r::AbsRule, m; kw...) =
-  codom(get_expr_binding_map(r, m, rewrite_match_maps(r, m; kw...)))
-
+function rewrite_match(r::AbsRule, m; cat=nothing, kw...) 
+  cat = isnothing(cat) ? infer_acset_cat(m) : cat
+  maps = rewrite_match_maps(r, m; cat, kw...)
+  codom[cat](get_expr_binding_map(r, m, maps; cat))
+end
 
 function check_match_var_eqs end # implement in DPO.jl
 end # module

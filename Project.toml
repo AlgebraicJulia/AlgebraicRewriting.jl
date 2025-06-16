@@ -2,13 +2,14 @@ name = "AlgebraicRewriting"
 uuid = "725a01d3-f174-5bbd-84e1-b9417bad95d9"
 license = "MIT"
 authors = ["Kris Brown <kris@topos.institute>"]
-version = "0.4.2"
+version = "0.5.0"
 
 [deps]
 ACSets = "227ef7b5-1206-438b-ac65-934d6da304b8"
 Catlab = "134e5e36-593f-5add-ad60-77f754baafbe"
 CompTime = "0fb5dd42-039a-4ca4-a1d7-89a96eae6d39"
 DataStructures = "864edb3b-99cc-5e75-8d2d-829cb0a9cfe8"
+GATlab = "f0ffcf3b-d13a-433e-917c-cc44ccf5ead2"
 MLStyle = "d8e11817-5142-5d16-987a-aa16d5891078"
 Random = "9a3f8284-a2c9-5f02-9a11-845980a1fd5c"
 Reexport = "189a3867-3050-52da-a836-e630ba90ab69"
@@ -25,10 +26,11 @@ AlgebraicRewritingLuxorExt = "Luxor"
 
 [compat]
 ACSets = "0.2.20"
-Catlab = "0.16.16"
+Catlab = "0.17.0"
 CompTime = "0.1"
 DataMigrations = "0.0.3,0.1"
 DataStructures = "0.17, 0.18"
+GATlab = "0.2.1"
 MLStyle = "0.4"
 Reexport = "^1"
 StructEquality = "2.1"
