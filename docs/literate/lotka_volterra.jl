@@ -474,6 +474,7 @@ we_rule = Rule(GWS_Dir, GW_Dir, expr=(Eng=[vs -> vs[2] + 20],));
 wolf_eat = tryrule(RuleApp(:Wolf_eat, we_rule, hom(W, w_eat_l), id[𝒞](W)));
 
 # #### Wolf eating test
+
 begin
   ex = @acset LV begin 
     Sheep=1; Wolf=1; V=3; E=2; Time=3;
@@ -489,7 +490,6 @@ begin
   res = rewrite(we_rule,ex; cat=𝒞)
   @test is_isomorphic(res, expected; cat=𝒞)
   rewrite!(we_rule, ex; cat=𝒞)
-  # PROBLEM THIS BINDS SheepEng+20 rather than WolfEng+20 to the Wolf's energy
   @test is_isomorphic(ex,expected; cat=𝒞)
 end;
 
