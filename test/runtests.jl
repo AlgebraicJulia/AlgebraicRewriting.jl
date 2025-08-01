@@ -7,18 +7,13 @@ using AlgebraicRewriting
 
 # using DataMigrations # @test length(methods(Rule)) > 1
 
+using Luxor
+@test length(methods(view_traj)) > 1 # check package extension loaded
+
 module Demos 
-  using AlgebraicRewriting, Test
-  if !Sys.iswindows()
-    using Luxor
-    @test length(methods(view_traj)) > 1 # check package extension loaded
-
-
-    include("../docs/literate/full_demo.jl")
-    include("../docs/literate/lotka_volterra.jl")
-    include("../docs/literate/game_of_life.jl")
-
-  end
+  include("../docs/literate/full_demo.jl")
+  include("../docs/literate/lotka_volterra.jl")
+  include("../docs/literate/game_of_life.jl")
 end
 
 # Background 
@@ -83,10 +78,6 @@ end
   include("schedules/Poly.jl")
 end
 
-if !Sys.iswindows()
-
-  @testset "Schedules: Eval" begin
-    include("schedules/Eval.jl")
-  end
-
+@testset "Schedules: Eval" begin
+  include("schedules/Eval.jl")
 end

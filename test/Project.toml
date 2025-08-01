@@ -10,5 +10,5 @@ StructEquality = "6ec83bb0-ed9f-11e9-3b4c-2b04cb4e219c"
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 
 [compat]
-Luxor = "4.3.0"
+Luxor = "4.0"
 PrettyTables = "2.4.0"
