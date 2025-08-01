@@ -4,8 +4,6 @@ using Test
 
 using Catlab, AlgebraicRewriting
 using Catlab.Graphics: to_graphviz_property_graph
-
-using Luxor
 using PrettyTables
 
 

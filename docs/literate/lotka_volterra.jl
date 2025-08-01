@@ -8,7 +8,6 @@ We start with importing some libraries.
 
 using Catlab, AlgebraicRewriting
 using Random, Test
-using Luxor # optional: makes the sequence of images via `view_traj` at the end
 
 using Catlab.Graphics.Graphviz: Attributes, Statement, Node
 import Catlab.Graphics.Graphviz

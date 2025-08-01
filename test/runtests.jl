@@ -2,13 +2,9 @@ using Test
 
 # Test package extension loading
 using AlgebraicRewriting
-@test length(methods(view_traj)) == 1
 @test length(methods(Rule)) == 1
 
 # using DataMigrations # @test length(methods(Rule)) > 1
-
-using Luxor
-@test length(methods(view_traj)) > 1 # check package extension loaded
 
 module Demos 
   include("../docs/literate/full_demo.jl")

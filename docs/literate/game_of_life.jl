@@ -9,7 +9,7 @@ We start with importing some libraries.
 using AlgebraicRewriting, Catlab, Test
 import Catlab.Graphics: to_graphviz
 using Catlab.Graphics.Graphviz: Attributes, Statement, Node, Edge, Digraph
-using PrettyTables, Luxor
+using PrettyTables
 
 #=
 The game of life has two rules: one which turns living things dead, and one that 

@@ -16,12 +16,6 @@ Reexport = "189a3867-3050-52da-a836-e630ba90ab69"
 StructEquality = "6ec83bb0-ed9f-11e9-3b4c-2b04cb4e219c"
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 
-[weakdeps]
-Luxor = "ae8d54c2-7ccd-5906-9d76-62fc9837b5bc"
-
-[extensions]
-AlgebraicRewritingLuxorExt = "Luxor"
-
 [compat]
 ACSets = "0.2.20"
 Catlab = "0.17.1"
