@@ -3,6 +3,7 @@ using AlgebraicRewriting
 using Catlab
 using Test 
 
+Grph = ACSetCategory(Graph())
 # Testing arity 2 constraints
 #############################
 cg = @acset CGraph begin V=3; E=3; src=[1,1,2]; tgt=[3,2,3]; 
@@ -10,8 +11,8 @@ cg = @acset CGraph begin V=3; E=3; src=[1,1,2]; tgt=[3,2,3];
 end
 c = Constraint(cg, ∃(3, Commutes([1],[2,3])))
 h1, hid, hnot, _ = homomorphisms(Graph.([2,2])...)
-@test !apply_constraint(c, hid, h1)
-@test apply_constraint(c, hid, hnot)
+@test !apply_constraint(c, hid, h1; cat=Grph)
+@test apply_constraint(c, hid, hnot; cat=Grph)
 @test arity(c) == 2
 
 # AppCond 
@@ -32,8 +33,8 @@ constr = PAC(f)
 G = @acset Graph begin V=1;E=1;src=1;tgt=1 end
 f = homomorphism(p2, G)
 
-@test apply_constraint(constr, f)
-@test !apply_constraint(constr, id(p2))
+@test apply_constraint(constr, f; cat=Grph)
+@test !apply_constraint(constr, id[Grph](p2); cat=Grph)
 to_graphviz(constr)
 
 # LiftCond
@@ -47,14 +48,14 @@ to_graphviz(constr)
 
 Every vertex with a loop also has a map to the vertex marked by the bottom map.
 """
-t = terminal(Graph)|>apex
+t = terminal[Grph]()|>apex
 v = homomorphism(t, looparr)
 loop_csp = @acset Graph begin V=3;E=4; src=[1,3,1,3]; tgt=[1,3,2,2] end 
 b = homomorphism(looparr, loop_csp; initial=(V=1:2,))
 constr = LiftCond(v, b)
 
-@test !apply_constraint(constr,homomorphism(t, loop_csp; initial=(V=[1],)))
-@test apply_constraint(constr,b)
+@test !apply_constraint(constr,homomorphism(t, loop_csp; initial=(V=[1],)); cat=Grph)
+@test apply_constraint(constr,b; cat=Grph)
 
 
 """
@@ -76,10 +77,10 @@ h1,h2,h3,h4 = homomorphisms(G, loop_csp; initial=(V=Dict(1=>1),))
 # h1,h2: we send V2 ↦ V1 (else: ↦2) Violates lift condition for the map into V=1
 # h1,h3: we send V3 ↦ V1 (else: ↦3) Violates lift condition for the map into V=3
 
-@test !apply_constraint(constr,h1)
-@test !apply_constraint(constr,h2)
-@test !apply_constraint(constr,h3)
-@test apply_constraint(constr,h4)
+@test !apply_constraint(constr,h1; cat=Grph)
+@test !apply_constraint(constr,h2; cat=Grph)
+@test !apply_constraint(constr,h3; cat=Grph)
+@test apply_constraint(constr,h4; cat=Grph)
 to_graphviz(constr)
 
 # Combining constraints

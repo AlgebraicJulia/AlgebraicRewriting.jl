@@ -185,7 +185,7 @@ abmvideo("sheepwolf.mp4", initialize_model(;stable_params...), sheepwolf_step!,
 ######################################
 
 
-using Catlab, DataMigrations, AlgebraicRewriting
+using Catlab, AlgebraicRewriting
 const hom = homomorphism
 
 @present TheoryWS <: SchGraph begin

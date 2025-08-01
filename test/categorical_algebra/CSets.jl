@@ -9,12 +9,13 @@ using Test, Catlab, AlgebraicRewriting
   X::Ob
 end
 @acset_type FinSetType(TheoryFinSet)
+𝒞F = ACSetCategory(FinSetType())
 
 I, L, G = [@acset FinSetType begin X=i end for i in [2,1,1]]
 l = ACSetTransformation(I, L, X=[1,1])
 m = ACSetTransformation(L, G, X=[1])
-@test can_pushout_complement(ComposablePair(l,m))
-ik, kg = pushout_complement(ComposablePair(l,m))
+@test can_pushout_complement[𝒞F](ComposablePair(l,m))
+ik, kg = pushout_complement[𝒞F](ComposablePair(l,m))
 # There are 3 functions `ik` that make this a valid P.C.
 # codom=1 with [1,1], codom=2 with [1,2] or [2,1]
 K = codom(ik)
@@ -23,14 +24,18 @@ K = codom(ik)
 @present TheoryLFinSet(FreeSchema) begin
   X::Ob; D::AttrType; f::Attr(X,D)
 end
+
 @acset_type LFinSetType(TheoryLFinSet)
+
 const LSet = LFinSetType{Symbol}
+
+𝒞L = ACSetCategory(VarACSetCat(LSet()))
 
 I = @acset LSet begin X=1; D=1; f=[AttrVar(1)] end
 G = @acset LSet begin X=2; f=[:x,:y] end
-f = homomorphism(I,G; initial=(X=[1],))
+f = homomorphism(I,G; initial=(X=[1],), cat=𝒞L)
 
-kg = last(pushout_complement(id(I),f))
+to_k, kg = pushout_complement[𝒞L](ComposablePair(id[𝒞L](I), f))
 @test dom(kg) == @acset LSet begin X=2; f=[:x,:y] end
 @test nparts(kg|> dom, :D) == 0
 
@@ -39,13 +44,16 @@ kg = last(pushout_complement(id(I),f))
 two = @acset Graph begin V=2; E=2; src=[1,2]; tgt=[2,1] end
 
 L_ = path_graph(Graph, 2)
-L = Slice(ACSetTransformation(L_, two, V=[2,1], E=[2]))
+Grph = Category(ACSetCategory(Graph()))
+S𝒞 = SliceC(Grph, L_)
+
+L = SliceOb(ACSetTransformation(L_, two, V=[2,1], E=[2]))
 
 G_ = path_graph(Graph, 3)
-G = Slice(ACSetTransformation(G_, two, V=[1,2,1], E=[1,2]))
+G = SliceOb(ACSetTransformation(G_, two, V=[1,2,1], E=[1,2]))
 
 @test length(homomorphisms(L_, G_)) == 2
-@test length(homomorphisms(L, G)) == 1
+@test length(homomorphisms(L, G; cat=S𝒞)) == 1
 
 # Extending morphisms
 #####################
@@ -74,6 +82,7 @@ G = Slice(ACSetTransformation(G_, two, V=[1,2,1], E=[1,2]))
 ##############
 
 const WG = WeightedGraph{Bool}
+𝒞WG = ACSetCategory(VarACSetCat(WG()))
 
 C = @acset WG begin V=1; Weight=1; E=2; src=1;tgt=1;weight=[true, AttrVar(1)] end 
 A = @acset WG begin V=1; Weight=2; E=3; src=1;tgt=1;

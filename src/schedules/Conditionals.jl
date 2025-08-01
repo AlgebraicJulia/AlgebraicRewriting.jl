@@ -55,7 +55,7 @@ color(::Conditional) = "lightpink"
 sparsify(a::Conditional) = 
   Conditional(a.prob, a.n, sparsify(a.agent); update=a.update, name=a.name, init=a.init)
 
-function update!(state::Ref, boxdata::Conditional, g::ACSetTransformation, inport::Int)
+function update!(state::Ref, boxdata::Conditional, g::ACSetTransformation, inport::Int; cat)
   inport == 1 || error("Conditionals have exactly 1 input")
   in_arg = boxdata.withagent ? g : codom(g)
   dist = boxdata.withstate ? boxdata.prob(in_arg, state[]) : boxdata.prob(in_arg)

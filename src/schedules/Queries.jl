@@ -116,27 +116,27 @@ sparsify(q::Query) = Query(q.name, sparsify.([q.subagent,q.agent,q.return_type])
                            constraint=sparsify(q.constraint))
 
 function update!(state::Ref, boxdata::Query, g::ACSetTransformation, inport::Int; 
-                 n_invalid=0)
+                 n_invalid=0, cat)
   msg = ""
   if inport == 1
-    state[] = (g,filter(h->apply_constraint(boxdata.constraint, h, g),
-                     homomorphisms(boxdata.subagent, codom(g))))
+    state[] = (g,filter(h->apply_constraint(boxdata.constraint, h, g; cat),
+                     homomorphisms(boxdata.subagent, codom(g); cat)))
     msg *= "Found $(length(state[][2])) agents"
   else 
     inport == 2 || error("bad inport $inport")
   end
   if isempty(state[][2])
     msg *= "\nNo more queued agents"
-    if in_bounds(state[][1]) 
+    if in_bounds(state[][1]; cat) 
       return (state[][1], 1, msg) 
     else 
-      return (create(codom(g)), 3, "Original agent invalidated. Exit with empty agent.")
+      return (create[cat](codom(g)), 3, "Original agent invalidated. Exit with empty agent.")
     end
   else
     new_agent = pop!(state[][2])
     inval_msg = n_invalid == 0 ? ")" : "$n_invalid invalid)"
     msg *= "\nNew agent ($(length(state[][2])) remaining "*inval_msg
-    if in_bounds(new_agent) 
+    if in_bounds(new_agent; cat) 
       return (new_agent, 2, msg)
     else 
       return update!(state, boxdata, g, 2; n_invalid = n_invalid+1)

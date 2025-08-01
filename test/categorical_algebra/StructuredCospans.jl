@@ -27,7 +27,8 @@ Open(n, p::PetriNet, m) = Open(p, n, m);
 o1, o2 = OpenPetriNetOb(1), OpenPetriNetOb(2);
 L = typeof(o1).parameters[1]
 v1, v2 = idV_(o1), idV_(o2);
-i1, i2, i3 = (id(FinSet(x)) for x in 1:3)
+ℱ = FinSetC()
+i1, i2, i3 = (id[ℱ](FinSet(x)) for x in 1:3)
 idH_(o1); # test if it fails
 
 isquare = id2_(o1);
@@ -204,8 +205,9 @@ const OpenGraphOb, OpenGraph = OpenCSetTypes(Graph, :V)
 
 # EXAMPLE GRAPHS
 #---------------
+𝒞 = ACSetCategory(Graph())
 G1,G2,G3 = Graph.(1:3)
-Loop = apex(terminal(Graph))
+Loop = apex(terminal[𝒞]())
 Arrow = path_graph(Graph, 2)
 BiArrow = @acset Graph begin V=2; E=2; src= [1,2]; tgt=[2,1] end
 Three = @acset Graph begin V=3; E=2; src=[1,2]; tgt=[2,3] end
@@ -225,11 +227,11 @@ Cycle = @acset Graph begin V=2; E=2; src=[1,2]; tgt=[2,1] end
 # Example Spans
 #--------------
 
-id_1 = id(Graph(1));
-id_2 = id(Graph(2));
-flip = CSetTransformation(G2, G2, V=[2,1]);
-f12 = CSetTransformation(G1, G2, V=[1]);
-f22 = CSetTransformation(G1, G2, V=[2]);
+id_1 = id[𝒞](Graph(1));
+id_2 = id[𝒞](Graph(2));
+flip = ACSetTransformation(G2, G2, V=[2,1]);
+f12 = ACSetTransformation(G1, G2, V=[1]);
+f22 = ACSetTransformation(G1, G2, V=[2]);
 
 sp1 = Span(id_1, id_1);
 sp2 = Span(id_2, id_2);

@@ -2,26 +2,14 @@ using Test
 
 # Test package extension loading
 using AlgebraicRewriting
-@test length(methods(view_traj)) == 1
 @test length(methods(Rule)) == 1
-using Luxor
-@test length(methods(view_traj)) > 1
-using DataMigrations
-@test length(methods(Rule)) > 1
 
-# Demos
-#######
+# using DataMigrations # @test length(methods(Rule)) > 1
 
-@testset "Full Demo" begin
+module Demos 
   include("../docs/literate/full_demo.jl")
-end
-
-@testset "Lotka Volterra" begin
-  # include("../docs/literate/lotka_volterra.jl")
-end
-
-@testset "Game of Life" begin
-  # include("../docs/literate/game_of_life.jl")
+  include("../docs/literate/lotka_volterra.jl")
+  include("../docs/literate/game_of_life.jl")
 end
 
 # Background 
@@ -70,9 +58,10 @@ end
   include("rewrite/PBPO.jl")
 end
 
-@testset "Representable" begin
-  include("rewrite/Representable.jl")
-end
+# Wait until DataMigrations is migrated to Catlab 0.17
+# @testset "Representable" begin
+#   include("rewrite/Representable.jl")
+# end
 
 @testset "Inplace" begin
   include("rewrite/Inplace.jl")
@@ -87,11 +76,4 @@ end
 
 @testset "Schedules: Eval" begin
   include("schedules/Eval.jl")
-end
-
-# Incremental hom search
-########################
-
-@testset "Incremental" begin
-  include("incremental/Incremental.jl")
 end

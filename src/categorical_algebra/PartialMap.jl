@@ -139,11 +139,11 @@ end
 The natural injection from X ⟶ T(X)
 When evaluated on the terminal object, this gives the subobject classfier.
 """
-function partial_map_classifier_eta(x::StructCSet;
+function partial_map_classifier_eta(x::StructCSet; cat,
     pres::Union{Nothing, Presentation}=nothing)::ACSetTransformation
   S = acset_schema(x)
   codom = partial_map_functor_ob(x; pres=pres)[1]
-  d = Dict([k=>collect(v) for (k,v) in pairs(id(x).components)])
+  d = Dict([k=>collect(v) for (k,v) in pairs(id[cat](x).components)])
   ACSetTransformation(x, codom; d...)
 end
 
@@ -165,19 +165,19 @@ the subobject picked out by X. When A is 'deleted', it picks out the right
 element of the additional data added by T(B).
 """
 function partial_map_classifier_universal_property(
-    m::ACSetTransformation, f::ACSetTransformation;
+    m::ACSetTransformation, f::ACSetTransformation; cat,
     pres::Union{Nothing, Presentation}=nothing, check=false
     )::ACSetTransformation
   S = acset_schema(dom(m))
   hdata   = collect(homs(S))
-  A, B    = codom(m), codom(f)
-  ηB      = partial_map_classifier_eta(B;pres=pres)
+  A, B    = codom[cat](m), codom[cat](f)
+  ηB      = partial_map_classifier_eta(B; cat, pres=pres)
   Bdict   = partial_map_functor_ob(B; pres=pres)[2]
-  TB      = codom(ηB)
+  TB      = codom[cat](ηB)
   fdata   = DefaultDict{Symbol, Dict{Int,Int}}(()->Dict{Int,Int}())
   res     = Dict{Symbol, Vector{Int}}()
   unknown = Dict{Symbol, Int}()
-  is_monic(m) || error("partial map classifier called w/ non monic m $m")
+  is_monic[cat](m) || error("partial map classifier called w/ non monic m $m")
   # Get mapping of the known values
   for (o, fcomp) in pairs(components(f))
     unknown[o] = nparts(TB, o)
@@ -196,11 +196,11 @@ function partial_map_classifier_universal_property(
       end
     end
   end
-  ϕ = ACSetTransformation(A, TB; res...)
+  ϕ = ACSetTransformation(A, TB; cat, res...)
   if check
-    is_natural(ηB) || error("ηB not natural $ηB")
-    is_natural(ϕ) || error("ϕ not natural $ϕ")
-    is_isomorphic(apex(pullback(ηB,ϕ)), dom(m)) || error("Pullback incorrect")
+    is_natural[cat](ηB) || error("ηB not natural $ηB")
+    is_natural[cat](ϕ) || error("ϕ not natural $ϕ")
+    is_isomorphic(apex(pullback[cat](ηB,ϕ)), dom[cat](m)) || error("Pullback incorrect")
   end
   return ϕ
 end

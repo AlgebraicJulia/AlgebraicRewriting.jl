@@ -1,6 +1,6 @@
 # # Full Demo
 
-using AlgebraicRewriting, Catlab, DataMigrations, AlgebraicPetri
+using AlgebraicRewriting, Catlab#, AlgebraicPetri
 using Test
 
 
@@ -47,6 +47,9 @@ to_graphviz(path_graph(Graph, 3))
 
 # # 1. DPO 
 
+# We are working in the category of directed multigraphs
+𝒞 = ACSetCategory(Graph())
+
 # We construct a rule by providing a span, L ← I → R
 
 L = path_graph(Graph, 2)  # • → •
@@ -83,8 +86,8 @@ end
 
 #=
 We can also specify the rule via a colimit-of-representables (i.e. generators and relations) syntax. As your schema gets bigger, this becomes more and more convenient. Assigning temporary tags, e.g. `e`, `v`, `eᵣ` to the C-Set elements can also be helpful.
-=#
 
+```
 yG = yoneda_cache(Graph, clear=true); # compute representables
 
 rule2 = Rule(@migration(SchRulel, SchGraph, begin
@@ -102,6 +105,8 @@ rule2 = Rule(@migration(SchRulel, SchGraph, begin
       v => src(e)
     end
   end), yG);
+```
+=#
 
 # We can also rewrite without a match (and let it pick an arbitrary match).
 
@@ -117,7 +122,9 @@ rule_spo = Rule{:SPO}(l, r)  # (same data as before)
 m = get_matches(rule_spo, G)[1]
 res = rewrite_match(rule_spo, m)
 to_graphviz(res)
-@test is_isomorphic(res, path_graph(Graph, 3) ⊕ R)
+@withmodel TypedCatWithCoproducts(𝒞) (⊕) begin
+  @test is_isomorphic(res, path_graph(Graph, 3) ⊕ R)
+end
 
 # **Note**: ⊕ and ⊗ are shorthand for (co)products
 # _Tip: Julia lets you easily write unicode symbols via "\" followed by a LaTeX name, then hit "Tab" to convert the symbol_
@@ -164,7 +171,7 @@ PBPO+ requires a span just like the other kinds of rewriting.
 
 L = Graph(1)
 K = R = Graph(2)
-l, r = homomorphism(K,L), id(K);
+l, r = homomorphism(K,L), id[𝒞](K);
 
 # However, it also requires more data. The graph G that we rewrite will be typed *over* the L' type graph which controls how various parts of the context (not merely the matched pattern) are rewritten. 
 
@@ -224,8 +231,8 @@ to_graphviz(expected; node_labels=true)
 Any data structure which implements the required functions we need can, in principle, be used for rewriting. Importantly this includes pushout_complement, pushout, and homomorphism search. These are all implemented generically for any C-Set schema (allowing us to rewrite Petri nets, Semisimplicial sets, etc.)
 
 Here we'll do rewriting in graphs sliced over •⇆•, which is isomorphic to the category of (whole-grain) Petri nets, with States and Transitions.
-=#
 
+```
 function graph_slice(s::Slice)
   h = s.slice
   V, E = collect.([h[:V], h[:E]])
@@ -241,29 +248,32 @@ function graph_slice(s::Slice)
     os = findS.(g[O, :tgt])
   end)
 end;
+```
 
 # This is the graph we are slicing over.
-
+```
 two = @acset Graph begin
   V = 2; E = 2; src = [1, 2]; tgt = [2, 1]
 end
 
 to_graphviz(two)
-
+```
 # Define a rule which deletes a [T] -> S edge. Start with the pattern, L.
-
+```
 L_ = path_graph(Graph, 2)
 L = Slice(ACSetTransformation(L_, two, V=[2, 1], E=[2])) # [T] ⟶ (S)
 graph_slice(L)
-
+```
 # Then define I and R 
+```
 I_ = Graph(1)
 I = Slice(ACSetTransformation(I_, two, V=[2])) # [T]
 R_ = Graph(2)
 R = Slice(ACSetTransformation(R_, two, V=[2, 1])) # [T]  (S)
-
+```
 # Using homomorphism search in the slice category
 
+```
 rule = Rule(homomorphism(I, L), homomorphism(I, R))
 
 G_ = path_graph(Graph, 3)
@@ -272,8 +282,8 @@ graph_slice(G)
 
 res = rewrite(rule, G) # (S) ⟶ [T]  (S)
 graph_slice(res)
+```
 
-#=
 While the vast majority of functionality is focused on ACSets at the present moment, but there is nothing in principle which limits this.
 =#
 
@@ -293,12 +303,18 @@ We can construct commutative diagrams with certain edges left unspecified or mar
 Every vertex with a loop also has a map to the vertex marked by the bottom map.
 =#
 
-t = terminal(Graph) |> apex
-looparr = @acset_colim yG begin
+t = terminal[𝒞]() |> apex
+looparr = @acset Graph begin V=2; E=2; src=2; tgt=[1,2] end
+
+#=
+
+```@acset_colim yG begin
   (e1, e2)::E
   src(e1) == tgt(e1)
   src(e1) == src(e2)
 end
+```  
+=#
 
 v = homomorphism(t, looparr)
 loop_csp = @acset Graph begin
@@ -307,8 +323,8 @@ end
 b = homomorphism(looparr, loop_csp; initial=(V=[2,1],))
 constr = LiftCond(v, b)
 
-@test !apply_constraint(constr, homomorphism(t, loop_csp; initial=(V=[1],)))
-@test apply_constraint(constr, b)
+@test !apply_constraint(constr, homomorphism(t, loop_csp; initial=(V=[1],)); cat=𝒞)
+@test apply_constraint(constr, b; cat=𝒞)
 
 # We can combining constraints with logical combinators.
 
@@ -321,10 +337,11 @@ c2 = PAC(homomorphism(Graph(1), two); monic=true)         # PAC
 c3 = NAC(homomorphism(Graph(1), four); monic=true) # NAC
 constr = c2 ⊗ c3 # logical conjunction: 2 ≤ |E| < 4
 
-rule = Rule(id(Graph(1)), id(Graph(1)); ac=[constr])
+rule = Rule(id[𝒞](Graph(1)), id[𝒞](Graph(1)); ac=[constr])
 
-G = two ⊕ three ⊕ two ⊕ four ⊕ five ⊕ one
-
+G = @withmodel TypedCatWithCoproducts(𝒞) (⊕) begin
+ two ⊕ three ⊕ two ⊕ four ⊕ five ⊕ one
+end 
 @test length(get_matches(rule, G)) == 3
 
 # # 7. Attribute variables
@@ -335,11 +352,11 @@ graph edge of 8.3 can only be mapped to another edge weighted at 8.3. This
 becomes very restricted, especially when we want to do some simple computations 
 with attribute values (e.g. when merging two edges, add their values together)
 
-A recent extension of ACSets makes this possible - each attribute type comes 
+An extension of ACSets makes this possible - each attribute type comes 
 equipped with a finite set of "variables" which can be mapped to any concrete 
 value (or another variable).
-=#
 
+```
 yWG = yoneda_cache(WeightedGraph{Int}; clear=true);
 L = @acset_colim yWG begin
   (e1, e2)::E
@@ -364,6 +381,8 @@ m = homomorphism(L, G; initial=(E=1:2,))
 @test rewrite_match(rule, m) == @acset WeightedGraph{Int} begin
   V = 1; E = 2; src = [1]; tgt = [1]; weight = [30, 100]
 end
+```
+=#
 
 # # 8. Graph processes
 
@@ -377,38 +396,38 @@ using AlgebraicRewriting.Processes: RWStep, find_deps
 
 G0, G1, G2, G3 = Graph.([0, 1, 2, 3]);
 # Delete a node
-Rule1 = Span(create(G1), id(G0));
+Rule1 = Span(create[𝒞](G1), id[𝒞](G0));
 # Merge two nodes
-Rule2 = Span(id(G2), homomorphism(G2, G1));
+Rule2 = Span(id[𝒞](G2), homomorphism(G2, G1));
 # Add a node
-Rule3 = Span(id(G0), create(G1))
+Rule3 = Span(id[𝒞](G0), create[𝒞](G1))
 
 R1, R2, R3 = [Rule(l, r) for (l, r) in [Rule1, Rule2, Rule3]];
 
 # # 9. Trajectory
 
 # Step 1: add node 3 to G2
-M1 = create(G2)
+M1 = create[𝒞](G2)
 CM1 = ACSetTransformation(G1, G3; V=[3])
-Pmap1 = Span(id(G2), ACSetTransformation(G2, G3; V=[1, 2]))
+Pmap1 = Span(id[𝒞](G2), ACSetTransformation(G2, G3; V=[1, 2]))
 RS1 = RWStep(Rule3, Pmap1, M1, CM1);
 
 # Step 2: merge node 2 and 3 to yield a G2
 M2 = ACSetTransformation(G2, G3; V=[2, 3])
 CM2 = ACSetTransformation(G1, G2; V=[2])
-Pmap2 = Span(id(G3), ACSetTransformation(G3, G2; V=[1, 2, 2]))
+Pmap2 = Span(id[𝒞](G3), ACSetTransformation(G3, G2; V=[1, 2, 2]))
 RS2 = RWStep(Rule2, Pmap2, M2, CM2);
 
 # Step 3: delete vertex 1 
 M3 = ACSetTransformation(G1, G2; V=[1])
-CM3 = create(G1)
-Pmap3 = Span(ACSetTransformation(G1, G2; V=[2]), id(G1))
+CM3 = create[𝒞](G1)
+Pmap3 = Span(ACSetTransformation(G1, G2; V=[2]), id[𝒞](G1))
 RS3 = RWStep(Rule1, Pmap3, M3, CM3);
 
 
 steps = [RS1, RS2, RS3];
 
-g = find_deps(steps)
+g = find_deps(steps; cat=𝒞)
 to_graphviz(g; node_labels=true)
 
 # Confirm this what we expect
@@ -421,5 +440,7 @@ expected = @acset Graph begin V = 3; E = 1; src = 1; tgt = 2 end
 σ₂ = ACSetTransformation(G2, G2; V=[2, 1])
 σ₃ = ACSetTransformation(G3, G3; V=[3, 1, 2])
 
-g′ = find_deps([R3 => M1, R2 => M2 ⋅ σ₃, R1 => M3 ⋅ σ₂])
+g′ = @withmodel 𝒞 (⋅) begin 
+  find_deps([R3 => M1, R2 => M2 ⋅ σ₃, R1 => M3 ⋅ σ₂]; cat=𝒞)
+end
 @test g′ == g
