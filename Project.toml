@@ -25,7 +25,7 @@ AlgebraicRewritingLuxorExt = "Luxor"
 
 [compat]
 ACSets = "0.2.20"
-Catlab = "0.16.16"
+Catlab = "0.16.16, 0.17"
 CompTime = "0.1"
 DataMigrations = "0.0.3,0.1"
 DataStructures = "0.17, 0.18"
