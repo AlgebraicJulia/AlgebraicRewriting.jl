@@ -14,7 +14,6 @@ To begin, set up your environment by importing necessary packages.
 ```julia
 using Catlab
 using AlgebraicRewriting
-using DataMigrations
 ```
 
 ## Design a rewrite rule

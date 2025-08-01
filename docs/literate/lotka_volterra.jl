@@ -440,23 +440,22 @@ S_to_S30 = hom(S, add_time(S, 30))
 sheep_eat = tryrule(RuleApp(:Sheep_eat, se_rule, id[𝒞](S), S_to_S30));
 
 # #### Sheep eating test
-begin
-  ex = @acset LV begin
-    E=1; V=2; Sheep=1; Time=2 
-    src=1; tgt=2; dir=:S; countdown=[1,1]
-    sheep_loc = 2; sheep_eng = 3; sheep_dir=:W
-  end
 
-  expected = @acset LV begin
-    E=1; V=2; Sheep=1; Time=32 
-    src=1; tgt=2; dir=:S; countdown=[1,1, fill(2, 30)...]
-    sheep_loc = 2; sheep_eng = 7; sheep_dir=:W
-  end
+ex = @acset LV begin
+  E=1; V=2; Sheep=1; Time=2 
+  src=1; tgt=2; dir=:S; countdown=[1,1]
+  sheep_loc = 2; sheep_eng = 3; sheep_dir=:W
+end
 
-  @test is_isomorphic(expected, rewrite(se_rule, ex; cat=𝒞); cat=𝒞)
-  rewrite!(se_rule, ex; cat=𝒞)
-  @test is_isomorphic(ex, expected)
-end;
+expected = @acset LV begin
+  E=1; V=2; Sheep=1; Time=32 
+  src=1; tgt=2; dir=:S; countdown=[1,1, fill(2, 30)...]
+  sheep_loc = 2; sheep_eng = 7; sheep_dir=:W
+end
+
+@test is_isomorphic(expected, rewrite(se_rule, ex; cat=𝒞); cat=𝒞)
+rewrite!(se_rule, ex; cat=𝒞)
+@test is_isomorphic(ex, expected);
 
 # ### Wolves eat sheep
 
@@ -475,23 +474,21 @@ wolf_eat = tryrule(RuleApp(:Wolf_eat, we_rule, hom(W, w_eat_l), id[𝒞](W)));
 
 # #### Wolf eating test
 
-begin
-  ex = @acset LV begin 
-    Sheep=1; Wolf=1; V=3; E=2; Time=3;
-    src=[1,2]; tgt=[2,3]; countdown=[1,2,3]; dir=[:N,:N]; 
-    sheep_loc=2; sheep_eng=[3]; sheep_dir=[:N]
-    wolf_loc=[2];  wolf_eng=[16];  wolf_dir=[:S]
-  end
+ex = @acset LV begin 
+  Sheep=1; Wolf=1; V=3; E=2; Time=3;
+  src=[1,2]; tgt=[2,3]; countdown=[1,2,3]; dir=[:N,:N]; 
+  sheep_loc=2; sheep_eng=[3]; sheep_dir=[:N]
+  wolf_loc=[2];  wolf_eng=[16];  wolf_dir=[:S]
+end
 
-  expected = copy(ex)
-  expected[1, :wolf_eng] = 36
-  rem_part!(expected, :Sheep, 1)
+expected = copy(ex)
+expected[1, :wolf_eng] = 36
+rem_part!(expected, :Sheep, 1)
 
-  res = rewrite(we_rule,ex; cat=𝒞)
-  @test is_isomorphic(res, expected; cat=𝒞)
-  rewrite!(we_rule, ex; cat=𝒞)
-  @test is_isomorphic(ex,expected; cat=𝒞)
-end;
+res = rewrite(we_rule,ex; cat=𝒞)
+@test is_isomorphic(res, expected; cat=𝒞)
+rewrite!(we_rule, ex; cat=𝒞)
+@test is_isomorphic(ex,expected; cat=𝒞);
 
 # ### Sheep starvation
 s_die_l = codom(sub_vars(S,Dict(:Eng=>[0],), Dict(); cat=𝒞))
@@ -504,20 +501,18 @@ sheep_starve = (RuleApp(:starve, sheep_die_rule,
 
 # #### Sheep starvation test
 
-begin
-  ex = @acset LV begin 
-    V=1; Sheep=1; Wolf=1; Time=1
-    countdown=[1];
-    sheep_loc=1; sheep_eng=0; sheep_dir=:W
-    wolf_loc=1; wolf_eng=10; wolf_dir=:S
-  end
-  expected = copy(ex)
-  rem_part!(expected, :Sheep, 1)
+ex = @acset LV begin 
+  V=1; Sheep=1; Wolf=1; Time=1
+  countdown=[1];
+  sheep_loc=1; sheep_eng=0; sheep_dir=:W
+  wolf_loc=1; wolf_eng=10; wolf_dir=:S
+end
+expected = copy(ex)
+rem_part!(expected, :Sheep, 1)
 
-  @test is_isomorphic(rewrite(sheep_die_rule,ex; cat=𝒞), expected)
-  rewrite!(sheep_die_rule,ex; cat=𝒞)
-  @test is_isomorphic(ex, expected)
-end;
+@test is_isomorphic(rewrite(sheep_die_rule,ex; cat=𝒞), expected)
+rewrite!(sheep_die_rule,ex; cat=𝒞)
+@test is_isomorphic(ex, expected);
                 
 # ### Reproduction
 
@@ -539,24 +534,22 @@ sheep_reprod = RuleApp(:reproduce, sheep_reprod_rule,
 
 # #### Reproduction test
 
-begin # test
-  ex = @acset LV begin 
-    Sheep=1; Wolf=1; V=2; Time=2
-    countdown=[1,2]
-    sheep_loc=1; sheep_eng=10; sheep_dir=:W 
-    wolf_loc=2; wolf_eng=5; wolf_dir=:N
-  end
+ex = @acset LV begin 
+  Sheep=1; Wolf=1; V=2; Time=2
+  countdown=[1,2]
+  sheep_loc=1; sheep_eng=10; sheep_dir=:W 
+  wolf_loc=2; wolf_eng=5; wolf_dir=:N
+end
 
-  expected = copy(ex)
-  add_part!(expected,:Sheep)
-  expected[:sheep_eng] = [5, 5]
-  expected[:sheep_loc] = [1, 1]
-  expected[:sheep_dir] = [:W, :W]
+expected = copy(ex)
+add_part!(expected,:Sheep)
+expected[:sheep_eng] = [5, 5]
+expected[:sheep_loc] = [1, 1]
+expected[:sheep_dir] = [:W, :W]
 
-  @test is_isomorphic(rewrite(sheep_reprod_rule,ex; cat=𝒞,),expected)
-  rewrite!(sheep_reprod_rule,ex; cat=𝒞)
-  @test is_isomorphic(ex, expected)
-end;
+@test is_isomorphic(rewrite(sheep_reprod_rule,ex; cat=𝒞,),expected)
+rewrite!(sheep_reprod_rule,ex; cat=𝒞)
+@test is_isomorphic(ex, expected);
   
 # ### Grass increments
 
@@ -566,23 +559,21 @@ g_inc = RuleApp(:GrassIncrements, g_inc_rule, G; cat=𝒞) |> tryrule;
 
 # #### Grass incrementing test
 
-begin
-  ex = @acset LV begin
-    Sheep = 1; V = 3; E = 2; Time=3
-    src = [1, 2]; tgt = [2, 3]
-    sheep_loc = 2; sheep_eng = [3]; sheep_dir = [:N]
-    countdown = [2,2,2]; dir = fill(:N, 2)  
-  end
-  expected = deepcopy(ex);
-  rem_part!(expected, :Time, 1)
+ex = @acset LV begin
+  Sheep = 1; V = 3; E = 2; Time=3
+  src = [1, 2]; tgt = [2, 3]
+  sheep_loc = 2; sheep_eng = [3]; sheep_dir = [:N]
+  countdown = [2,2,2]; dir = fill(:N, 2)  
+end
+expected = deepcopy(ex);
+rem_part!(expected, :Time, 1)
 
-  m = homomorphism(T, ex; any=true, cat=𝒞)
+m = homomorphism(T, ex; any=true, cat=𝒞)
 
-  rwres = rewrite(g_inc_rule, ex; cat=𝒞)
-  @test is_isomorphic(rwres, expected; cat=𝒞)
-  rewrite!(g_inc_rule, ex; cat=𝒞)
-  @test is_isomorphic(ex, expected)
-end;
+rwres = rewrite(g_inc_rule, ex; cat=𝒞)
+@test is_isomorphic(rwres, expected; cat=𝒞)
+rewrite!(g_inc_rule, ex; cat=𝒞)
+@test is_isomorphic(ex, expected);
 
 # ## Assembling rules into a recipe
 

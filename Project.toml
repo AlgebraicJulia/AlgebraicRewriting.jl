@@ -17,18 +17,15 @@ StructEquality = "6ec83bb0-ed9f-11e9-3b4c-2b04cb4e219c"
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 
 [weakdeps]
-DataMigrations = "0c4ad18d-0c49-4bc2-90d5-5bca8f00d6ae"
 Luxor = "ae8d54c2-7ccd-5906-9d76-62fc9837b5bc"
 
 [extensions]
-AlgebraicRewritingDataMigrationsExt = "DataMigrations"
 AlgebraicRewritingLuxorExt = "Luxor"
 
 [compat]
 ACSets = "0.2.20"
 Catlab = "0.17.1"
 CompTime = "0.1"
-DataMigrations = "0.0.3,0.1"
 DataStructures = "0.17, 0.18"
 GATlab = "0.2.1"
 MLStyle = "0.4"

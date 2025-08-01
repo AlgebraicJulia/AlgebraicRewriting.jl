@@ -4,24 +4,30 @@ using Test
 using AlgebraicRewriting
 @test length(methods(view_traj)) == 1
 @test length(methods(Rule)) == 1
-using Luxor
-@test length(methods(view_traj)) > 1
-# using DataMigrations
-# @test length(methods(Rule)) > 1
 
-# Demos
-#######
+if !Sys.iswindows()
+  using Luxor
+  @test length(methods(view_traj)) > 1
+    windows_specific_thing(a)
 
-module FullDemo
-  include("../docs/literate/full_demo.jl")
-end
+  # using DataMigrations
+  # @test length(methods(Rule)) > 1
 
-module LVDemo
-  include("../docs/literate/lotka_volterra.jl")
-end
+  # Demos
+  #######
 
-module GoLDemo
-  include("../docs/literate/game_of_life.jl")
+  module FullDemo
+    include("../docs/literate/full_demo.jl")
+  end
+
+  module LVDemo
+    include("../docs/literate/lotka_volterra.jl")
+  end
+
+  module GoLDemo
+    include("../docs/literate/game_of_life.jl")
+  end
+
 end
 
 # Background 
@@ -70,6 +76,7 @@ end
   include("rewrite/PBPO.jl")
 end
 
+# Wait until DataMigrations is migrated to Catlab 0.17
 # @testset "Representable" begin
 #   include("rewrite/Representable.jl")
 # end
@@ -85,7 +92,10 @@ end
   include("schedules/Poly.jl")
 end
 
-@testset "Schedules: Eval" begin
-  include("schedules/Eval.jl")
-end
+if !Sys.iswindows()
 
+  @testset "Schedules: Eval" begin
+    include("schedules/Eval.jl")
+  end
+
+end
