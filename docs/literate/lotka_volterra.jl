@@ -11,7 +11,7 @@ using Random, Test
 using Luxor # optional: makes the sequence of images via `view_traj` at the end
 
 using Catlab.Graphics.Graphviz: Attributes, Statement, Node
-using Catlab.Graphics.Graphviz
+import Catlab.Graphics.Graphviz
 
 const hom = homomorphism
 const AV = AttrVar 
@@ -65,7 +65,7 @@ end
 @acset_type LV_Generic(SchLV, part_type=BitSetParts) <: HasGraph
 const LV = LV_Generic{Int, Symbol}
 
-const 𝒞 = ACSetCategory(MADVarACSetCat(LV()))
+const ℒ = ACSetCategory(MADVarACSetCat(LV()))
 
 to_graphviz(SchLV; prog="dot")
 
@@ -132,7 +132,7 @@ obtain the analogous actions for wolves.
 =#
 
 F = Migrate(
-  𝒞,
+  ℒ,
   Dict(:Sheep => :Wolf, :Wolf => :Sheep, :Time=>:Time),
   Dict([:sheep_loc => :wolf_loc, :wolf_loc => :sheep_loc,
     :sheep_eng => :wolf_eng, :wolf_eng => :sheep_eng, :countdown => :countdown,
@@ -296,7 +296,7 @@ gV, gE, gS, gW, gT, gEng, gD = ob_generators(FinCat(SchLV))
 yLV = yoneda_cache(LV; clear=true); # cache=false means reuse cached results
 I = LV() # Empty agent type
 S = ob_map(yLV, gS) # Generic sheep agent
-iS = id[𝒞](S)
+iS = id[ℒ](S)
 W = ob_map(yLV, gW) # Generic wolf agent
 E = ob_map(yLV, gE) # Generic edge
 D = ob_map(yLV, gD) # Generic direction
@@ -333,10 +333,10 @@ will, with some probability, change their orientation. This is a rewrite rule
 which only modifies an attribute rather than changing any combinatorial data. We delete the sheep and recreate it.
 =#
 
-GS_Eng = @withmodel TypedCatWithCoproducts(𝒞) (⊕) begin 
-  hom(G⊕Eng, S; monic=true, cat=𝒞)
+GS_Eng = @withmodel TypedCatWithCoproducts(ℒ) (⊕) begin 
+  hom(G⊕Eng, S; monic=true, cat=ℒ)
 end
-rl = Rule(GS_Eng,GS_Eng; expr=(Dir=[((s,),) -> left(s)],), cat=𝒞);
+rl = Rule(GS_Eng,GS_Eng; expr=(Dir=[((s,),) -> left(s)],), cat=ℒ);
 rr = Rule(GS_Eng,GS_Eng; expr=(Dir=[((s,),) -> right(s)],));
 
 sheep_rotate_l = tryrule(RuleApp(:turn_left, rl, iS, iS));
@@ -364,12 +364,12 @@ begin
   m = homomorphism(S, ex);
   l = left(rl);
   p = ComposablePair(l, m);
-  k, g = pushout_complement[𝒞](p);
+  k, g = pushout_complement[ℒ](p);
   K = dom(g)
-  rewrite(rl, ex; cat=𝒞)
+  rewrite(rl, ex; cat=ℒ)
 
-  @test is_isomorphic(rewrite(rl, ex; cat=𝒞), expected; cat=𝒞)
-  rewrite!(rl, ex; cat=𝒞)
+  @test is_isomorphic(rewrite(rl, ex; cat=ℒ), expected; cat=ℒ)
+  rewrite!(rl, ex; cat=ℒ)
   @test is_isomorphic(ex, expected)
 end;
 
@@ -388,7 +388,7 @@ s_fwd_r = @acset LV begin
   sheep_loc=2; sheep_eng=[AV1]; sheep_dir=[AV1]
 end
 
-s_n = sub_vars(s_fwd_l, Dict(:Eng=>[0],), Dict(); cat=𝒞)
+s_n = sub_vars(s_fwd_l, Dict(:Eng=>[0],), Dict(); cat=ℒ)
 
 sheep_fwd_rule = Rule(
   hom(s_fwd_i, s_fwd_l; monic=true),
@@ -411,8 +411,8 @@ begin
   expected = copy(ex); 
   expected[:sheep_loc] = 2
   expected[:sheep_eng] = 9
-  @test is_isomorphic(expected, rewrite(sheep_fwd_rule, ex; cat=𝒞); cat=𝒞)
-  rewrite!(sheep_fwd_rule, ex; cat=𝒞)
+  @test is_isomorphic(expected, rewrite(sheep_fwd_rule, ex; cat=ℒ); cat=ℒ)
+  rewrite!(sheep_fwd_rule, ex; cat=ℒ)
   @test is_isomorphic(ex, expected)
 end;
 
@@ -429,7 +429,7 @@ s_eat_nac = @acset LV begin
   sheep_loc=1; sheep_eng=[AV1]; sheep_dir=[AV1]; countdown=1
 end
 
-GD = ob(coproduct[𝒞](G,D))
+GD = ob(coproduct[ℒ](G,D))
 GS_Dir = hom(GD, S; monic=true)
 GS_Dir30 = hom(GD, add_time(S, 30); monic=true)
 
@@ -437,7 +437,7 @@ se_rule = Rule(GS_Dir,GS_Dir30; expr=(Eng=[vs -> only(vs) + 4],),
   ac=[NAC(hom(S, s_eat_nac))]);
 
 S_to_S30 = hom(S, add_time(S, 30))
-sheep_eat = tryrule(RuleApp(:Sheep_eat, se_rule, id[𝒞](S), S_to_S30));
+sheep_eat = tryrule(RuleApp(:Sheep_eat, se_rule, id[ℒ](S), S_to_S30));
 
 # #### Sheep eating test
 
@@ -453,8 +453,8 @@ expected = @acset LV begin
   sheep_loc = 2; sheep_eng = 7; sheep_dir=:W
 end
 
-@test is_isomorphic(expected, rewrite(se_rule, ex; cat=𝒞); cat=𝒞)
-rewrite!(se_rule, ex; cat=𝒞)
+@test is_isomorphic(expected, rewrite(se_rule, ex; cat=ℒ); cat=ℒ)
+rewrite!(se_rule, ex; cat=ℒ)
 @test is_isomorphic(ex, expected);
 
 # ### Wolves eat sheep
@@ -470,7 +470,7 @@ GW_Dir = hom(GD, W; monic=true,)
 # wolf energy is energy variable #2.
 we_rule = Rule(GWS_Dir, GW_Dir, expr=(Eng=[vs -> vs[2] + 20],));
 
-wolf_eat = tryrule(RuleApp(:Wolf_eat, we_rule, hom(W, w_eat_l), id[𝒞](W)));
+wolf_eat = tryrule(RuleApp(:Wolf_eat, we_rule, hom(W, w_eat_l), id[ℒ](W)));
 
 # #### Wolf eating test
 
@@ -485,19 +485,19 @@ expected = copy(ex)
 expected[1, :wolf_eng] = 36
 rem_part!(expected, :Sheep, 1)
 
-res = rewrite(we_rule,ex; cat=𝒞)
-@test is_isomorphic(res, expected; cat=𝒞)
-rewrite!(we_rule, ex; cat=𝒞)
-@test is_isomorphic(ex,expected; cat=𝒞);
+res = rewrite(we_rule,ex; cat=ℒ)
+@test is_isomorphic(res, expected; cat=ℒ)
+rewrite!(we_rule, ex; cat=ℒ)
+@test is_isomorphic(ex,expected; cat=ℒ);
 
 # ### Sheep starvation
-s_die_l = codom(sub_vars(S,Dict(:Eng=>[0],), Dict(); cat=𝒞))
+s_die_l = codom(sub_vars(S,Dict(:Eng=>[0],), Dict(); cat=ℒ))
 
-sheep_die_rule = Rule(hom(G, s_die_l; cat=𝒞), id[𝒞](G))
+sheep_die_rule = Rule(hom(G, s_die_l; cat=ℒ), id[ℒ](G))
 sheep_starve = (RuleApp(:starve, sheep_die_rule,
-  hom(S, s_die_l), create[𝒞](G))
+  hom(S, s_die_l), create[ℒ](G))
                 ⋅
-                (id([I]) ⊗ Weaken(create[𝒞](S))) ⋅ merge_wires(I));
+                (id([I]) ⊗ Weaken(create[ℒ](S))) ⋅ merge_wires(I));
 
 # #### Sheep starvation test
 
@@ -510,8 +510,8 @@ end
 expected = copy(ex)
 rem_part!(expected, :Sheep, 1)
 
-@test is_isomorphic(rewrite(sheep_die_rule,ex; cat=𝒞), expected)
-rewrite!(sheep_die_rule,ex; cat=𝒞)
+@test is_isomorphic(rewrite(sheep_die_rule,ex; cat=ℒ), expected)
+rewrite!(sheep_die_rule,ex; cat=ℒ)
 @test is_isomorphic(ex, expected);
                 
 # ### Reproduction
@@ -522,15 +522,15 @@ s_reprod_r = @acset LV begin
 end;
 
 sheep_reprod_rule = Rule(
-  hom(G, S; cat=𝒞,),
-  hom(G, s_reprod_r; cat=𝒞,);
-  cat=𝒞,
+  hom(G, S; cat=ℒ,),
+  hom(G, s_reprod_r; cat=ℒ,);
+  cat=ℒ,
   expr=(Dir=fill(((dₛ,),)->dₛ ,2), 
         Eng=fill(((eₛ,),) -> round(Int, eₛ / 2, RoundUp), 2),)
 );
 
 sheep_reprod = RuleApp(:reproduce, sheep_reprod_rule,
-  id[𝒞](S), hom(S, s_reprod_r; any=true)) |> tryrule;
+  id[ℒ](S), hom(S, s_reprod_r; any=true)) |> tryrule;
 
 # #### Reproduction test
 
@@ -547,15 +547,15 @@ expected[:sheep_eng] = [5, 5]
 expected[:sheep_loc] = [1, 1]
 expected[:sheep_dir] = [:W, :W]
 
-@test is_isomorphic(rewrite(sheep_reprod_rule,ex; cat=𝒞,),expected)
-rewrite!(sheep_reprod_rule,ex; cat=𝒞)
+@test is_isomorphic(rewrite(sheep_reprod_rule,ex; cat=ℒ,),expected)
+rewrite!(sheep_reprod_rule,ex; cat=ℒ)
 @test is_isomorphic(ex, expected);
   
 # ### Grass increments
 
-g_inc_rule = Rule(hom(G, T; cat=𝒞), id[𝒞](G); cat=𝒞);
+g_inc_rule = Rule(hom(G, T; cat=ℒ), id[ℒ](G); cat=ℒ);
 
-g_inc = RuleApp(:GrassIncrements, g_inc_rule, G; cat=𝒞) |> tryrule;
+g_inc = RuleApp(:GrassIncrements, g_inc_rule, G; cat=ℒ) |> tryrule;
 
 # #### Grass incrementing test
 
@@ -568,11 +568,11 @@ end
 expected = deepcopy(ex);
 rem_part!(expected, :Time, 1)
 
-m = homomorphism(T, ex; any=true, cat=𝒞)
+m = homomorphism(T, ex; any=true, cat=ℒ)
 
-rwres = rewrite(g_inc_rule, ex; cat=𝒞)
-@test is_isomorphic(rwres, expected; cat=𝒞)
-rewrite!(g_inc_rule, ex; cat=𝒞)
+rwres = rewrite(g_inc_rule, ex; cat=ℒ)
+@test is_isomorphic(rwres, expected; cat=ℒ)
+rewrite!(g_inc_rule, ex; cat=ℒ)
 @test is_isomorphic(ex, expected);
 
 # ## Assembling rules into a recipe

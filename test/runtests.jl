@@ -5,29 +5,20 @@ using AlgebraicRewriting
 @test length(methods(view_traj)) == 1
 @test length(methods(Rule)) == 1
 
-if !Sys.iswindows()
-  using Luxor
-  @test length(methods(view_traj)) > 1
-    windows_specific_thing(a)
+# using DataMigrations # @test length(methods(Rule)) > 1
 
-  # using DataMigrations
-  # @test length(methods(Rule)) > 1
+module Demos 
+  using AlgebraicRewriting, Test
+  if !Sys.iswindows()
+    using Luxor
+    @test length(methods(view_traj)) > 1 # check package extension loaded
 
-  # Demos
-  #######
 
-  module FullDemo
     include("../docs/literate/full_demo.jl")
-  end
-
-  module LVDemo
     include("../docs/literate/lotka_volterra.jl")
-  end
-
-  module GoLDemo
     include("../docs/literate/game_of_life.jl")
-  end
 
+  end
 end
 
 # Background 
