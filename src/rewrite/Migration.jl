@@ -49,9 +49,12 @@ function repr_dict(T::Type; clear=false, cache="cache")
     path, ipath = joinpath.(cache_dir, ["$name.json", "_id_$name.json"])
     name => if !clear && isfile(path)
       (read_json_acset(T, path), parse(Int,open(io->read(io, String), ipath)))
-    else 
+    else
       @debug "Computing representable $name"
-      rep, i = representable(T, name; return_unit_id=true)
+      T′ = constructor(T();part_type=IntParts)
+      rep′, i = representable(T′, name; return_unit_id=true)
+      rep = T()
+      copy_parts!(rep, rep′)
       write_json_acset(rep, path)
       write(ipath, string(i))
       (rep, i)

@@ -293,7 +293,7 @@ that macro, we need to compute something first with the `yoneda_cache` function.
 
 gV, gE, gS, gW, gT, gEng, gD = ob_generators(FinCat(SchLV))
 
-yLV = yoneda_cache(LV; clear=false); # cache=false means reuse cached results
+yLV = yoneda_cache(LV; clear=true); # cache=false means reuse cached results
 I = LV() # Empty agent type
 S = ob_map(yLV, gS) # Generic sheep agent
 iS = id[𝒞](S)
