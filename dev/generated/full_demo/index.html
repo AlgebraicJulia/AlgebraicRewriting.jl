@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/><title>Full Demo · AlgebraicRewriting.jl</title><meta name="title" content="Full Demo · AlgebraicRewriting.jl"/><meta property="og:title" content="Full Demo · AlgebraicRewriting.jl"/><meta property="twitter:title" content="Full Demo · AlgebraicRewriting.jl"/><meta name="description" content="Documentation for AlgebraicRewriting.jl."/><meta property="og:description" content="Documentation for AlgebraicRewriting.jl."/><meta property="twitter:description" content="Documentation for AlgebraicRewriting.jl."/><script data-outdated-warner src="../../assets/warner.js"></script><link href="https://cdnjs.cloudflare.com/ajax/libs/lato-font/3.0.0/css/lato-font.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/juliamono/0.050/juliamono.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/fontawesome.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/solid.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/brands.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.8/katex.min.css" rel="stylesheet" type="text/css"/><script>documenterBaseURL="../.."</script><script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.6/require.min.js" data-main="../../assets/documenter.js"></script><script src="../../search_index.js"></script><script src="../../siteinfo.js"></script><script src="../../../versions.js"></script><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/catppuccin-mocha.css" data-theme-name="catppuccin-mocha"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/catppuccin-macchiato.css" data-theme-name="catppuccin-macchiato"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/catppuccin-frappe.css" data-theme-name="catppuccin-frappe"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/catppuccin-latte.css" data-theme-name="catppuccin-latte"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/documenter-dark.css" data-theme-name="documenter-dark" data-theme-primary-dark/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/documenter-light.css" data-theme-name="documenter-light" data-theme-primary/><script src="../../assets/themeswap.js"></script></head><body><div id="documenter"><nav class="docs-sidebar"><a class="docs-logo" href="../../"><img src="../../assets/logo.png" alt="AlgebraicRewriting.jl logo"/></a><div class="docs-package-name"><span class="docs-autofit"><a href="../../">AlgebraicRewriting.jl</a></span></div><button class="docs-search-query input is-rounded is-small is-clickable my-2 mx-auto py-1 px-2" id="documenter-search-query">Search docs (Ctrl + /)</button><ul class="docs-menu"><li><a class="tocitem" href="../../">AlgebraicRewriting.jl</a></li><li><span class="tocitem">Examples</span><ul><li class="is-active"><a class="tocitem" href>Full Demo</a><ul class="internal"><li class="toplevel"><a class="tocitem" href="#1.-DPO"><span>1. DPO</span></a></li><li class="toplevel"><a class="tocitem" href="#2.-SPO"><span>2. SPO</span></a></li><li class="toplevel"><a class="tocitem" href="#3.-SqPO"><span>3. SqPO</span></a></li><li class="toplevel"><a class="tocitem" href="#4.-PBPO"><span>4. PBPO+</span></a></li><li class="toplevel"><a class="tocitem" href="#5.-Generalizing-Graphs"><span>5. Generalizing Graphs</span></a></li><li class="toplevel"><a class="tocitem" href="#6.-Application-conditions"><span>6. Application conditions</span></a></li><li class="toplevel"><a class="tocitem" href="#7.-Attribute-variables"><span>7. Attribute variables</span></a></li><li class="toplevel"><a class="tocitem" href="#8.-Graph-processes"><span>8. Graph processes</span></a></li><li class="toplevel"><a class="tocitem" href="#9.-Trajectory"><span>9. Trajectory</span></a></li></ul></li><li><a class="tocitem" href="../game_of_life/">Conway&#39;s Game of Life</a></li><li><a class="tocitem" href="../lotka_volterra/">Lotka Volterra</a></li><li><a class="tocitem" href="../ptg_simple/">Slice Bread</a></li></ul></li><li><a class="tocitem" href="../../api/">Library Reference</a></li></ul><div class="docs-version-selector field has-addons"><div class="control"><span class="docs-label button is-static is-size-7">Version</span></div><div class="docs-selector control is-expanded"><div class="select is-fullwidth is-size-7"><select id="documenter-version-selector"></select></div></div></div></nav><div class="docs-main"><header class="docs-navbar"><a class="docs-sidebar-button docs-navbar-link fa-solid fa-bars is-hidden-desktop" id="documenter-sidebar-button" href="#"></a><nav class="breadcrumb"><ul class="is-hidden-mobile"><li><a class="is-disabled">Examples</a></li><li class="is-active"><a href>Full Demo</a></li></ul><ul class="is-hidden-tablet"><li class="is-active"><a href>Full Demo</a></li></ul></nav><div class="docs-right"><a class="docs-navbar-link" href="https://github.com/AlgebraicJulia/AlgebraicRewriting.jl" title="View the repository on GitHub"><span class="docs-icon fa-brands"></span><span class="docs-label is-hidden-touch">GitHub</span></a><a class="docs-navbar-link" href="https://github.com/AlgebraicJulia/AlgebraicRewriting.jl/blob/main/docs/literate/full_demo.jl" title="Edit source on GitHub"><span class="docs-icon fa-solid"></span></a><a class="docs-settings-button docs-navbar-link fa-solid fa-gear" id="documenter-settings-button" href="#" title="Settings"></a><a class="docs-article-toggle-button fa-solid fa-chevron-up" id="documenter-article-toggle-button" href="javascript:;" title="Collapse all docstrings"></a></div></header><article class="content" id="documenter-page"><h1 id="Full-Demo"><a class="docs-heading-anchor" href="#Full-Demo">Full Demo</a><a id="Full-Demo-1"></a><a class="docs-heading-anchor-permalink" href="#Full-Demo" title="Permalink"></a></h1><pre><code class="language-julia hljs">using AlgebraicRewriting, Catlab, DataMigrations, AlgebraicPetri
+<html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/><title>Full Demo · AlgebraicRewriting.jl</title><meta name="title" content="Full Demo · AlgebraicRewriting.jl"/><meta property="og:title" content="Full Demo · AlgebraicRewriting.jl"/><meta property="twitter:title" content="Full Demo · AlgebraicRewriting.jl"/><meta name="description" content="Documentation for AlgebraicRewriting.jl."/><meta property="og:description" content="Documentation for AlgebraicRewriting.jl."/><meta property="twitter:description" content="Documentation for AlgebraicRewriting.jl."/><script data-outdated-warner src="../../assets/warner.js"></script><link href="https://cdnjs.cloudflare.com/ajax/libs/lato-font/3.0.0/css/lato-font.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/juliamono/0.050/juliamono.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/fontawesome.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/solid.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/brands.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.8/katex.min.css" rel="stylesheet" type="text/css"/><script>documenterBaseURL="../.."</script><script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.6/require.min.js" data-main="../../assets/documenter.js"></script><script src="../../search_index.js"></script><script src="../../siteinfo.js"></script><script src="../../../versions.js"></script><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/catppuccin-mocha.css" data-theme-name="catppuccin-mocha"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/catppuccin-macchiato.css" data-theme-name="catppuccin-macchiato"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/catppuccin-frappe.css" data-theme-name="catppuccin-frappe"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/catppuccin-latte.css" data-theme-name="catppuccin-latte"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/documenter-dark.css" data-theme-name="documenter-dark" data-theme-primary-dark/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/documenter-light.css" data-theme-name="documenter-light" data-theme-primary/><script src="../../assets/themeswap.js"></script></head><body><div id="documenter"><nav class="docs-sidebar"><a class="docs-logo" href="../../"><img src="../../assets/logo.png" alt="AlgebraicRewriting.jl logo"/></a><div class="docs-package-name"><span class="docs-autofit"><a href="../../">AlgebraicRewriting.jl</a></span></div><button class="docs-search-query input is-rounded is-small is-clickable my-2 mx-auto py-1 px-2" id="documenter-search-query">Search docs (Ctrl + /)</button><ul class="docs-menu"><li><a class="tocitem" href="../../">AlgebraicRewriting.jl</a></li><li><span class="tocitem">Examples</span><ul><li class="is-active"><a class="tocitem" href>Full Demo</a><ul class="internal"><li class="toplevel"><a class="tocitem" href="#1.-DPO"><span>1. DPO</span></a></li><li class="toplevel"><a class="tocitem" href="#2.-SPO"><span>2. SPO</span></a></li><li class="toplevel"><a class="tocitem" href="#3.-SqPO"><span>3. SqPO</span></a></li><li class="toplevel"><a class="tocitem" href="#4.-PBPO"><span>4. PBPO+</span></a></li><li class="toplevel"><a class="tocitem" href="#5.-Generalizing-Graphs"><span>5. Generalizing Graphs</span></a></li><li class="toplevel"><a class="tocitem" href="#This-is-the-graph-we-are-slicing-over."><span>This is the graph we are slicing over.</span></a></li><li class="toplevel"><a class="tocitem" href="#Define-a-rule-which-deletes-a-[T]-S-edge.-Start-with-the-pattern,-L."><span>Define a rule which deletes a [T] -&gt; S edge. Start with the pattern, L.</span></a></li><li class="toplevel"><a class="tocitem" href="#Then-define-I-and-R"><span>Then define I and R</span></a></li><li class="toplevel"><a class="tocitem" href="#Using-homomorphism-search-in-the-slice-category"><span>Using homomorphism search in the slice category</span></a></li><li class="toplevel"><a class="tocitem" href="#6.-Application-conditions"><span>6. Application conditions</span></a></li><li class="toplevel"><a class="tocitem" href="#7.-Attribute-variables"><span>7. Attribute variables</span></a></li><li class="toplevel"><a class="tocitem" href="#8.-Graph-processes"><span>8. Graph processes</span></a></li><li class="toplevel"><a class="tocitem" href="#9.-Trajectory"><span>9. Trajectory</span></a></li></ul></li><li><a class="tocitem" href="../game_of_life/">Conway&#39;s Game of Life</a></li><li><a class="tocitem" href="../lotka_volterra/">Lotka Volterra</a></li><li><a class="tocitem" href="../ptg_simple/">Slice Bread</a></li></ul></li><li><a class="tocitem" href="../../api/">Library Reference</a></li></ul><div class="docs-version-selector field has-addons"><div class="control"><span class="docs-label button is-static is-size-7">Version</span></div><div class="docs-selector control is-expanded"><div class="select is-fullwidth is-size-7"><select id="documenter-version-selector"></select></div></div></div></nav><div class="docs-main"><header class="docs-navbar"><a class="docs-sidebar-button docs-navbar-link fa-solid fa-bars is-hidden-desktop" id="documenter-sidebar-button" href="#"></a><nav class="breadcrumb"><ul class="is-hidden-mobile"><li><a class="is-disabled">Examples</a></li><li class="is-active"><a href>Full Demo</a></li></ul><ul class="is-hidden-tablet"><li class="is-active"><a href>Full Demo</a></li></ul></nav><div class="docs-right"><a class="docs-navbar-link" href="https://github.com/AlgebraicJulia/AlgebraicRewriting.jl" title="View the repository on GitHub"><span class="docs-icon fa-brands"></span><span class="docs-label is-hidden-touch">GitHub</span></a><a class="docs-navbar-link" href="https://github.com/AlgebraicJulia/AlgebraicRewriting.jl/blob/main/docs/literate/full_demo.jl" title="Edit source on GitHub"><span class="docs-icon fa-solid"></span></a><a class="docs-settings-button docs-navbar-link fa-solid fa-gear" id="documenter-settings-button" href="#" title="Settings"></a><a class="docs-article-toggle-button fa-solid fa-chevron-up" id="documenter-article-toggle-button" href="javascript:;" title="Collapse all docstrings"></a></div></header><article class="content" id="documenter-page"><h1 id="Full-Demo"><a class="docs-heading-anchor" href="#Full-Demo">Full Demo</a><a id="Full-Demo-1"></a><a class="docs-heading-anchor-permalink" href="#Full-Demo" title="Permalink"></a></h1><pre><code class="language-julia hljs">using AlgebraicRewriting, Catlab#, AlgebraicPetri
 using Test</code></pre><p>This is a self-contained walkthrough of the main features of AlgebraicRewriting. This is a regular julia file that can be run interactively.</p><p>Importantly:</p><ul><li>use Julia 1.10</li><li>activate the environment in AlgebraicRewriting.jl/docs</li><li>check that graphviz is installed locally (test via &quot;which dot&quot; in terminal)</li></ul><p>Table of contents:</p><ol><li>DPO</li><li>SPO</li><li>SqPO</li><li>PBPO+</li><li>Generalizing graphs: C-Sets, Slices, etc.</li><li>Application conditions</li><li>Attribute variables</li><li>Graph processes</li><li>General purpose programming / agent-based modeling</li></ol><p>a. Rewrite and Control Flow boxes   b. Agents and Query boxes   c. Data migration   d. Monadic output</p><p>The VS Code REPL makes it easy to have figures automatically pop up in a side window, so this is the preferred way of interacting with this file. However, if that is not available, your options are to 1.) copy-paste the code into a Jupyter notebook 2.) use the following <code>to_svg</code> function, which will write a graphviz output to     a SVG file and can be viewed in a browser. The Julia pipe syntax |&gt; allows     you to easily append &quot; |&gt; to_svg &quot; to a line with a visualization.</p><pre><code class="language-julia hljs">to_svg(G, filename=&quot;tmp.svg&quot;) =
   open(filename, &quot;w&quot;) do io
     show(io, &quot;image/svg+xml&quot;, G)
@@ -45,7 +45,7 @@ to_graphviz(path_graph(Graph, 3))</code></pre><img src='data:image/svg+xml;utf-8
 </g>
 </g>
 </svg>
-'/><h1 id="1.-DPO"><a class="docs-heading-anchor" href="#1.-DPO">1. DPO</a><a id="1.-DPO-1"></a><a class="docs-heading-anchor-permalink" href="#1.-DPO" title="Permalink"></a></h1><p>We construct a rule by providing a span, L ← I → R</p><pre><code class="language-julia hljs">L = path_graph(Graph, 2)  # • → •
+'/><h1 id="1.-DPO"><a class="docs-heading-anchor" href="#1.-DPO">1. DPO</a><a id="1.-DPO-1"></a><a class="docs-heading-anchor-permalink" href="#1.-DPO" title="Permalink"></a></h1><p>We are working in the category of directed multigraphs</p><pre><code class="language-julia hljs">𝒞 = ACSetCategory(Graph())</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">Catlab.CategoricalAlgebra.Pointwise.CSets.ACSetCategory(Catlab.CategoricalAlgebra.Pointwise.PointwiseCats.CSetCats.CSetCat(Catlab.Graphs.BasicGraphs.Graph), Dict{Symbol, Type}(:Cat =&gt; Catlab.CategoricalAlgebra.Cats.Categories.ConcreteCategory, :ACSHom =&gt; Catlab.CategoricalAlgebra.Pointwise.ACSetTransformations.ACSetTransformation, :Hom =&gt; Catlab.BasicSets.FinFunctions.FinFunction, :Op =&gt; Union{}, :Sym =&gt; Symbol, :AttrType =&gt; Union{}, :Ob =&gt; Catlab.BasicSets.FinSetInts.FinSetInt, :Attr =&gt; Union{}, :ACS =&gt; ACSets.ACSetInterface.ACSet, :Hetero =&gt; Catlab.CategoricalAlgebra.Pointwise.CSets.Heteromorphisms.ConcreteHeteroMorphism…))</code></pre><p>We construct a rule by providing a span, L ← I → R</p><pre><code class="language-julia hljs">L = path_graph(Graph, 2)  # • → •
 I = Graph(1) # •
 R = @acset Graph begin
   V = 1
@@ -58,7 +58,7 @@ r = ACSetTransformation(I, R; V=[1])
 rule = Rule(l, r)
 
 G = path_graph(Graph, 5)  # • → • → • → • → •
-m = only(get_matches(rule, G)) # only one match which satisfies dangling condition</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">ACSetTransformation((V = FinFunction([4, 5], 2, 5), E = FinFunction([4], 1, 4)), Catlab.Graphs.BasicGraphs.Graph {V:2, E:1}, Catlab.Graphs.BasicGraphs.Graph {V:5, E:4})</code></pre><p>Provided a specific match (<code>m</code>), we can use the <code>rule</code> to rewrite the graph (<code>G</code>) using <code>rewrite_match(rule, m)</code>.</p><pre><code class="language-julia hljs">res = rewrite_match(rule, m) # • → • → • → •↺
+m = only(get_matches(rule, G)) # only one match which satisfies dangling condition</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">ACSetTransformation((V = FinFunction([4, 5], FinSet(5)), E = FinFunction([4], FinSet(4))), )</code></pre><p>Provided a specific match (<code>m</code>), we can use the <code>rule</code> to rewrite the graph (<code>G</code>) using <code>rewrite_match(rule, m)</code>.</p><pre><code class="language-julia hljs">res = rewrite_match(rule, m) # • → • → • → •↺
 to_graphviz(res; node_labels=true)</code></pre><img src='data:image/svg+xml;utf-8,<?xml version="1.0" encoding="UTF-8" standalone="no"?>
 <!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN"
  "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
@@ -126,7 +126,7 @@ to_graphviz(res; node_labels=true)</code></pre><img src='data:image/svg+xml;utf-
   src = [1, 2, 3, 4]
   tgt = [2, 3, 4, 4]
 end
-@test is_isomorphic(expected, res)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi"><span class="sgr32"><span class="sgr1">Test Passed</span></span></code></pre><p>We can also specify the rule via a colimit-of-representables (i.e. generators and relations) syntax. As your schema gets bigger, this becomes more and more convenient. Assigning temporary tags, e.g. <code>e</code>, <code>v</code>, <code>eᵣ</code> to the C-Set elements can also be helpful.</p><pre><code class="language-julia hljs">yG = yoneda_cache(Graph, clear=true); # compute representables
+@test is_isomorphic(expected, res)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi"><span class="sgr32"><span class="sgr1">Test Passed</span></span></code></pre><p>We can also specify the rule via a colimit-of-representables (i.e. generators and relations) syntax. As your schema gets bigger, this becomes more and more convenient. Assigning temporary tags, e.g. <code>e</code>, <code>v</code>, <code>eᵣ</code> to the C-Set elements can also be helpful.</p><pre><code class="nohighlight hljs">yG = yoneda_cache(Graph, clear=true); # compute representables
 
 rule2 = Rule(@migration(SchRulel, SchGraph, begin
     L =&gt; @join begin
@@ -148,7 +148,9 @@ rule2 = Rule(@migration(SchRulel, SchGraph, begin
 m = get_matches(rule_spo, G)[1]
 res = rewrite_match(rule_spo, m)
 to_graphviz(res)
-@test is_isomorphic(res, path_graph(Graph, 3) ⊕ R)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi"><span class="sgr32"><span class="sgr1">Test Passed</span></span></code></pre><p><strong>Note</strong>: ⊕ and ⊗ are shorthand for (co)products <em>Tip: Julia lets you easily write unicode symbols via &quot;\&quot; followed by a LaTeX name, then hit &quot;Tab&quot; to convert the symbol</em></p><h1 id="3.-SqPO"><a class="docs-heading-anchor" href="#3.-SqPO">3. SqPO</a><a id="3.-SqPO-1"></a><a class="docs-heading-anchor-permalink" href="#3.-SqPO" title="Permalink"></a></h1><p>If we duplicate a vertex with an incident edge, it will duplicate the edge</p><pre><code class="language-julia hljs">L = Graph(1)
+@withmodel TypedCatWithCoproducts(𝒞) (⊕) begin
+  @test is_isomorphic(res, path_graph(Graph, 3) ⊕ R)
+end</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi"><span class="sgr32"><span class="sgr1">Test Passed</span></span></code></pre><p><strong>Note</strong>: ⊕ and ⊗ are shorthand for (co)products <em>Tip: Julia lets you easily write unicode symbols via &quot;\&quot; followed by a LaTeX name, then hit &quot;Tab&quot; to convert the symbol</em></p><h1 id="3.-SqPO"><a class="docs-heading-anchor" href="#3.-SqPO">3. SqPO</a><a id="3.-SqPO-1"></a><a class="docs-heading-anchor-permalink" href="#3.-SqPO" title="Permalink"></a></h1><p>If we duplicate a vertex with an incident edge, it will duplicate the edge</p><pre><code class="language-julia hljs">L = Graph(1)
 I = Graph(2)
 R = path_graph(Graph, 2);</code></pre><p>We can use automated homomorphism search to reduce the tedium of specifying data manually. In this case, there is a unique option. In general, <code>homomorphism</code> will throw an error if there is <em>more</em> than one homomorphism.</p><pre><code class="language-julia hljs">l = homomorphism(I, L);</code></pre><p>There are many constraints we can put on the search, such as being monic. Here there are two monic homomorphisms (sending vertices 1 and 2 to (1,2) and (2,1)), so we add the keyword <code>any=true</code> to avoid throwing an error.</p><pre><code class="language-julia hljs">r = homomorphism(I, R; monic=true, any=true)
 
@@ -204,7 +206,7 @@ to_graphviz(res; prog=&quot;neato&quot;)</code></pre><img src='data:image/svg+xm
 <ellipse fill="black" stroke="black" cx="1.8" cy="-59.65" rx="1.8" ry="1.8"/>
 </g>
 <!-- n1&%2345;&gt;n4 -->
-<g id="edge4" class="edge">
+<g id="edge3" class="edge">
 <title>n1&%2345;&gt;n4</title>
 <path fill="none" stroke="black" d="M25,-40.6C21.49,-43.48 13.09,-50.38 7.42,-55.03"/>
 <polygon fill="black" stroke="black" points="6.22,-53.75 3.47,-58.28 8.44,-56.46 6.22,-53.75"/>
@@ -215,7 +217,7 @@ to_graphviz(res; prog=&quot;neato&quot;)</code></pre><img src='data:image/svg+xm
 <ellipse fill="black" stroke="black" cx="73.31" cy="-43.59" rx="1.8" ry="1.8"/>
 </g>
 <!-- n1&%2345;&gt;n5 -->
-<g id="edge6" class="edge">
+<g id="edge4" class="edge">
 <title>n1&%2345;&gt;n5</title>
 <path fill="none" stroke="black" d="M28.63,-39.45C35.05,-40.05 55.31,-41.92 66.2,-42.93"/>
 <polygon fill="black" stroke="black" points="66.22,-44.69 71.36,-43.41 66.55,-41.21 66.22,-44.69"/>
@@ -226,7 +228,7 @@ to_graphviz(res; prog=&quot;neato&quot;)</code></pre><img src='data:image/svg+xm
 <ellipse fill="black" stroke="black" cx="42.72" cy="-75.54" rx="1.8" ry="1.8"/>
 </g>
 <!-- n1&%2345;&gt;n6 -->
-<g id="edge8" class="edge">
+<g id="edge5" class="edge">
 <title>n1&%2345;&gt;n6</title>
 <path fill="none" stroke="black" d="M27.49,-41.22C29.79,-46.38 36.09,-60.6 39.83,-69.02"/>
 <polygon fill="black" stroke="black" points="38.3,-69.89 41.93,-73.75 41.5,-68.47 38.3,-69.89"/>
@@ -237,31 +239,31 @@ to_graphviz(res; prog=&quot;neato&quot;)</code></pre><img src='data:image/svg+xm
 <ellipse fill="black" stroke="black" cx="6.35" cy="-11.06" rx="1.8" ry="1.8"/>
 </g>
 <!-- n1&%2345;&gt;n7 -->
-<g id="edge10" class="edge">
+<g id="edge6" class="edge">
 <title>n1&%2345;&gt;n7</title>
 <path fill="none" stroke="black" d="M25.54,-37.75C22.76,-33.88 15.29,-23.49 10.53,-16.88"/>
 <polygon fill="black" stroke="black" points="11.88,-15.76 7.54,-12.72 9.04,-17.8 11.88,-15.76"/>
 </g>
 <!-- n2&%2345;&gt;n3 -->
-<g id="edge3" class="edge">
+<g id="edge7" class="edge">
 <title>n2&%2345;&gt;n3</title>
 <path fill="none" stroke="black" d="M42.57,-34.47C43.46,-29.74 45.86,-17.02 47.39,-8.92"/>
 <polygon fill="black" stroke="black" points="49.15,-9.08 48.35,-3.84 45.71,-8.43 49.15,-9.08"/>
 </g>
 <!-- n2&%2345;&gt;n4 -->
-<g id="edge5" class="edge">
+<g id="edge8" class="edge">
 <title>n2&%2345;&gt;n4</title>
 <path fill="none" stroke="black" d="M40.48,-37.33C34.92,-40.54 17.39,-50.65 7.95,-56.1"/>
 <polygon fill="black" stroke="black" points="6.94,-54.66 3.49,-58.67 8.69,-57.69 6.94,-54.66"/>
 </g>
 <!-- n2&%2345;&gt;n5 -->
-<g id="edge7" class="edge">
+<g id="edge9" class="edge">
 <title>n2&%2345;&gt;n5</title>
 <path fill="none" stroke="black" d="M44.26,-36.8C48.64,-37.83 59.15,-40.28 66.25,-41.94"/>
 <polygon fill="black" stroke="black" points="66.27,-43.74 71.54,-43.18 67.07,-40.34 66.27,-43.74"/>
 </g>
 <!-- n2&%2345;&gt;n6 -->
-<g id="edge9" class="edge">
+<g id="edge10" class="edge">
 <title>n2&%2345;&gt;n6</title>
 <path fill="none" stroke="black" d="M42.25,-38.44C42.32,-44.02 42.51,-59.38 42.63,-68.5"/>
 <polygon fill="black" stroke="black" points="40.88,-68.63 42.69,-73.61 44.38,-68.59 40.88,-68.63"/>
@@ -276,7 +278,7 @@ to_graphviz(res; prog=&quot;neato&quot;)</code></pre><img src='data:image/svg+xm
 </svg>
 '/><h1 id="4.-PBPO"><a class="docs-heading-anchor" href="#4.-PBPO">4. PBPO+</a><a id="4.-PBPO-1"></a><a class="docs-heading-anchor-permalink" href="#4.-PBPO" title="Permalink"></a></h1><p>PBPO+ requires a span just like the other kinds of rewriting.</p><pre><code class="language-julia hljs">L = Graph(1)
 K = R = Graph(2)
-l, r = homomorphism(K,L), id(K);</code></pre><p>However, it also requires more data. The graph G that we rewrite will be typed <em>over</em> the L&#39; type graph which controls how various parts of the context (not merely the matched pattern) are rewritten.</p><p>1 = root of the deep copy, 2 = children of #1, 3 = everything else</p><pre><code class="language-julia hljs">L′ = @acset Graph begin V=3;E=5;src=[1,2,3,3,3];tgt=[2,2,1,2,3] end
+l, r = homomorphism(K,L), id[𝒞](K);</code></pre><p>However, it also requires more data. The graph G that we rewrite will be typed <em>over</em> the L&#39; type graph which controls how various parts of the context (not merely the matched pattern) are rewritten.</p><p>1 = root of the deep copy, 2 = children of #1, 3 = everything else</p><pre><code class="language-julia hljs">L′ = @acset Graph begin V=3;E=5;src=[1,2,3,3,3];tgt=[2,2,1,2,3] end
 to_graphviz(L′; node_labels=true)
 
 tl = ACSetTransformation(L,L′;V=[1])
@@ -597,7 +599,7 @@ to_graphviz(expected; node_labels=true)</code></pre><img src='data:image/svg+xml
 </g>
 </g>
 </svg>
-'/><h1 id="5.-Generalizing-Graphs"><a class="docs-heading-anchor" href="#5.-Generalizing-Graphs">5. Generalizing Graphs</a><a id="5.-Generalizing-Graphs-1"></a><a class="docs-heading-anchor-permalink" href="#5.-Generalizing-Graphs" title="Permalink"></a></h1><p>Any data structure which implements the required functions we need can, in principle, be used for rewriting. Importantly this includes pushout_complement, pushout, and homomorphism search. These are all implemented generically for any C-Set schema (allowing us to rewrite Petri nets, Semisimplicial sets, etc.)</p><p>Here we&#39;ll do rewriting in graphs sliced over •⇆•, which is isomorphic to the category of (whole-grain) Petri nets, with States and Transitions.</p><pre><code class="language-julia hljs">function graph_slice(s::Slice)
+'/><h1 id="5.-Generalizing-Graphs"><a class="docs-heading-anchor" href="#5.-Generalizing-Graphs">5. Generalizing Graphs</a><a id="5.-Generalizing-Graphs-1"></a><a class="docs-heading-anchor-permalink" href="#5.-Generalizing-Graphs" title="Permalink"></a></h1><p>Any data structure which implements the required functions we need can, in principle, be used for rewriting. Importantly this includes pushout_complement, pushout, and homomorphism search. These are all implemented generically for any C-Set schema (allowing us to rewrite Petri nets, Semisimplicial sets, etc.)</p><p>Here we&#39;ll do rewriting in graphs sliced over •⇆•, which is isomorphic to the category of (whole-grain) Petri nets, with States and Transitions.</p><pre><code class="nohighlight hljs">function graph_slice(s::Slice)
   h = s.slice
   V, E = collect.([h[:V], h[:E]])
   g = dom(h)
@@ -611,146 +613,62 @@ to_graphviz(expected; node_labels=true)</code></pre><img src='data:image/svg+xml
     ot = findT.(g[O, :src])
     os = findS.(g[O, :tgt])
   end)
-end;</code></pre><p>This is the graph we are slicing over.</p><pre><code class="language-julia hljs">two = @acset Graph begin
+end;</code></pre><h1 id="This-is-the-graph-we-are-slicing-over."><a class="docs-heading-anchor" href="#This-is-the-graph-we-are-slicing-over.">This is the graph we are slicing over.</a><a id="This-is-the-graph-we-are-slicing-over.-1"></a><a class="docs-heading-anchor-permalink" href="#This-is-the-graph-we-are-slicing-over." title="Permalink"></a></h1><pre><code class="nohighlight hljs">two = @acset Graph begin
   V = 2; E = 2; src = [1, 2]; tgt = [2, 1]
 end
 
-to_graphviz(two)</code></pre><img src='data:image/svg+xml;utf-8,<?xml version="1.0" encoding="UTF-8" standalone="no"?>
-<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN"
- "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
-<!-- Generated by graphviz version 2.43.0 (0)
- -->
-<!-- Title: G Pages: 1 -->
-<svg width="51pt" height="22pt"
- viewBox="0.00 0.00 51.20 22.19" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
-<g id="graph0" class="graph" transform="scale(1 1) rotate(0) translate(4 18.19)">
-<title>G</title>
-<polygon fill="white" stroke="transparent" points="-4,4 -4,-18.19 47.2,-18.19 47.2,4 -4,4"/>
-<!-- n1 -->
-<g id="node1" class="node">
-<title>n1</title>
-<ellipse fill="black" stroke="black" cx="1.8" cy="-7.09" rx="1.8" ry="1.8"/>
-</g>
-<!-- n2 -->
-<g id="node2" class="node">
-<title>n2</title>
-<ellipse fill="black" stroke="black" cx="41.4" cy="-7.09" rx="1.8" ry="1.8"/>
-</g>
-<!-- n1&%2345;&gt;n2 -->
-<g id="edge1" class="edge">
-<title>n1&%2345;&gt;n2</title>
-<path fill="none" stroke="black" d="M3.22,-5.51C6.4,0.17 26.68,1.17 35.88,-2.51"/>
-<polygon fill="black" stroke="black" points="34.97,-4.02 40.03,-5.6 37.06,-1.21 34.97,-4.02"/>
-</g>
-<!-- n2&%2345;&gt;n1 -->
-<g id="edge2" class="edge">
-<title>n2&%2345;&gt;n1</title>
-<path fill="none" stroke="black" d="M40.03,-8.58C37.04,-14.31 16.79,-15.36 7.48,-11.73"/>
-<polygon fill="black" stroke="black" points="8.3,-10.17 3.22,-8.67 6.26,-13.01 8.3,-10.17"/>
-</g>
-</g>
-</svg>
-'/><p>Define a rule which deletes a [T] -&gt; S edge. Start with the pattern, L.</p><pre><code class="language-julia hljs">L_ = path_graph(Graph, 2)
+to_graphviz(two)</code></pre><h1 id="Define-a-rule-which-deletes-a-[T]-S-edge.-Start-with-the-pattern,-L."><a class="docs-heading-anchor" href="#Define-a-rule-which-deletes-a-[T]-S-edge.-Start-with-the-pattern,-L.">Define a rule which deletes a [T] -&gt; S edge. Start with the pattern, L.</a><a id="Define-a-rule-which-deletes-a-[T]-S-edge.-Start-with-the-pattern,-L.-1"></a><a class="docs-heading-anchor-permalink" href="#Define-a-rule-which-deletes-a-[T]-S-edge.-Start-with-the-pattern,-L." title="Permalink"></a></h1><pre><code class="nohighlight hljs">L_ = path_graph(Graph, 2)
 L = Slice(ACSetTransformation(L_, two, V=[2, 1], E=[2])) # [T] ⟶ (S)
-graph_slice(L)</code></pre><img src='data:image/svg+xml;utf-8,<?xml version="1.0" encoding="UTF-8" standalone="no"?>
-<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN"
- "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
-<!-- Generated by graphviz version 2.43.0 (0)
- -->
-<!-- Title: G Pages: 1 -->
-<svg width="126pt" height="44pt"
- viewBox="0.00 0.00 126.00 44.00" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
-<g id="graph0" class="graph" transform="scale(1 1) rotate(0) translate(4 40)">
-<title>G</title>
-<polygon fill="white" stroke="transparent" points="-4,4 -4,-40 122,-40 122,4 -4,4"/>
-<!-- n1 -->
-<g id="node1" class="node">
-<title>n1</title>
-<ellipse fill="%236c9ac3" stroke="%236c9ac3" cx="100" cy="-18" rx="18" ry="18"/>
-<text text-anchor="middle" x="100" y="-14.3" font-family="Times,serif" font-size="14.00">1</text>
-</g>
-<!-- n2 -->
-<g id="node2" class="node">
-<title>n2</title>
-<polygon fill="%23e28f41" stroke="%23e28f41" points="36,-36 0,-36 0,0 36,0 36,-36"/>
-<text text-anchor="middle" x="18" y="-14.3" font-family="Times,serif" font-size="14.00">1</text>
-</g>
-<!-- n2&%2345;&gt;n1 -->
-<g id="edge1" class="edge">
-<title>n2&%2345;&gt;n1</title>
-<path fill="none" stroke="black" d="M36.36,-18C46.7,-18 60.06,-18 71.78,-18"/>
-<polygon fill="black" stroke="black" points="71.95,-21.5 81.95,-18 71.95,-14.5 71.95,-21.5"/>
-<text text-anchor="middle" x="59" y="-21.8" font-family="Times,serif" font-size="14.00">1</text>
-</g>
-</g>
-</svg>
-'/><p>Then define I and R</p><pre><code class="language-julia hljs">I_ = Graph(1)
+graph_slice(L)</code></pre><h1 id="Then-define-I-and-R"><a class="docs-heading-anchor" href="#Then-define-I-and-R">Then define I and R</a><a id="Then-define-I-and-R-1"></a><a class="docs-heading-anchor-permalink" href="#Then-define-I-and-R" title="Permalink"></a></h1><pre><code class="nohighlight hljs">I_ = Graph(1)
 I = Slice(ACSetTransformation(I_, two, V=[2])) # [T]
 R_ = Graph(2)
-R = Slice(ACSetTransformation(R_, two, V=[2, 1])) # [T]  (S)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">Catlab.CategoricalAlgebra.SliceCategories.Slice{Catlab.CategoricalAlgebra.CSets.StructTightACSetTransformation{ACSets.Schemas.TypeLevelBasicSchema{Symbol, Tuple{:V, :E}, Tuple{(:src, :E, :V), (:tgt, :E, :V)}, Tuple{}, Tuple{}, Tuple{}}, @NamedTuple{V::Catlab.CategoricalAlgebra.FinSets.FinDomFunctionVector{Int64, Vector{Int64}, Catlab.CategoricalAlgebra.FinSets.FinSetInt}, E::Catlab.CategoricalAlgebra.FinSets.FinDomFunctionVector{Int64, Vector{Int64}, Catlab.CategoricalAlgebra.FinSets.FinSetInt}}, Catlab.Graphs.BasicGraphs.Graph, Catlab.Graphs.BasicGraphs.Graph}}(ACSetTransformation((V = FinFunction([2, 1], 2, 2), E = FinFunction(Int64[], 0, 2)), Catlab.Graphs.BasicGraphs.Graph {V:2, E:0}, Catlab.Graphs.BasicGraphs.Graph {V:2, E:2}))</code></pre><p>Using homomorphism search in the slice category</p><pre><code class="language-julia hljs">rule = Rule(homomorphism(I, L), homomorphism(I, R))
+R = Slice(ACSetTransformation(R_, two, V=[2, 1])) # [T]  (S)</code></pre><h1 id="Using-homomorphism-search-in-the-slice-category"><a class="docs-heading-anchor" href="#Using-homomorphism-search-in-the-slice-category">Using homomorphism search in the slice category</a><a id="Using-homomorphism-search-in-the-slice-category-1"></a><a class="docs-heading-anchor-permalink" href="#Using-homomorphism-search-in-the-slice-category" title="Permalink"></a></h1><pre><code class="nohighlight hljs">rule = Rule(homomorphism(I, L), homomorphism(I, R))
 
 G_ = path_graph(Graph, 3)
 G = Slice(ACSetTransformation(G_, two, V=[1, 2, 1], E=[1, 2])) # (S) ⟶ [T] ⟶ (S)
 graph_slice(G)
 
 res = rewrite(rule, G) # (S) ⟶ [T]  (S)
-graph_slice(res)</code></pre><img src='data:image/svg+xml;utf-8,<?xml version="1.0" encoding="UTF-8" standalone="no"?>
-<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN"
- "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
-<!-- Generated by graphviz version 2.43.0 (0)
- -->
-<!-- Title: G Pages: 1 -->
-<svg width="126pt" height="98pt"
- viewBox="0.00 0.00 126.00 98.00" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
-<g id="graph0" class="graph" transform="scale(1 1) rotate(0) translate(4 94)">
-<title>G</title>
-<polygon fill="white" stroke="transparent" points="-4,4 -4,-94 122,-94 122,4 -4,4"/>
-<!-- n1 -->
-<g id="node1" class="node">
-<title>n1</title>
-<ellipse fill="%236c9ac3" stroke="%236c9ac3" cx="18" cy="-18" rx="18" ry="18"/>
-<text text-anchor="middle" x="18" y="-14.3" font-family="Times,serif" font-size="14.00">1</text>
-</g>
-<!-- n2 -->
-<g id="node2" class="node">
-<title>n2</title>
-<ellipse fill="%236c9ac3" stroke="%236c9ac3" cx="18" cy="-72" rx="18" ry="18"/>
-<text text-anchor="middle" x="18" y="-68.3" font-family="Times,serif" font-size="14.00">2</text>
-</g>
-<!-- n3 -->
-<g id="node3" class="node">
-<title>n3</title>
-<polygon fill="%23e28f41" stroke="%23e28f41" points="118,-90 82,-90 82,-54 118,-54 118,-90"/>
-<text text-anchor="middle" x="100" y="-68.3" font-family="Times,serif" font-size="14.00">1</text>
-</g>
-<!-- n2&%2345;&gt;n3 -->
-<g id="edge1" class="edge">
-<title>n2&%2345;&gt;n3</title>
-<path fill="none" stroke="black" d="M36.36,-72C46.7,-72 60.06,-72 71.78,-72"/>
-<polygon fill="black" stroke="black" points="71.95,-75.5 81.95,-72 71.95,-68.5 71.95,-75.5"/>
-<text text-anchor="middle" x="59" y="-75.8" font-family="Times,serif" font-size="14.00">1</text>
-</g>
-</g>
-</svg>
-'/><p>While the vast majority of functionality is focused on ACSets at the present moment, but there is nothing in principle which limits this.</p><h1 id="6.-Application-conditions"><a class="docs-heading-anchor" href="#6.-Application-conditions">6. Application conditions</a><a id="6.-Application-conditions-1"></a><a class="docs-heading-anchor-permalink" href="#6.-Application-conditions" title="Permalink"></a></h1><p>We can construct commutative diagrams with certain edges left unspecified or marked with ∀ or ∃. If only one edge is left free, we can treat the diagram as a boolean function which tests whether the morphism makes the specified paths commute (or not commute). This generalizes positive/negative application conditions and lifting conditions, but because those are most common there are constructors AppCond and LiftCond to make these directly.</p><pre><code class="nohighlight hljs">         ∀
+graph_slice(res)</code></pre><p>While the vast majority of functionality is focused on ACSets at the present moment, but there is nothing in principle which limits this.</p><h1 id="6.-Application-conditions"><a class="docs-heading-anchor" href="#6.-Application-conditions">6. Application conditions</a><a id="6.-Application-conditions-1"></a><a class="docs-heading-anchor-permalink" href="#6.-Application-conditions" title="Permalink"></a></h1><p>We can construct commutative diagrams with certain edges left unspecified or marked with ∀ or ∃. If only one edge is left free, we can treat the diagram as a boolean function which tests whether the morphism makes the specified paths commute (or not commute). This generalizes positive/negative application conditions and lifting conditions, but because those are most common there are constructors AppCond and LiftCond to make these directly.</p><pre><code class="nohighlight hljs">         ∀
   [↻•]   →  ?
     ↓    ↗ ∃ ↓
-  [↻•⟶•]  → [↻•⟶•⟵•↺]</code></pre><p>` Every vertex with a loop also has a map to the vertex marked by the bottom map.</p><pre><code class="language-julia hljs">t = terminal(Graph) |&gt; apex
-looparr = @acset_colim yG begin
-  (e1, e2)::E
+  [↻•⟶•]  → [↻•⟶•⟵•↺]</code></pre><p>` Every vertex with a loop also has a map to the vertex marked by the bottom map.</p><pre><code class="language-julia hljs">t = terminal[𝒞]() |&gt; apex
+looparr = @acset Graph begin V=2; E=2; src=2; tgt=[1,2] end</code></pre><div class="c-set">
+<span class="c-set-summary">Catlab.Graphs.BasicGraphs.Graph {V:2, E:2}</span>
+<table>
+  <thead>
+    <tr class = "header headerLastRow">
+      <th class = "rowLabel" style = "font-weight: bold; text-align: right;">E</th>
+      <th style = "text-align: right;">src</th>
+      <th style = "text-align: right;">tgt</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td class = "rowLabel" style = "font-weight: bold; text-align: right;">1</td>
+      <td style = "text-align: right;">2</td>
+      <td style = "text-align: right;">1</td>
+    </tr>
+    <tr>
+      <td class = "rowLabel" style = "font-weight: bold; text-align: right;">2</td>
+      <td style = "text-align: right;">2</td>
+      <td style = "text-align: right;">2</td>
+    </tr>
+  </tbody>
+</table>
+</div>
+<pre><code class="language- hljs">  (e1, e2)::E
   src(e1) == tgt(e1)
   src(e1) == src(e2)
-end
-
-v = homomorphism(t, looparr)
+end</code></pre><pre><code class="language-julia hljs">v = homomorphism(t, looparr)
 loop_csp = @acset Graph begin
   V = 3; E = 4; src = [1, 3, 1, 3]; tgt = [1, 3, 2, 2]
 end
 b = homomorphism(looparr, loop_csp; initial=(V=[2,1],))
 constr = LiftCond(v, b)
 
-@test !apply_constraint(constr, homomorphism(t, loop_csp; initial=(V=[1],)))
-@test apply_constraint(constr, b)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi"><span class="sgr32"><span class="sgr1">Test Passed</span></span></code></pre><p>We can combining constraints with logical combinators.</p><p>match vertex iff it has 2 or 3 self loops</p><pre><code class="language-julia hljs">one, two, three, four, five = [@acset(Graph, begin
+@test !apply_constraint(constr, homomorphism(t, loop_csp; initial=(V=[1],)); cat=𝒞)
+@test apply_constraint(constr, b; cat=𝒞)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi"><span class="sgr32"><span class="sgr1">Test Passed</span></span></code></pre><p>We can combining constraints with logical combinators.</p><p>match vertex iff it has 2 or 3 self loops</p><pre><code class="language-julia hljs">one, two, three, four, five = [@acset(Graph, begin
   V = 1; E = n; src = 1; tgt = 1
 end) for n in 1:5]
 
@@ -758,11 +676,12 @@ c2 = PAC(homomorphism(Graph(1), two); monic=true)         # PAC
 c3 = NAC(homomorphism(Graph(1), four); monic=true) # NAC
 constr = c2 ⊗ c3 # logical conjunction: 2 ≤ |E| &lt; 4
 
-rule = Rule(id(Graph(1)), id(Graph(1)); ac=[constr])
+rule = Rule(id[𝒞](Graph(1)), id[𝒞](Graph(1)); ac=[constr])
 
-G = two ⊕ three ⊕ two ⊕ four ⊕ five ⊕ one
-
-@test length(get_matches(rule, G)) == 3</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi"><span class="sgr32"><span class="sgr1">Test Passed</span></span></code></pre><h1 id="7.-Attribute-variables"><a class="docs-heading-anchor" href="#7.-Attribute-variables">7. Attribute variables</a><a id="7.-Attribute-variables-1"></a><a class="docs-heading-anchor-permalink" href="#7.-Attribute-variables" title="Permalink"></a></h1><p>Normally ACSet morphisms must match attribute values exactly, i.e. a weighted graph edge of 8.3 can only be mapped to another edge weighted at 8.3. This becomes very restricted, especially when we want to do some simple computations with attribute values (e.g. when merging two edges, add their values together)</p><p>A recent extension of ACSets makes this possible - each attribute type comes equipped with a finite set of &quot;variables&quot; which can be mapped to any concrete value (or another variable).</p><pre><code class="language-julia hljs">yWG = yoneda_cache(WeightedGraph{Int}; clear=true);
+G = @withmodel TypedCatWithCoproducts(𝒞) (⊕) begin
+ two ⊕ three ⊕ two ⊕ four ⊕ five ⊕ one
+end
+@test length(get_matches(rule, G)) == 3</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi"><span class="sgr32"><span class="sgr1">Test Passed</span></span></code></pre><h1 id="7.-Attribute-variables"><a class="docs-heading-anchor" href="#7.-Attribute-variables">7. Attribute variables</a><a id="7.-Attribute-variables-1"></a><a class="docs-heading-anchor-permalink" href="#7.-Attribute-variables" title="Permalink"></a></h1><p>Normally ACSet morphisms must match attribute values exactly, i.e. a weighted graph edge of 8.3 can only be mapped to another edge weighted at 8.3. This becomes very restricted, especially when we want to do some simple computations with attribute values (e.g. when merging two edges, add their values together)</p><p>An extension of ACSets makes this possible - each attribute type comes equipped with a finite set of &quot;variables&quot; which can be mapped to any concrete value (or another variable).</p><pre><code class="nohighlight hljs">yWG = yoneda_cache(WeightedGraph{Int}; clear=true);
 L = @acset_colim yWG begin
   (e1, e2)::E
   src(e1) == src(e2)
@@ -785,25 +704,25 @@ end
 m = homomorphism(L, G; initial=(E=1:2,))
 @test rewrite_match(rule, m) == @acset WeightedGraph{Int} begin
   V = 1; E = 2; src = [1]; tgt = [1]; weight = [30, 100]
-end</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi"><span class="sgr32"><span class="sgr1">Test Passed</span></span></code></pre><h1 id="8.-Graph-processes"><a class="docs-heading-anchor" href="#8.-Graph-processes">8. Graph processes</a><a id="8.-Graph-processes-1"></a><a class="docs-heading-anchor-permalink" href="#8.-Graph-processes" title="Permalink"></a></h1><p>A sequence of rewrite applications can be given a poset structure where α ≤ β means that the rule application α needed to occur before β.  This is computed via analyzing the colimit of all the partial maps induced by the rewrites.</p><pre><code class="language-julia hljs">using AlgebraicRewriting.Processes: RWStep, find_deps
+end</code></pre><h1 id="8.-Graph-processes"><a class="docs-heading-anchor" href="#8.-Graph-processes">8. Graph processes</a><a id="8.-Graph-processes-1"></a><a class="docs-heading-anchor-permalink" href="#8.-Graph-processes" title="Permalink"></a></h1><p>A sequence of rewrite applications can be given a poset structure where α ≤ β means that the rule application α needed to occur before β.  This is computed via analyzing the colimit of all the partial maps induced by the rewrites.</p><pre><code class="language-julia hljs">using AlgebraicRewriting.Processes: RWStep, find_deps
 
-G0, G1, G2, G3 = Graph.([0, 1, 2, 3]);</code></pre><p>Delete a node</p><pre><code class="language-julia hljs">Rule1 = Span(create(G1), id(G0));</code></pre><p>Merge two nodes</p><pre><code class="language-julia hljs">Rule2 = Span(id(G2), homomorphism(G2, G1));</code></pre><p>Add a node</p><pre><code class="language-julia hljs">Rule3 = Span(id(G0), create(G1))
+G0, G1, G2, G3 = Graph.([0, 1, 2, 3]);</code></pre><p>Delete a node</p><pre><code class="language-julia hljs">Rule1 = Span(create[𝒞](G1), id[𝒞](G0));</code></pre><p>Merge two nodes</p><pre><code class="language-julia hljs">Rule2 = Span(id[𝒞](G2), homomorphism(G2, G1));</code></pre><p>Add a node</p><pre><code class="language-julia hljs">Rule3 = Span(id[𝒞](G0), create[𝒞](G1))
 
-R1, R2, R3 = [Rule(l, r) for (l, r) in [Rule1, Rule2, Rule3]];</code></pre><h1 id="9.-Trajectory"><a class="docs-heading-anchor" href="#9.-Trajectory">9. Trajectory</a><a id="9.-Trajectory-1"></a><a class="docs-heading-anchor-permalink" href="#9.-Trajectory" title="Permalink"></a></h1><p>Step 1: add node 3 to G2</p><pre><code class="language-julia hljs">M1 = create(G2)
+R1, R2, R3 = [Rule(l, r) for (l, r) in [Rule1, Rule2, Rule3]];</code></pre><h1 id="9.-Trajectory"><a class="docs-heading-anchor" href="#9.-Trajectory">9. Trajectory</a><a id="9.-Trajectory-1"></a><a class="docs-heading-anchor-permalink" href="#9.-Trajectory" title="Permalink"></a></h1><p>Step 1: add node 3 to G2</p><pre><code class="language-julia hljs">M1 = create[𝒞](G2)
 CM1 = ACSetTransformation(G1, G3; V=[3])
-Pmap1 = Span(id(G2), ACSetTransformation(G2, G3; V=[1, 2]))
+Pmap1 = Span(id[𝒞](G2), ACSetTransformation(G2, G3; V=[1, 2]))
 RS1 = RWStep(Rule3, Pmap1, M1, CM1);</code></pre><p>Step 2: merge node 2 and 3 to yield a G2</p><pre><code class="language-julia hljs">M2 = ACSetTransformation(G2, G3; V=[2, 3])
 CM2 = ACSetTransformation(G1, G2; V=[2])
-Pmap2 = Span(id(G3), ACSetTransformation(G3, G2; V=[1, 2, 2]))
+Pmap2 = Span(id[𝒞](G3), ACSetTransformation(G3, G2; V=[1, 2, 2]))
 RS2 = RWStep(Rule2, Pmap2, M2, CM2);</code></pre><p>Step 3: delete vertex 1</p><pre><code class="language-julia hljs">M3 = ACSetTransformation(G1, G2; V=[1])
-CM3 = create(G1)
-Pmap3 = Span(ACSetTransformation(G1, G2; V=[2]), id(G1))
+CM3 = create[𝒞](G1)
+Pmap3 = Span(ACSetTransformation(G1, G2; V=[2]), id[𝒞](G1))
 RS3 = RWStep(Rule1, Pmap3, M3, CM3);
 
 
 steps = [RS1, RS2, RS3];
 
-g = find_deps(steps)
+g = find_deps(steps; cat=𝒞)
 to_graphviz(g; node_labels=true)</code></pre><img src='data:image/svg+xml;utf-8,<?xml version="1.0" encoding="UTF-8" standalone="no"?>
 <!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN"
  "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
@@ -845,5 +764,7 @@ to_graphviz(g; node_labels=true)</code></pre><img src='data:image/svg+xml;utf-8,
 @test expected == g</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi"><span class="sgr32"><span class="sgr1">Test Passed</span></span></code></pre><p>Interface that just uses rules and match morphisms: The matches needed to be updated to reflect the particular isomorph that DPO rewriting produces when applying the rule.</p><pre><code class="language-julia hljs">σ₂ = ACSetTransformation(G2, G2; V=[2, 1])
 σ₃ = ACSetTransformation(G3, G3; V=[3, 1, 2])
 
-g′ = find_deps([R3 =&gt; M1, R2 =&gt; M2 ⋅ σ₃, R1 =&gt; M3 ⋅ σ₂])
-@test g′ == g</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi"><span class="sgr32"><span class="sgr1">Test Passed</span></span></code></pre></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../../">« AlgebraicRewriting.jl</a><a class="docs-footer-nextpage" href="../game_of_life/">Conway&#39;s Game of Life »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="auto">Automatic (OS)</option><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option><option value="catppuccin-latte">catppuccin-latte</option><option value="catppuccin-frappe">catppuccin-frappe</option><option value="catppuccin-macchiato">catppuccin-macchiato</option><option value="catppuccin-mocha">catppuccin-mocha</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 1.11.4 on <span class="colophon-date" title="Tuesday 20 May 2025 23:54">Tuesday 20 May 2025</span>. Using Julia version 1.11.5.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
+g′ = @withmodel 𝒞 (⋅) begin
+  find_deps([R3 =&gt; M1, R2 =&gt; M2 ⋅ σ₃, R1 =&gt; M3 ⋅ σ₂]; cat=𝒞)
+end
+@test g′ == g</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi"><span class="sgr32"><span class="sgr1">Test Passed</span></span></code></pre></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../../">« AlgebraicRewriting.jl</a><a class="docs-footer-nextpage" href="../game_of_life/">Conway&#39;s Game of Life »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="auto">Automatic (OS)</option><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option><option value="catppuccin-latte">catppuccin-latte</option><option value="catppuccin-frappe">catppuccin-frappe</option><option value="catppuccin-macchiato">catppuccin-macchiato</option><option value="catppuccin-mocha">catppuccin-mocha</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 1.14.1 on <span class="colophon-date" title="Friday 1 August 2025 21:52">Friday 1 August 2025</span>. Using Julia version 1.11.6.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
