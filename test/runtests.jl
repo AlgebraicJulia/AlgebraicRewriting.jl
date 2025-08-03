@@ -69,10 +69,11 @@ end
 
 # Incremental 
 ##############
-@testset "Incremental" begin
-    include("incremental/runtests.jl")
+if !Sys.iswindows() # nauty_jll dependency
+  @testset "Incremental" begin
+      include("incremental/runtests.jl")
+  end
 end
-
 
 # Schedules 
 ##########

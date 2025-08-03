@@ -143,7 +143,7 @@ function add_state!(ihs::IHS, state::ACSet, i=nothing)
                 [vcat(cms...),vcat(ims...),ms])
     i
   end
-  @show nparts(ihs, :Match)
+
   for p in parts(ihs, :PatternCC)
     for match in components.(homomorphisms(pattern_cc(ihs, p), state))
       m = add_part!(ihs, :Match; match, match_time=0, match_state=iₛ)
