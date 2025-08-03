@@ -67,6 +67,13 @@ end
   include("rewrite/Inplace.jl")
 end
 
+# Incremental 
+##############
+@testset "Incremental" begin
+    include("incremental/runtests.jl")
+end
+
+
 # Schedules 
 ##########
 
