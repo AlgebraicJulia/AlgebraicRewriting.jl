@@ -6,6 +6,7 @@ using JSON
 
 using Catlab
 using Catlab: ACSetColimit
+using ...CategoricalAlgebra.CSets: invert_hom
 
 const Profile = Dict{Symbol, Set{Set{Int}}}
 
@@ -49,10 +50,9 @@ A Rule is made up of a set of QRule (quotiented rules).
 @present SchIHSRule <: SchIHSDecomp  begin 
   (Rule, QRule)::Ob
   Profile::AttrType
-  qrule::Attr(QRule, ACSetHom)
   rule::Hom(QRule, Rule)
   profile::Attr(QRule, Profile)
-  l_quot::Attr(QRule, ACSetHom)
+  (l_quot, r_quot, qrule)::Attr(QRule, ACSetHom)
 end
 
 """
@@ -121,30 +121,35 @@ combination, to be consumed by external Datalog tools.
 """
 function to_datalog_json(db::IHS, JSON_FILE::String; rename=Dict())
   nparts(db, :Rule) == 1 || error("Multiple rules not yet supported")
+  iᶠ = findfirst(i->all(isempty,values(db[i,:profile])), parts(db, :QRule)) 
+  f = db[iᶠ, :qrule] # L -> R
   nparts(db, :PatternCC) == 1 || error("Multiple patterns not yet supported")
   S = acset_schema(only(db[:pattern]))
+  𝒞 = infer_acset_cat(f)
+  ⋅(x,y) = compose[𝒞](x,y)
   ob_name = distinguished_object(S)
-  subobjects = map(db[:subobj]) do ϕ
-    facts = []
-    for o in filter(!=(ob_name), ob(S))
-      for p in parts(dom(ϕ), o)
-        vals = map(homs(S; from=o, just_names=true)) do h 
-          ϕ[ob_name](dom(ϕ)[p, h])
-        end
-        push!(facts, [get(rename, o, o), vals...])
-      end
-    end
-    (vars=collect(ϕ[ob_name]), facts)
-  end
 
-  qrules = map(parts(db, :QRule)) do qr 
-    eqclasses = db[qr, :profile][ob_name]
+  subobjects = [cset_to_json(ϕ, ob_name; rename) for ϕ in db[:subobj]]
+
+  X = cset_to_json(only(db[:pattern]), ob_name; rename)
+  R = cset_to_json(codom(f), ob_name; rename)
+  L = cset_to_json(f, ob_name; rename)
+
+
+  qrules = map(parts(db, :QRule)) do qr
+    qrule = db[qr, :qrule]
+    r_inv = invert_hom(db[qr, :r_quot]; monic=false) # R~ -> R
+    l_inv = qrule ⋅ r_inv # L~ -> R
+      
+    eqclasses = map(collect.(collect(db[qr, :profile][ob_name]))) do eqset 
+      sort(f[ob_name].(eqset))
+    end
     quintuples = []
 
-  lr_to_ints = DefaultDict{Pair{Int,Int},Vector{Int}}(()->Int[])
-  for (int, (l,r)) in enumerate(zip(db[:idata_L], db[:idata_R]))
-    db[int,:i_rule] == qr && push!(lr_to_ints[l=>r], int)
-  end
+    lr_to_ints = DefaultDict{Pair{Int,Int},Vector{Int}}(()->Int[])
+    for (int, (l,r)) in enumerate(zip(db[:idata_L], db[:idata_R]))
+      db[int,:i_rule] == qr && push!(lr_to_ints[l=>r], int)
+    end
 
     for d in parts(db, :Decomp)
       XG = db[d, :decomp_tgt]
@@ -155,19 +160,41 @@ function to_datalog_json(db::IHS, JSON_FILE::String; rename=Dict())
       XL = db[elem, :decomp_elem_L]
       XR = db[elem, :decomp_elem_R]
       for int in lr_to_ints[XL=>XR]
-        hl, hr = map([:idata_iL, :idata_iR]) do fk 
-          collect(db[int, fk][ob_name])
-        end
-        push!(quintuples, OrderedDict(pairs((;XG,XL,XR,hl,hr))))
+        hl = collect((db[int, :idata_iL] ⋅ l_inv)[ob_name])
+        hr = collect((db[int, :idata_iR] ⋅ r_inv)[ob_name])
+        push!(quintuples, (;XG,XL,XR,hl,hr))
       end
     end
-    Dict(pairs((;eqclasses, quintuples)))
+    Dict(pairs((; eqclasses, quintuples)))
   end
-  data = Dict(pairs((;subobjects, qrules)))
+  sort!(qrules; by=x->x[:eqclasses])
+
+  data = ((;L, R, X, subobjects, qrules)) # Dict(pairs
   open(JSON_FILE, "w") do io 
     write(io, json(data, 2))
   end
   println(json(data, 2))
+  data
+end
+
+cset_to_json(X::ACSet, var_ob::Symbol; rename) = 
+  cset_to_json(id[infer_acset_cat(X)](X), var_ob; rename)
+
+function cset_to_json(ϕ::ACSetTransformation, var_ob::Symbol; rename)
+  is_monic[infer_acset_cat(ϕ)](ϕ) || error("Relabeling should be monic")
+  facts = []
+  X = dom(ϕ)
+  S = acset_schema(X)
+  vars = sort(ϕ[var_ob].(parts(X, var_ob)))
+  for o in filter(!=(var_ob), ob(S))
+    for p in parts(dom(ϕ), o)
+      vals = map(homs(S; from=o, just_names=true)) do h 
+        ϕ[var_ob](dom(ϕ)[p, h])
+      end
+      push!(facts, [get(rename, o, o), vals...])
+    end
+  end
+  (; vars, facts)
 end
 
 """

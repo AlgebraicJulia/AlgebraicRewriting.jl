@@ -109,15 +109,15 @@ function add_rule!(ihs::IHS, rule::ACSetTransformation)
   isnothing(found) || return found
   cat = infer_acset_cat(rule)
   iᵣ = add_part!(ihs, :Rule)
-  for qL in reverse(all_epis(dom(rule)))
-    _, qf = pushout[cat](rule, qL)
-    profile = merge_profile(qL)
-    q = add_part!(ihs, :QRule; profile, l_quot=qL, qrule=qf, rule=iᵣ)
+  for l_quot in reverse(all_epis(dom(rule)))
+    r_quot, qrule = force.(legs(pushout[cat](rule, l_quot)))
+    profile = merge_profile(l_quot)
+    q = add_part!(ihs, :QRule; profile, l_quot, r_quot, qrule, rule=iᵣ)
     
     for p_cc in parts(ihs, :PatternCC)
       so_ids = incident(ihs, p_cc, :subpattern)
       X = ihs[p_cc, :pattern_cc]
-      for (L, R, idata_iL, idata_iR) in subobj_rule_interactions3(qf, X)
+      for (L, R, idata_iL, idata_iR) in subobj_rule_interactions3(qrule, X)
         idata_L, idata_R = so_ids[[L,R]]
         add_part!(ihs, :Interaction; idata_iL, idata_iR, idata_L, idata_R, i_rule=q)
       end

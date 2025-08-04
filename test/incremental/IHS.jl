@@ -1,6 +1,7 @@
 module TestIHS
 
 using Test, AlgebraicRewriting, Catlab, nauty_jll
+using AlgebraicRewriting.Incremental.IHSData: to_datalog_json
 
 ########################
 # Directed Multigraphs #
@@ -30,9 +31,14 @@ rewrite!(ihs, [m], [f])
 
 @test validate(ihs)
 
-AlgebraicRewriting.Incremental.IHSData.to_datalog_json(
-  ihs, "cache/test.json"; rename=(E=:edge,))
-
+# Aside: datalog encoding
+d = to_datalog_json(ihs, "cache/test.json"; rename=(E=:edge,))
+L′ = @acset Graph begin V=2; E=1; src=2; tgt=1 end
+f′ = homomorphism(L′, R; initial=(E=[2],))
+ihs′ = IHS(X, f′, G); # L has been swapped
+d′ = to_datalog_json(ihs′, "cache/test2.json"; rename=(E=:edge,))
+@test d == d′ # same generated analysis: everything in terms of R and X
+# end of aside
 
 X = path_graph(Graph, 3)
 f2 = homomorphism(Graph(2), L; monic=true, any=true)
@@ -268,16 +274,10 @@ end
 
 @acset_type Pth(SchPath) 
 
-L = @acset Pth begin V=3; E=1; Path=1; src=2; tgt=3; psrc=1; ptgt=2 end
+X = G = L = @acset Pth begin V=3; E=1; Path=1; src=2; tgt=3; psrc=1; ptgt=2 end
 R = @acset Pth begin V=3; E=1; Path=2; src=2; tgt=3; psrc=1; ptgt=[2,3] end
 f = homomorphism(L,R)
-
-X = G = L
-
 ihs = IHS(X,f, G);
-
-get_cases(ihs; quotient=true) |> length
-
-c = get_cases(ihs; quotient=true)
+get_cases(ihs; quotient=true)
 
 end # module
