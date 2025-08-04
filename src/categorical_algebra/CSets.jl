@@ -261,7 +261,6 @@ use the function [`can_pushout_complement`](@ref).
   function pushout_complement_violations(pair::ComposablePair)
     viols = []
     for k in keys(components(pair[1]))
-      # @show k, typeof(pair[1][k])
       a,b = id_condition(pair[1][k], pair[2][k])
       append!(viols, [("Id: nondeleted ↦ deleted ", k, aa) for aa in a])
       append!(viols,[("Id: nonmonic deleted", k, bb) for bb in b])
@@ -508,9 +507,6 @@ function (F::Migrate)(f::ACSetTransformation)
       end
     end
   end)
-  # show(stdout,"text/plain",F(dom(f)))
-  # show(stdout,"text/plain",F(codom(f)))
-  # @show d
   homomorphism(F(dom(f)), F(codom(f)); initial=d, cat=F.cat)
 end
 

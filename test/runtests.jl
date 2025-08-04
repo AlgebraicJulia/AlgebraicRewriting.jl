@@ -67,6 +67,14 @@ end
   include("rewrite/Inplace.jl")
 end
 
+# Incremental 
+##############
+if !Sys.iswindows() # nauty_jll dependency
+  @testset "Incremental" begin
+      include("incremental/runtests.jl")
+  end
+end
+
 # Schedules 
 ##########
 
