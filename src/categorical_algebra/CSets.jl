@@ -182,7 +182,6 @@ use the function [`can_pushout_complement`](@ref).
                              } [model::ACSetCategory] begin 
   function pushout_complement(pair::ComposablePair) 
     l, m = pair 
-    lm = compose[model](l,m)
     I, G = dom(l), codom(m)
     S = acset_schema(I)
     𝒞 = entity_cat(model)
@@ -237,7 +236,20 @@ use the function [`can_pushout_complement`](@ref).
       o => postcompose(comp, f)
     end)
     for k in attrtypes(S)
-      k_components2[k] = lm[k]
+      T = attrtype_type(K, k)
+      vals = map(parts(I, k)) do i
+        hits = Any[]
+        for (f, c, _) in attrs(S; to=k), p in parts(I, c)
+          I[p, f] == AttrVar(i) || continue
+          push!(hits, K[k_components2[c](p), f])
+        end
+        isempty(hits) && error("AttrVar $i in $k is not referenced by any attribute")
+        all(==(first(hits)), hits) || error("AttrVar $i in $k has inconsistent images in pushout complement")
+        val = first(hits)
+        val isa AttrVar ? Left(getvalue(val)) : Right{T}(val)
+      end
+      k_components2[k] = CopairedFinDomFunction(
+        FinDomFunction(vals, either(FinSet(nparts(K, k)), SetOb(T))))
     end
 
     # need to reindex the components in light of the actual part IDs in K
@@ -261,6 +273,7 @@ use the function [`can_pushout_complement`](@ref).
   function pushout_complement_violations(pair::ComposablePair)
     viols = []
     for k in keys(components(pair[1]))
+      applicable(id_condition, pair[1][k], pair[2][k]) || continue
       a,b = id_condition(pair[1][k], pair[2][k])
       append!(viols, [("Id: nondeleted ↦ deleted ", k, aa) for aa in a])
       append!(viols,[("Id: nonmonic deleted", k, bb) for bb in b])

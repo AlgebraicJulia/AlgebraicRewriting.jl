@@ -8,6 +8,7 @@ using Catlab.CategoricalAlgebra
 using Catlab.CategoricalAlgebra.HomSearch: backtracking_search
 import Catlab.CategoricalAlgebra: left, right
 import ACSets: sparsify, acset_schema
+using ACSets.DenseACSets: attrtype_type
 
 using Random
 using StructEquality
@@ -232,6 +233,28 @@ function freevars(r::Rule{T}, attrvar::Symbol) where T
           [v.val for v in collect(r.R[attrvar]) if v isa AttrVar])
 end 
 
+function matched_attr_values(m::ACSetTransformation, at::Symbol; cat)
+  comp = get(components(m), at, nothing)
+  if !isnothing(comp)
+    atfun = hom_map[attr_cat(cat, at)](comp)
+    return Any[atfun(Left(i)) for i in parts(dom(m), at)]
+  end
+
+  X, Y = dom(m), codom(m)
+  T = attrtype_type(Y, at)
+  Vector{Any}(map(parts(X, at)) do i
+    hits = Any[]
+    for (f, c, _) in attrs(acset_schema(X); to=at), p in parts(X, c)
+      X[p, f] == AttrVar(i) || continue
+      push!(hits, Y[m[c](p), f])
+    end
+    isempty(hits) && error("AttrVar $i in $at is not bound by match")
+    all(==(first(hits)), hits) || error("AttrVar $i in $at has inconsistent bindings in match")
+    val = first(hits)
+    val isa AttrVar ? Left(getvalue(val)) : Right{T}(val)
+  end)
+end
+
 """
 Given the match morphism and the result, construct a map X → X′ which 
 binds any free variables introduced into the result.
@@ -246,10 +269,7 @@ function get_expr_binding_map(r::Rule{T}, m::ACSetTransformation, res; cat) wher
   rmap = get_rmap(T, res; cat)
   X = codom[cat](rmap)
   comps = Dict(map(attrtypes(acset_schema(X))) do at 
-      atfun = hom_map[attr_cat(cat, at)](m[at])
-      bound_vars = Vector{Any}(map(parts(dom(m), at)) do i 
-        atfun(Left(i))
-      end) 
+      bound_vars = matched_attr_values(m, at; cat)
       rfun = hom_map[attr_cat(cat, at)](rmap[at])
       at => Dict(rfun(Left(i)).val => xpr(getvalue.(bound_vars)) 
                  for (i, xpr) in r.exprs[at])
