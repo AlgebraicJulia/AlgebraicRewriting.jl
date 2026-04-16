@@ -1,5 +1,7 @@
 module Utils
 
+import Base: collect
+
 export Rule, ruletype,rewrite, rewrite_match, rewrite_full_output, 
        rewrite_match_maps, can_match, get_match, get_matches, pattern
 

@@ -136,7 +136,7 @@ that's the case, we can visualize the game state using plaintext.
 =#
 
 function view_life(f::ACSetTransformation, pth=tempname())
-  v = collect(f[:V])
+  v = Base.collect(f[:V])
   view_life(codom(f), pth; star=isempty(v) ? nothing : only(v))
 end
 

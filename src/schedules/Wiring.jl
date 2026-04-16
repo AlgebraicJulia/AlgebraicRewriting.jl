@@ -1,4 +1,5 @@
 module Wiring
+import Base: collect
 export Schedule, Names, mk_sched, typecheck, merge_wires, 
        singleton, traj_res
 

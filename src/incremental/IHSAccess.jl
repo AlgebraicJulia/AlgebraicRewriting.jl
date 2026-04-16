@@ -1,5 +1,7 @@
 module IHSAccess 
 
+import Base: collect
+
 export rules, validate, state, states, matches, nmatches, qrules, decomp_dict, 
   get_cases, decomp_match, get_match, interaction_square
 

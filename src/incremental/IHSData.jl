@@ -1,4 +1,5 @@
 module IHSData
+import Base: collect
 export IHS
 
 using DataStructures: DefaultDict, OrderedDict

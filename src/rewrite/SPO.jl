@@ -1,5 +1,7 @@
 module SPO 
 
+import Base: collect
+
 using Catlab, Catlab.CategoricalAlgebra
 
 using ...CategoricalAlgebra.CSets: var_pullback, cascade_subobj
@@ -42,7 +44,7 @@ function partial_pushout(f::Span, g::Span; cat)
   # Step 1: compute Af ∩ Ag
   glue = Dict{Symbol,Set{Int}}(map(types(S)) do o 
     funs = [o in ob(S) ? x : get(x) for x in [AfA[o], AgA[o]]]
-    o => κ(o)(intersect(Set.(collect.(funs))...))
+    o => κ(o)(intersect(Set.(Base.collect.(funs))...))
   end)
 
   # Step 2: add any elements which are mapped to the same elems by f or g 
@@ -57,7 +59,7 @@ function partial_pushout(f::Span, g::Span; cat)
       end
     end 
   end
-  comps = NamedTuple(Dict([k=>collect(v) for (k,v) in collect(glue)]))
+  comps = NamedTuple(Dict([k=>Base.collect(v) for (k,v) in Base.collect(glue)]))
   fg_A = Subobject(A, comps) |> hom # f ∇ g ↪ A
   fg = dom(fg_A) # f ∇ g
   # Construct scopes Bgf ⊆ B and Cfg ⊆ C
@@ -65,10 +67,10 @@ function partial_pushout(f::Span, g::Span; cat)
   Bgf_B, Cfg_C = map([f,g]) do (mono, ϕ) 
     sub = Dict{Symbol,Vector{Int}}(map(types(S)) do o 
       ϕfun = o ∈ ob(S) ? ϕ[o] : get(ϕ[o])
-      x1 = setdiff(parts(codom(ϕ),o),collect(ϕfun)) # e.g. C - g(A)
+      x1 = setdiff(parts(codom(ϕ),o),Base.collect(ϕfun)) # e.g. C - g(A)
       pre = [preimage(mono[o], fg_A[o](i)) for i in parts(fg,o)]
-      x2 = Set(collect(ϕ[o].(vcat(pre...))))  # e.g. g(f ∇ g)
-      o => sort(collect(x1 ∪ x2))
+      x2 = Set(Base.collect(ϕ[o].(vcat(pre...))))  # e.g. g(f ∇ g)
+      o => sort(Base.collect(x1 ∪ x2))
     end)
 
     hom(Subobject(codom[cat](ϕ), NamedTuple(cascade_subobj(codom[cat](ϕ), sub))))
@@ -81,7 +83,7 @@ function partial_pushout(f::Span, g::Span; cat)
     init = Dict(map(ob(S)) do o 
       o => map(parts(fg, o)) do i 
         c_index = ϕ[o](only(preimage(mono[o],fg_A[o](i))))
-        return findfirst(==(c_index), collect(cod[o]))
+        return findfirst(==(c_index), Base.collect(cod[o]))
       end
     end)
     only(homomorphisms(fg, dom(cod); cat, initial=init))

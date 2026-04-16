@@ -14,7 +14,7 @@ h, k = pushout_complement[𝒞](f, g)
 @test force(compose[𝒞](f,g)) == force(compose[𝒞](h,k))
 colim = pushout[𝒞](f,h)
 @test ob(colim) == FinSetInt(6)
-@test allunique(collect(pushout_copair[𝒞](colim, g, k)))
+@test allunique(Base.collect(pushout_copair[𝒞](colim, g, k)))
 
 universal[𝒞](colim, Cospan(g, k))
 

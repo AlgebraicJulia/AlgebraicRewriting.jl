@@ -1,4 +1,5 @@
 module CSets
+import Base: collect
 export extend_morphism, pushout_complement,
        can_pushout_complement, dangling_condition, invert_hom, check_pb,
        gluing_conditions, extend_morphisms, sub_vars,
@@ -61,7 +62,7 @@ function invert_iso(f::ACSetTransformation,
   S = acset_schema(dom(f))
   s_obs = isnothing(s) ? ob(S) : s
   d = Dict(map(ob(S)) do o 
-    o => o ∈ s_obs ? Base.invperm(collect(f[o])) : collect(f[o])
+    o => o ∈ s_obs ? Base.invperm(Base.collect(f[o])) : Base.collect(f[o])
   end)
   return only(homomorphisms(codom(f), dom(f); initial=d))
 end
@@ -144,7 +145,7 @@ function fibers(f::FinFunction)
   for v in dom(f)
     push!(dic[f(v)], v)
   end
-  filter(xs->length(xs)>1, collect(values(dic)))
+  filter(xs->length(xs)>1, Base.collect(values(dic)))
 end
 
 unions!(i::IntDisjointSets, xs::Vector{Int}) = if length(xs) > 1 
@@ -207,7 +208,7 @@ use the function [`can_pushout_complement`](@ref).
       end
     end
     mapping_inv = Dict(o=>Dict(v=>k for (k,v) in mapping[o]) for o in keys(mapping))
-    g_components2 = Dict(map(collect(g_components)) do (o, comp)
+    g_components2 = Dict(map(Base.collect(g_components)) do (o, comp)
       f = if haskey(mapping_inv, o)
         FinFunction(Dict(k=>comp(v) for (k,v) in mapping_inv[o]), om(K,o), om(G,o))
       else 
@@ -215,7 +216,7 @@ use the function [`can_pushout_complement`](@ref).
       end
       o => f
     end)
-    g_components2 = Dict(map(collect(g_components)) do (o, comp)
+    g_components2 = Dict(map(Base.collect(g_components)) do (o, comp)
       f = if haskey(mapping_inv, o)
         FinFunction(Dict(k=>comp(v) for (k,v) in mapping_inv[o]), om(K,o), om(G,o))
       else 
@@ -231,7 +232,7 @@ use the function [`can_pushout_complement`](@ref).
         K[p, h] = c ∈ ob(S) ? only(preimage(g_c, res)) : res
       end
     end
-    k_components2 = Dict{Symbol,Any}(map(collect(k_components)) do (o, comp)
+    k_components2 = Dict{Symbol,Any}(map(Base.collect(k_components)) do (o, comp)
       f = FinFunction(mapping[o], codom(comp), om(K,o))
       o => postcompose(comp, f)
     end)
@@ -243,13 +244,24 @@ use the function [`can_pushout_complement`](@ref).
           I[p, f] == AttrVar(i) || continue
           push!(hits, K[k_components2[c](p), f])
         end
-        isempty(hits) && error("AttrVar $i in $k is not referenced by any attribute")
-        all(==(first(hits)), hits) || error("AttrVar $i in $k has inconsistent images in pushout complement")
-        val = first(hits)
-        val isa AttrVar ? Left(getvalue(val)) : Right{T}(val)
+        if isempty(hits)
+          val = get(l[k])(i)
+          val = val isa Left ? get(m[k])(getvalue(val)) : val
+          val isa Left ? Left(getvalue(val)) : Right{T}(getvalue(val))
+        else
+          all(==(first(hits)), hits) || error("AttrVar $i in $k has inconsistent images in pushout complement")
+          val = first(hits)
+          val isa AttrVar ? Left(getvalue(val)) : Right{T}(val)
+        end
       end
+      domk = dom(get(l[k]))
+      domk_parts = Base.collect(domk)
+      codk = domk_parts isa AbstractUnitRange{<:Integer} && first(domk_parts) == 1 ?
+        FinSet(nparts(K, k)) : FinSet(Set(parts(K, k)))
       k_components2[k] = CopairedFinDomFunction(
-        FinDomFunction(vals, either(FinSet(nparts(K, k)), SetOb(T))))
+        FinDomFunction(Dict(zip(parts(I, k), vals)),
+                       domk,
+                       either(codk, SetOb(T))))
     end
 
     # need to reindex the components in light of the actual part IDs in K
@@ -308,7 +320,7 @@ dangling_condition(pair::ComposablePair{<:DynamicACSet}) = let S = acset_schema(
   L, G = codom(l), codom(m)
   del_vector = Set{Int}[]
   @ct_ctrl for o in obs
-    image = Set(collect(l[@ct o])) # SMALL
+    image = Set(Base.collect(l[@ct o])) # SMALL
     dels = Set{Int}()
     for pL in parts(L,@ct(o))
       if pL ∉ image push!(dels, m[@ct o](pL)) end 
@@ -348,7 +360,7 @@ function cascade_subobj(X::ACSet, sub)
       end
     end
   end 
-  return Dict([k => collect(v) for (k,v) in pairs(sub)])
+  return Dict([k => Base.collect(v) for (k,v) in pairs(sub)])
 end
 
   
@@ -419,7 +431,7 @@ function var_pullback(c::Cospan{<:StructACSet{S,Ts}}) where {S,Ts}
     attr_components = Dict(map(attrtypes(S)) do at
       comp = Union{AttrVar,attrtype_instantiation(S,Ts,at)}[]
       for (f, c, _) in attrs(S; to=at)
-        append!(comp, X[f][collect(compose[FinSetC()](A[c],p[c]))])
+        append!(comp, X[f][Base.collect(compose[FinSetC()](A[c],p[c]))])
       end
       return at => comp
     end)
@@ -466,19 +478,19 @@ Migrate(cat, Dict(x => x for x in Symbol.(generators(s1, :Ob))),
         s1, t1, s2, t2; delta)
 
 Migrate(cat::ACSetCategory, o::Dict, h::Dict, s1::Presentation, t1::Type, s2=nothing, t2=nothing; 
-        delta::Bool=true) = Migrate(cat, Dict(collect(pairs(o))),
-                                    Dict(collect(pairs(h))), s1, t1, 
+        delta::Bool=true) = Migrate(cat, Dict(Base.collect(pairs(o))),
+                                    Dict(Base.collect(pairs(h))), s1, t1, 
                                     isnothing(s2) ? s1 : s2, 
                                     isnothing(t2) ? t1 : t2, 
                                     delta)
 
 
-sparsify(d::Dict{V,<:ACSet}) where V = Dict([k=>sparsify(v) for (k,v) in collect(d)])
-sparsify(d::Dict{<:ACSet,V}) where V = Dict([sparsify(k)=>v for (k,v) in collect(d)])
+sparsify(d::Dict{V,<:ACSet}) where V = Dict([k=>sparsify(v) for (k,v) in Base.collect(d)])
+sparsify(d::Dict{<:ACSet,V}) where V = Dict([sparsify(k)=>v for (k,v) in Base.collect(d)])
 sparsify(::Nothing) = nothing
 
-(F::Migrate)(d::Dict{V,<:ACSet}) where V = Dict([k=>F(v) for (k,v) in collect(d)])
-(F::Migrate)(d::Dict{<:ACSet,V}) where V = Dict([F(k)=>v for (k,v) in collect(d)])
+(F::Migrate)(d::Dict{V,<:ACSet}) where V = Dict([k=>F(v) for (k,v) in Base.collect(d)])
+(F::Migrate)(d::Dict{<:ACSet,V}) where V = Dict([F(k)=>v for (k,v) in Base.collect(d)])
 (m::Migrate)(::Nothing) = nothing
 (m::Migrate)(s::Union{String,Symbol}) = s
 function (m::Migrate)(Y::ACSet; cat=nothing)
@@ -507,9 +519,9 @@ function (m::Migrate)(Y::ACSet; cat=nothing)
 end 
 
 function (F::Migrate)(f::ACSetTransformation)
-  d = Dict(map(collect(pairs(components(f)))) do (k,v)
+  d = Dict(map(Base.collect(pairs(components(f)))) do (k,v)
     fun = v isa CopairedFinDomFunction ? get(v) : v
-    get(F.obs,k,k) => map(sort(collect(dom(fun)))) do i 
+    get(F.obs,k,k) => map(sort(Base.collect(dom(fun)))) do i 
       e = fun(i)
       if e isa Left
         AttrVar(getvalue(e))
@@ -523,8 +535,8 @@ function (F::Migrate)(f::ACSetTransformation)
   homomorphism(F(dom(f)), F(codom(f)); initial=d, cat=F.cat)
 end
 
-(F::Migrate)(s::Multispan) = Multispan(apex(s), F.(collect(s)))
-(F::Migrate)(s::Multicospan) = Multicospan(apex(s), F.(collect(s)))
-(F::Migrate)(d::AbstractDict) = Dict(get(F.obs,k, k)=>v for (k,v) in collect(d))
+(F::Migrate)(s::Multispan) = Multispan(apex(s), F.(Base.collect(s)))
+(F::Migrate)(s::Multicospan) = Multicospan(apex(s), F.(Base.collect(s)))
+(F::Migrate)(d::AbstractDict) = Dict(get(F.obs,k, k)=>v for (k,v) in Base.collect(d))
 
 end # module
