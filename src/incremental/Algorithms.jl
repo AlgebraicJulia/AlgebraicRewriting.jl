@@ -354,7 +354,7 @@ end
 function all_subobjects(X::ACSet; cache="cache")
   Ω = subobject_cache(typeof(X); cache) 
   isnothing(Ω) && return hom.(subobject_graph(X)[2]) # compute the slow way
-  @show "using subobject classifier"
+  println("using subobject classifier")
   S = acset_schema(X)
   X′ = typeof(Ω)()
   copy_parts!(X′, X)
@@ -400,7 +400,7 @@ function is_combinatorially_monic(f::ACSetTransformation)
 end
 
 
-function ACSetTransformation(X::ACSet, canon::CSetNautyRes)
+function Catlab.ACSetTransformation(X::ACSet, canon::CSetNautyRes)
   ACSetTransformation(X, canon.canon; canon.canonmap...)
 end
 

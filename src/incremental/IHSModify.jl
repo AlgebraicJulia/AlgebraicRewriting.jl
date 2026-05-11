@@ -2,11 +2,12 @@ module IHSModify
 
 using DataStructures
 using Catlab
+using Combinatorics: partitions
 
 using ...CategoricalAlgebra.CSets: invert_iso
 using ..Algorithms: connected_acset_components, all_epis
 import ..IHSData: IHS
-using ..IHSAccess: pattern_cc, empty_profile, qrules, subobj_incl
+using ..IHSAccess: pattern_cc, empty_profile, qrules, subobj_incl, subobj_eq, subobj_lt
 
 
 # Constructing an IHS
@@ -69,31 +70,39 @@ we have added an edge between two existing vertices). ~A is our best approx
 to the new material: it includes the boundary ∂A of old and new.
 """
 function add_pattern_cc!(ihs::IHS, pattern_cc::ACSet)
+  # Check if result is cached already
   found = findfirst(==(pattern_cc), ihs[:pattern_cc])
   isnothing(found) || return found
+
+  # Declare a new pattern which is assumed to be fully connected
   iₚ = add_part!(ihs, :PatternCC; pattern_cc)
-  _, sos = subobject_graph(pattern_cc);
-  so_ids = map(enumerate(force.(hom.(sos)))) do (subpattern_idx, subobj)
+  subobjects = enumerate(force.(hom.(subobject_graph(pattern_cc)[2])));
+  # Register each subobject of the connected component
+  subobj_ids = map(subobjects) do (subpattern_idx, subobj)
     add_part!(ihs, :SubPattern; subpattern=iₚ, subobj, subpattern_idx)    
   end
 
+  # Look for interactions between (quotiented) rules and the (CC) pattern
   for i_rule in qrules(ihs)
     f = ihs[i_rule, :q]
     for (idata_iL, idata_iR, L, R) in subobj_rule_interactions3(f, pattern_cc)
-      idata_L, idata_R = so_ids[[L,R]]
+      idata_L, idata_R = subobj_ids[[L,R]]
       add_part!(ihs, :Interaction; idata_iL, idata_iR, idata_L, idata_R, i_rule=iᵣ)
     end
   end
 
-  dcs = alt_decomps(pattern_cc)
-  for (iₛ, dc) in enumerate(dcs)
-    for (decomp_colim, decomp_iso,  d, is_minimal) in dc 
-      decomp = add_part!(ihs, :Decomp; decomp_tgt = so_ids[iₛ],
-                          decomp_colim, decomp_iso, is_minimal)
-      for (decomp_elem_idx, (v1,v2)) in enumerate(sort(d))
-        decomp_elem_L, decomp_elem_R = so_ids[v1], so_ids[v2] 
-        add_part!(ihs, :DecompElem; decomp, decomp_elem_L, decomp_elem_R, 
-                  decomp_elem_idx)
+  # Register all ways to decompose the (CC) pattern
+  decomposition_sets = alt_decomps(pattern_cc) # a set of decompositions per subobj of pattern
+  for (iₛ, decomposition_set) in enumerate(decomposition_sets)
+    # iₛ is the index into the subobjects of `pattern_cc`. 
+    decomp_tgt = subobj_ids[iₛ] # The 'old' subobject of the decomposition
+    for (decomp_colim, decomp_iso,  d, is_minimal) in decomposition_set 
+      # Add a row for the decomposition
+      decomp = add_part!(ihs, :Decomp; decomp_tgt, decomp_colim, decomp_iso, is_minimal)
+      for (decomp_elem_idx, (L_id,R_id)) in enumerate(sort(d))
+        # Register each new contribution to the decomposition
+        decomp_elem_L, decomp_elem_R = subobj_ids[[L_id,R_id]]
+        add_part!(ihs, :DecompElem; decomp, decomp_elem_L, decomp_elem_R, decomp_elem_idx)
       end
     end
   end
@@ -181,6 +190,108 @@ subobj_equiv(a::ACSetTransformation,b::ACSetTransformation) =
   any(isomorphisms(dom(a), dom(b))) do σ  
     force(compose[infer_acset_cat(a)](σ,b)) == force(a)
   end
+
+""" Pick out a (full) subgraph via its vertices """
+function subgraph(g::AbstractGraph, vertices::AbstractVector)
+  hom(Subobject(g; V=vertices, E=collect(filter(edges(g)) do e 
+    all(∈(vertices), [src(g, e), tgt(g, e)]) 
+  end)))
+end
+
+""" 
+Subobject picked out by starting with some part and following its 
+outhoms 
+"""
+function representable_elem_subobj(X::ACSet, oₒ::Symbol, iₒ::Int)
+  S = acset_schema(X)
+  pts = Dict(o=>Int[] for o in ob(S))
+  push!(pts[oₒ], iₒ)
+  queue = [oₒ => iₒ]
+  while !isempty(queue)
+    o, i = pop!(queue)
+    for (f, _, c) in homs(S; from=o)
+      if X[i, f] ∉ pts[c]
+        push!(pts[c], X[i, f])
+        push!(queue, c => X[i, f])
+      end
+    end
+  end
+  Subobject(X; pts...)
+end
+
+"""
+Alternative approach to finding multidecompositions. Let P ⊂ Sub Q be the 
+subposet of join-irreducibles (these are a quotient of representables) and let 
+J(x) ⊆ P be the representation of x ∈ Sub Q as a join of these join-irreducibles.
+A multidecomposition is identified with a choice QG ∈ Sub Q and a partition 
+of the connected components of P∖J(QG). Each such partition can be joined to 
+yield one of the components of the multidecomposition as a subobject of Q.
+"""
+function alt_decomps2(X::ACSet)
+  S = acset_schema(X)
+  gr, sos = subobject_graph(X);
+  emp = sos[end] # empty subobject
+  cat = infer_acset_cat(X)
+  N = length(sos)
+  # join irreducibles are representables
+  jir = Int[]
+  for o in ob(S)
+    for i in parts(X, o)
+      so = representable_elem_subobj(X, o, i)
+      push!(jir, findfirst(so′-> subobj_eq(so, so′), sos))
+    end
+  end
+  # Express each subobject as a join of join-irreducibles
+  ji_decomps = [inneighbors(gr, i) ∩ jir for i in 1:N]
+  decomps = Pair[]
+
+  for iG in 2:N
+    jiGr = subgraph(gr, setdiff(jir, ji_decomps[iG]))
+    ccs = connected_components(dom(jiGr))
+    for partis in partitions(1:length(ccs))
+      push!(decomps, sos[iG] => Set(map(partis) do part
+        @withmodel cat (∨) begin 
+          foldl(∨, sos[jiGr[:V].(vcat(ccs[part]...))]; init=emp)#), sos)
+        end
+      end))
+      return decomps
+    end
+  end
+
+  decomps
+end
+
+""" Confirm that a purported multidecomposition satisfies the definition """
+function check_multidecomp(QG, QRs::AbstractSet)::Bool
+  QRs = collect(QRs) # enforce an order
+  X = codom(hom(QG))
+  emp = Subobject(X)
+  cat = infer_acset_cat(X)
+
+  # 1: the union of all must be ⊤
+  @withmodel cat (∨) begin 
+    @assert is_isomorphic(X, dom(hom(QG ∨ foldl(∨, QRs; init=emp))))
+  end
+  # 2: Non-redundancy: QRᵢ ≰ QG
+  for QR in QRs 
+    @assert !subobj_lt(QR, QG)
+  end
+  # 3: Overlap containment: QRᵢ∧QRⱼ≤QG
+  for (i, QR) in enumerate(QRs), QR′ in QRs[i+1:end]
+    @withmodel cat (∧) begin 
+      @assert subobj_lt(QR ∧ QR′, QG)
+    end
+  end
+  # 4: Non-redundancy 
+  for QR in QRs
+    @withmodel cat (∨,~) begin
+      QR′ = foldl(∨, filter(!=(QR),QRs); init=emp)
+      @assert subobj_eq(QR, ~(QG ∨ QR′))
+    end
+  end
+  true 
+end
+
 
 function alt_decomps(X::ACSet)
   gr, sos = subobject_graph(X);

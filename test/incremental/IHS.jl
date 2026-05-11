@@ -6,30 +6,53 @@ using AlgebraicRewriting.Incremental.IHSData: to_datalog_json
 ########################
 # Directed Multigraphs #
 ########################
+
+# Visualize a graph
 grph(x) = to_graphviz(x; node_labels=true, edge_labels=true)
 
+# Create random graphs with i nodes and j edges
 NV = 2
 rg(i::Int, j=nothing) = let j = isnothing(j) ? 2*i : j; @acset Graph begin 
   V=i; E=j; src=rand(1:i, j); tgt=rand(1:i, j)
 end end
 
+# Create a random subgraph
 random_monic(n::Int; j=nothing) = 
   hom(rand(subobject_graph(rg(n, j))[2][2:end-1]))
 
 # Example rewrites
 ####################
 
+# pattern we're monitoring incrementally: looking for pairs of consecutive edges
 X = path_graph(Graph, 3)
-L = path_graph(Graph, 2)
-R = @acset Graph begin V=3; E=3; src=[1,1,2]; tgt=[2,3,3] end
+
+# rule matches an edge
+L = path_graph(Graph, 2) 
+
+# replace edge with a directed triangle (parallel path of length 2)
+R = @acset Graph begin V=3; E=3; src=[1,1,2]; tgt=[2,3,3] end 
+
+# the rule
 f = homomorphism(L, R; initial=(V=[1,3],))
+
+# starting graph, path graph with two edges
 G = path_graph(Graph, 4)
+
+# use a specific match morphism
 m = homomorphism(L, G; initial=(E=[2],))
+
+# Data structure for maintaining incremental changes to G from applying f
 ihs = IHS(X, f, G);
 
 rewrite!(ihs, [m], [f])
 
 @test validate(ihs)
+
+newm = homomorphism(L, state(ihs,1); random=true, any=true)
+rewrite!(ihs, [newm], [f])
+
+@test validate(ihs)
+
 
 # Aside: datalog encoding
 d = to_datalog_json(ihs, "cache/test.json"; rename=(E=:edge,))
@@ -93,7 +116,22 @@ end
 
 # Batch application
 ###################
+# Triangle rule + simple path query
+#----------------------------------
+X = path_graph(Graph, 3)
+L = path_graph(Graph, 2)
+R = @acset Graph begin V=3; E=3; src=[1,1,2]; tgt=[2,3,3] end
+f = homomorphism(L, R; initial=(V=[1,3],))
+G = path_graph(Graph, 3)
+ihs = IHS(X,f, G);
+ms = homomorphisms(L, X)
+Δ, H, new_ms = rewrite!(ihs, ACSetTransformation[ms...], [f,f])
+@test validate(ihs)
 
+
+
+# Another simple example
+#----------------------
 X = path_graph(Graph, 3)
 L1 = path_graph(Graph, 2)
 R1 = @acset Graph begin V=3; E=3; src=[1,1,2]; tgt=[2,3,3] end

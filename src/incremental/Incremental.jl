@@ -10,6 +10,7 @@ include("IHSData.jl")
 include("IHSAccess.jl")
 include("IHSModify.jl")
 include("IHSRewrite.jl")
+include("BenchmarkGeneration.jl")
 
 
 @reexport using .Algorithms
@@ -17,5 +18,6 @@ include("IHSRewrite.jl")
 @reexport using .IHSAccess
 @reexport using .IHSModify
 @reexport using .IHSRewrite
+@reexport using .BenchmarkGeneration
 
 end # module

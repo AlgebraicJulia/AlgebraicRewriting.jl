@@ -14,3 +14,5 @@ cache/
 lcov.info
 
 sheepwolf.mp4
+
+test/venv/

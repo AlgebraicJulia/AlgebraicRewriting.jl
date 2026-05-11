@@ -180,7 +180,7 @@ function rewrite_bulk_monic_matches(ihs::IHS, m::Vector{<:ACSetTransformation},
         end
         for interaction_choice in Iterators.product(interactions...)
           get_runtime_matches(ihs, res, iₛ, G, m, ΣL, ΣR, Σm, ΣΔ, Σr, Old, 
-                              colim, σ, combo, interaction_choice; optimize)
+                              colim, σ, combo, interaction_choice, d; optimize)
         end
       end
     end
@@ -213,7 +213,8 @@ we initial=constr, and then filter by those which form pullback
 squares with all the rules.
 """
 function get_runtime_matches(ihs, res, iₛ, G, m, ΣL, ΣR, Σm, ΣΔ, Σr, Old, 
-                             colim, σ, combo, interaction_choice; optimize=false)
+                             colim, σ, combo, interaction_choice, matchdecomp; 
+                             optimize=false)
   bpfd = getvalue(colim.diagram)
   cat = infer_acset_cat(Σm)
   𝒞 = WithModel(cat)
@@ -259,7 +260,7 @@ function get_runtime_matches(ihs, res, iₛ, G, m, ΣL, ΣR, Σm, ΣΔ, Σr, Old
 
     z = zip(interaction_choice, components.(new_maps))
     for (matchdecomp_interaction, matchdecomp_hom) in z
-      add_part!(ihs, :MatchDecomp; matchdecomp_match, 
+      add_part!(ihs, :MatchDecomp; matchdecomp_match, matchdecomp,
                 matchdecomp_interaction, matchdecomp_hom)
     end
   end

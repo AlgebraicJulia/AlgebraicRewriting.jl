@@ -2,7 +2,7 @@ name = "AlgebraicRewriting"
 uuid = "725a01d3-f174-5bbd-84e1-b9417bad95d9"
 license = "MIT"
 authors = ["Kris Brown <kris@topos.institute>"]
-version = "0.5.1"
+version = "0.5.2"
 
 [deps]
 ACSets = "227ef7b5-1206-438b-ac65-934d6da304b8"
@@ -19,8 +19,8 @@ StructEquality = "6ec83bb0-ed9f-11e9-3b4c-2b04cb4e219c"
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 
 [compat]
-ACSets = "0.2.20"
-Catlab = "0.17.1"
+ACSets = "0.2.27"
+Catlab = "0.17.5"
 Combinatorics = "1.0.3"
 CompTime = "0.1"
 DataStructures = "0.17, 0.18"

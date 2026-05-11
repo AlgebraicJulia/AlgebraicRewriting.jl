@@ -13,7 +13,9 @@ const Profile = Dict{Symbol, Set{Set{Int}}}
 # TODO add an IsoPattern object to store isomorphic copies of patterns. 
 
 """ 
-Data related exclusively to patterns. We store data about patterns by first decomposing them into connected components and then decompose those into subobject lattices.
+Data related exclusively to patterns. We store data about patterns by first 
+decomposing them into connected components and then decompose those into 
+subobject lattices.
 """
 @present SchIHSPattern(FreeSchema) begin 
   (Pattern, PatternCC, SubPattern)::Ob # , Decomp, DecompElem)::Ob

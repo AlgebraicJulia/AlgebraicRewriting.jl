@@ -1,6 +1,7 @@
 [deps]
 AlgebraicRewriting = "725a01d3-f174-5bbd-84e1-b9417bad95d9"
 Catlab = "134e5e36-593f-5add-ad60-77f754baafbe"
+Combinatorics = "861a8166-3701-5b0c-9a16-15d98fcdc6aa"
 DataStructures = "864edb3b-99cc-5e75-8d2d-829cb0a9cfe8"
 PrettyTables = "08abe8d2-0d0c-5749-adfa-8a2ac140af0d"
 Random = "9a3f8284-a2c9-5f02-9a11-845980a1fd5c"
@@ -10,4 +11,4 @@ Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 nauty_jll = "55c6dc9b-343a-50ca-8ff2-b71adb3733d5"
 
 [compat]
-PrettyTables = "2.4.0"
+PrettyTables = "3"

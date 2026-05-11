@@ -1,0 +1,497 @@
+module BenchmarkGeneration
+
+using Catlab
+using Combinatorics: powerset
+using ..IHSData: distinguished_object, IHS
+using ..IHSAccess: state, pattern, get_cases
+
+const SIZE = 1000000
+const N_REWRITES = 500000
+const RELSIZES = N_REWRITES*2
+const N_TRIALS = 1
+
+
+"""
+Generates a query that implements the delta rules. E.g. for path graph of length 
+two, it produces:
+
+```sql
+INSERT INTO Q 
+SELECT x4.src, x5.src, x5.tgt
+FROM deltaE AS x4, E AS x5
+WHERE x5.src = x4.tgt
+ UNION ALL
+SELECT x4.src, x5.src, x5.tgt
+FROM E AS x4, deltaE AS x5
+WHERE x5.src = x4.tgt
+ UNION ALL
+SELECT x4.src, x5.src, x5.tgt
+FROM deltaE AS x4, deltaE AS x5
+WHERE x5.src = x4.tgt
+```
+"""
+function generate_delta_query(query::ACSet)
+  V = distinguished_object(acset_schema(query))
+  elems = elements(query)
+  representatives = [incident(elems, v, :tgt) for v in parts(query, V)] # This assumes that the "V" object is first!
+  lookup(rep_idx::Int) = "x$(elems[rep_idx,:src]).$(elems[rep_idx,(:πₐ,:nameh)])"
+  function delta_query(delta_tuples)
+    SELECT = "SELECT "*join(lookup.(first.(representatives)), ", ")
+    FROM = "FROM "* join(map(unique(elems[:src])) do el 
+      arr = first(incident(elems, el, :src))
+      table = elems[arr,(:πₐ,:dom,:nameo)]
+      "$(el ∈ delta_tuples ? "delta_" : "")$(table) AS x$el"
+    end ,", ")
+    WHERE = "WHERE "*join(vcat(map(representatives) do reprs
+      n = 1:length(reprs)
+      ijs = collect(filter(((i,j),)->i<j, collect(Iterators.product(n,n))))
+      map(ijs) do (i, j)
+          "$(lookup(reprs[i])) = $(lookup(reprs[j]))"
+      end
+    end...),", ")
+    join([SELECT, FROM, WHERE],"\n            ")
+  end
+
+  # A delta rule case for each nonempty subset of the query
+  res = delta_query.(collect(powerset(unique(elems[:src])))[2:end])    
+  "INSERT INTO Q " * join(res,"\n            UNION ALL\n            ")
+end
+
+""" Convert an CSet into an ordinary SQL query """
+function generate_query(query::ACSet)
+  V = distinguished_object(acset_schema(query))
+  elems = elements(query)
+  representatives = [incident(elems, v, :tgt) for v in parts(query, V)]
+  lookup(rep_idx::Int) = "x$(elems[rep_idx,:src]).$(elems[rep_idx,(:πₐ,:nameh)])"
+  SELECT = "SELECT "*join(lookup.(first.(representatives)), ", ")
+
+  FROM = "FROM "* join(map(unique(elems[:src])) do el 
+    arr = first(incident(elems, el, :src))
+    table = elems[arr,(:πₐ,:dom,:nameo)]
+    "$(table) AS x$el"
+  end ,", ")
+
+  whereclauses = vcat(map(representatives) do reprs
+    map(zip(reprs, reprs[2:end])) do (i, j)
+        "$(lookup(i)) = $(lookup(j))"
+    end
+  end...)
+  WHERE = (isempty(whereclauses) ? "" : "WHERE ")*join(whereclauses, " AND ")
+
+  "$SELECT $FROM $WHERE"
+end
+
+""" Construct relations with uniform probabilities """
+function generate_initial_data(S::Schema)
+  V = distinguished_object(S)
+  vecs = join(map(filter(!=(V), ob(S))) do o 
+    "[[r.randint(1,vertices) for _ in [$(join(["'$h'" for h in homs(S; from=o, just_names=true)], ", "))]] 
+           for _ in range(relsizes['$o'])]"
+  end, ", ")
+  """
+def generate_instance(vertices:int, relsizes: dict[str,int])->tuple[int,dict]:
+  r = random.Random(0)
+  return Instance(vertices, $vecs)
+"""
+end
+
+function generate_db_setup(Q::ACSet, f::ACSetTransformation)
+  function ct(tabname, cols::Vector{String})::String 
+    """
+    cur.execute("CREATE TABLE IF NOT EXISTS $tabname ($(join([x*" INTEGER" for x in cols],", ")))")
+      cur.execute("ALTER TABLE $tabname SET (autovacuum_enabled = false, toast.autovacuum_enabled = off)")
+    """
+  end
+  S::Schema = acset_schema(f)
+  V = distinguished_object(S)
+  nv(X::ACSet) = nparts(X, V)
+  NQ = nv(Q)
+  ctrels = join(map(filter(!=(V), ob(S))) do o 
+    ct1 = ct(string(o), string.(homs(S; from=o, just_names=true))) 
+    ct2 = ct("delta_$o", string.(homs(S; from=o, just_names=true)))
+    "$ct1\n  $ct2"
+  end, "\n  ")
+  qcols = ["q$i" for i in 1:NQ]
+  rcols = ["r$i" for i in 1:nparts(codom(f), V)]
+  """
+def db_setup(cur):
+  $ctrels
+  $(ct('Q', qcols))
+  $(ct("Rewrite",rcols))
+"""
+end
+
+
+""" Create a UNION clause for each rewrite-aware multidecomposition """
+function batch_kris(ihs)
+  Q = pattern(ihs)
+  S = acset_schema(Q)
+  V = distinguished_object(S)
+  f = ihs[1, :qrule]
+  case_analysis = get_cases(ihs; batch=true, quotient=true);
+  cases = map(case_analysis) do case
+    ιG, decomps = case[:old], case[:decomps]
+    Q = codom(ιG)
+
+    ι_vec = [ιG; getindex.(decomps,:QR)]
+
+    # FOR ANY VERTEX IN Q, GET RELATIONS IN Q_G / R_i
+    function get_rels(vert::Int)
+      # get all relations the vertex participates in that are included in ιG
+      qg_rels = []
+      for o in filter(!=(V), ob(S))
+        for r in parts(dom(ιG), o)
+          for f in homs(S; from=o, just_names=true)
+            if codom(ιG)[ιG[o](r), f] == vert 
+              push!(qg_rels, (o, r, f))
+            end
+          end
+        end
+      end
+      rs_rels = map(zip(ι_vec[2:end], getindex.(decomps,:hR))) do (ιR, hR)
+        pi = preimage(ιR[V], vert)
+        isempty(pi) ? nothing : hR[V](only(pi))
+      end
+      
+      [preimage(ιR[V], vert) for ιR in ι_vec[2:end]]
+      (qg_rels, rs_rels)
+    end
+
+    select_strs = map(parts(Q, V)) do i 
+      (qg_rels, rs_rels) = get_rels(i)
+      if !isempty(qg_rels)
+        (rel, rel_i, fk) = first(qg_rels)
+        "$rel$rel_i.$fk"
+      else
+        rw_idx = findfirst(!isnothing, rs_rels)
+        "RW$rw_idx.r$(rs_rels[rw_idx][1])"
+      end
+    end
+
+    sel = "\n\t\tSELECT "*join(select_strs, ", ")
+
+    # A join for each relation in ιG and each decomposition R
+    fromstrs = []
+    for x in first.(get_rels.(parts(Q,V))), (o, i) in x
+      push!(fromstrs, "$o AS $o$i")
+    end
+    for i in 1:length(decomps)
+      push!(fromstrs, "Rewrite AS RW$i")
+    end
+    from = "\n\t\tFROM "*join(unique(fromstrs), ", ")
+
+    whereconds = vcat(map(get_rels.(parts(Q, V))) do (qg_rels, rs_rels)
+      eqclass = ["$rel$rel_i.$fk" for (rel, rel_i, fk)  in qg_rels
+                ] ∪ ["RW$i.r$r" for (i,r) in enumerate(rs_rels) if !isnothing(r)]
+      gconds = map(zip(eqclass, eqclass[2:end])) do (a,b)
+        "$a = $b"
+      end
+    end...)
+    for (idx, dc) in enumerate(decomps)
+      quot = dc[:quot][V]
+      fV = dc[:rule][V]
+      for eqclass in [sort(fV.(collect(e))) for e in quot if length(e)>1]
+        for (a,b) in zip(eqclass, eqclass[2:end])
+          push!(whereconds, "RW$idx.r$a = RW$idx.r$b")
+        end
+      end
+    end
+
+    # possibly that add that RW#i.primary_key ≠ RW#j.primary_key?
+
+    wher = (isempty(whereconds) ? "" : "\n\t\tWHERE ")*join(whereconds, " AND ")
+
+    sel*from*wher
+  end
+  qcols = join(["q$i" for i in 1:nv(pattern(ihs))], ", ")
+  " INSERT INTO Q ($qcols) "*join(cases, "\n\n\tUNION ALL\n")
+end
+
+""" Given a Rewrite table, update the relations of the DB
+"""
+function batch_updates(ihs)
+  f = ihs[1, :qrule]
+  R = codom(f)
+  S::Schema = acset_schema(f)
+  V = distinguished_object(S)
+
+  qs = map(filter(!=(V), ob(S))) do o 
+    fks = homs(S; from=o, just_names=true)
+    new_o = join(filter(!isnothing, map(parts(R, o)) do i 
+      if isempty(preimage(f[o], i))
+        rs = ["r$(R[i, fk])" for fk in fks]
+        return "SELECT $(join(rs,", ")) FROM Rewrite"
+      end
+    end), "\n\tUNION ALL \n\t")
+    """cur.execute(\"\"\"INSERT INTO $o ($(join(fks, ","))) \n\t$new_o\"\"\")"""
+  end
+  join(qs, "\n\t\t")
+end
+
+function generate_benchmark(ihs::IHS)
+  nparts(ihs, :Rule) == 1 && nparts(ihs, :PatternCC) == 1 || error(
+    "Maximum one pattern and one rule")
+  S = acset_schema(state(ihs))
+  f = ihs[1,:qrule]
+  L, R = dom(f), codom(f)
+
+  V = distinguished_object(S)
+  nv(X::ACSet) = nparts(X, V)
+
+  nL = nv(L)
+
+  xs(i::Int) = ["x$a" for a in 1:i]
+  Q = pattern(ihs)
+  NQ = nv(Q)
+  qcols = ["q$i" for i in 1:NQ]
+  rels = filter(!=(V), ob(S))
+  qrels = join(map(rels) do o 
+    """'$o':tuple(cur.execute("SELECT * FROM $o ORDER BY $(join(homs(S; from=o, just_names=true),", "))"))"""
+  end,", ")
+
+  # clear 
+  #-------
+  drop(t) = """cur.execute("DROP TABLE IF EXISTS $t")"""
+  clear_stmts = [drop(r)*"\n  "*drop("delta_$r") for r in rels]
+
+  # instance to sql 
+  #---------------
+  function inst_to_sqlclause(o::Symbol)
+    fks = homs(S; from=o, just_names=true)
+    """  
+        with cur.copy("COPY $o ($(join(fks, ", "))) FROM STDIN") as copy:
+          for tup in db.$o:
+            copy.write_row(tup)
+    """
+  end
+
+  # Instance definition 
+  #--------------------
+  new_rvals = findall(r->isempty(preimage(f[V], r)), parts(R, V))
+  rvals = map(parts(R, V)) do r 
+    rval = findfirst(==(r), new_rvals)
+    isnothing(rval) ? "x$(only(preimage(f[V], r)))" : "(self.n + $rval)"
+  end
+  rewrite_stmts = vcat(map(rels) do rel
+    tups = map(parts(R, rel)) do relᵢ
+      [R[relᵢ, fk] for fk in homs(S; from=rel, just_names=true)]
+    end
+    filter!(tup->any(∈(new_rvals), tup), tups)
+    map(tups) do tup
+      "self.$rel.append(($(join(["r$i" for i in tup],", "))))"
+    end
+  end...)
+
+  # Batch delta
+  #--------------
+  dq = generate_delta_query(Q)
+  batch_delta_inserts = map(rels) do rel 
+    vars = join(xs(length(homs(S; from=rel))), ",")
+    
+    """
+    with cur.copy("COPY delta_$rel (src, tgt) FROM STDIN") as copy:
+            for ($vars) in db.$rel:
+              if max([$vars]) > SIZE: # i.e. if this is a new $rel
+                copy.write_row(($vars))
+    # cur.execute("ANALYZE delta_$rel")
+  """
+  end
+  # Batch Kris 
+  #-----------
+  ridx = join(["r$i" for i in 1:nv(R)],", ")
+
+
+  # Putting it all together 
+  #-------------------------
+  file = """
+import random, time, math, sys
+from collections import namedtuple, defaultdict
+import psycopg
+
+SIZE = $SIZE # (default) instance size
+N_REWRITES = $N_REWRITES
+RELSIZES = {$(join(["'$rel':$RELSIZES" for rel in rels],","))}
+N_TRIALS = $N_TRIALS
+
+class Timer:
+  def __init__(self, name): self.name = name
+  def __enter__(self):
+    self._begin_ns = time.perf_counter_ns()
+    return self
+  def __exit__(self, _exc_type, _exc_value, _traceback):
+    self.duration_ns = time.perf_counter_ns() - self._begin_ns
+    print(f"{self.duration_ns / 1_000_000:9.0f} ms  {self.name}")
+
+TimingData = namedtuple("TimingData", ["total", "insertions", "q_updates", "edge_updates"])
+
+class Instance:
+  \"\"\"Python in-memory representation of database instance\"\"\"
+  def __init__(self, n:int, $(join(["$r:list[tuple]" for r in rels], ","))):
+    self.n = n 
+    $(join(["self.$r = $r" for r in rels], "\n    "))
+    
+  def rewrite(self, $(join(["$x:int" for x in xs(nL)], ", "))):
+    \"\"\"Apply rewrite rule, assuming rule preconditions are met\"\"\"
+    $ridx = $(join(rvals,", "))
+    self.n += $(nv(R)-nL)
+    $(join(rewrite_stmts,"\n    "))
+    return ($ridx)
+
+$(generate_initial_data(S))
+
+$(generate_db_setup(Q,f))
+
+def show_tables(cur):
+  for x in cur.execute("SELECT * FROM pg_catalog.pg_tables WHERE schemaname != 'pg_catalog' AND schemaname != 'information_schema'"):
+    print(f"Table: {x}")
+
+def db_clear(cur):
+  $(join(clear_stmts, "\n  "))
+  cur.execute("DROP TABLE IF EXISTS Q")
+  cur.execute("DROP TABLE IF EXISTS Rewrite")
+
+
+def batch_delta(cur, db: Instance):
+  with Timer("Rewrites (total)") as total:
+    \"\"\"Run the incremental query via delta rules\"\"\"
+    # Batch delta query.
+    with Timer("Inserts into delta tables") as insertions:
+      $(join(batch_delta_inserts, "\n   "))
+
+    with Timer("Update Q") as q_updates:
+      query = \"\"\"$dq\"\"\"
+      # print('\\n'.join(' * ' + r[0] for r in cur.execute(f"EXPLAIN {query}")))
+      cur.execute(query)
+
+    with Timer("Update relations from delta relations") as rel_updates:
+      $(join(["cur.execute(\"INSERT INTO $r SELECT * FROM delta_$r\")" for r in rels], "\n    "))
+
+  return TimingData(total.duration_ns, insertions.duration_ns, q_updates.duration_ns, rel_updates.duration_ns)
+
+def batch_kris(cur, db: Instance, rewrites:tuple):
+  \"\"\"Run the incremental query via cube-based approach\"\"\"
+  with Timer("Rewrites (total)") as total:
+
+    with Timer("Inserts into rewrites") as insertions:
+      with cur.copy("COPY Rewrite ($ridx) FROM STDIN") as copy:
+        for ($ridx) in rewrites:
+          copy.write_row(($ridx))
+      cur.execute("ANALYZE Rewrite")
+
+    with Timer("Update Q from rewrites") as q_updates:
+      query = \"\"\"$(batch_kris(ihs))\"\"\"
+      cur.execute(query)
+
+    with Timer("Update relations from rewrites") as rel_updates:
+      $(batch_updates(ihs))
+
+  return TimingData(total.duration_ns, insertions.duration_ns, q_updates.duration_ns, rel_updates.duration_ns)
+
+
+
+def go(conn, cur):
+  run_log = []
+
+  with Timer(f"Create tables, load initial instance, create indexes"):
+    db_setup(cur)
+
+    db = generate_instance(SIZE, RELSIZES)
+
+    # Add the instance to SQL 
+    #------------------------
+    $(join(inst_to_sqlclause.(filter(!=(V),ob(S))), "\n"))
+
+    # Generate rewrites
+    #------------------
+    r, rewrites = random.Random(0), []
+    # Get all matches for the pattern of the rewrite
+    pattern_matches = list(cur.execute("$(generate_query(L))"))
+    # Randomly select N_REWRITES of them
+    if len(pattern_matches) < N_REWRITES:
+      raise ValueError(f"Only {len(pattern_matches)} matches, wanted to perform {N_REWRITES}") 
+    for match in r.sample(pattern_matches, N_REWRITES):
+      rewrites.append(db.rewrite(*match))
+
+    # Going 1st seems to convey a small advantage
+    thue_morse = [True]         # using Thue-Morse sequence just for the heck of it.
+    while len(thue_morse) < N_TRIALS:
+      thue_morse += [not x for x in thue_morse]
+
+    for i, bit in zip(range(N_TRIALS), thue_morse):
+      for delta in ([True,False] if bit else [False,True]):
+        print(f"\\nRunning {'delta' if delta else 'kris'} {i}")
+
+        # Vacuum before runs to try and improve consistency. Not sure if this works.
+        with Timer("Vacuum (not counted in total)"): cur.execute("VACUUM")
+
+        with conn.transaction(force_rollback = True):
+          timing_data = batch_delta(cur, db) if delta else batch_kris(cur, db, rewrites)
+          with Timer("Getting edges in sorted order"):
+            relations = {$qrels}
+          with Timer("Getting Q rows in sorted order"):
+            qrows = tuple(cur.execute("select * from Q order by $(join(qcols, ','))"))
+        run_log.append((delta, i, timing_data))
+
+
+    # timing table
+    headers = ["total", "insert", "Q Δ", "edge Δ"]
+    format_row = lambda row: [f"{v / 1_000_000_000:.2f}s" for v in row]
+
+    deltas = [row for delta,_,row in run_log if delta]
+    krises = [row for delta,_,row in run_log if not delta]
+
+    cols_delta = [list(sorted(column)) for column in zip(*deltas)]
+    cols_kris  = [list(sorted(column)) for column in zip(*krises)]
+
+    mins = lambda cols: [c[0] for c in cols]
+    avgs = lambda cols: [sum(c) / len(c) for c in cols]
+    maxs = lambda cols: [c[-1] for c in cols]
+    p = lambda p, cols: [c[round((len(c)-1) * p/100)] for c in cols]
+
+    rows = ([[""] + headers] +
+            [[f"delta {i}" if delta else f"kris {i}"] + format_row(row)
+             for delta, i, row in run_log] +
+            [[""] * (1 + len(cols_delta)),
+             #[f"kris min"]  + format_row(mins(cols_kris)),
+             [f"kris p10"]  + format_row(p(10, cols_kris)),
+             [f"kris p50"]  + format_row(p(50, cols_kris)),
+             [f"kris p90"]  + format_row(p(90, cols_kris)),
+             #[f"kris max"]  + format_row(maxs(cols_kris)),
+             [""] * (1 + len(cols_delta)),
+             #[f"delta min"] + format_row(mins(cols_delta)),
+             [f"delta p10"] + format_row(p(10, cols_delta)),
+             [f"delta p50"] + format_row(p(50, cols_delta)),
+             [f"delta p90"] + format_row(p(90, cols_delta)),
+             #[f"delta max"] + format_row(maxs(cols_delta)),
+             [""] * (1 + len(cols_delta)),
+             [f"kris avg"]  + format_row(avgs(cols_kris)),
+             [f"delta avg"] + format_row(avgs(cols_delta)),
+             ])
+    colsizes = [max(len(x) for x in column) for column in zip(*rows)]
+    for row in rows:
+        print("", *(v.rjust(size) for v, size in zip(row, colsizes)),
+              sep="    ")
+
+
+
+def main():
+  with psycopg.connect("dbname=krisb", autocommit=True) as conn:
+    # Disable auto-preparing queries for (hopefully) more consistent timing. Not sure
+    # this makes a difference.
+    conn.prepare_threshold = None
+    # I tried cursor(binary=True) but didn't make much difference.
+    with conn.cursor() as cur:
+      with Timer("Clear tables"): db_clear(cur)
+      go(conn, cur)
+      db_clear(cur)
+
+if __name__ == "__main__":
+  main() # Don't forget `brew services start postgresql`!
+"""
+  open("test/test.py", "w") do io 
+    write(io, file)
+  end
+  run(`test/venv/bin/python3 test/test.py`)
+end
+
+end # module

@@ -8,7 +8,7 @@ using Catlab
 import Catlab: acset_schema, validate
 
 using ..IHSData: IHS
-import ....Rewrite: get_match
+import ....Rewrite: get_match, pattern
 
 # Pattern access 
 ################
@@ -162,68 +162,158 @@ end
 #######################
 
 """
-Return a user-friendly dictionary summarizing the total scenarios that get looped over.
+Return a user-friendly dictionary summarizing the total scenarios that get 
+looped over.
+
+Note that a single decomposition can include both quotiented and unquotiented 
+versions of a rule. Set `quotient=false` to only allow decompositions in which 
+all rules are unquotiented.
 """
-function get_cases(h::IHS, pat=nothing, rule=nothing; batch=false, minimal=true, 
+function get_cases(h::IHS, pat=nothing, rule=nothing; batch=false, 
                   quotient=false)
   res = []
-  pat_id = isnothing(pat) ? only(parts(h, :PatternCC)) : pat
-  rule_id = isnothing(rule) ? only(parts(h, :Rule)) : rule
+  ep = empty_profile(h)
 
+  isnothing(pat) || error("Restricting to a single pattern not yet supported")
+  isnothing(rule) || error("Restricting to a single rule not yet supported")
+  nparts(h, :Pattern) == nparts(h, :Rule) == 1 || error("Must be unique")
 
-
-  for qrule_id in incident(h, rule_id, :rule)
-    profile = h[qrule_id, :profile]
-
-    # cache subobject morphism -> interactions
-    lr_to_ints = DefaultDict{Pair{Int,Int},Vector{Int}}(()->Int[])
-    for int in parts(h, :Interaction) 
-      (l,r) = h[int, :idata_L], h[int, :idata_R]
-      h[int, :i_rule] == qrule_id && push!(lr_to_ints[l=>r], int)
-    end
-
-    quotient || profile == empty_profile(h) || continue
-    for subpat_id in incident(h, pat_id, :subpattern)
-      old = h[subpat_id, :subobj]
-      for decomp_id in incident(h, subpat_id, :decomp_tgt)
-        minimal && !h[decomp_id, :is_minimal] && continue
-        decomp_elems = incident(h, decomp_id, :decomp)
-        batch || length(decomp_elems) == 1 || continue
-        Ls = h[decomp_elems, :decomp_elem_L]
-        Rs = h[decomp_elems, :decomp_elem_R]
-        int_sets = [lr_to_ints[L=>R] for (L,R) in zip(Ls,Rs)]
-        for int_combo in Iterators.product(int_sets...)
-          decomps = map(zip(Ls,Rs,int_combo)) do (L_id,R_id,int_id)
-            L, R = h[[L_id, R_id], :subobj]
-            LR = subobj_incl(h, L_id,R_id)
-            hL, hR = h[int_id, :idata_iL], h[int_id, :idata_iR]
-            (;L, R, LR, hL, hR)
-          end |> (batch ? identity : only)
-          push!(res, (;profile, old, decomps))
+  good_interactions = filter(parts(h, :Interaction)) do int
+    QL, QR = h[int,:idata_L], h[int,:idata_R]
+    qrule_id, hL, hR = h[int, :i_rule], h[int, :idata_iL],  h[int, :idata_iR]
+    f, rule_id  = h[qrule_id, :qrule], h[qrule_id, :rule]
+    L, R = dom(f), codom(f)
+    !any(parts(h, :Interaction)) do int′
+      int == int′ && return false 
+      (QL, QR) == (h[int′,:idata_L],h[int′,:idata_R]) || return false
+      qrule_id′, hL′, hR′ = [h[int′, fk] for fk in [:i_rule, :idata_iL, :idata_iR]]
+      rule_id == h[qrule_id′, :rule] || return false
+      f′ = h[qrule_id′, :qrule]
+      L′, R′ = dom(f′), codom(f′)
+      qLs, qRs = homomorphisms(L′,L; epic=true), homomorphisms(R′,R; epic=true) 
+      any(Iterators.product(qLs, qRs)) do (qL,qR)
+        @withmodel ACSetCategory(L) (⋅, pushout, universal) begin 
+          force(hL′⋅qL)==hL || return false
+          force(hR′⋅qR)==hR || return false
+          ιL, ιR′ = po = pushout(qL, f′)
+          σ = universal(po, Cospan(f, qR))
+          is_epic(σ) && is_monic(σ) || return false
+          force(ιL⋅σ) == f || return false 
+          force(ιR′⋅σ) == qR
         end
       end
     end
   end
-  # for pr in parts(h, :Interaction)
-  #   qrule_id = h[pr, :i_rule]
-  #   h[qrule_id, :profile] == empty_profile(h) || continue
 
-  #   subpattern = h[subpattern_id, :subobj]
-  #   is_epic(subpattern) && continue
-  #   pattern = h[subpattern_id, (:subpattern, :pattern_cc)]
-  #   isnothing(subpat) || subpat == subpattern || continue
-  #   isnothing(pat) || pat == pattern || continue 
-
-  #   isnothing(rule) || rule == h[qrule_id, :qrule] || continue
-  #   for interaction_id in incident(h, pr, :patrule)
-  #     iL, iR = h[interaction_id, :iL], h[interaction_id, :iR]
-  #     push!(res, (;subpattern_id, qrule_id, interaction_id, 
-  #                subpattern=Subobject(subpattern), rule=h[qrule_id, :qrule], 
-  #                iL, iR))
+  for decomp in incident(h, true, :is_minimal)
+    old_id, colim, iso = [h[decomp, fk] for fk in [:decomp_tgt, :decomp_colim, :decomp_iso]]
+    old = h[old_id, :subobj]
+    elems = incident(h, decomp, :decomp)
+    batch || length(elems) == 1 || continue 
+    interaction_sets = map(elems) do elem 
+      elem_L, elem_R = h[elem, :decomp_elem_L], h[elem, :decomp_elem_R]
+      interactions = good_interactions # alternatively, parts(h, :Interaction)
+      filter(interactions) do int
+        quotient || h[int, (:i_rule, :profile)] == ep || return false
+        h[int, :idata_L] == elem_L || return false 
+        h[int, :idata_R] == elem_R || return false 
+        true
+      end
+    end
+    for int_combo in Iterators.product(interaction_sets...)
+      decomps = map(zip(elems,int_combo)) do (elem, int)
+        qrule_id, L_id, R_id = h[int, :i_rule], h[int, :idata_L], h[int, :idata_R]
+        QL, QR = h[[L_id, R_id], :subobj]
+        quot, rule_id, qrule = [h[qrule_id, fk] for fk in [:profile ,:rule, :qrule]]
+        rule = h[only(incident(h, rule_id, :rule) ∩ incident(h, ep, :profile)), :qrule]
+        LR = subobj_incl(h, L_id,R_id)
+        hL, hR = h[int, :idata_iL], h[int, :idata_iR]
+        (; rule, quot, qrule, QL, QR, LR, hL, hR)
+      end |> (batch ? identity : only)
+      push!(res, (; old, colim, iso, decomps))
+    end
+  end
+  # pat_id = isnothing(pat) ? only(parts(h, :PatternCC)) : pat
+  # rule_id = isnothing(rule) ? only(parts(h, :Rule)) : rule
+  # for qrule_id in incident(h, rule_id, :rule)
+  #   profile = h[qrule_id, :profile]
+  #   quot = h[qrule_id, :l_quot]
+  #   # cache subobject morphism -> interactions
+  #   lr_to_ints = DefaultDict{Pair{Int,Int},Vector{Int}}(()->Int[])
+  #   for int in parts(h, :Interaction) 
+  #     (l,r) = h[int, :idata_L], h[int, :idata_R]
+  #     h[int, :i_rule] == qrule_id && push!(lr_to_ints[l=>r], int)
   #   end
-  # end
+
+  #   quotient || profile == empty_profile(h) || continue
+  #   for subpat_id in incident(h, pat_id, :subpattern)
+  #     old = h[subpat_id, :subobj]
+  #     for decomp_id in incident(h, subpat_id, :decomp_tgt)
+  #       minimal && !h[decomp_id, :is_minimal] && continue
+  #       decomp_elems = incident(h, decomp_id, :decomp)
+  #       colim = h[decomp_id, :decomp_colim]
+  #       batch || length(decomp_elems) == 1 || continue
+  #       Ls = h[decomp_elems, :decomp_elem_L]
+  #       Rs = h[decomp_elems, :decomp_elem_R]
+  #       int_sets = [lr_to_ints[L=>R] for (L,R) in zip(Ls,Rs)]
+  #       for int_combo in Iterators.product(int_sets...)
+  #         decomps = map(zip(Ls,Rs,int_combo)) do (L_id,R_id,int_id)
+  #           L, R = h[[L_id, R_id], :subobj]
+  #           LR = subobj_incl(h, L_id,R_id)
+  #           hL, hR = h[int_id, :idata_iL], h[int_id, :idata_iR]
+  #           (;L, R, LR, hL, hR)
+  #         end |> (batch ? identity : only)
+  #         push!(res, (;profile, quot, old, colim, decomps))
+  #       end
+  #     end
+  #   end
   res 
 end
+
+""" 
+Do a case analysis that mixes monic and nonmonic matches but avoids unnecessary 
+case splitting on possible equations between items in the pattern of a rule. 
+"""
+function case_analysis_nonmonic(ihs::IHS)
+  qcases = get_cases(ihs; batch=true, quotient=true) 
+  f = ihs[1, :qrule]
+  𝒞 = ACSetCategory(state(ihs))
+  filter(qcases) do case
+    old_subobj, new_subobjs = case[:old], case[:decomps]
+    # check if `case` is a quotient of `caseₒ`
+    !any(qcases) do caseₒ
+      old_subobjₒ, new_subobjsₒ = getindex.(Ref(caseₒ),[:old, :decomps])
+      _,ruleₒ = pushout[𝒞](f,qₒ)
+      # cases must share old subobject
+      old_subobjₒ == old_subobj || return false
+      # no duplicates between rewrites at same quotient level
+      q == qₒ && return false
+      # `qₒ` must be a bigger quotient than `q`, look to factor `qₒ=q⋅q′`
+      qqs = homomorphisms(codom(qₒ), codom(q); epic=true)
+      isempty(qqs) && return false 
+      q′ = only(qqs)
+
+      # Need to match up the interactions.
+      length(new_subobjs) == length(new_subobjsₒ) || return false
+      all(new_subobjs) do new_subobj 
+        new_subobjₒ_idx = findall(new_subobjsₒ) do new_subobjₒ
+          all([:L,:R,:LR]) do key 
+            new_subobj[key] == new_subobjₒ[key]
+          end || return false
+          new_subobj[:hL] == force(compose[𝒞](new_subobjₒ[:hL],q′)) || return false 
+          _,hr′ = po = pushout[𝒞](q′,ruleₒ);
+          any(isomorphisms(apex(po), codom(new_subobj[:hR]))) do σ
+            new_subobj[:hR] == force(compose[𝒞](new_subobjₒ[:hR], compose[𝒞](hr′,σ)))
+          end
+        end
+        isempty(new_subobjₒ_idx) && return false
+        length(new_subobjₒ_idx) > 1 && error("Unexpected")
+        return true
+      end
+    end
+  end
+end
+
 
 """ Given an `Interaction` id, return the interaction PB square """
 function interaction_square(ihs::IHS, i::Int)
@@ -271,5 +361,13 @@ subobj_lt(X::Subobject{<:ACSet}, Y::Subobject{<:ACSet}) =
 
 subobj_lt(A::ACSetTransformation, B::ACSetTransformation) = 
   !isnothing(subobj_incl(A,B))
+
+subobj_eq(X::Subobject{<:ACSet}, Y::Subobject{<:ACSet}) = 
+  subobj_eq(hom(X), hom(Y))
+
+subobj_eq(A::ACSetTransformation, B::ACSetTransformation) = 
+  all(ob(acset_schema(A))) do o 
+    Set(collect(A[o])) == Set(collect(B[o]))
+  end
 
 end # module
