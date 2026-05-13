@@ -19,10 +19,10 @@ view_graph(a::Grph, path=tempname()) = view_graph(create(a), path)
 function view_graph(a::ACSetTransformation, path=tempname())
   g = codom(a)
   pg = to_graphviz_property_graph(g)
-  for v in collect(a[:V])
+  for v in Base.collect(a[:V])
     set_vprops!(pg, v, Dict([:style=>"filled",:color=>"red",:fillcolor=>"red"]))
   end
-  for e in collect(a[:E])
+  for e in Base.collect(a[:E])
     set_eprops!(pg, e, Dict([:color=>"red"]))
   end
   gv = to_graphviz(pg)

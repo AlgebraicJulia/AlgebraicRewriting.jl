@@ -35,13 +35,13 @@ this in advance, use [`can_pushout_complement`](@ref).
     l, m = pair
     I, L, G = dom(l), codom(l), codom(m)
     # Construct inclusion g: K ↪ G.
-    l_image = Set(collect(l))
+    l_image = Set(Base.collect(l))
     m_image = Set([ m(x) for x in L if x ∉ l_image ])
     g = FinFunction([x for x in G if x ∉ m_image], G)
     K = dom(g)
 
     # Construct morphism k: I → K using partial inverse of g.
-    g_inv = Dict{Int,Int}(zip(collect(g), K))
+    g_inv = Dict{Int,Int}(zip(Base.collect(g), K))
     k = FinFunction(Vector{Int}(map(I) do x
       y = m(l(x))
       get(g_inv, y) do; error("Identification failed for domain element $x") end
@@ -51,7 +51,7 @@ this in advance, use [`can_pushout_complement`](@ref).
   end
 
   pushout_complement_violations(p::ComposablePair) =
-    vcat(collect.(id_condition(p...))...)
+    vcat(Base.collect.(id_condition(p...))...)
 end
 
 @instance ThPushoutComplement{FinSetInt, CopairedFinDomFunction{T, Int, Int}
@@ -64,7 +64,7 @@ end
   end
 
   pushout_complement_violations(p::ComposablePair) =
-    vcat(collect.(id_condition(p...))...)
+    vcat(Base.collect.(id_condition(p...))...)
 
 end
 
@@ -107,7 +107,7 @@ this in advance, use [`can_pushout_complement`](@ref).
   end
 
   pushout_complement_violations(p::ComposablePair) =
-    vcat(collect.(id_condition(p...))...)
+    vcat(Base.collect.(id_condition(p...))...)
 
 end
 
@@ -127,7 +127,7 @@ We'll also assume that the map m: L+T->G+T is secretly just a map L->T (G=∅).
   end
 
   pushout_complement_violations(p::ComposablePair) =
-    vcat(collect.(id_condition(p...))...)
+    vcat(Base.collect.(id_condition(p...))...)
 
 end
 
@@ -145,7 +145,7 @@ Returns pair of iterators of
       item in G.
 """
 function id_condition(l::FinFunction, m::FinFunction)
-  l_image = Set(collect(l))
+  l_image = Set(Base.collect(l))
   l_imageᶜ = [ x for x in codom(l) if x ∉ l_image ]
   m_image = Set(map(m, l_imageᶜ))
   ((i for i in l_image if m(i) ∈ m_image),
@@ -156,7 +156,7 @@ end
 
 """ Kleisli composition """
 function id_condition(l::FinDomFunction, m::FinDomFunction)
-  l_image = Set(collect(l))
+  l_image = Set(Base.collect(l))
   l_imageᶜ = [ x for x in dom(m) if Left(x) ∉ l_image ]
   m_image = Set(map(m, l_imageᶜ))
   err1 = filter(l_image) do i

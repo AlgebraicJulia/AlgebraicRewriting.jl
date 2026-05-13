@@ -168,7 +168,7 @@ function merge_profile(f::ACSetTransformation)
     for p in parts(X, o)
       push!(d[f[o](p)], p)
     end
-    o => Set(filter(e->length(e)>1, collect(values(d))))
+    o => Set(filter(e->length(e)>1, Base.collect(values(d))))
   end)
 end
 
@@ -222,7 +222,7 @@ function alt_decomps(gr, sos::Vector, esos, iₐ::Int)
     curr = pop!(queue)
     curr ∈ seen && continue 
     push!(seen, curr)
-    curr_v = sort(collect(curr))
+    curr_v = sort(Base.collect(curr))
 
     ob1 = dsos[[L for (_,_,L,_) in curr_v]]
     ob2 = dsos[[iₐ; [R for (_,_,_,R) in curr_v]]]

@@ -75,7 +75,7 @@ function merge_graphs(g1,g2)
   overlap_g = CGraph()
   p1, p2 = [Dict(:V=>Int[], :E=>Int[]) for _ in 1:2]
   # Merge vertices
-  for (v1,X) in filter(x->x[2] isa ACSet, collect(enumerate(g1[:vlabel])))
+  for (v1,X) in filter(x->x[2] isa ACSet, Base.collect(enumerate(g1[:vlabel])))
     v2 = findfirst(==(X), g2[:vlabel])
     if !isnothing(v2)
       add_vertex!(overlap_g; vlabel=X)
@@ -83,7 +83,7 @@ function merge_graphs(g1,g2)
     end
   end 
   # Merge literal edges
-  for (e1,X) in filter(x->x[2] isa ACSetTransformation, collect(enumerate(g1[:elabel])))
+  for (e1,X) in filter(x->x[2] isa ACSetTransformation, Base.collect(enumerate(g1[:elabel])))
     src1, tgt1 = g1[e1,:src], g1[e1,:tgt]
     e2 = findfirst(==(X), g2[:elabel])
     if !isnothing(e2)
@@ -92,7 +92,7 @@ function merge_graphs(g1,g2)
     end
   end 
   # Merge variable edges 
-  i1, i2 = [collect(filter(x->x isa Int, g[:elabel])) for g in [g1,g2]]
+  i1, i2 = [Base.collect(filter(x->x isa Int, g[:elabel])) for g in [g1,g2]]
   for v in i1 ∩ i2
     e1,e2 = [findfirst(==(v), g[:elabel]) for g in [g1,g2]]
     src1, tgt1 = g1[e1,:src], g1[e1,:tgt]
@@ -142,7 +142,7 @@ commute or to not commute
   commutes::Bool 
   function Commutes(p...; commutes=true)
     !(any(isempty, p) || isempty(p)) || error("Paths cannot be empty")
-    return new(collect(p),commutes)
+    return new(Base.collect(p),commutes)
   end
 end
 
@@ -209,7 +209,7 @@ Exists(e, x; st=True, monic=false) = Quantifier(e,:Exists,x; st, monic)
 """Disjunction of multiple expressions"""
 @struct_hash_equal struct BoolOr <: BoolExpr 
   exprs::Vector{BoolExpr}
-  BoolOr(x...) = new(collect(filter(!=(False),x)))
+  BoolOr(x...) = new(Base.collect(filter(!=(False),x)))
 end
 
 Base.show(io::IO, b::BoolOr) = 
@@ -226,7 +226,7 @@ subexprs(b::BoolOr) = b.exprs
 """Conjunction of multiple expressions"""
 @struct_hash_equal struct BoolAnd <: BoolExpr 
   exprs::Vector{BoolExpr}
-  BoolAnd(x...) = new(collect(filter(!=(True),x)))
+  BoolAnd(x...) = new(Base.collect(filter(!=(True),x)))
 end
 
 Base.show(io::IO, b::BoolAnd) = 
@@ -513,7 +513,7 @@ function getquantifier(d::BoolExpr, e::Int)
   if d isa Quantifier && d.e == e
     quantifier_symbol(d)
   else 
-    qs = collect(filter(!isnothing, getquantifier.(subexprs(d), Ref(e))))
+    qs = Base.collect(filter(!isnothing, getquantifier.(subexprs(d), Ref(e))))
     isempty(qs) ? nothing : only(qs)
   end
 end

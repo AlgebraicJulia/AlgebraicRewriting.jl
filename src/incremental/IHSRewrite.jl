@@ -162,7 +162,7 @@ function rewrite_bulk_monic_matches(ihs::IHS, m::Vector{<:ACSetTransformation},
       dom(σ) == codom(ihs[iₚ, :subobj]) || error("Bad")
       elems = incident(ihs, d, :decomp)
       ND = length(elems)
-      getindex.(Ref(ihs), elems, :decomp_elem_idx) == collect(1:ND) || error(
+      getindex.(Ref(ihs), elems, :decomp_elem_idx) == Base.collect(1:ND) || error(
         "Decomp out of order!")
       LRs = map(elems) do elem 
         (ihs[elem, :decomp_elem_L], ihs[elem, :decomp_elem_R] )

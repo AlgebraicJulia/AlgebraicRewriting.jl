@@ -23,7 +23,7 @@ struct StructuredMultiCospanHom{L}
     length(m) == length(legs(t)) + 1 || error("bad # maps")
     𝒞 = get_ACS(L)
     ⋅(a,b) = force(compose[𝒞](a,b))
-    eq(f) = (dom(f), codom(f), [k=>collect(v) for (k,v) in pairs(components(f))])
+    eq(f) = (dom(f), codom(f), [k=>Base.collect(v) for (k,v) in pairs(components(f))])
     for (i,(s_leg, t_leg, st_map)) in enumerate(zip(legs(s), legs(t), m[2:end]))
       ms, mt = force(s_leg ⋅ m[1]), force(st_map ⋅ t_leg)
       dom(ms) == dom(mt) || error("domain error $(dom(ms)) $(dom(mt))")
@@ -80,10 +80,10 @@ function homomorphisms(pat::StructuredMulticospan{L},
   # Add leg data data to each ACset
   #--------------------------------
   for (Lname, lname, l) in zip(Ls, ls, legs(pat))
-    add_parts!(tpat, Lname, nparts(dom(l), V); Dict([lname => collect(l[V])])...)
+    add_parts!(tpat, Lname, nparts(dom(l), V); Dict([lname => Base.collect(l[V])])...)
   end
   for (Lname, lname, l) in zip(Ls, ls, legs(tgt))
-    add_parts!(ttgt, Lname, nparts(dom(l), V); Dict([lname => collect(l[V])])...)
+    add_parts!(ttgt, Lname, nparts(dom(l), V); Dict([lname => Base.collect(l[V])])...)
   end
 
   # Compute homomorphisms in alternate schema
@@ -187,7 +187,7 @@ function composeH_(f::openrule, g::openrule)::openrule
   𝒞 = get_ACS(L)
 
   # we only care about equality up to i/o behavior (== considers indexing)
-  non_indexed(x) = (dom(x), codom(x), collect.(values(components(x))))
+  non_indexed(x) = (dom(x), codom(x), Base.collect.(values(components(x))))
   non_indexed(λ.maps[end]) == non_indexed(χ.maps[2]) || error(
     "cannot horizontally compose")
   non_indexed(ρ.maps[end]) == non_indexed(ζ.maps[2]) || error(

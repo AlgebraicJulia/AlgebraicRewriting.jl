@@ -46,7 +46,7 @@ function find_deps(seq::Vector{RWStep}; cat)
   hom = vcat([[left(s.g), right(s.g)] for s in seq]...)
   src = vcat([fill(i,2) for i in 1:n]...); # [1, 1, 2, 2, 3, 3, ..., n, n]
   tgt = [1,vcat([fill(i,2) for i in 2:n]...)...,n+1] # [1, 2, 2, ..., n, n, n+1]
-  hs  = collect(zip(hom, src, tgt))
+  hs  = Base.collect(zip(hom, src, tgt))
   clim = colimit[cat](BipartiteFreeDiagram(ob₁, ob₂, hs))
   clegs = legs(clim)
 
@@ -55,7 +55,7 @@ function find_deps(seq::Vector{RWStep}; cat)
   pres, del, cre = [Dict() for _ in 1:3]
   for o in Ob 
     pres[o], del[o], cre[o] = [[] for _ in 1:3]
-    img(f) = Set(collect(f[o])) # the image of a map
+    img(f) = Set(Base.collect(f[o])) # the image of a map
     for (i,s) in enumerate(seq)
       push!(pres[o], @withmodel cat (⋅) begin 
         img(left(s.rule) ⋅ s.match ⋅ clegs[i])

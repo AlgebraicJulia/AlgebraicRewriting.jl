@@ -131,8 +131,8 @@ function good_merge_overlap(subobj::ACSetTransformation, h::ACSetTransformation,
   end
   all(isempty, values(merged_mat)) && return false # fail condition 1
   # parts of L which are sent to merged parts of R
-  L_merged = Dict(map(collect(pairs(merged_mat))) do (k, vs)
-    k => Set(map(collect(vs)) do v 
+  L_merged = Dict(map(Base.collect(pairs(merged_mat))) do (k, vs)
+    k => Set(map(Base.collect(vs)) do v 
       subobj[k](k ∈ ob(S) ? v : AttrVar(v))
     end)
   end)
@@ -169,7 +169,7 @@ function good_overlap(subobj::ACSetTransformation, h::ACSetTransformation,
 
   for k in ob(S)
     for p in parts(O, k)
-      h[k](p) ∈ collect(I_R[k]) || push!(new_mat[k], p)
+      h[k](p) ∈ Base.collect(I_R[k]) || push!(new_mat[k], p)
     end
   end
   for k in attrtypes(S)
@@ -179,13 +179,13 @@ function good_overlap(subobj::ACSetTransformation, h::ACSetTransformation,
     end
   end
   all(isempty, values(new_mat)) && return false # fail condition 1
-  L_new = Dict(map(collect(pairs(new_mat))) do (k, vs)
-    k => Set(map(collect(vs)) do v 
+  L_new = Dict(map(Base.collect(pairs(new_mat))) do (k, vs)
+    k => Set(map(Base.collect(vs)) do v 
       subobj[k](k ∈ ob(S) ? v : AttrVar(v))
     end)
   end)
   for k in ob(S)
-    for p in setdiff(parts(L, k), collect(subobj[k])) # for all old material
+    for p in setdiff(parts(L, k), Base.collect(subobj[k])) # for all old material
       for (f, _, cd) in homs(S; from=k) # for all things old material depends on
         cd == k && continue # TODO can we do this kind of filtering for, e.g. DDS?
         L[p, f] ∈ L_new[cd] && return false # fail condition 2
@@ -225,8 +225,8 @@ between two things which are themselves pattern-sized.
 function nac_overlap(nac, update::ACSetTransformation)
   N = codom(nac)
   Ob = ob(acset_schema(N))
-  L_parts_in_N = Dict(o=>Set(collect(nac.m[o])) for o in Ob)
-  non_deleted_X_parts = Dict(o=>Set(collect(update[o])) for o in Ob)
+  L_parts_in_N = Dict(o=>Set(Base.collect(nac.m[o])) for o in Ob)
+  non_deleted_X_parts = Dict(o=>Set(Base.collect(update[o])) for o in Ob)
   mostly_deleted_X = hom(~Subobject(update)) # the deleted stuff, and a bit more
   χ = dom(mostly_deleted_X)
   undeleted = Dict(map(Ob) do o 
@@ -345,8 +345,8 @@ Convert a morphism X → Ω into a subobject X'↣X, assuming that Ω was genera
 by Catlab's `subobject_classifier` function.
 """
 function to_subobj(f::ACSetTransformation)
-  Subobject(dom(f); Dict(map(collect(pairs(components(f)))) do (k, v)
-    k => findall(==(1), collect(v))
+  Subobject(dom(f); Dict(map(Base.collect(pairs(components(f)))) do (k, v)
+    k => findall(==(1), Base.collect(v))
   end)...)
 end
 
@@ -394,7 +394,7 @@ function is_combinatorially_monic(f::ACSetTransformation)
   S = acset_schema(dom(f))
   all(o -> is_monic(f[o]), ob(S)) || return false
   return all(attrtype(S)) do o 
-    attrimg = filter(v -> v isa AttrVar, collect(f[o]))
+    attrimg = filter(v -> v isa AttrVar, Base.collect(f[o]))
     length(attrimg) == length(unique(attrimg))
   end
 end
@@ -475,7 +475,7 @@ function all_epis(X::ACSet)
       end
     end
   end
-  return cheap_uncurry.(collect(values(epis)))
+  return cheap_uncurry.(Base.collect(values(epis)))
 end
 
 eq(x::Symbol) = Symbol("$(x)_eq")

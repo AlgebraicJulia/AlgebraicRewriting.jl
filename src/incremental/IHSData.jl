@@ -141,7 +141,7 @@ function to_datalog_json(db::IHS, JSON_FILE::String; rename=Dict())
     r_inv = invert_hom(db[qr, :r_quot]; monic=false) # R~ -> R
     l_inv = qrule ⋅ r_inv # L~ -> R
       
-    eqclasses = map(collect.(collect(db[qr, :profile][ob_name]))) do eqset 
+    eqclasses = map(Base.collect.(Base.collect(db[qr, :profile][ob_name]))) do eqset 
       sort(f[ob_name].(eqset))
     end
     quintuples = []
@@ -160,8 +160,8 @@ function to_datalog_json(db::IHS, JSON_FILE::String; rename=Dict())
       XL = db[elem, :decomp_elem_L]
       XR = db[elem, :decomp_elem_R]
       for int in lr_to_ints[XL=>XR]
-        hl = collect((db[int, :idata_iL] ⋅ l_inv)[ob_name])
-        hr = collect((db[int, :idata_iR] ⋅ r_inv)[ob_name])
+        hl = Base.collect((db[int, :idata_iL] ⋅ l_inv)[ob_name])
+        hr = Base.collect((db[int, :idata_iR] ⋅ r_inv)[ob_name])
         push!(quintuples, (;XG,XL,XR,hl,hr))
       end
     end

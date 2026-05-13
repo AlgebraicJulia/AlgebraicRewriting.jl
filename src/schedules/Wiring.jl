@@ -24,15 +24,15 @@ There are also higher level patterns built from these generating morphisms.
 ##################
 """Visualize the data of a CSet homomorphism"""
 str_hom(m::ACSetTransformation) = join([
-  "$k: $(collect(c))" for (k,c) in pairs(components(m))
-  if !isempty(collect(c))], '\n')
+  "$k: $(Base.collect(c))" for (k,c) in pairs(components(m))
+  if !isempty(Base.collect(c))], '\n')
 
 struct Names{T}
   from_name::Dict{String,T}
   to_name::Dict{T,String}
-  Names(d::Dict{String,T}) where T = new{T}(d, Dict([v=>k for (k,v) in collect(d)]))
+  Names(d::Dict{String,T}) where T = new{T}(d, Dict([v=>k for (k,v) in Base.collect(d)]))
 end
-Names(d::Dict) = Names(Dict([string(k)=>v for (k,v) in collect(d)]))
+Names(d::Dict) = Names(Dict([string(k)=>v for (k,v) in Base.collect(d)]))
 Names(;kw...) = Names(Dict([string(k)=>v for (k,v) in pairs(kw)]))
 Base.getindex(n::Names,s::String) = n.from_name[s]
 Base.getindex(n::Names,s::Symbol) = n[string(s)]
@@ -56,13 +56,13 @@ TODO double check that this does not introduce any wire splitting.
 function mk_sched(t_args::NamedTuple,args::NamedTuple,names::Names{T},
                   kw::Union{NamedTuple,AbstractDict}, wd::Expr) where T
   n_trace=length(t_args)
-  os = Dict{Symbol, T}(Symbol(k)=>v for (k,v) in collect(names.from_name))
+  os = Dict{Symbol, T}(Symbol(k)=>v for (k,v) in Base.collect(names.from_name))
   hs = Dict{Symbol, Schedule}(Symbol(k)=>v isa AgentBox ? singleton(v) : v 
                               for (k,v) in pairs(kw))
   P = Presentation(TM)
-  os_ = Dict(v=>add_generator!(P, Ob(TM,k)) for (k,v) in collect(os))
+  os_ = Dict(v=>add_generator!(P, Ob(TM,k)) for (k,v) in Base.collect(os))
 
-  for (k,v) in collect(pairs(hs))
+  for (k,v) in Base.collect(pairs(hs))
     i = (isempty(input_ports(v)) 
         ? munit(TM.Ob) 
         : otimes([os_[ip] for ip in input_ports(v)]))
@@ -241,7 +241,7 @@ function wire_vals(wd::WiringDiagram, i::Int)
   (s,t,_,sval,tval) = wnames[i]
   map(zip(wd.diagram[s], wd.diagram[t])) do (op, ip)
     d = [wd.diagram[op, sval],wd.diagram[ip, tval]]
-    return unique(filter(x->!isnothing(x), collect(values(d))))
+    return unique(filter(x->!isnothing(x), Base.collect(values(d))))
   end 
 end
 

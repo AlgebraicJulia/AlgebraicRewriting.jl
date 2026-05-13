@@ -59,7 +59,7 @@ each of which has N-many slots."
 List = PMonad{Nothing}(nothing, xs->vcat(last.(xs)...))
 
 # function joinlist(xs)  
-#   collect(enumerate(xs))
+#   Base.collect(enumerate(xs))
 # end
 
 

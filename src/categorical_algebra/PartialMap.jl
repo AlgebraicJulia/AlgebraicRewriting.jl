@@ -80,19 +80,19 @@ function partial_map_functor_ob(x::StructCSet;
   # foreign keys
   d = DefaultDict{Symbol,Dict{Vector{Int},Int}}(()->Dict{Vector{Int},Int}())
 
-  hdata = collect(homs(S))
+  hdata = Base.collect(homs(S))
   for o in topo_obs(S)
     homs_cds = [(h,cd) for (h,d,cd) in hdata if d==o] # outgoing morphism data
     if isempty(homs_cds)
       d[o][Int[]] = add_part!(res, o)
     else
-      homs, cds = collect.(zip(homs_cds...))
+      homs, cds = Base.collect.(zip(homs_cds...))
       for c in Iterators.product([1:nparts(res,cd) for cd in cds]...)
-        d[o][collect(c)] = v = add_part!(res, o; Dict(zip(homs,c))...)
+        d[o][Base.collect(c)] = v = add_part!(res, o; Dict(zip(homs,c))...)
 
         # Forbid modifications which violate schema equations
         if !isnothing(pres) && !check_eqs(res, pres, o, v)
-          delete!(d[o], collect(c))
+          delete!(d[o], Base.collect(c))
           rem_part!(res, o, v)
         end
       end
@@ -116,10 +116,10 @@ function partial_map_functor_hom(f::ACSetTransformation;
   S = acset_schema(X)
   (d, _), (cd, cddict) = [partial_map_functor_ob(x; pres=pres) for x in [X,Y]]
   comps, mapping = Dict{Symbol,Vector{Int}}(), Dict()
-  hdata = collect(homs(S))
+  hdata = Base.collect(homs(S))
 
   for (k,v) in pairs(f.components)
-    mapping[k] = vcat(collect(v), [nparts(Y, k)+1]) # map extra val to extra
+    mapping[k] = vcat(Base.collect(v), [nparts(Y, k)+1]) # map extra val to extra
   end
 
   for o in topo_obs(S)
@@ -143,7 +143,7 @@ function partial_map_classifier_eta(x::StructCSet; cat,
     pres::Union{Nothing, Presentation}=nothing)::ACSetTransformation
   S = acset_schema(x)
   codom = partial_map_functor_ob(x; pres=pres)[1]
-  d = Dict([k=>collect(v) for (k,v) in pairs(id[cat](x).components)])
+  d = Dict([k=>Base.collect(v) for (k,v) in pairs(id[cat](x).components)])
   ACSetTransformation(x, codom; d...)
 end
 
@@ -169,7 +169,7 @@ function partial_map_classifier_universal_property(
     pres::Union{Nothing, Presentation}=nothing, check=false
     )::ACSetTransformation
   S = acset_schema(dom(m))
-  hdata   = collect(homs(S))
+  hdata   = Base.collect(homs(S))
   A, B    = codom[cat](m), codom[cat](f)
   ηB      = partial_map_classifier_eta(B; cat, pres=pres)
   Bdict   = partial_map_functor_ob(B; pres=pres)[2]
@@ -181,7 +181,7 @@ function partial_map_classifier_universal_property(
   # Get mapping of the known values
   for (o, fcomp) in pairs(components(f))
     unknown[o] = nparts(TB, o)
-    for (aval, fval) in zip(collect(m[o]), collect(fcomp))
+    for (aval, fval) in zip(Base.collect(m[o]), Base.collect(fcomp))
       fdata[o][aval] = fval
     end
   end
