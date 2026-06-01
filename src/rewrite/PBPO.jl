@@ -47,7 +47,7 @@ function of the match morphism.
     # check things match up
     cat = isnothing(cat) ? infer_acset_cat(l) : cat
     S = acset_schema(dom[cat](l))
-    monic = monic === true ? collect(ob(S)) : monic
+    monic = monic === true ? Base.collect(ob(S)) : monic
 
     all([is_natural(x; cat) for x in  [l,r,tl,tk,l′]]) || error("Unnatural")
     dom[cat](l) == dom[cat](r) == dom[cat](tk) || error("bad K")
@@ -255,7 +255,7 @@ function partial_abstract(lg::ACSetTransformation; cat)
       end
     end
     subs[at] = subdict
-    merges[at] = collect(filter(l->!isempty(l), collect(values(mergelist))))
+    merges[at] = Base.collect(filter(l->!isempty(l), Base.collect(values(mergelist))))
   end
   pabs_G = sub_vars(dom[cat](abs_G), subs, merges; cat)
   
@@ -266,7 +266,7 @@ function partial_abstract(lg::ACSetTransformation; cat)
 
   # The quotienting via `sub_vars` means L->PA determined purely by ob components
   to_pabs_init = Dict{Symbol,Vector{Int}}(map(ob(S)) do o
-    o => map(prt(o).(collect(lg[o]))) do i 
+    o => map(prt(o).(Base.collect(lg[o]))) do i 
       pabs_G[o](only(preimage(abs_G[o], i)))
     end
   end)
@@ -319,7 +319,7 @@ function rewrite_match_maps(rule::PBPORule, mα; cat, kw...)
   v, i = var_pullback(Cospan(u′, rule.tk))
   u = compose[cat](invert_iso(i), v)
   abs_r = homomorphism(dom[cat](abs_K), codom[cat](right(rule)); 
-                       initial=Dict(o=>collect(right(rule)[o]) for o in ob(S)))
+                       initial=Dict(o=>Base.collect(right(rule)[o]) for o in ob(S)))
   w, gr = pushout[cat](abs_r, u)
 
   return Dict(:gl=>gl, :u′=>u′, :u=>u, :gr=>gr, :w=>w)
@@ -337,12 +337,12 @@ function get_expr_binding_map(rule::PBPORule, mtch, res; cat)
   comps = Dict(map(attrtypes(acset_schema(X))) do at 
     T = attrtype_type(X, at)
     # match morphism data
-    bound_vars = Vector{T}(getvalue.(collect(get(m[at]))))
+    bound_vars = Vector{T}(getvalue.(Base.collect(get(m[at]))))
     # For each variable in the intermediate rewrite state, determine what 
     # it refers to in the original graph and what in K′ it refers to, too.
     cmp = compose[SkelKleisli(T)](res[:gl][at],ab[at])
-    G_bound_vars = Vector{Any}(getvalue.(collect(get(cmp))))
-    K_bound_vars = getvalue.(collect(get(res[:u′][at])))
+    G_bound_vars = Vector{Any}(getvalue.(Base.collect(get(cmp))))
+    K_bound_vars = getvalue.(Base.collect(get(res[:u′][at])))
     # Functions we associate with K′ variables 
     exprs = haskey(rule.k_exprs,at) ? rule.k_exprs[at] : Dict()
     # Compute a value for each variable in the result

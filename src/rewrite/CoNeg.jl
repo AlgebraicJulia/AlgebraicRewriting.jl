@@ -7,7 +7,7 @@ import ..Utils: rewrite_match_maps
 import Catlab.CategoricalAlgebra: Subobject
 
 Subobject(X::ACSet, f::ACSetTransformation) = 
-  Subobject(X; Dict([k=>collect(vs) for (k,vs) in pairs(components(f))])...)
+  Subobject(X; Dict([k=>Base.collect(vs) for (k,vs) in pairs(components(f))])...)
 
 """    rewrite_match_maps(r::Rule{:CoNeg}, m)
 Apply a CoNegation rewrite rule (given as a span, L↩I->R) to a ACSet

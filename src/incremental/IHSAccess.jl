@@ -103,7 +103,7 @@ function matches(h::IHS, iₛ::Int, iₚ::Int)
   curr = h[iₛ, :curr]
   feet_matches = map(dom.(legs(colim))) do X
     map(cc_matches(h, iₛ, pattern_cc(h, X))) do match_id
-      cmps = Dict(map(collect(pairs(h[match_id, :match]))) do (k,v)
+      cmps = Dict(map(Base.collect(pairs(h[match_id, :match]))) do (k,v)
         rest = [updates[time][k] for time in (h[match_id, :match_time]+1):curr]
         k => foldl(compose[FinSetC()], [v; rest])
       end )
@@ -114,7 +114,7 @@ function matches(h::IHS, iₛ::Int, iₚ::Int)
   end
   map(Iterators.product(feet_matches...)) do combo
     @withmodel cat (universal, ⋅) begin 
-      force(h[iₚ, :pattern_iso] ⋅ universal(colim, Multicospan(S, collect(combo))))
+      force(h[iₚ, :pattern_iso] ⋅ universal(colim, Multicospan(S, Base.collect(combo))))
     end
   end
 end

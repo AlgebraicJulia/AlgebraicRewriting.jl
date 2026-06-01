@@ -114,7 +114,7 @@ function interp_program!(prog::RewriteProgram, hom::NamedTuple,
   end
   for inst in prog.inits
     fdf = get(hom[inst.attrtype])
-    vals = [getvalue(fdf(v)) for v in sort(collect(dom(fdf)))]
+    vals = [getvalue(fdf(v)) for v in sort(Base.collect(dom(fdf)))]
     m[inst.reg] = @match inst.value begin
       Fresh() => AttrVar(add_part!(state, inst.attrtype))
       Compute(f) => f(vals)

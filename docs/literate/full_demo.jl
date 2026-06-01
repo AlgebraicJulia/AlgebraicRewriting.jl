@@ -188,7 +188,7 @@ l′ = homomorphism(K′,L′; initial=(V=[1,2,3,1,2],));
 
 """Given a match L → G, compute what the typing map G → L' should be"""
 function get_adherence(m::ACSetTransformation) 
-  root, G, descendents  = only(collect(m[:V])), codom(m), Set()
+  root, G, descendents  = only(Base.collect(m[:V])), codom(m), Set()
   queue = [root]
   while !isempty(queue)
     nxt = pop!(queue)
@@ -235,7 +235,7 @@ Here we'll do rewriting in graphs sliced over •⇆•, which is isomorphic to 
 ```
 function graph_slice(s::Slice)
   h = s.slice
-  V, E = collect.([h[:V], h[:E]])
+  V, E = Base.collect.([h[:V], h[:E]])
   g = dom(h)
   (S, T), (I, O) = [[findall(==(i), X) for i in 1:2] for X in [V, E]]
   nS, nT, nI, nO = length.([S, T, I, O])

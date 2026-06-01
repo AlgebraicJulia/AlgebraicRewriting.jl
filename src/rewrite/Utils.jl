@@ -164,8 +164,8 @@ function can_match(r::Rule{T}, m; cat, homsearch=false, initial=Dict()) where T
         return ("Match is not injective", k, m[k])
       end
     end
-    for (k, vs) in collect(initial)
-      errs = check_initial(vs, collect(m[k]))
+    for (k, vs) in Base.collect(initial)
+      errs = check_initial(vs, Base.collect(m[k]))
       if !isempty(errs)
         return ("Initial condition violated", k, errs)
       end
@@ -229,7 +229,7 @@ end
 """Get a list of AttrVar indices which are NOT bound by the I→R morphism"""
 function freevars(r::Rule{T}, attrvar::Symbol) where T
   setdiff(parts(codom(r.R), attrvar), 
-          [v.val for v in collect(r.R[attrvar]) if v isa AttrVar])
+          [v.val for v in Base.collect(r.R[attrvar]) if v isa AttrVar])
 end 
 
 """

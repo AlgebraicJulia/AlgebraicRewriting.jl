@@ -134,7 +134,7 @@ rule = PBPORule(l,r,tl,tk,l′; lcs = [lc])
 rule_no_condition = PBPORule(l,r,tl,tk,l′)
 
 function get_adherence(m::ACSetTransformation) 
-  root, G = only(collect(m[:V])), codom(m)
+  root, G = only(Base.collect(m[:V])), codom(m)
   descendents = Set()
   queue = [root]
   topological_sort(G) # the following assumes G is a DAG
