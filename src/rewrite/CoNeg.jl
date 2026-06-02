@@ -1,4 +1,5 @@
 module CoNeg 
+import Base: collect
 using Catlab.CategoricalAlgebra, GATlab
 
 using ...CategoricalAlgebra.CSets

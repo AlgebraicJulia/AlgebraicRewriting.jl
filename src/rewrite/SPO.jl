@@ -1,5 +1,7 @@
 module SPO 
 
+import Base: collect
+
 using Catlab, Catlab.CategoricalAlgebra
 
 using ...CategoricalAlgebra.CSets: var_pullback, cascade_subobj

@@ -1,5 +1,7 @@
 module Algorithms 
 
+import Base: collect
+
 using DataStructures
 using Catlab
 using ...CategoricalAlgebra.CSets: invert_iso, var_reference

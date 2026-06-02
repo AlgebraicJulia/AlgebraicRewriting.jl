@@ -1,5 +1,7 @@
 module IHSModify
 
+import Base: collect
+
 using DataStructures
 using Catlab
 

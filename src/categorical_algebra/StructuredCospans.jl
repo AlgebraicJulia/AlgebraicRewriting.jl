@@ -1,5 +1,7 @@
 module StructuredCospans
 
+import Base: collect
+
 export StructuredMultiCospanHom, StructuredMulticospan, openrule, can_open_pushout_complement, open_rewrite, open_rewrite_match, idH_, idV_, composeV_, composeH_, id2_, id2V_, id2H_
 
 using Catlab, Catlab.CategoricalAlgebra, Catlab.Theories

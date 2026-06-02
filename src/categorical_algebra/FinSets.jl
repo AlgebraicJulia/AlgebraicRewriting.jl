@@ -1,4 +1,5 @@
 module FinSets
+import Base: collect
 export pushout_complement,can_pushout_complement,id_condition
 
 using Catlab.Theories

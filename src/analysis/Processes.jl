@@ -1,4 +1,5 @@
 module Processes 
+import Base: collect
 export find_deps 
 
 using Catlab

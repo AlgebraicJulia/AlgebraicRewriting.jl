@@ -1,4 +1,5 @@
 module PBPO 
+import Base: collect
 export PBPORule
 
 using Catlab, Catlab.CategoricalAlgebra
