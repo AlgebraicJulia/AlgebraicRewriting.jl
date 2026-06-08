@@ -13,7 +13,8 @@ f = homomorphism(path_graph(Graph, 2), R; initial=(V=[1,3],))
 ihs = IHS(Q, f, Graph());
 
 
-generate_benchmark(ihs) # generates *and* runs the benchmark
+generate_benchmark(ihs; runbenchmark=false) # generates *and* runs the benchmark
+1+1
 
 ########################
 # Simplicial complexes #

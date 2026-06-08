@@ -1,11 +1,15 @@
 import random, time, math, sys
-from collections import namedtuple, defaultdict
+from collections import namedtuple
 import psycopg
 
-SIZE = 1000000 # (default) instance size
-N_REWRITES = 500000
-RELSIZES = {'E':1000000}
-N_TRIALS = 1
+X = 1000000
+SIZE = 2*X # instance size
+N_REWRITES = X # number of rewrites applied
+RELSIZES = {'E':X} # table sizes
+N_TRIALS = 3 # number of trials
+
+QUERY_L = "SELECT x3.src, x3.tgt FROM E AS x3 "
+QUERY_Q = "SELECT x4.src, x5.src, x5.tgt FROM E AS x4, E AS x5 WHERE x5.src = x4.tgt"
 
 class Timer:
   def __init__(self, name): self.name = name
@@ -23,9 +27,12 @@ class Instance:
   def __init__(self, n:int, E:list[tuple]):
     self.n = n 
     self.E = E
-    
+  
+  def relations(self):
+    return {'E':sorted(self.E)}
+
   def rewrite(self, x1:int, x2:int):
-    """Apply rewrite rule, assuming rule preconditions are met"""
+    """Apply rewrite rule, *assuming rule preconditions are met*"""
     r1, r2, r3 = x1, (self.n + 1), x2
     self.n += 1
     self.E.append((r1, r2))
@@ -33,12 +40,14 @@ class Instance:
     return (r1, r2, r3)
 
 def generate_instance(vertices:int, relsizes: dict[str,int])->tuple[int,dict]:
+  """ Generates a random DB instance """
   r = random.Random(0)
-  return Instance(vertices, [[r.randint(1,vertices) for _ in ['src', 'tgt']] 
-           for _ in range(relsizes['E'])])
+  return Instance(vertices, sorted([tuple([r.randint(1,vertices) for _ in ['src', 'tgt']]) 
+           for _ in range(relsizes['E'])]))
 
 
 def db_setup(cur):
+  """ Creates DB tables for rewrite """
   cur.execute("CREATE TABLE IF NOT EXISTS E (src INTEGER, tgt INTEGER)")
   cur.execute("ALTER TABLE E SET (autovacuum_enabled = false, toast.autovacuum_enabled = off)")
 
@@ -48,7 +57,7 @@ def db_setup(cur):
   cur.execute("CREATE TABLE IF NOT EXISTS Q (q1 INTEGER, q2 INTEGER, q3 INTEGER)")
   cur.execute("ALTER TABLE Q SET (autovacuum_enabled = false, toast.autovacuum_enabled = off)")
 
-  cur.execute("CREATE TABLE IF NOT EXISTS Rewrite (r1 INTEGER, r2 INTEGER, r3 INTEGER)")
+  cur.execute("CREATE TABLE IF NOT EXISTS Rewrite (id SERIAL PRIMARY KEY, r1 INTEGER, r2 INTEGER, r3 INTEGER)")
   cur.execute("ALTER TABLE Rewrite SET (autovacuum_enabled = false, toast.autovacuum_enabled = off)")
 
 
@@ -65,6 +74,7 @@ def db_clear(cur):
 
 
 def batch_delta(cur, db: Instance):
+  """ Update Q based on contents of the normal relations and the delta relations, then update the normal relations based on the delta relations """
   with Timer("Rewrites (total)") as total:
     """Run the incremental query via delta rules"""
     # Batch delta query.
@@ -73,7 +83,7 @@ def batch_delta(cur, db: Instance):
           for (x1,x2) in db.E:
             if max([x1,x2]) > SIZE: # i.e. if this is a new E
               copy.write_row((x1,x2))
-  # cur.execute("ANALYZE delta_E")
+    cur.execute("ANALYZE delta_E")
 
 
     with Timer("Update Q") as q_updates:
@@ -96,7 +106,7 @@ def batch_delta(cur, db: Instance):
 
   return TimingData(total.duration_ns, insertions.duration_ns, q_updates.duration_ns, rel_updates.duration_ns)
 
-def batch_kris(cur, db: Instance, rewrites:tuple):
+def batch_kris(cur, _: Instance, rewrites:tuple):
   """Run the incremental query via cube-based approach"""
   with Timer("Rewrites (total)") as total:
 
@@ -125,15 +135,15 @@ def batch_kris(cur, db: Instance, rewrites:tuple):
 
 	UNION ALL
 
-		SELECT RW1.r2, RW1.r3, RW2.r2
-		FROM Rewrite AS RW1, Rewrite AS RW2
-		WHERE RW1.r3 = RW2.r1
+		SELECT RW1.r2, RW1.r1, RW1.r2
+		FROM Rewrite AS RW1
+		WHERE RW1.r1 = RW1.r3
 
 	UNION ALL
 
-		SELECT RW1.r2, RW1.r1, RW1.r2
-		FROM Rewrite AS RW1
-		WHERE RW1.r1 = RW1.r3"""
+		SELECT RW1.r2, RW1.r3, RW2.r2
+		FROM Rewrite AS RW1, Rewrite AS RW2
+		WHERE RW1.r3 = RW2.r1 AND RW1.id != RW2.id"""
       cur.execute(query)
 
     with Timer("Update relations from rewrites") as rel_updates:
@@ -156,25 +166,41 @@ def go(conn, cur):
 
     # Add the instance to SQL 
     #------------------------
-      
     with cur.copy("COPY E (src, tgt) FROM STDIN") as copy:
-      for tup in db.E:
-        copy.write_row(tup)
-
+      for tup in db.E: copy.write_row(tup)
 
     # Generate rewrites
     #------------------
     r, rewrites = random.Random(0), []
     # Get all matches for the pattern of the rewrite
-    pattern_matches = list(cur.execute("SELECT x3.src, x3.tgt FROM E AS x3 "))
+    pattern_matches = list(cur.execute(QUERY_L))
+    
     # Randomly select N_REWRITES of them
     if len(pattern_matches) < N_REWRITES:
       raise ValueError(f"Only {len(pattern_matches)} matches, wanted to perform {N_REWRITES}") 
+
+    # Apply rewrites to in-memory instance
     for match in r.sample(pattern_matches, N_REWRITES):
       rewrites.append(db.rewrite(*match))
 
+    # Get all old matches for Q 
+    old_results = set(cur.execute(QUERY_Q))
+
+    # Get new matches for Q 
+    with conn.transaction(force_rollback = True):
+      db_clear(cur)
+      db_setup(cur)
+      with cur.copy("COPY E (src, tgt) FROM STDIN") as copy:
+        for tup in db.E: copy.write_row(tup)
+      all_results = set(list(cur.execute(QUERY_Q)))
+
+    if not old_results.issubset(all_results):
+      raise ValueError("Mistake")
+
+    new_results = all_results.difference(old_results)
+
     # Going 1st seems to convey a small advantage
-    thue_morse = [True]         # using Thue-Morse sequence just for the heck of it.
+    thue_morse = [True] # using Thue-Morse sequence
     while len(thue_morse) < N_TRIALS:
       thue_morse += [not x for x in thue_morse]
 
@@ -187,10 +213,24 @@ def go(conn, cur):
 
         with conn.transaction(force_rollback = True):
           timing_data = batch_delta(cur, db) if delta else batch_kris(cur, db, rewrites)
-          with Timer("Getting edges in sorted order"):
-            relations = {'E':tuple(cur.execute("SELECT * FROM E ORDER BY src, tgt"))}
+          with Timer("Extracting database as sorted tuples"):
+            relations = {'E':sorted(list(cur.execute("SELECT * FROM E ORDER BY src, tgt")))}
+
+          # Check relations match expected relations
+          if db.relations() != relations:
+            raise ValueError(f"{db.relations()}\n{relations}")
+
+          # Check delta query table matches expectations
           with Timer("Getting Q rows in sorted order"):
             qrows = tuple(cur.execute("select * from Q order by q1,q2,q3"))
+
+          # For debugging
+          if len(qrows)!=len(set(qrows)):
+            print(f"WARNING: qrows {len(qrows)} (unique: {len(set(qrows))}))")
+
+          if set(qrows) != new_results:
+            raise ValueError(f"{qrows}\n{new_results}")
+
         run_log.append((delta, i, timing_data))
 
 
@@ -204,9 +244,7 @@ def go(conn, cur):
     cols_delta = [list(sorted(column)) for column in zip(*deltas)]
     cols_kris  = [list(sorted(column)) for column in zip(*krises)]
 
-    mins = lambda cols: [c[0] for c in cols]
     avgs = lambda cols: [sum(c) / len(c) for c in cols]
-    maxs = lambda cols: [c[-1] for c in cols]
     p = lambda p, cols: [c[round((len(c)-1) * p/100)] for c in cols]
 
     rows = ([[""] + headers] +

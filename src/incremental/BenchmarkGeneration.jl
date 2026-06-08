@@ -5,10 +5,10 @@ using Combinatorics: powerset
 using ..IHSData: distinguished_object, IHS
 using ..IHSAccess: state, pattern, get_cases
 
-const SIZE = 1000000
+const SIZE = 100000
 const N_REWRITES = 500000
 const RELSIZES = N_REWRITES*2
-const N_TRIALS = 1
+const N_TRIALS = 3
 
 
 """
@@ -85,20 +85,22 @@ end
 function generate_initial_data(S::Schema)
   V = distinguished_object(S)
   vecs = join(map(filter(!=(V), ob(S))) do o 
-    "[[r.randint(1,vertices) for _ in [$(join(["'$h'" for h in homs(S; from=o, just_names=true)], ", "))]] 
-           for _ in range(relsizes['$o'])]"
+    "sorted([tuple([r.randint(1,vertices) for _ in [$(join(["'$h'" for h in homs(S; from=o, just_names=true)], ", "))]]) 
+           for _ in range(relsizes['$o'])])"
   end, ", ")
   """
 def generate_instance(vertices:int, relsizes: dict[str,int])->tuple[int,dict]:
+  \"\"\" Generates a random DB instance \"\"\"
   r = random.Random(0)
   return Instance(vertices, $vecs)
 """
 end
 
 function generate_db_setup(Q::ACSet, f::ACSetTransformation)
-  function ct(tabname, cols::Vector{String})::String 
+  function ct(tabname, cols::Vector{String}; id=false)::String 
+    i = id ? "id SERIAL PRIMARY KEY, " : ""
     """
-    cur.execute("CREATE TABLE IF NOT EXISTS $tabname ($(join([x*" INTEGER" for x in cols],", ")))")
+    cur.execute("CREATE TABLE IF NOT EXISTS $tabname ($i$(join([x*" INTEGER" for x in cols],", ")))")
       cur.execute("ALTER TABLE $tabname SET (autovacuum_enabled = false, toast.autovacuum_enabled = off)")
     """
   end
@@ -115,9 +117,10 @@ function generate_db_setup(Q::ACSet, f::ACSetTransformation)
   rcols = ["r$i" for i in 1:nparts(codom(f), V)]
   """
 def db_setup(cur):
+  \"\"\" Creates DB tables for rewrite \"\"\"
   $ctrels
   $(ct('Q', qcols))
-  $(ct("Rewrite",rcols))
+  $(ct("Rewrite",rcols;id=true))
 """
 end
 
@@ -195,6 +198,9 @@ function batch_kris(ihs)
           push!(whereconds, "RW$idx.r$a = RW$idx.r$b")
         end
       end
+      for idx2 in (idx+1):length(decomps)
+        push!(whereconds, "RW$idx.id != RW$idx2.id")
+      end
     end
 
     # possibly that add that RW#i.primary_key ≠ RW#j.primary_key?
@@ -228,7 +234,7 @@ function batch_updates(ihs)
   join(qs, "\n\t\t")
 end
 
-function generate_benchmark(ihs::IHS)
+function generate_benchmark(ihs::IHS; runbenchmark=true)
   nparts(ihs, :Rule) == 1 && nparts(ihs, :PatternCC) == 1 || error(
     "Maximum one pattern and one rule")
   S = acset_schema(state(ihs))
@@ -246,7 +252,7 @@ function generate_benchmark(ihs::IHS)
   qcols = ["q$i" for i in 1:NQ]
   rels = filter(!=(V), ob(S))
   qrels = join(map(rels) do o 
-    """'$o':tuple(cur.execute("SELECT * FROM $o ORDER BY $(join(homs(S; from=o, just_names=true),", "))"))"""
+    """'$o':sorted(list(cur.execute("SELECT * FROM $o ORDER BY $(join(homs(S; from=o, just_names=true),", "))")))"""
   end,", ")
 
   # clear 
@@ -256,13 +262,11 @@ function generate_benchmark(ihs::IHS)
 
   # instance to sql 
   #---------------
-  function inst_to_sqlclause(o::Symbol)
+  function inst_to_sqlclause(o::Symbol, indent=0)
     fks = homs(S; from=o, just_names=true)
-    """  
-        with cur.copy("COPY $o ($(join(fks, ", "))) FROM STDIN") as copy:
-          for tup in db.$o:
-            copy.write_row(tup)
-    """
+    ind = join(fill("  ",indent+2))
+    ("with cur.copy(\"COPY $o ($(join(fks, ", "))) FROM STDIN\") as copy:\n"
+    *"$(ind)  for tup in db.$o: copy.write_row(tup)")    
   end
 
   # Instance definition 
@@ -293,7 +297,7 @@ function generate_benchmark(ihs::IHS)
             for ($vars) in db.$rel:
               if max([$vars]) > SIZE: # i.e. if this is a new $rel
                 copy.write_row(($vars))
-    # cur.execute("ANALYZE delta_$rel")
+      cur.execute("ANALYZE delta_$rel")
   """
   end
   # Batch Kris 
@@ -305,13 +309,17 @@ function generate_benchmark(ihs::IHS)
   #-------------------------
   file = """
 import random, time, math, sys
-from collections import namedtuple, defaultdict
+from collections import namedtuple
 import psycopg
 
-SIZE = $SIZE # (default) instance size
-N_REWRITES = $N_REWRITES
-RELSIZES = {$(join(["'$rel':$RELSIZES" for rel in rels],","))}
-N_TRIALS = $N_TRIALS
+X = $SIZE
+SIZE = 2*X # instance size
+N_REWRITES = X # number of rewrites applied
+RELSIZES = {$(join(["'$rel':X" for rel in rels],","))} # table sizes
+N_TRIALS = $N_TRIALS # number of trials
+
+QUERY_L = "$(generate_query(L))"
+QUERY_Q = "$(generate_query(Q))"
 
 class Timer:
   def __init__(self, name): self.name = name
@@ -329,9 +337,12 @@ class Instance:
   def __init__(self, n:int, $(join(["$r:list[tuple]" for r in rels], ","))):
     self.n = n 
     $(join(["self.$r = $r" for r in rels], "\n    "))
-    
+  
+  def relations(self):
+    return {$(join(["'$r':sorted(self.$r)" for r in rels],","))}
+
   def rewrite(self, $(join(["$x:int" for x in xs(nL)], ", "))):
-    \"\"\"Apply rewrite rule, assuming rule preconditions are met\"\"\"
+    \"\"\"Apply rewrite rule, *assuming rule preconditions are met*\"\"\"
     $ridx = $(join(rvals,", "))
     self.n += $(nv(R)-nL)
     $(join(rewrite_stmts,"\n    "))
@@ -352,6 +363,7 @@ def db_clear(cur):
 
 
 def batch_delta(cur, db: Instance):
+  \"\"\" Update Q based on contents of the normal relations and the delta relations, then update the normal relations based on the delta relations \"\"\"
   with Timer("Rewrites (total)") as total:
     \"\"\"Run the incremental query via delta rules\"\"\"
     # Batch delta query.
@@ -368,7 +380,7 @@ def batch_delta(cur, db: Instance):
 
   return TimingData(total.duration_ns, insertions.duration_ns, q_updates.duration_ns, rel_updates.duration_ns)
 
-def batch_kris(cur, db: Instance, rewrites:tuple):
+def batch_kris(cur, _: Instance, rewrites:tuple):
   \"\"\"Run the incremental query via cube-based approach\"\"\"
   with Timer("Rewrites (total)") as total:
 
@@ -405,15 +417,33 @@ def go(conn, cur):
     #------------------
     r, rewrites = random.Random(0), []
     # Get all matches for the pattern of the rewrite
-    pattern_matches = list(cur.execute("$(generate_query(L))"))
+    pattern_matches = list(cur.execute(QUERY_L))
+    
     # Randomly select N_REWRITES of them
     if len(pattern_matches) < N_REWRITES:
       raise ValueError(f"Only {len(pattern_matches)} matches, wanted to perform {N_REWRITES}") 
+
+    # Apply rewrites to in-memory instance
     for match in r.sample(pattern_matches, N_REWRITES):
       rewrites.append(db.rewrite(*match))
 
+    # Get all old matches for Q 
+    old_results = set(cur.execute(QUERY_Q))
+
+    # Get new matches for Q 
+    with conn.transaction(force_rollback = True):
+      db_clear(cur)
+      db_setup(cur)
+      $(join(inst_to_sqlclause.(filter(!=(V),ob(S)),1), "\n    "))
+      all_results = set(list(cur.execute(QUERY_Q)))
+
+    if not old_results.issubset(all_results):
+      raise ValueError("Mistake")
+
+    new_results = all_results.difference(old_results)
+
     # Going 1st seems to convey a small advantage
-    thue_morse = [True]         # using Thue-Morse sequence just for the heck of it.
+    thue_morse = [True] # using Thue-Morse sequence
     while len(thue_morse) < N_TRIALS:
       thue_morse += [not x for x in thue_morse]
 
@@ -426,10 +456,24 @@ def go(conn, cur):
 
         with conn.transaction(force_rollback = True):
           timing_data = batch_delta(cur, db) if delta else batch_kris(cur, db, rewrites)
-          with Timer("Getting edges in sorted order"):
+          with Timer("Extracting database as sorted tuples"):
             relations = {$qrels}
+
+          # Check relations match expected relations
+          if db.relations() != relations:
+            raise ValueError(f"{db.relations()}\\n{relations}")
+
+          # Check delta query table matches expectations
           with Timer("Getting Q rows in sorted order"):
             qrows = tuple(cur.execute("select * from Q order by $(join(qcols, ','))"))
+
+          # For debugging
+          if len(qrows)!=len(set(qrows)):
+            print(f"WARNING: qrows {len(qrows)} (unique: {len(set(qrows))}))")
+
+          if set(qrows) != new_results:
+            raise ValueError(f"{qrows}\\n{new_results}")
+
         run_log.append((delta, i, timing_data))
 
 
@@ -443,9 +487,7 @@ def go(conn, cur):
     cols_delta = [list(sorted(column)) for column in zip(*deltas)]
     cols_kris  = [list(sorted(column)) for column in zip(*krises)]
 
-    mins = lambda cols: [c[0] for c in cols]
     avgs = lambda cols: [sum(c) / len(c) for c in cols]
-    maxs = lambda cols: [c[-1] for c in cols]
     p = lambda p, cols: [c[round((len(c)-1) * p/100)] for c in cols]
 
     rows = ([[""] + headers] +
@@ -491,7 +533,7 @@ if __name__ == "__main__":
   open("test/test.py", "w") do io 
     write(io, file)
   end
-  run(`test/venv/bin/python3 test/test.py`)
+  runbenchmark && run(`test/venv/bin/python3 test/test.py`)
 end
 
 end # module
