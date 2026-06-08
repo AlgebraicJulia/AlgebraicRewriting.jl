@@ -5,7 +5,7 @@ using Combinatorics: powerset
 using ..IHSData: distinguished_object, IHS
 using ..IHSAccess: state, pattern, get_cases
 
-const SIZE = 100000
+const SIZE = 500000
 const N_REWRITES = 500000
 const RELSIZES = N_REWRITES*2
 const N_TRIALS = 3
@@ -48,7 +48,7 @@ function generate_delta_query(query::ACSet)
       map(ijs) do (i, j)
           "$(lookup(reprs[i])) = $(lookup(reprs[j]))"
       end
-    end...),", ")
+    end...)," AND ")
     join([SELECT, FROM, WHERE],"\n            ")
   end
 
@@ -118,6 +118,17 @@ function generate_db_setup(Q::ACSet, f::ACSetTransformation)
   """
 def db_setup(cur):
   \"\"\" Creates DB tables for rewrite \"\"\"
+  # to standardize some performance-relevant settings, check postgres configuration
+  # has 1GB for each of max_wal_size, shared_buffers, & work_mem.
+  mws, sb, wm = cur.execute(\"\"\"SELECT name, setting, unit FROM pg_settings
+                              WHERE name = 'max_wal_size' 
+                              OR name = 'shared_buffers'
+                              OR name = 'work_mem'
+                              ORDER BY name;\"\"\")
+  assert mws == ('max_wal_size', '1024', 'MB')
+  assert sb == ('shared_buffers', '131072', '8kB')
+  assert wm == ('work_mem', '1048576', 'kB')
+  
   $ctrels
   $(ct('Q', qcols))
   $(ct("Rewrite",rcols;id=true))
@@ -209,8 +220,15 @@ function batch_kris(ihs)
 
     sel*from*wher
   end
+
+  cases = if isempty(cases) 
+    "SELECT "*join(fill("NULL",nv(pattern(ihs))),",")*" WHERE FALSE"
+  else 
+    join(cases, "\n\n\tUNION ALL\n")
+  end
+
   qcols = join(["q$i" for i in 1:nv(pattern(ihs))], ", ")
-  " INSERT INTO Q ($qcols) "*join(cases, "\n\n\tUNION ALL\n")
+  " INSERT INTO Q ($qcols) "*cases
 end
 
 """ Given a Rewrite table, update the relations of the DB
@@ -308,8 +326,8 @@ function generate_benchmark(ihs::IHS; runbenchmark=true)
   # Putting it all together 
   #-------------------------
   file = """
-import random, time, math, sys
-from collections import namedtuple
+import random, time
+from collections import namedtuple, defaultdict
 import psycopg
 
 X = $SIZE
@@ -428,19 +446,26 @@ def go(conn, cur):
       rewrites.append(db.rewrite(*match))
 
     # Get all old matches for Q 
-    old_results = set(cur.execute(QUERY_Q))
+    old_results = defaultdict(int)
+    for row in cur.execute(QUERY_Q):
+      old_results[row] += 1
 
     # Get new matches for Q 
     with conn.transaction(force_rollback = True):
       db_clear(cur)
       db_setup(cur)
       $(join(inst_to_sqlclause.(filter(!=(V),ob(S)),1), "\n    "))
-      all_results = set(list(cur.execute(QUERY_Q)))
+      all_results = defaultdict(int)
+      for row in cur.execute(QUERY_Q):
+        all_results[row] += 1
 
-    if not old_results.issubset(all_results):
-      raise ValueError("Mistake")
+    new_results = {k: all_results[k]-old_results[k] for k in all_results.keys()}
 
-    new_results = all_results.difference(old_results)
+    for v in new_results.values():
+      assert v >= 0
+
+    new_results = sorted([k for (k,v) in new_results.items() for _ in range(v)])
+
 
     # Going 1st seems to convey a small advantage
     thue_morse = [True] # using Thue-Morse sequence
@@ -465,13 +490,10 @@ def go(conn, cur):
 
           # Check delta query table matches expectations
           with Timer("Getting Q rows in sorted order"):
-            qrows = tuple(cur.execute("select * from Q order by $(join(qcols, ','))"))
+            qrows = list(cur.execute("select * from Q order by $(join(qcols, ','))"))
 
-          # For debugging
-          if len(qrows)!=len(set(qrows)):
-            print(f"WARNING: qrows {len(qrows)} (unique: {len(set(qrows))}))")
 
-          if set(qrows) != new_results:
+          if qrows != new_results:
             raise ValueError(f"{qrows}\\n{new_results}")
 
         run_log.append((delta, i, timing_data))

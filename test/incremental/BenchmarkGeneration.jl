@@ -13,7 +13,20 @@ f = homomorphism(path_graph(Graph, 2), R; initial=(V=[1,3],))
 ihs = IHS(Q, f, Graph());
 
 
-generate_benchmark(ihs; runbenchmark=false) # generates *and* runs the benchmark
+generate_benchmark(ihs; runbenchmark=true) # generates *and* runs the benchmark
+
+###################
+# Trivial example #
+###################
+# (100% speedup?)
+Q = cycle_graph(Graph, 3)
+R = @acset Graph begin V=3; E=3; src=[1,1,3]; tgt=[2,3,2] end 
+f = homomorphism(path_graph(Graph, 2), R; initial=(V=[1,3],))
+ihs = IHS(Q, f, Graph());
+
+generate_benchmark(ihs; runbenchmark=true) # generates *and* runs the benchmark
+
+
 1+1
 
 ########################
