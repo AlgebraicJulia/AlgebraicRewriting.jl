@@ -427,114 +427,114 @@ def go(conn, cur):
 
     db = generate_instance(SIZE, RELSIZES)
 
-    # Add the instance to SQL 
-    #------------------------
-    $(join(inst_to_sqlclause.(filter(!=(V),ob(S))), "\n"))
+  # Add the instance to SQL 
+  #------------------------
+  $(join(inst_to_sqlclause.(filter(!=(V),ob(S))), "\n"))
 
-    # Generate rewrites
-    #------------------
-    r, rewrites = random.Random(0), []
-    # Get all matches for the pattern of the rewrite
-    pattern_matches = list(cur.execute(QUERY_L))
-    
-    # Randomly select N_REWRITES of them
-    if len(pattern_matches) < N_REWRITES:
-      raise ValueError(f"Only {len(pattern_matches)} matches, wanted to perform {N_REWRITES}") 
+  # Generate rewrites
+  #------------------
+  r, rewrites = random.Random(0), []
+  # Get all matches for the pattern of the rewrite
+  pattern_matches = list(cur.execute(QUERY_L))
 
-    # Apply rewrites to in-memory instance
-    for match in r.sample(pattern_matches, N_REWRITES):
-      rewrites.append(db.rewrite(*match))
+  # Randomly select N_REWRITES of them
+  if len(pattern_matches) < N_REWRITES:
+    raise ValueError(f"Only {len(pattern_matches)} matches, wanted to perform {N_REWRITES}") 
 
-    # Get all old matches for Q 
-    old_results = defaultdict(int)
+  # Apply rewrites to in-memory instance
+  for match in r.sample(pattern_matches, N_REWRITES):
+    rewrites.append(db.rewrite(*match))
+
+  # Get all old matches for Q 
+  old_results = defaultdict(int)
+  for row in cur.execute(QUERY_Q):
+    old_results[row] += 1
+
+  # Get new matches for Q 
+  with conn.transaction(force_rollback = True):
+    db_clear(cur)
+    db_setup(cur)
+    $(join(inst_to_sqlclause.(filter(!=(V),ob(S)),1), "\n    "))
+    all_results = defaultdict(int)
     for row in cur.execute(QUERY_Q):
-      old_results[row] += 1
+      all_results[row] += 1
 
-    # Get new matches for Q 
-    with conn.transaction(force_rollback = True):
-      db_clear(cur)
-      db_setup(cur)
-      $(join(inst_to_sqlclause.(filter(!=(V),ob(S)),1), "\n    "))
-      all_results = defaultdict(int)
-      for row in cur.execute(QUERY_Q):
-        all_results[row] += 1
+  new_results = {k: all_results[k]-old_results[k] for k in all_results.keys()}
 
-    new_results = {k: all_results[k]-old_results[k] for k in all_results.keys()}
+  for v in new_results.values():
+    assert v >= 0
 
-    for v in new_results.values():
-      assert v >= 0
-
-    new_results = sorted([k for (k,v) in new_results.items() for _ in range(v)])
+  new_results = sorted([k for (k,v) in new_results.items() for _ in range(v)])
 
 
-    # Going 1st seems to convey a small advantage
-    thue_morse = [True] # using Thue-Morse sequence
-    while len(thue_morse) < N_TRIALS:
-      thue_morse += [not x for x in thue_morse]
+  # Going 1st seems to convey a small advantage
+  thue_morse = [True] # using Thue-Morse sequence
+  while len(thue_morse) < N_TRIALS:
+    thue_morse += [not x for x in thue_morse]
 
-    for i, bit in zip(range(N_TRIALS), thue_morse):
-      for delta in ([True,False] if bit else [False,True]):
-        print(f"\\nRunning {'delta' if delta else 'kris'} {i}")
+  for i, bit in zip(range(N_TRIALS), thue_morse):
+    for delta in ([True,False] if bit else [False,True]):
+      print(f"\\nRunning {'delta' if delta else 'kris'} {i}")
 
-        # Vacuum before runs to try and improve consistency. Not sure if this works.
-        with Timer("Vacuum (not counted in total)"): cur.execute("VACUUM")
+      # Vacuum before runs to try and improve consistency. Not sure if this works.
+      with Timer("Vacuum (not counted in total)"): cur.execute("VACUUM")
 
-        with conn.transaction(force_rollback = True):
-          timing_data = batch_delta(cur, db) if delta else batch_kris(cur, db, rewrites)
-          with Timer("Extracting database as sorted tuples"):
-            relations = {$qrels}
+      with conn.transaction(force_rollback = True):
+        timing_data = batch_delta(cur, db) if delta else batch_kris(cur, db, rewrites)
+        with Timer("Extracting database as sorted tuples"):
+          relations = {$qrels}
 
-          # Check relations match expected relations
-          if db.relations() != relations:
-            raise ValueError(f"{db.relations()}\\n{relations}")
+        # Check relations match expected relations
+        if db.relations() != relations:
+          raise ValueError(f"{db.relations()}\\n{relations}")
 
-          # Check delta query table matches expectations
-          with Timer("Getting Q rows in sorted order"):
-            qrows = list(cur.execute("select * from Q order by $(join(qcols, ','))"))
-
-
-          if qrows != new_results:
-            raise ValueError(f"{qrows}\\n{new_results}")
-
-        run_log.append((delta, i, timing_data))
+        # Check delta query table matches expectations
+        with Timer("Getting Q rows in sorted order"):
+          qrows = list(cur.execute("select * from Q order by $(join(qcols, ','))"))
 
 
-    # timing table
-    headers = ["total", "insert", "Q Δ", "edge Δ"]
-    format_row = lambda row: [f"{v / 1_000_000_000:.2f}s" for v in row]
+        if qrows != new_results:
+          raise ValueError(f"{qrows}\\n{new_results}")
 
-    deltas = [row for delta,_,row in run_log if delta]
-    krises = [row for delta,_,row in run_log if not delta]
+      run_log.append((delta, i, timing_data))
 
-    cols_delta = [list(sorted(column)) for column in zip(*deltas)]
-    cols_kris  = [list(sorted(column)) for column in zip(*krises)]
 
-    avgs = lambda cols: [sum(c) / len(c) for c in cols]
-    p = lambda p, cols: [c[round((len(c)-1) * p/100)] for c in cols]
+  # timing table
+  headers = ["total", "insert", "Q Δ", "edge Δ"]
+  format_row = lambda row: [f"{v / 1_000_000_000:.2f}s" for v in row]
 
-    rows = ([[""] + headers] +
-            [[f"delta {i}" if delta else f"kris {i}"] + format_row(row)
-             for delta, i, row in run_log] +
-            [[""] * (1 + len(cols_delta)),
-             #[f"kris min"]  + format_row(mins(cols_kris)),
-             [f"kris p10"]  + format_row(p(10, cols_kris)),
-             [f"kris p50"]  + format_row(p(50, cols_kris)),
-             [f"kris p90"]  + format_row(p(90, cols_kris)),
-             #[f"kris max"]  + format_row(maxs(cols_kris)),
-             [""] * (1 + len(cols_delta)),
-             #[f"delta min"] + format_row(mins(cols_delta)),
-             [f"delta p10"] + format_row(p(10, cols_delta)),
-             [f"delta p50"] + format_row(p(50, cols_delta)),
-             [f"delta p90"] + format_row(p(90, cols_delta)),
-             #[f"delta max"] + format_row(maxs(cols_delta)),
-             [""] * (1 + len(cols_delta)),
-             [f"kris avg"]  + format_row(avgs(cols_kris)),
-             [f"delta avg"] + format_row(avgs(cols_delta)),
-             ])
-    colsizes = [max(len(x) for x in column) for column in zip(*rows)]
-    for row in rows:
-        print("", *(v.rjust(size) for v, size in zip(row, colsizes)),
-              sep="    ")
+  deltas = [row for delta,_,row in run_log if delta]
+  krises = [row for delta,_,row in run_log if not delta]
+
+  cols_delta = [list(sorted(column)) for column in zip(*deltas)]
+  cols_kris  = [list(sorted(column)) for column in zip(*krises)]
+
+  avgs = lambda cols: [sum(c) / len(c) for c in cols]
+  p = lambda p, cols: [c[round((len(c)-1) * p/100)] for c in cols]
+
+  rows = ([[""] + headers] +
+          [[f"delta {i}" if delta else f"kris {i}"] + format_row(row)
+           for delta, i, row in run_log] +
+          [[""] * (1 + len(cols_delta)),
+           #[f"kris min"]  + format_row(mins(cols_kris)),
+           [f"kris p10"]  + format_row(p(10, cols_kris)),
+           [f"kris p50"]  + format_row(p(50, cols_kris)),
+           [f"kris p90"]  + format_row(p(90, cols_kris)),
+           #[f"kris max"]  + format_row(maxs(cols_kris)),
+           [""] * (1 + len(cols_delta)),
+           #[f"delta min"] + format_row(mins(cols_delta)),
+           [f"delta p10"] + format_row(p(10, cols_delta)),
+           [f"delta p50"] + format_row(p(50, cols_delta)),
+           [f"delta p90"] + format_row(p(90, cols_delta)),
+           #[f"delta max"] + format_row(maxs(cols_delta)),
+           [""] * (1 + len(cols_delta)),
+           [f"kris avg"]  + format_row(avgs(cols_kris)),
+           [f"delta avg"] + format_row(avgs(cols_delta)),
+           ])
+  colsizes = [max(len(x) for x in column) for column in zip(*rows)]
+  for row in rows:
+      print("", *(v.rjust(size) for v, size in zip(row, colsizes)),
+            sep="    ")
 
 
 
