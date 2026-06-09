@@ -7,6 +7,9 @@ import AlgebraicRewriting
 ########################
 # Directed Multigraphs #
 ########################
+# Q = x → y → z = 2 edge path
+# L = 1 → 3     = 1 edge
+# R = {1 → 3, 1 → 2, 2 → 3} = makes L into an acyclic triangle by adding apex 2
 Q = path_graph(Graph, 3)
 R = @acset Graph begin V=3; E=3; src=[1,1,2]; tgt=[2,3,3] end 
 f = homomorphism(path_graph(Graph, 2), R; initial=(V=[1,3],))
@@ -18,7 +21,10 @@ generate_benchmark(ihs; runbenchmark=true) # generates *and* runs the benchmark
 ###################
 # Trivial example #
 ###################
-# (100% speedup?)
+# Q = {1 → 2, 2 → 3, 3 → 1} = cyclic triangle
+# L = 1 → 3                 = edge
+# R = {1 → 2, 1 → 3, 3 → 2} = acyclic triangle by adding arrows into new apex 3
+# (100% speedup because this rewrite cannot create a cyclic triangle)
 Q = cycle_graph(Graph, 3)
 R = @acset Graph begin V=3; E=3; src=[1,1,3]; tgt=[2,3,2] end 
 f = homomorphism(path_graph(Graph, 2), R; initial=(V=[1,3],))
