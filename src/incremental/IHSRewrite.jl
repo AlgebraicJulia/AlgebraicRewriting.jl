@@ -92,7 +92,7 @@ rules, qLᵢ↣qRᵢ, which are equivalent when applied with a monic match.
 `iᵣs` is a vector of rule IDs (for the unquotiented rules, Lᵢ↣Rᵢ)
 """
 function rewrite_matches!(h::IHS, ms::Vector{<:ACSetTransformation}, iₛ::Int, 
-                          iᵣs::Vector{Int}; optimize=true)
+                          iᵣs::Vector{Int})
   # Check matches have the current state as their codom.
   allequal([state(h, iₛ), codom.(ms)...]) || error("Matches aren't into state")
 
@@ -114,7 +114,7 @@ function rewrite_matches!(h::IHS, ms::Vector{<:ACSetTransformation}, iₛ::Int,
     end)
   end
 
-  rewrite_bulk_monic_matches(h, ms′, iₛ, qs; optimize)
+  rewrite_bulk_monic_matches(h, ms′, iₛ, qs)
 end
 
 """ Compute the effect of a batch rewrite by putting the rules in parallel """
@@ -146,7 +146,7 @@ constraint.
 
 """
 function rewrite_bulk_monic_matches(ihs::IHS, m::Vector{<:ACSetTransformation},
-                                    iₛ::Int, ifs::Vector{Int}; optimize)
+                                    iₛ::Int, ifs::Vector{Int})
   res, G, fs = [], ihs[iₛ, :state], ihs[ifs, :qrule]
   dom.(m) == dom.(fs) || error("Bad $(dom.(m)) \n\n $(dom.(fs))")
   ΣL, ΣR, Σm, ΣΔ, Σr = apply_batch_rewrite(fs, m)
@@ -169,8 +169,6 @@ function rewrite_bulk_monic_matches(ihs::IHS, m::Vector{<:ACSetTransformation},
       end
       N < ND && continue # ignore decompositions that require too many rules
 
-      OPTIMIZE = ihs[d, :is_minimal]
-      optimize && !OPTIMIZE && continue
       # assign a rule application to each component of the decomposition
       for combo in permutations(1:N,ND)
         # for each rule + decomp pair, consider all compatible interactions
@@ -180,7 +178,7 @@ function rewrite_bulk_monic_matches(ihs::IHS, m::Vector{<:ACSetTransformation},
         end
         for interaction_choice in Iterators.product(interactions...)
           get_runtime_matches(ihs, res, iₛ, G, m, ΣL, ΣR, Σm, ΣΔ, Σr, Old, 
-                              colim, σ, combo, interaction_choice, d; optimize)
+                              colim, σ, combo, interaction_choice, d)
         end
       end
     end
@@ -213,14 +211,14 @@ we initial=constr, and then filter by those which form pullback
 squares with all the rules.
 """
 function get_runtime_matches(ihs, res, iₛ, G, m, ΣL, ΣR, Σm, ΣΔ, Σr, Old, 
-                             colim, σ, combo, interaction_choice, matchdecomp; 
-                             optimize=false)
+                             colim, σ, combo, interaction_choice, matchdecomp)
   bpfd = getvalue(colim.diagram)
   cat = infer_acset_cat(Σm)
   𝒞 = WithModel(cat)
   bpfd isa BipartiteFreeDiagram || error("Unexpected diagram")
   old_maps = map(zip(interaction_choice, combo, ob₁(bpfd))) do (int,iᶠ, XL)
-    dom(ihs[int, :idata_iL] ) == XL || error("Unexpected domain")
+    XL′ = dom(ihs[int, :idata_iL] )
+    XL′ == XL  || error("Unexpected domain $XL′ \n≠\n $XL")
     @withmodel cat (⋅) begin 
       ihs[int, :idata_iL] ⋅ legs(ΣL)[iᶠ] ⋅ Σm
     end
@@ -238,18 +236,6 @@ function get_runtime_matches(ihs, res, iₛ, G, m, ΣL, ΣR, Σm, ΣΔ, Σr, Old
   end
 
   hs = homomorphisms(dom(Old), G; initial=constr)
-  # if we haven't already filtered for minimal interactions, we have to restrict 
-  # ourselves to hg maps which form pullback squares (else we'll double count).
-  optimize || filter!(hs) do hg
-    all(zip(interaction_choice, combo)) do (int, iᶠ)
-      ι = subobj_incl(ihs[int, (:idata_L, :subobj)], Old) |> force
-      hₗ = ihs[int, :idata_iL] |> force
-      hₗ′,ι′= pb = pullback(𝒞, m[iᶠ], hg)
-      u′ = universal(𝒞, pb, Span(hₗ, ι))
-      is_epic(u′) && is_monic(u′) || return false
-      compose(𝒞, u′, ι′) ≃ ι && compose(𝒞, u′, hₗ′) ≃ hₗ
-    end
-  end
 
   for h in hs
     u = universal[cat](colim, Multicospan([compose[cat](h, ΣΔ); new_maps]))

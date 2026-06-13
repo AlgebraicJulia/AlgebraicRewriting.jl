@@ -176,11 +176,7 @@ ms = [homomorphism(L, G; initial=(E=[1],)),
       ACSetTransformation(Graph(2),G; V=[2,3])]
 
 ihs = IHS(X,[f1,f2], G);
-@time rewrite!(ihs, ms, rs; optimize=true);
-
-AlgebraicRewriting.Incremental.IHSModify.add_state!(ihs, G, 1) # reset
-@time rewrite!(ihs, ms, rs; optimize=false);
-
+@time rewrite!(ihs, ms, rs);
 @test validate(ihs)
 
 
@@ -266,19 +262,14 @@ N = 3
 for _ in 1:5
   while true 
     Rs = [DDS(N) for _ in 1:2]
-    rules = [
-      homomorphism(DDS(N), DDS(N+2); random=true, any=true, monic=true) 
-      for _ in 1:2]
-    random_rules = rand(rules, 2) # two of the rules
-    any(isnothing,random_rules) && continue
-    length(random_rules) == length(unique(random_rules)) || continue
-    random_rules = Vector{ACSetTransformation}(random_rules)
+    f =homomorphism(DDS(N), DDS(N+2); random=true, any=true, monic=true) 
+    isnothing(f) && continue
     random_pattern, random_state = DDS(N+2), DDS(N+4)
-    random_matches = [homomorphism(dom(r), random_state; any=true) for r in random_rules]
+    random_matches = [homomorphism(dom(f), random_state; any=true) for _ in 1:2]
     any(isnothing, random_matches) && continue
-    hset = IHS(random_pattern, random_rules, random_state);
+    hset = IHS(random_pattern, f, random_state);
 
-    rewrite!(hset, random_matches, random_rules)
+    rewrite!(hset, random_matches, [f,f])
     validate(hset)
     println("SUCCESS $(length(matches(hset)))")
     break
@@ -316,6 +307,5 @@ X = G = L = @acset Pth begin V=3; E=1; Path=1; src=2; tgt=3; psrc=1; ptgt=2 end
 R = @acset Pth begin V=3; E=1; Path=2; src=2; tgt=3; psrc=1; ptgt=[2,3] end
 f = homomorphism(L,R)
 ihs = IHS(X,f, G);
-get_cases(ihs; quotient=true)
 
 end # module

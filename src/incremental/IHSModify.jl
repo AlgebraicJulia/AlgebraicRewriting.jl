@@ -75,8 +75,9 @@ function add_pattern_cc!(ihs::IHS, pattern_cc::ACSet)
   isnothing(found) || return found
 
   # Declare a new pattern which is assumed to be fully connected
-  iₚ = add_part!(ihs, :PatternCC; pattern_cc)
-  subobjects = enumerate(force.(hom.(subobject_graph(pattern_cc)[2])));
+  subobjs = subobject_graph(pattern_cc) 
+  iₚ = add_part!(ihs, :PatternCC; pattern_cc, subobj_graph=subobjs)
+  subobjects = enumerate(force.(hom.(subobjs[2])));
   # Register each subobject of the connected component
   subobj_ids = map(subobjects) do (subpattern_idx, subobj)
     add_part!(ihs, :SubPattern; subpattern=iₚ, subobj, subpattern_idx)    
@@ -85,25 +86,23 @@ function add_pattern_cc!(ihs::IHS, pattern_cc::ACSet)
   # Look for interactions between (quotiented) rules and the (CC) pattern
   for i_rule in qrules(ihs)
     f = ihs[i_rule, :q]
-    for (idata_iL, idata_iR, L, R) in subobj_rule_interactions3(f, pattern_cc)
+    for (idata_iL, idata_iR, L, R) in subobj_rule_interactions4(f, subobjs)
       idata_L, idata_R = subobj_ids[[L,R]]
       add_part!(ihs, :Interaction; idata_iL, idata_iR, idata_L, idata_R, i_rule=iᵣ)
     end
   end
 
   # Register all ways to decompose the (CC) pattern
-  decomposition_sets = alt_decomps(pattern_cc) # a set of decompositions per subobj of pattern
-  for (iₛ, decomposition_set) in enumerate(decomposition_sets)
+  decomposition_sets = alt_decomps2(pattern_cc) # a set of decompositions per subobj of pattern
+  for (iₛ, decomp_colim, decomp_iso,  d) in decomposition_sets
     # iₛ is the index into the subobjects of `pattern_cc`. 
     decomp_tgt = subobj_ids[iₛ] # The 'old' subobject of the decomposition
-    for (decomp_colim, decomp_iso,  d, is_minimal) in decomposition_set 
-      # Add a row for the decomposition
-      decomp = add_part!(ihs, :Decomp; decomp_tgt, decomp_colim, decomp_iso, is_minimal)
-      for (decomp_elem_idx, (L_id,R_id)) in enumerate(sort(d))
-        # Register each new contribution to the decomposition
-        decomp_elem_L, decomp_elem_R = subobj_ids[[L_id,R_id]]
-        add_part!(ihs, :DecompElem; decomp, decomp_elem_L, decomp_elem_R, decomp_elem_idx)
-      end
+    # Add a row for the decomposition
+    decomp = add_part!(ihs, :Decomp; decomp_tgt, decomp_colim, decomp_iso)
+    for (decomp_elem_idx, (L_id,R_id)) in enumerate(d)
+      # Register each new contribution to the decomposition
+      decomp_elem_L, decomp_elem_R = subobj_ids[[L_id,R_id]]
+      add_part!(ihs, :DecompElem; decomp, decomp_elem_L, decomp_elem_R, decomp_elem_idx)
     end
   end
 
@@ -118,15 +117,16 @@ function add_rule!(ihs::IHS, rule::ACSetTransformation)
   isnothing(found) || return found
   cat = infer_acset_cat(rule)
   iᵣ = add_part!(ihs, :Rule)
-  for l_quot in reverse(all_epis(dom(rule)))
+  epis, _ = all_epis(dom(rule))
+  for l_quot in epis
     r_quot, qrule = force.(legs(pushout[cat](rule, l_quot)))
     profile = merge_profile(l_quot)
     q = add_part!(ihs, :QRule; profile, l_quot, r_quot, qrule, rule=iᵣ)
     
     for p_cc in parts(ihs, :PatternCC)
       so_ids = incident(ihs, p_cc, :subpattern)
-      X = ihs[p_cc, :pattern_cc]
-      for (L, R, idata_iL, idata_iR) in subobj_rule_interactions3(qrule, X)
+      subobjs = ihs[p_cc, :subobj_graph]
+      for (L, R, idata_iL, idata_iR) in subobj_rule_interactions4(qrule, subobjs)
         idata_L, idata_R = so_ids[[L,R]]
         add_part!(ihs, :Interaction; idata_iL, idata_iR, idata_L, idata_R, i_rule=q)
       end
@@ -227,10 +227,15 @@ A multidecomposition is identified with a choice QG ∈ Sub Q and a partition
 of the connected components of P∖J(QG). Each such partition can be joined to 
 yield one of the components of the multidecomposition as a subobject of Q.
 """
-function alt_decomps2(X::ACSet)
+function alt_decomps2(X::ACSet; check=true)
   S = acset_schema(X)
   gr, sos = subobject_graph(X);
-  emp = sos[end] # empty subobject
+  cat = infer_acset_cat(X)
+  𝒞 = WithModel(cat)
+
+  hsos = force.(hom.(sos)) # subobjects as morphisms
+  dsos = dom.(hsos)        # shapes of the subobjects
+  emp = sos[end]           # empty subobject
   cat = infer_acset_cat(X)
   N = length(sos)
   # join irreducibles are representables
@@ -243,27 +248,53 @@ function alt_decomps2(X::ACSet)
   end
   # Express each subobject as a join of join-irreducibles
   ji_decomps = [inneighbors(gr, i) ∩ jir for i in 1:N]
-  decomps = Pair[]
-
+  decomps = Tuple[]
   for iG in 2:N
+    QG = sos[iG]
     jiGr = subgraph(gr, setdiff(jir, ji_decomps[iG]))
     ccs = connected_components(dom(jiGr))
     for partis in partitions(1:length(ccs))
-      push!(decomps, sos[iG] => Set(map(partis) do part
-        @withmodel cat (∨) begin 
-          foldl(∨, sos[jiGr[:V].(vcat(ccs[part]...))]; init=emp)#), sos)
+      comps = sort(map(partis) do part
+        A = @withmodel cat (∨) begin 
+          foldl(∨, sos[jiGr[:V].(vcat(ccs[part]...))]; init=emp)
         end
-      end))
-      return decomps
+        findfirst(so′-> subobj_eq(A, so′), sos)
+      end) # canonical order
+      check && check_multidecomp(sos, iG, Set(comps)) || error("Bad decomp")
+
+      intersections = @withmodel cat (∧) begin 
+        [findfirst(so′-> subobj_eq(A ∧ QG, so′), sos) for A in sos[comps]]
+      end
+      LRs = collect(zip(intersections, comps))
+      ob1 = dsos[intersections]
+      ob2 = dsos[[iG; comps]]
+
+      homs = vcat(map(enumerate(LRs)) do (i, (L,R))
+        [(subobj_incl(sos, L, iG), i, 1), (subobj_incl(sos, L, R), i, i+1)] 
+      end...)
+
+      bpd = BipartiteFreeDiagram(ob1, ob2, homs)
+
+      clim = colimit(𝒞, bpd)
+      csp = Multicospan(hsos[[iG; comps]])
+      u = universal(𝒞, clim, csp) |> force
+      is_monic(u) || error("PUSHOUT MUST  BE SUBOBJECT")
+      out = findfirst(hom.(sos)) do so 
+        any(isomorphisms(dom(u), dom(so))) do σ
+          force(compose(𝒞, σ, so)) == u
+        end
+      end
+      out == 1 || error("PUSHOUT MUST BE TOP SUBOBJECT")
+      push!(decomps, (iG, clim, invert_iso(u), LRs))
     end
   end
-
   decomps
 end
 
 """ Confirm that a purported multidecomposition satisfies the definition """
-function check_multidecomp(QG, QRs::AbstractSet)::Bool
-  QRs = collect(QRs) # enforce an order
+function check_multidecomp(subobjs, iQG, iQRs::AbstractSet)::Bool
+  QG = subobjs[iQG]
+  QRs = [subobjs[i] for i in iQRs] # enforce an order
   X = codom(hom(QG))
   emp = Subobject(X)
   cat = infer_acset_cat(X)
@@ -381,12 +412,12 @@ All given a rewrite rule, f: L ↣ R, find all pullback squares
 Where i: XL ≤ XR in the subobject lattice of X
 
 """
-function subobj_rule_interactions3(f::ACSetTransformation, X::ACSet)
-  gr, sos = subobject_graph(X)
+function subobj_rule_interactions3(f::ACSetTransformation, subobjs)
+  gr, sos = subobjs
   esos = subobj_incl.(Ref(sos), gr[:src], gr[:tgt]) # edge monos
   _, R = dom(f), codom(f)
   res = []
-  cat = WithModel(infer_acset_cat(X))
+  cat = WithModel(infer_acset_cat(R))
   for (iL, iR) in zip(gr[:src], gr[:tgt], esos)    
     iL == iR && continue # don't care about no-ops
     XL, XR = dom.(hom.(getindex.(Ref(sos), [iL,iR])))
@@ -403,6 +434,61 @@ function subobj_rule_interactions3(f::ACSetTransformation, X::ACSet)
   end
   res
 end 
+
+function subobj_rule_interactions4(f::ACSetTransformation, subobjs; check=false)
+  gr, sos = subobjs
+  L, R,S  = dom(f), codom(f), acset_schema(f)
+  𝒞 = infer_acset_cat(L)
+  imgs = [Dict(o=>Set(collect(so.hom[o])) for o in ob(S)) for so in sos]
+  untouched = Dict(o=>setdiff(parts(R,o),collect(f[o])) for o in ob(S))
+  res = []
+  hom_cache = Dict{ACSet, Vector{ACSetTransformation}}()
+
+  for iR in 1:length(sos)
+    QR = dom(sos[iR].hom)
+    for iL in filter(!=(iR), gr[incident(gr,iR,:tgt),:src])
+      QL = dom(hom(sos[iL]))
+
+      # ι = ιs[iL => iR]
+      ut = Dict(o=>findall(i->sos[iR].hom[o](i) ∉ imgs[iL][o], parts(QR,o)) for o in ob(S))
+      hs =  if haskey(hom_cache, QL)
+        hom_cache[QL]
+      else 
+        hom_cache[QL] = homomorphisms(QL, L; monic=false)
+      end
+
+      for hₗ in hs
+        # try to extend to a pullback
+        @withmodel 𝒞 (⋅) begin 
+          # Step 1: make sure hᵣ forms commutative square
+          initial = Dict{Symbol, Dict{Int,Int}}(map(ob(S)) do o 
+            o => Dict{Int,Int}(map(parts(QL,o)) do i
+              i′=sos[iL].hom[o](i)
+              findfirst(r-> sos[iR].hom[o](r)==i′, parts(QR, o)) => f[o](hₗ[o](i))
+            end)
+          end)
+          # Step 2: make sure pb property holds
+          predicates = Dict(o => Dict(i=>untouched[o] for i in ut[o]) for o in ob(S))
+
+          for hᵣ in homomorphisms(QR, R; initial, predicates)
+            push!(res, (iL,iR, hₗ, hᵣ))
+          end
+        end
+      end
+    end
+  end
+  if check 
+    expected = subobj_rule_interactions3(f, subobjs)
+    for r in res 
+      r ∈ expected || error("Extra $r ")
+    end
+    for e in expected 
+      e ∈ res || error("Missing $e")
+    end
+  end
+  res
+end 
+
 
 # TODO # 
 # Find all diagrams of the form 

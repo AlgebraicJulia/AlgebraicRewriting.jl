@@ -7,7 +7,7 @@ using DataStructures: DefaultDict
 using Catlab 
 import Catlab: acset_schema, validate
 
-using ..IHSData: IHS
+using ..IHSData: IHS, distinguished_object
 import ....Rewrite: get_match, pattern
 
 # Pattern access 
@@ -169,8 +169,8 @@ Note that a single decomposition can include both quotiented and unquotiented
 versions of a rule. Set `quotient=false` to only allow decompositions in which 
 all rules are unquotiented.
 """
-function get_cases(h::IHS, pat=nothing, rule=nothing; batch=false, 
-                  quotient=false)
+function get_cases(h::IHS, pat=nothing, rule=nothing; batch=true, 
+                  quotient=true)
   res = []
   ep = empty_profile(h)
 
@@ -178,47 +178,15 @@ function get_cases(h::IHS, pat=nothing, rule=nothing; batch=false,
   isnothing(rule) || error("Restricting to a single rule not yet supported")
   nparts(h, :Pattern) == nparts(h, :Rule) == 1 || error("Must be unique")
 
-  good_interactions = filter(parts(h, :Interaction)) do int
-    QL, QR = h[int,:idata_L], h[int,:idata_R]
-    qrule_id, hL, hR = h[int, :i_rule], h[int, :idata_iL],  h[int, :idata_iR]
-    f, rule_id  = h[qrule_id, :qrule], h[qrule_id, :rule]
-    L, R = dom(f), codom(f)
-    !any(parts(h, :Interaction)) do int′
-      int == int′ && return false 
-      (QL, QR) == (h[int′,:idata_L],h[int′,:idata_R]) || return false
-      qrule_id′, hL′, hR′ = [h[int′, fk] for fk in [:i_rule, :idata_iL, :idata_iR]]
-      rule_id == h[qrule_id′, :rule] || return false
-      f′ = h[qrule_id′, :qrule]
-      L′, R′ = dom(f′), codom(f′)
-      qLs, qRs = homomorphisms(L′,L; epic=true), homomorphisms(R′,R; epic=true) 
-      any(Iterators.product(qLs, qRs)) do (qL,qR)
-        @withmodel ACSetCategory(L) (⋅, pushout, universal) begin 
-          force(hL′⋅qL)==hL || return false
-          force(hR′⋅qR)==hR || return false
-          ιL, ιR′ = po = pushout(qL, f′)
-          σ = universal(po, Cospan(f, qR))
-          is_epic(σ) && is_monic(σ) || return false
-          force(ιL⋅σ) == f || return false 
-          force(ιR′⋅σ) == qR
-        end
-      end
-    end
-  end
-
-  for decomp in incident(h, true, :is_minimal)
+  good_ints = _get_nonredundant_interactions(h, quotient)
+  for decomp in parts(h, :Decomp)
     old_id, colim, iso = [h[decomp, fk] for fk in [:decomp_tgt, :decomp_colim, :decomp_iso]]
     old = h[old_id, :subobj]
     elems = incident(h, decomp, :decomp)
     batch || length(elems) == 1 || continue 
     interaction_sets = map(elems) do elem 
-      elem_L, elem_R = h[elem, :decomp_elem_L], h[elem, :decomp_elem_R]
-      interactions = good_interactions # alternatively, parts(h, :Interaction)
-      filter(interactions) do int
-        quotient || h[int, (:i_rule, :profile)] == ep || return false
-        h[int, :idata_L] == elem_L || return false 
-        h[int, :idata_R] == elem_R || return false 
-        true
-      end
+      key = (h[elem, :decomp_elem_L], h[elem, :decomp_elem_R], 1)
+      get(good_ints, key, []) 
     end
     for int_combo in Iterators.product(interaction_sets...)
       decomps = map(zip(elems,int_combo)) do (elem, int)
@@ -228,47 +196,145 @@ function get_cases(h::IHS, pat=nothing, rule=nothing; batch=false,
         rule = h[only(incident(h, rule_id, :rule) ∩ incident(h, ep, :profile)), :qrule]
         LR = subobj_incl(h, L_id,R_id)
         hL, hR = h[int, :idata_iL], h[int, :idata_iR]
+
+        # integrity checks
+        @assert dom(LR) == dom(QL) "$(dom(LR))\n$QL"
+        @assert codom(LR) == dom(QR)
+        @assert dom(hL) == dom(QL)
+        @assert dom(hR) == dom(QR)
+        @assert codom(hL) == dom(qrule)
+        @assert codom(hR) == codom(qrule)
+
         (; rule, quot, qrule, QL, QR, LR, hL, hR)
       end |> (batch ? identity : only)
       push!(res, (; old, colim, iso, decomps))
     end
   end
-  # pat_id = isnothing(pat) ? only(parts(h, :PatternCC)) : pat
-  # rule_id = isnothing(rule) ? only(parts(h, :Rule)) : rule
-  # for qrule_id in incident(h, rule_id, :rule)
-  #   profile = h[qrule_id, :profile]
-  #   quot = h[qrule_id, :l_quot]
-  #   # cache subobject morphism -> interactions
-  #   lr_to_ints = DefaultDict{Pair{Int,Int},Vector{Int}}(()->Int[])
-  #   for int in parts(h, :Interaction) 
-  #     (l,r) = h[int, :idata_L], h[int, :idata_R]
-  #     h[int, :i_rule] == qrule_id && push!(lr_to_ints[l=>r], int)
-  #   end
-
-  #   quotient || profile == empty_profile(h) || continue
-  #   for subpat_id in incident(h, pat_id, :subpattern)
-  #     old = h[subpat_id, :subobj]
-  #     for decomp_id in incident(h, subpat_id, :decomp_tgt)
-  #       minimal && !h[decomp_id, :is_minimal] && continue
-  #       decomp_elems = incident(h, decomp_id, :decomp)
-  #       colim = h[decomp_id, :decomp_colim]
-  #       batch || length(decomp_elems) == 1 || continue
-  #       Ls = h[decomp_elems, :decomp_elem_L]
-  #       Rs = h[decomp_elems, :decomp_elem_R]
-  #       int_sets = [lr_to_ints[L=>R] for (L,R) in zip(Ls,Rs)]
-  #       for int_combo in Iterators.product(int_sets...)
-  #         decomps = map(zip(Ls,Rs,int_combo)) do (L_id,R_id,int_id)
-  #           L, R = h[[L_id, R_id], :subobj]
-  #           LR = subobj_incl(h, L_id,R_id)
-  #           hL, hR = h[int_id, :idata_iL], h[int_id, :idata_iR]
-  #           (;L, R, LR, hL, hR)
-  #         end |> (batch ? identity : only)
-  #         push!(res, (;profile, quot, old, colim, decomps))
-  #       end
-  #     end
-  #   end
   res 
 end
+
+
+"""
+Check whether (f,h) is the pullback of (g,i) for f:A→B, g:B→D, h:A→C, i:C→D
+"""
+function is_pullback(𝒞, f,g,h,i)
+  @withmodel 𝒞 (pullback, universal, is_epic, is_monic, ⋅) begin
+    π1, π2 = po = pullback(g, i)
+    σ = universal(po, Span(f, h))
+    is_epic(σ) && is_monic(σ) || return false
+    force(σ⋅π1) == force(f) || return false 
+    force(σ⋅π2) == force(h)
+  end
+end
+
+""" 
+Check whether a square f⋅g=h⋅i is a pullback by checking it is pointwise a 
+pullback.
+""" 
+function is_cset_pullback(f::ACSetTransformation,g::ACSetTransformation,
+                          h::ACSetTransformation,i::ACSetTransformation)
+  dom(g) == codom(f) || error()
+  dom(i) == codom(h) || error()
+  dom(f) == dom(h) || error()
+  codom(g) == codom(i) || error()
+  all(ob(acset_schema(f))) do o 
+    is_set_pullback(f[o],g[o],h[o],i[o])
+  end
+end
+
+""" 
+Check whether a square f⋅g=h⋅i is a pullback by checking it is pointwise a 
+pullback.
+""" 
+function is_set_pullback(f::FinFunction, g::FinFunction, h::FinFunction, i::FinFunction)
+  dic1,dic2 = [DefaultDict{Any,Int}(()->0) for _ in 1:2]
+  for x in dom(f)
+    dic1[f(x)=>h(x)]+=1
+  end
+  for x in dom(g)
+    for y in preimage(i, g(x))
+      dic2[x=>y]+=1
+    end
+  end
+  dic1 == dic2
+end
+
+"""
+A good interaction (QL,QR,L,R,hL,hR,f) is one for which there does not exist
+another interaction (QL,QR,L',R',hL',hR',f') for which there exist morphisms
+qL:L'↠L, qR:R'↠R such that the pullback factors into two pullback squares.
+
+Returns the interactions indexed by their (QL,QR,f::Rule) ids in the database.
+"""
+function _get_nonredundant_interactions(h::IHS, quotient::Bool=true)::Dict{Tuple{Int,Int,Int},Vector{Int}}
+  @assert quotient # TODO filter to only use unquotiented rules
+  𝒞 = infer_acset_cat(pattern(h))
+  S = acset_schema(pattern(h))
+  V = distinguished_object(S)
+  # partition interactions by those with the same underlying rule and QL↣QR
+  # and then further partition by which quotient of the rule they use
+  ipartition = DefaultDict{Tuple{Int,Int,Int},DefaultDict{Int,Vector{Int}}}(
+    ()->DefaultDict{Int,Vector{Int}}(()->Int[]))
+  for int in parts(h, :Interaction)
+    QL, QR, f, r = h[int,:idata_L], h[int,:idata_R], h[int, :i_rule], h[int, (:i_rule,:rule)]
+    push!(ipartition[(QL,QR,r)][f], int)
+  end
+  # Cached computations 
+  #--------------------
+  epi_cache = Dict()
+  epis(A::ACSet,B::ACSet) = if haskey(epi_cache, A=>B)
+    epi_cache[A=>B]
+  else 
+    epi_cache[A=>B] = homomorphisms(A,B; epic=true) 
+  end
+
+  pb_cache = Dict()
+  # Given f:L→R and f′:L′→R′, look for pairs of epis (qₗ:L′↠L, qᵣ:R′↠R) such that
+  # f′⋅qᵣ==qₗ⋅f
+  function epi_pb(f::ACSetTransformation,f′::ACSetTransformation) 
+    L,R,L′,R′ = dom(f), codom(f), dom(f′), codom(f′)
+    if haskey(epi_cache, (f′,f))
+      pb_cache[(f′,f)]
+    else 
+      qs = collect(Iterators.product(epis(L′,L),epis(R′,R)))
+      pb_cache[(f′,f)] = filter(((qₗ,qᵣ),)->is_cset_pullback(f′,qᵣ,qₗ,f), qs)
+    end
+  end
+  
+  good_ints = DefaultDict{Tuple{Int,Int,Int},Vector{Int}}(()->Int[])
+  for (k, fdict) in pairs(ipartition)
+    fs = sort(collect(keys(fdict)))
+    f_homs =  h[fs, :qrule]
+    for (i, f_id) in enumerate(fs)
+      f = f_homs[i]
+      for int in fdict[f_id]
+        hₗ, hᵣ = h[int, :idata_iL], h[int, :idata_iR]
+        # Look for interactions with f's which are MORE quotiented than i
+        redundant = any(1:(i-1)) do j
+          f′_id = fs[j]
+          f′ = f_homs[j]
+          any(epi_pb(f,f′)) do (qₗ, qᵣ)
+            any(fdict[f′_id]) do int′
+              hₗ′,hᵣ′ = h[int′, :idata_iL], h[int′, :idata_iR]
+              # (hₗ ≃  hₗ′⋅qₗ) &&  (hᵣ ≃  hᵣ′⋅qᵣ)
+              for i in parts(dom(hₗ), V)
+                hₗ[V](i) == qₗ[V](hₗ′[V](i)) || return false 
+              end 
+              for i in parts(dom(hᵣ), V)
+                hᵣ[V](i) == qᵣ[V](hᵣ′[V](i)) || return false 
+              end
+              return true
+            end
+          end
+        end
+        redundant && continue
+        push!(good_ints[k], int)
+      end
+    end
+  end
+  good_ints
+end
+
 
 """ 
 Do a case analysis that mixes monic and nonmonic matches but avoids unnecessary 
@@ -321,6 +387,35 @@ function interaction_square(ihs::IHS, i::Int)
   f = ihs[i, (:i_rule, :qrule)]
   f, ihs[i, :idata_iL], ihs[i, :idata_iR], LR
 end
+
+function check_decompositions(ihs::IHS)
+  for d in parts(ihs, :Decomp)
+    colim = ihs[d, :decomp_colim]
+    cd = getvalue(colim.diagram)
+    elems = incident(ihs, d, :decomp)
+    @assert elems == sort(elems) # we assume elems are in order
+
+    for (o1, L) in zip(ob₁(cd), ihs[elems, :decomp_elem_L] )
+      @assert o1 == dom(ihs[L,:subobj]) "$o1 \n≠\n $(dom(ihs[L,:subobj]))"
+    end
+
+    @assert ob₂(cd)[1] == dom(ihs[d, (:decomp_tgt,:subobj)])
+
+    for (o2, R) in zip(ob₂(cd)[2:end], ihs[elems, :decomp_elem_R] )
+      @assert o2 == dom(ihs[R,:subobj])  "$o2 \n≠\n $(dom(ihs[R,:subobj]))"
+    end
+  end
+end 
+function check_interactions(ihs::IHS)
+  for i in parts(ihs, :Interaction)
+      LR = subobj_incl(ihs, ihs[i,:idata_L], ihs[i,:idata_R])
+      f = ihs[i, (:i_rule, :qrule)]
+      𝒞 = infer_acset_cat(f)
+      @assert is_cset_pullback(LR, ihs[i, :idata_iR],ihs[i, :idata_iL], f)
+      @assert is_pullback(𝒞, LR, ihs[i, :idata_iR],ihs[i, :idata_iL], f)
+  end
+end
+
 
 """ Given a `Match` id, return the decomposition that it corresponds to """
 function decomp_match(ihs::IHS, iₘ::Int)

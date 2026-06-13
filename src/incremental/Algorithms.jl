@@ -373,6 +373,20 @@ function all_subobjects(X::ACSet; cache="cache")
   end
 end
 
+# """ Same interface as `subobject_graph` but uses subobject classifier """
+# function all_subobjects_graph(X::ACSet; cache="cache")
+#   sos = all_subobjects(X; cache)
+#   S = acset_schema(X)
+#   N = length(sos)
+#   gr = Graph(N)
+#   for i in 1:N, j in 1:N 
+#     if all(o->collect(sos[i][o])⊆collect(sos[j][o]), ob(S))
+#       add_edge!(gr, i, j)
+#     end
+#   end
+#   gr, sos
+# end
+
 """ Remove attributes from a schema """
 function deattr(S::Presentation)
   S′ = Presentation(FreeSchema)
@@ -420,6 +434,13 @@ function all_epis(X::ACSet)
     add_generator!(S′, Catlab.Hom(eq(f), gens[c], gens[d]))
   end
 
+  ncache = Dict()
+  naut(X::ACSet) = if haskey(ncache, X)
+    ncache[X]
+  else 
+    ncache[X] = call_nauty(X)
+  end
+
   # Helper functions
   """Pushforward S -> S' along the codom inclusion of the collage"""
   function cheap_sigma(Z::ACSet)
@@ -457,16 +478,19 @@ function all_epis(X::ACSet)
     X′[Symbol("$(o)_fix")] = X′[alpha(o)] = parts(X, o)
   end
   
-  epis, queue = Dict{String, ACSet}("" => X′), Set{ACSet}([X′])
+  epis, queue = Dict{String, ACSet}(naut(X′).strhsh => X′), Set{ACSet}([X′])
+  order = Pair{String,String}[]
 
   # All possible pairwise mergings of eq classes, tree search
   while !isempty(queue)
     Q = pop!(queue)
+    Qhsh = naut(Q).strhsh
     for o in ob(S)
       for i ∈ 1:(nparts(Q, eq(o))-1)
         for j ∈ (i+1):nparts(Q, eq(o))
           Q′ = recursive_merge(Q, eq(o), i, j)
-          hsh = call_nauty(Q′).strhsh
+          hsh = naut(Q′).strhsh
+          push!(order, Qhsh => hsh)
           if !(haskey(epis, hsh))
             push!(queue, Q′)
             epis[hsh] = Q′
@@ -475,7 +499,22 @@ function all_epis(X::ACSet)
       end
     end
   end
-  return cheap_uncurry.(collect(values(epis)))
+
+  # also return a graph with lattice
+
+  hshs = collect(keys(epis))
+  hsh_to_idx = Dict{String,Int}([h=>i for (i,h) in enumerate(hshs)])
+  G = Graph(length(hshs))
+  for (a,b) in order
+    add_edge!(G, hsh_to_idx[a], hsh_to_idx[b])
+  end
+  ordhshs = topological_sort(G)
+  # Reorder G
+  G[:src] = ordhshs[G[:src]]
+  G[:tgt] = ordhshs[G[:tgt]]
+
+  epis = [cheap_uncurry(epis[h]) for h in hshs[ordhshs]]
+  epis, G
 end
 
 eq(x::Symbol) = Symbol("$(x)_eq")

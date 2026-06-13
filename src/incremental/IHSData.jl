@@ -19,12 +19,13 @@ subobject lattices.
 """
 @present SchIHSPattern(FreeSchema) begin 
   (Pattern, PatternCC, SubPattern)::Ob # , Decomp, DecompElem)::Ob
-  (Int, Bool, ACSet, ACSetHom, Colim)::AttrType 
+  (Int, Bool, ACSet, ACSetHom, Colim, SOS)::AttrType 
   pattern::Attr(Pattern, ACSet)
   subpattern::Hom(SubPattern, PatternCC)
   subpattern_idx::Attr(SubPattern, Int) # order in subobject_graph
   subobj::Attr(SubPattern, ACSetHom)
   pattern_cc::Attr(PatternCC, ACSet)
+  subobj_graph::Attr(PatternCC, SOS)
   pattern_coprod::Attr(Pattern, Colim)
   pattern_iso::Attr(Pattern, ACSetHom) # an isomorphism: apex(coprod) ≅ pattern
 end 
@@ -41,7 +42,6 @@ of some other set of subobjects.
   decomp_iso::Attr(Decomp, ACSetHom)
   decomp::Hom(DecompElem, Decomp)
   (decomp_elem_L, decomp_elem_R)::Hom(DecompElem, SubPattern)
-  is_minimal::Attr(Decomp, Bool)
 end
 
 """
@@ -112,8 +112,8 @@ end
 @acset_type IHS_(SchIHS)
 
 # Julia datatype for in memory 
-const IHS = IHS_{Int, Bool, ACSet, ACSetTransformation, ACSetColimit, Profile,
-                 Any, NamedTuple}
+const IHS = IHS_{Int, Bool, ACSet, ACSetTransformation, ACSetColimit, Any, 
+                 Profile, Any, NamedTuple}
 
 # TODO filter quotiented rule cases where you end up with "relations" which have 
 # multiple parts which have the same subparts. 
@@ -157,7 +157,6 @@ function to_datalog_json(db::IHS, JSON_FILE::String; rename=Dict())
       XG = db[d, :decomp_tgt]
       elems = incident(db, d, :decomp)
       length(elems) == 1 || continue # only consider binary decompositions
-      db[d, :is_minimal] || continue 
       elem = only(elems)
       XL = db[elem, :decomp_elem_L]
       XR = db[elem, :decomp_elem_R]

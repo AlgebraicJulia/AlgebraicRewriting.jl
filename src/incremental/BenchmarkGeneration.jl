@@ -5,11 +5,6 @@ using Combinatorics: powerset
 using ..IHSData: distinguished_object, IHS
 using ..IHSAccess: state, pattern, get_cases
 
-const SIZE = 500000
-const N_REWRITES = 500000
-const RELSIZES = N_REWRITES*2
-const N_TRIALS = 3
-
 
 """
 Generates a query that implements the delta rules. E.g. for path graph of length 
@@ -137,12 +132,12 @@ end
 
 
 """ Create a UNION clause for each rewrite-aware multidecomposition """
-function batch_kris(ihs)
+function batch_kris(ihs; cases=nothing)
   Q = pattern(ihs)
   S = acset_schema(Q)
   V = distinguished_object(S)
   f = ihs[1, :qrule]
-  case_analysis = get_cases(ihs; batch=true, quotient=true);
+  case_analysis = isnothing(cases) ? get_cases(ihs; batch=true, quotient=true) : cases;
   cases = map(case_analysis) do case
     ιG, decomps = case[:old], case[:decomps]
     Q = codom(ιG)
@@ -182,7 +177,7 @@ function batch_kris(ihs)
       end
     end
 
-    sel = "\n\t\tSELECT "*join(select_strs, ", ")
+    sel = "\n    SELECT "*join(select_strs, ", ")
 
     # A join for each relation in ιG and each decomposition R
     fromstrs = []
@@ -192,7 +187,7 @@ function batch_kris(ihs)
     for i in 1:length(decomps)
       push!(fromstrs, "Rewrite AS RW$i")
     end
-    from = "\n\t\tFROM "*join(unique(fromstrs), ", ")
+    from = "\n    FROM "*join(unique(fromstrs), ", ")
 
     whereconds = vcat(map(get_rels.(parts(Q, V))) do (qg_rels, rs_rels)
       eqclass = ["$rel$rel_i.$fk" for (rel, rel_i, fk)  in qg_rels
@@ -216,7 +211,7 @@ function batch_kris(ihs)
 
     # possibly that add that RW#i.primary_key ≠ RW#j.primary_key?
 
-    wher = (isempty(whereconds) ? "" : "\n\t\tWHERE ")*join(whereconds, " AND ")
+    wher = (isempty(whereconds) ? "" : "\n    WHERE ")*join(whereconds, " AND ")
 
     sel*from*wher
   end
@@ -224,10 +219,10 @@ function batch_kris(ihs)
   cases = if isempty(cases) 
     "SELECT "*join(fill("NULL",nv(pattern(ihs))),",")*" WHERE FALSE"
   else 
-    join(cases, "\n\n\tUNION ALL\n")
+    join(cases, "\n\n  UNION ALL\n")
   end
 
-  qcols = join(["q$i" for i in 1:nv(pattern(ihs))], ", ")
+  qcols = join(["q$i" for i in 1:nparts(pattern(ihs),V)], ", ")
   " INSERT INTO Q ($qcols) "*cases
 end
 
@@ -246,13 +241,15 @@ function batch_updates(ihs)
         rs = ["r$(R[i, fk])" for fk in fks]
         return "SELECT $(join(rs,", ")) FROM Rewrite"
       end
-    end), "\n\tUNION ALL \n\t")
-    """cur.execute(\"\"\"INSERT INTO $o ($(join(fks, ","))) \n\t$new_o\"\"\")"""
+    end), "\n  UNION ALL \n  ")
+    """cur.execute(\"\"\"INSERT INTO $o ($(join(fks, ","))) \n  $new_o\"\"\")"""
   end
-  join(qs, "\n\t\t")
+  join(qs, "\n      ")
 end
 
-function generate_benchmark(ihs::IHS; runbenchmark=true)
+function generate_benchmark(ihs::IHS; SIZE=4_000_000, N_REWRITES=500_000, 
+                            RELSIZE=2_000_000, N_TRIALS=9, cases=nothing, 
+                            runbenchmark=true)
   nparts(ihs, :Rule) == 1 && nparts(ihs, :PatternCC) == 1 || error(
     "Maximum one pattern and one rule")
   S = acset_schema(state(ihs))
@@ -301,6 +298,8 @@ function generate_benchmark(ihs::IHS; runbenchmark=true)
     filter!(tup->any(∈(new_rvals), tup), tups)
     map(tups) do tup
       "self.$rel.append(($(join(["r$i" for i in tup],", "))))"
+    end ∪ map(tups) do tup 
+      "new_tuples['$rel'].append(($(join(["r$i" for i in tup],", "))))"
     end
   end...)
 
@@ -308,12 +307,12 @@ function generate_benchmark(ihs::IHS; runbenchmark=true)
   #--------------
   dq = generate_delta_query(Q)
   batch_delta_inserts = map(rels) do rel 
-    vars = join(xs(length(homs(S; from=rel))), ",")
+    hs = homs(S; from=rel, just_names=true)
+    vars = join(xs(length(hs)), ",")
     
     """
-    with cur.copy("COPY delta_$rel (src, tgt) FROM STDIN") as copy:
-            for ($vars) in db.$rel:
-              if max([$vars]) > SIZE: # i.e. if this is a new $rel
+    with cur.copy("COPY delta_$rel ($(join(Symbol.(hs),","))) FROM STDIN") as copy:
+            for ($vars) in new_tuples['$rel']:
                 copy.write_row(($vars))
       cur.execute("ANALYZE delta_$rel")
   """
@@ -330,10 +329,9 @@ import random, time
 from collections import namedtuple, defaultdict
 import psycopg
 
-X = $SIZE
-SIZE = 2*X # instance size
-N_REWRITES = X # number of rewrites applied
-RELSIZES = {$(join(["'$rel':X" for rel in rels],","))} # table sizes
+SIZE = $SIZE # instance size
+N_REWRITES = $N_REWRITES # number of rewrites applied
+RELSIZES = {$(join(["'$rel':$RELSIZE" for rel in rels],","))} # table sizes
 N_TRIALS = $N_TRIALS # number of trials
 
 QUERY_L = "$(generate_query(L))"
@@ -362,9 +360,10 @@ class Instance:
   def rewrite(self, $(join(["$x:int" for x in xs(nL)], ", "))):
     \"\"\"Apply rewrite rule, *assuming rule preconditions are met*\"\"\"
     $ridx = $(join(rvals,", "))
+    new_tuples = {$(join(["'$r':[]" for r in rels], ","))}
     self.n += $(nv(R)-nL)
     $(join(rewrite_stmts,"\n    "))
-    return ($ridx)
+    return ($ridx), new_tuples
 
 $(generate_initial_data(S))
 
@@ -380,13 +379,13 @@ def db_clear(cur):
   cur.execute("DROP TABLE IF EXISTS Rewrite")
 
 
-def batch_delta(cur, db: Instance):
+def batch_delta(cur, new_tuples: dict):
   \"\"\" Update Q based on contents of the normal relations and the delta relations, then update the normal relations based on the delta relations \"\"\"
   with Timer("Rewrites (total)") as total:
     \"\"\"Run the incremental query via delta rules\"\"\"
     # Batch delta query.
     with Timer("Inserts into delta tables") as insertions:
-      $(join(batch_delta_inserts, "\n   "))
+      $(join(batch_delta_inserts, "\n  "))
 
     with Timer("Update Q") as q_updates:
       query = \"\"\"$dq\"\"\"
@@ -394,11 +393,11 @@ def batch_delta(cur, db: Instance):
       cur.execute(query)
 
     with Timer("Update relations from delta relations") as rel_updates:
-      $(join(["cur.execute(\"INSERT INTO $r SELECT * FROM delta_$r\")" for r in rels], "\n    "))
+      $(join(["cur.execute(\"INSERT INTO $r SELECT * FROM delta_$r\")" for r in rels], "\n      "))
 
   return TimingData(total.duration_ns, insertions.duration_ns, q_updates.duration_ns, rel_updates.duration_ns)
 
-def batch_kris(cur, _: Instance, rewrites:tuple):
+def batch_kris(cur, rewrites:tuple):
   \"\"\"Run the incremental query via cube-based approach\"\"\"
   with Timer("Rewrites (total)") as total:
 
@@ -409,7 +408,7 @@ def batch_kris(cur, _: Instance, rewrites:tuple):
       cur.execute("ANALYZE Rewrite")
 
     with Timer("Update Q from rewrites") as q_updates:
-      query = \"\"\"$(batch_kris(ihs))\"\"\"
+      query = \"\"\"$(batch_kris(ihs; cases))\"\"\"
       cur.execute(query)
 
     with Timer("Update relations from rewrites") as rel_updates:
@@ -429,11 +428,11 @@ def go(conn, cur):
 
   # Add the instance to SQL 
   #------------------------
-  $(join(inst_to_sqlclause.(filter(!=(V),ob(S))), "\n"))
+  $(join(inst_to_sqlclause.(filter(!=(V),ob(S))), "\n  "))
 
   # Generate rewrites
   #------------------
-  r, rewrites = random.Random(0), []
+  r, rewrites, new_tuples = random.Random(0), [], {$(join(["'$r':[]" for r in rels],","))}
   # Get all matches for the pattern of the rewrite
   pattern_matches = list(cur.execute(QUERY_L))
 
@@ -443,7 +442,9 @@ def go(conn, cur):
 
   # Apply rewrites to in-memory instance
   for match in r.sample(pattern_matches, N_REWRITES):
-    rewrites.append(db.rewrite(*match))
+    rws, new_tups = db.rewrite(*match)
+    rewrites.append(rws)
+    $(join(["new_tuples['$r'].extend(new_tups['$r'])" for r in rels],"\n    "))
 
   # Get all old matches for Q 
   old_results = defaultdict(int)
@@ -480,7 +481,7 @@ def go(conn, cur):
       with Timer("Vacuum (not counted in total)"): cur.execute("VACUUM")
 
       with conn.transaction(force_rollback = True):
-        timing_data = batch_delta(cur, db) if delta else batch_kris(cur, db, rewrites)
+        timing_data = batch_delta(cur, new_tuples) if delta else batch_kris(cur, rewrites)
         with Timer("Extracting database as sorted tuples"):
           relations = {$qrels}
 
