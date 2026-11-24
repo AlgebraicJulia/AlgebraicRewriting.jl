@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/><title>Lotka Volterra · AlgebraicRewriting.jl</title><meta name="title" content="Lotka Volterra · AlgebraicRewriting.jl"/><meta property="og:title" content="Lotka Volterra · AlgebraicRewriting.jl"/><meta property="twitter:title" content="Lotka Volterra · AlgebraicRewriting.jl"/><meta name="description" content="Documentation for AlgebraicRewriting.jl."/><meta property="og:description" content="Documentation for AlgebraicRewriting.jl."/><meta property="twitter:description" content="Documentation for AlgebraicRewriting.jl."/><script data-outdated-warner src="../../assets/warner.js"></script><link href="https://cdnjs.cloudflare.com/ajax/libs/lato-font/3.0.0/css/lato-font.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/juliamono/0.050/juliamono.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/fontawesome.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/solid.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/brands.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.8/katex.min.css" rel="stylesheet" type="text/css"/><script>documenterBaseURL="../.."</script><script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.6/require.min.js" data-main="../../assets/documenter.js"></script><script src="../../search_index.js"></script><script src="../../siteinfo.js"></script><script src="../../../versions.js"></script><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/catppuccin-mocha.css" data-theme-name="catppuccin-mocha"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/catppuccin-macchiato.css" data-theme-name="catppuccin-macchiato"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/catppuccin-frappe.css" data-theme-name="catppuccin-frappe"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/catppuccin-latte.css" data-theme-name="catppuccin-latte"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/documenter-dark.css" data-theme-name="documenter-dark" data-theme-primary-dark/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/documenter-light.css" data-theme-name="documenter-light" data-theme-primary/><script src="../../assets/themeswap.js"></script></head><body><div id="documenter"><nav class="docs-sidebar"><a class="docs-logo" href="../../"><img src="../../assets/logo.png" alt="AlgebraicRewriting.jl logo"/></a><div class="docs-package-name"><span class="docs-autofit"><a href="../../">AlgebraicRewriting.jl</a></span></div><button class="docs-search-query input is-rounded is-small is-clickable my-2 mx-auto py-1 px-2" id="documenter-search-query">Search docs (Ctrl + /)</button><ul class="docs-menu"><li><a class="tocitem" href="../../">AlgebraicRewriting.jl</a></li><li><span class="tocitem">Examples</span><ul><li><a class="tocitem" href="../full_demo/">Full Demo</a></li><li><a class="tocitem" href="../game_of_life/">Conway&#39;s Game of Life</a></li><li class="is-active"><a class="tocitem" href>Lotka Volterra</a><ul class="internal"><li class="toplevel"><a class="tocitem" href="#Ontology"><span>Ontology</span></a></li><li class="toplevel"><a class="tocitem" href="#Data-migration-functors"><span>Data migration functors</span></a></li><li class="toplevel"><a class="tocitem" href="#Initializing-and-visualizing-world-states"><span>Initializing and visualizing world states</span></a></li><li class="toplevel"><a class="tocitem" href="#Rules"><span>Rules</span></a></li><li><a class="tocitem" href="#Assembling-rules-into-a-recipe"><span>Assembling rules into a recipe</span></a></li><li><a class="tocitem" href="#Running-the-simulation"><span>Running the simulation</span></a></li><li><a class="tocitem" href="#Visualizing-the-results"><span>Visualizing the results</span></a></li></ul></li><li><a class="tocitem" href="../ptg_simple/">Slice Bread</a></li></ul></li><li><a class="tocitem" href="../../api/">Library Reference</a></li></ul><div class="docs-version-selector field has-addons"><div class="control"><span class="docs-label button is-static is-size-7">Version</span></div><div class="docs-selector control is-expanded"><div class="select is-fullwidth is-size-7"><select id="documenter-version-selector"></select></div></div></div></nav><div class="docs-main"><header class="docs-navbar"><a class="docs-sidebar-button docs-navbar-link fa-solid fa-bars is-hidden-desktop" id="documenter-sidebar-button" href="#"></a><nav class="breadcrumb"><ul class="is-hidden-mobile"><li><a class="is-disabled">Examples</a></li><li class="is-active"><a href>Lotka Volterra</a></li></ul><ul class="is-hidden-tablet"><li class="is-active"><a href>Lotka Volterra</a></li></ul></nav><div class="docs-right"><a class="docs-navbar-link" href="https://github.com/AlgebraicJulia/AlgebraicRewriting.jl" title="View the repository on GitHub"><span class="docs-icon fa-brands"></span><span class="docs-label is-hidden-touch">GitHub</span></a><a class="docs-navbar-link" href="https://github.com/AlgebraicJulia/AlgebraicRewriting.jl/blob/main/docs/literate/lotka_volterra.jl" title="Edit source on GitHub"><span class="docs-icon fa-solid"></span></a><a class="docs-settings-button docs-navbar-link fa-solid fa-gear" id="documenter-settings-button" href="#" title="Settings"></a><a class="docs-article-toggle-button fa-solid fa-chevron-up" id="documenter-article-toggle-button" href="javascript:;" title="Collapse all docstrings"></a></div></header><article class="content" id="documenter-page"><h1 id="Lotka-Volterra"><a class="docs-heading-anchor" href="#Lotka-Volterra">Lotka Volterra</a><a id="Lotka-Volterra-1"></a><a class="docs-heading-anchor-permalink" href="#Lotka-Volterra" title="Permalink"></a></h1><p>This is a demonstration of a predator-prey agent-based model.</p><p>We start with importing some libraries.</p><pre><code class="language-julia hljs">using Catlab, AlgebraicRewriting
+<html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/><meta name="referrer" content="no-referrer"/><title>Lotka Volterra · AlgebraicRewriting.jl</title><meta name="title" content="Lotka Volterra · AlgebraicRewriting.jl"/><meta property="og:title" content="Lotka Volterra · AlgebraicRewriting.jl"/><meta property="twitter:title" content="Lotka Volterra · AlgebraicRewriting.jl"/><meta name="description" content="Documentation for AlgebraicRewriting.jl."/><meta property="og:description" content="Documentation for AlgebraicRewriting.jl."/><meta property="twitter:description" content="Documentation for AlgebraicRewriting.jl."/><script data-outdated-warner src="../../assets/warner.js"></script><link href="https://cdnjs.cloudflare.com/ajax/libs/lato-font/3.0.0/css/lato-font.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/juliamono/0.63.2/juliamono.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/fontawesome.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/solid.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/brands.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.8/katex.min.css" rel="stylesheet" type="text/css"/><script>documenterBaseURL="../.."</script><script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.6/require.min.js" data-main="../../assets/documenter.js"></script><script src="../../search_index.js"></script><script src="../../siteinfo.js"></script><script src="../../../versions.js"></script><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/catppuccin-mocha.css" data-theme-name="catppuccin-mocha"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/catppuccin-macchiato.css" data-theme-name="catppuccin-macchiato"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/catppuccin-frappe.css" data-theme-name="catppuccin-frappe"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/catppuccin-latte.css" data-theme-name="catppuccin-latte"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/documenter-dark.css" data-theme-name="documenter-dark" data-theme-primary-dark/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/documenter-light.css" data-theme-name="documenter-light" data-theme-primary/><script src="../../assets/themeswap.js"></script></head><body><div id="documenter"><nav class="docs-sidebar"><a class="docs-logo" href="../../"><img src="../../assets/logo.png" alt="AlgebraicRewriting.jl logo"/></a><div class="docs-package-name"><span class="docs-autofit"><a href="../../">AlgebraicRewriting.jl</a></span></div><button class="docs-search-query input is-rounded is-small is-clickable my-2 mx-auto py-1 px-2" id="documenter-search-query">Search docs (Ctrl + /)</button><ul class="docs-menu"><li><a class="tocitem" href="../../">AlgebraicRewriting.jl</a></li><li><span class="tocitem">Examples</span><ul><li><a class="tocitem" href="../full_demo/">Full Demo</a></li><li><a class="tocitem" href="../game_of_life/">Conway&#39;s Game of Life</a></li><li class="is-active"><a class="tocitem" href>Lotka Volterra</a><ul class="internal"><li class="toplevel"><a class="tocitem" href="#Ontology"><span>Ontology</span></a></li><li class="toplevel"><a class="tocitem" href="#Data-migration-functors"><span>Data migration functors</span></a></li><li class="toplevel"><a class="tocitem" href="#Initializing-and-visualizing-world-states"><span>Initializing and visualizing world states</span></a></li><li class="toplevel"><a class="tocitem" href="#Rules"><span>Rules</span></a></li><li><a class="tocitem" href="#Assembling-rules-into-a-recipe"><span>Assembling rules into a recipe</span></a></li><li><a class="tocitem" href="#Running-the-simulation"><span>Running the simulation</span></a></li><li><a class="tocitem" href="#Visualizing-the-results"><span>Visualizing the results</span></a></li></ul></li><li><a class="tocitem" href="../ptg_simple/">Slice Bread</a></li></ul></li><li><a class="tocitem" href="../../api/">Library Reference</a></li></ul><div class="docs-version-selector field has-addons"><div class="control"><span class="docs-label button is-static is-size-7">Version</span></div><div class="docs-selector control is-expanded"><div class="select is-fullwidth is-size-7"><select id="documenter-version-selector"></select></div></div></div></nav><div class="docs-main"><header class="docs-navbar"><a class="docs-sidebar-button docs-navbar-link fa-solid fa-bars is-hidden-desktop" id="documenter-sidebar-button" href="#"></a><nav class="breadcrumb"><ul class="is-hidden-mobile"><li><a class="is-disabled">Examples</a></li><li class="is-active"><a href>Lotka Volterra</a></li></ul><ul class="is-hidden-tablet"><li class="is-active"><a href>Lotka Volterra</a></li></ul></nav><div class="docs-right"><a class="docs-navbar-link" href="https://github.com/AlgebraicJulia/AlgebraicRewriting.jl" title="View the repository on GitHub"><span class="docs-icon fa-brands"></span><span class="docs-label is-hidden-touch">GitHub</span></a><a class="docs-navbar-link" href="https://github.com/AlgebraicJulia/AlgebraicRewriting.jl/blob/main/docs/literate/lotka_volterra.jl" title="Edit source on GitHub"><span class="docs-icon fa-solid"></span></a><a class="docs-settings-button docs-navbar-link fa-solid fa-gear" id="documenter-settings-button" href="#" title="Settings"></a><a class="docs-article-toggle-button fa-solid fa-chevron-up" id="documenter-article-toggle-button" href="javascript:;" title="Collapse all docstrings"></a></div></header><article class="content" id="documenter-page"><h1 id="Lotka-Volterra"><a class="docs-heading-anchor" href="#Lotka-Volterra">Lotka Volterra</a><a id="Lotka-Volterra-1"></a><a class="docs-heading-anchor-permalink" href="#Lotka-Volterra" title="Permalink"></a></h1><p>This is a demonstration of a predator-prey agent-based model.</p><p>We start with importing some libraries.</p><pre><code class="language-julia hljs">using Catlab, AlgebraicRewriting
 using Random, Test
 
 using Catlab.Graphics.Graphviz: Attributes, Statement, Node
@@ -33,125 +33,125 @@ const ℒ = ACSetCategory(MADVarACSetCat(LV()))
 to_graphviz(SchLV; prog=&quot;dot&quot;)</code></pre><img src='data:image/svg+xml;utf-8,<?xml version="1.0" encoding="UTF-8" standalone="no"?>
 <!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN"
  "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
-<!-- Generated by graphviz version 2.43.0 (0)
+<!-- Generated by graphviz version 15.1.0 (20260618.0150)
  -->
 <!-- Title: G Pages: 1 -->
-<svg width="744pt" height="131pt"
- viewBox="0.00 0.00 744.00 131.00" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
-<g id="graph0" class="graph" transform="scale(1 1) rotate(0) translate(4 127)">
+<svg width="737pt" height="133pt"
+ viewBox="0.00 0.00 737.00 133.00" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+<g id="graph0" class="graph" transform="scale(1 1) rotate(0) translate(4 129.25)">
 <title>G</title>
-<polygon fill="white" stroke="transparent" points="-4,4 -4,-127 740,-127 740,4 -4,4"/>
+<polygon fill="white" stroke="none" points="-4,4 -4,-129.25 732.74,-129.25 732.74,4 -4,4"/>
 <!-- n1 -->
 <g id="node1" class="node">
 <title>n1</title>
 <ellipse fill="none" stroke="black" cx="99" cy="-18" rx="27" ry="18"/>
-<text text-anchor="middle" x="99" y="-14.3" font-family="Times,serif" font-size="14.00">V</text>
+<text xml:space="preserve" text-anchor="middle" x="99" y="-13.32" font-family="Times,serif" font-size="14.00">V</text>
 </g>
 <!-- n2 -->
 <g id="node2" class="node">
 <title>n2</title>
-<ellipse fill="none" stroke="black" cx="27" cy="-105" rx="27" ry="18"/>
-<text text-anchor="middle" x="27" y="-101.3" font-family="Times,serif" font-size="14.00">E</text>
+<ellipse fill="none" stroke="black" cx="27" cy="-107.25" rx="27" ry="18"/>
+<text xml:space="preserve" text-anchor="middle" x="27" y="-102.58" font-family="Times,serif" font-size="14.00">E</text>
 </g>
 <!-- n2&%2345;&gt;n1 -->
 <g id="edge1" class="edge">
 <title>n2&%2345;&gt;n1</title>
-<path fill="none" stroke="black" d="M39.87,-88.8C50.93,-75.75 67.04,-56.74 79.65,-41.85"/>
-<polygon fill="black" stroke="black" points="82.45,-43.96 86.24,-34.06 77.11,-39.43 82.45,-43.96"/>
-<text text-anchor="middle" x="78" y="-57.8" font-family="Times,serif" font-size="14.00">src</text>
+<path fill="none" stroke="black" d="M39.54,-91.05C50.52,-77.75 66.66,-58.19 79.35,-42.81"/>
+<polygon fill="black" stroke="black" points="81.73,-45.42 85.4,-35.48 76.33,-40.97 81.73,-45.42"/>
+<text xml:space="preserve" text-anchor="middle" x="80.32" y="-57.95" font-family="Times,serif" font-size="14.00">src</text>
 </g>
 <!-- n2&%2345;&gt;n1 -->
 <g id="edge2" class="edge">
 <title>n2&%2345;&gt;n1</title>
-<path fill="none" stroke="black" d="M24.84,-86.89C24.42,-76.53 25.55,-63.54 32,-54 39.71,-42.59 52.36,-34.65 64.6,-29.26"/>
-<polygon fill="black" stroke="black" points="66.21,-32.39 74.23,-25.46 63.65,-25.88 66.21,-32.39"/>
-<text text-anchor="middle" x="43" y="-57.8" font-family="Times,serif" font-size="14.00">tgt</text>
+<path fill="none" stroke="black" d="M24.68,-88.86C24.13,-77.97 25.18,-64.13 32,-54 39.54,-42.8 51.84,-34.95 63.85,-29.57"/>
+<polygon fill="black" stroke="black" points="64.81,-32.95 72.8,-26.01 62.22,-26.45 64.81,-32.95"/>
+<text xml:space="preserve" text-anchor="middle" x="42.5" y="-57.95" font-family="Times,serif" font-size="14.00">tgt</text>
 </g>
 <!-- n7 -->
 <g id="node7" class="node">
 <title>n7</title>
-<ellipse fill="black" stroke="black" cx="338" cy="-18" rx="1.8" ry="1.8"/>
-<text text-anchor="middle" x="324.7" y="-23.6" font-family="Times,serif" font-size="14.00">Dir</text>
+<ellipse fill="black" stroke="black" cx="335" cy="-18" rx="1.8" ry="1.8"/>
+<text xml:space="preserve" text-anchor="middle" x="321.95" y="-23.75" font-family="Times,serif" font-size="14.00">Dir</text>
 </g>
 <!-- n2&%2345;&gt;n7 -->
 <g id="edge8" class="edge">
 <title>n2&%2345;&gt;n7</title>
-<path fill="none" stroke="black" d="M47.46,-92.81C52.42,-90.53 57.79,-88.4 63,-87 153.01,-62.71 184.98,-102.46 272,-69 296.08,-59.74 318.83,-38.9 330.28,-27.26"/>
-<polygon fill="black" stroke="black" points="332.88,-29.6 337.19,-19.92 327.79,-24.8 332.88,-29.6"/>
-<text text-anchor="middle" x="307.5" y="-57.8" font-family="Times,serif" font-size="14.00">dir</text>
+<path fill="none" stroke="black" d="M47.46,-95.06C52.42,-92.78 57.8,-90.66 63,-89.25 152.15,-65.16 184.31,-105.67 270,-71.25 293.62,-61.76 315.46,-40.66 326.82,-28.38"/>
+<polygon fill="black" stroke="black" points="329.24,-30.92 333.22,-21.1 323.98,-26.3 329.24,-30.92"/>
+<text xml:space="preserve" text-anchor="middle" x="307.54" y="-57.95" font-family="Times,serif" font-size="14.00">dir</text>
 </g>
 <!-- n3 -->
 <g id="node3" class="node">
 <title>n3</title>
-<ellipse fill="none" stroke="black" cx="338" cy="-105" rx="27" ry="18"/>
-<text text-anchor="middle" x="338" y="-101.3" font-family="Times,serif" font-size="14.00">Sheep</text>
+<ellipse fill="none" stroke="black" cx="335" cy="-107.25" rx="27" ry="18"/>
+<text xml:space="preserve" text-anchor="middle" x="335" y="-102.58" font-family="Times,serif" font-size="14.00">Sheep</text>
 </g>
 <!-- n3&%2345;&gt;n1 -->
 <g id="edge3" class="edge">
 <title>n3&%2345;&gt;n1</title>
-<path fill="none" stroke="black" d="M311.85,-99.89C283.84,-94.89 238.48,-85.07 202,-69 190.83,-64.08 189.74,-59.8 179,-54 163.68,-45.73 146.01,-37.83 131.17,-31.64"/>
-<polygon fill="black" stroke="black" points="132.47,-28.39 121.89,-27.83 129.81,-34.87 132.47,-28.39"/>
-<text text-anchor="middle" x="237" y="-57.8" font-family="Times,serif" font-size="14.00">sheep_loc</text>
+<path fill="none" stroke="black" d="M308.51,-102.45C280.7,-97.75 236.19,-88.23 201,-71.25 189.49,-65.7 189.02,-60.46 178,-54 163.67,-45.6 146.95,-37.91 132.59,-31.9"/>
+<polygon fill="black" stroke="black" points="134.13,-28.75 123.55,-28.21 131.49,-35.23 134.13,-28.75"/>
+<text xml:space="preserve" text-anchor="middle" x="235.5" y="-57.95" font-family="Times,serif" font-size="14.00">sheep_loc</text>
 </g>
 <!-- n6 -->
 <g id="node6" class="node">
 <title>n6</title>
-<ellipse fill="black" stroke="black" cx="602" cy="-18" rx="1.8" ry="1.8"/>
-<text text-anchor="middle" x="585.7" y="-23.6" font-family="Times,serif" font-size="14.00">Eng</text>
+<ellipse fill="black" stroke="black" cx="596" cy="-18" rx="1.8" ry="1.8"/>
+<text xml:space="preserve" text-anchor="middle" x="579.95" y="-23.75" font-family="Times,serif" font-size="14.00">Eng</text>
 </g>
 <!-- n3&%2345;&gt;n6 -->
 <g id="edge6" class="edge">
 <title>n3&%2345;&gt;n6</title>
-<path fill="none" stroke="black" d="M364.42,-100.79C395.45,-96.37 448.01,-86.86 490,-69 501.23,-64.22 502.15,-59.6 513,-54 540.01,-40.06 573.9,-28.16 591.02,-22.51"/>
-<polygon fill="black" stroke="black" points="592.25,-25.79 600.7,-19.4 590.11,-19.13 592.25,-25.79"/>
-<text text-anchor="middle" x="551" y="-57.8" font-family="Times,serif" font-size="14.00">sheep_eng</text>
+<path fill="none" stroke="black" d="M361.83,-103.38C392.72,-99.32 444.41,-90.18 485,-71.25 496.58,-65.85 496.85,-60.25 508,-54 533.6,-39.64 566.29,-28.29 583.74,-22.73"/>
+<polygon fill="black" stroke="black" points="584.72,-26.09 593.25,-19.82 582.67,-19.4 584.72,-26.09"/>
+<text xml:space="preserve" text-anchor="middle" x="545.5" y="-57.95" font-family="Times,serif" font-size="14.00">sheep_eng</text>
 </g>
 <!-- n3&%2345;&gt;n7 -->
 <g id="edge9" class="edge">
 <title>n3&%2345;&gt;n7</title>
-<path fill="none" stroke="black" d="M338,-86.8C338,-69.92 338,-44.66 338,-30.22"/>
-<polygon fill="black" stroke="black" points="341.5,-30.08 338,-20.08 334.5,-30.08 341.5,-30.08"/>
-<text text-anchor="middle" x="373" y="-57.8" font-family="Times,serif" font-size="14.00">sheep_dir</text>
+<path fill="none" stroke="black" d="M335,-89.01C335,-72.09 335,-46.68 335,-31.58"/>
+<polygon fill="black" stroke="black" points="338.5,-31.64 335,-21.64 331.5,-31.64 338.5,-31.64"/>
+<text xml:space="preserve" text-anchor="middle" x="369.5" y="-57.95" font-family="Times,serif" font-size="14.00">sheep_dir</text>
 </g>
 <!-- n4 -->
 <g id="node4" class="node">
 <title>n4</title>
-<ellipse fill="none" stroke="black" cx="611" cy="-105" rx="27" ry="18"/>
-<text text-anchor="middle" x="611" y="-101.3" font-family="Times,serif" font-size="14.00">Wolf</text>
+<ellipse fill="none" stroke="black" cx="605" cy="-107.25" rx="27" ry="18"/>
+<text xml:space="preserve" text-anchor="middle" x="605" y="-102.58" font-family="Times,serif" font-size="14.00">Wolf</text>
 </g>
 <!-- n4&%2345;&gt;n1 -->
 <g id="edge4" class="edge">
 <title>n4&%2345;&gt;n1</title>
-<path fill="none" stroke="black" d="M584.04,-102.84C547.24,-100.37 479.93,-92.73 428,-69 418.21,-64.53 418.95,-58.09 409,-54 360.41,-34 207.38,-24.21 136.15,-20.64"/>
-<polygon fill="black" stroke="black" points="136.01,-17.13 125.85,-20.14 135.67,-24.13 136.01,-17.13"/>
-<text text-anchor="middle" x="457" y="-57.8" font-family="Times,serif" font-size="14.00">wolf_loc</text>
+<path fill="none" stroke="black" d="M577.78,-105.52C541.03,-103.55 474.37,-96.46 424,-71.25 413.8,-66.14 415.39,-58.71 405,-54 381.08,-43.16 213.73,-28.35 137.13,-22.04"/>
+<polygon fill="black" stroke="black" points="137.84,-18.59 127.59,-21.26 137.27,-25.57 137.84,-18.59"/>
+<text xml:space="preserve" text-anchor="middle" x="452.5" y="-57.95" font-family="Times,serif" font-size="14.00">wolf_loc</text>
 </g>
 <!-- n4&%2345;&gt;n6 -->
 <g id="edge7" class="edge">
 <title>n4&%2345;&gt;n6</title>
-<path fill="none" stroke="black" d="M634.39,-95.92C655.34,-87.29 681.19,-72.34 670,-54 657.68,-33.81 629.59,-24.77 613.63,-21.14"/>
-<polygon fill="black" stroke="black" points="614.18,-17.68 603.7,-19.24 612.86,-24.56 614.18,-17.68"/>
-<text text-anchor="middle" x="704" y="-57.8" font-family="Times,serif" font-size="14.00">wolf_eng</text>
+<path fill="none" stroke="black" d="M628.09,-97.54C648.77,-88.32 674.24,-72.55 663,-54 651.25,-34.61 624.84,-25.45 608.91,-21.54"/>
+<polygon fill="black" stroke="black" points="609.65,-18.12 599.16,-19.55 608.25,-24.98 609.65,-18.12"/>
+<text xml:space="preserve" text-anchor="middle" x="697.24" y="-57.95" font-family="Times,serif" font-size="14.00">wolf_eng</text>
 </g>
 <!-- n4&%2345;&gt;n7 -->
 <g id="edge10" class="edge">
 <title>n4&%2345;&gt;n7</title>
-<path fill="none" stroke="black" d="M607.94,-86.95C605.02,-75.81 599.44,-61.89 589,-54 550.6,-24.96 394.43,-19.99 349.9,-19.16"/>
-<polygon fill="black" stroke="black" points="349.84,-15.66 339.79,-19.01 349.74,-22.66 349.84,-15.66"/>
-<text text-anchor="middle" x="629" y="-57.8" font-family="Times,serif" font-size="14.00">wolf_dir</text>
+<path fill="none" stroke="black" d="M602.27,-88.97C599.47,-77.25 593.92,-62.41 583,-54 545.71,-25.28 394.15,-20.11 348.24,-19.19"/>
+<polygon fill="black" stroke="black" points="348.34,-15.69 338.28,-19.04 348.23,-22.69 348.34,-15.69"/>
+<text xml:space="preserve" text-anchor="middle" x="624.4" y="-57.95" font-family="Times,serif" font-size="14.00">wolf_dir</text>
 </g>
 <!-- n5 -->
 <g id="node5" class="node">
 <title>n5</title>
-<ellipse fill="none" stroke="black" cx="99" cy="-105" rx="27" ry="18"/>
-<text text-anchor="middle" x="99" y="-101.3" font-family="Times,serif" font-size="14.00">Time</text>
+<ellipse fill="none" stroke="black" cx="99" cy="-107.25" rx="27" ry="18"/>
+<text xml:space="preserve" text-anchor="middle" x="99" y="-102.58" font-family="Times,serif" font-size="14.00">Time</text>
 </g>
 <!-- n5&%2345;&gt;n1 -->
 <g id="edge5" class="edge">
 <title>n5&%2345;&gt;n1</title>
-<path fill="none" stroke="black" d="M99,-86.8C99,-75.16 99,-59.55 99,-46.24"/>
-<polygon fill="black" stroke="black" points="102.5,-46.18 99,-36.18 95.5,-46.18 102.5,-46.18"/>
-<text text-anchor="middle" x="138.5" y="-57.8" font-family="Times,serif" font-size="14.00">countdown</text>
+<path fill="none" stroke="black" d="M99,-89.01C99,-77.18 99,-61.2 99,-47.5"/>
+<polygon fill="black" stroke="black" points="102.5,-47.72 99,-37.72 95.5,-47.72 102.5,-47.72"/>
+<text xml:space="preserve" text-anchor="middle" x="138" y="-57.95" font-family="Times,serif" font-size="14.00">countdown</text>
 </g>
 </g>
 </svg>
@@ -287,60 +287,60 @@ init = initialize(2, 0.5, 0.5)
 view_LV(init)</code></pre><img src='data:image/svg+xml;utf-8,<?xml version="1.0" encoding="UTF-8" standalone="no"?>
 <!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN"
  "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
-<!-- Generated by graphviz version 2.43.0 (0)
+<!-- Generated by graphviz version 15.1.0 (20260618.0150)
  -->
 <!-- Title: G Pages: 1 -->
-<svg width="138pt" height="121pt"
- viewBox="0.00 0.00 138.40 120.75" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
-<g id="graph0" class="graph" transform="scale(1 1) rotate(0) translate(4 116.75)">
+<svg width="138pt" height="122pt"
+ viewBox="0.00 0.00 138.00 122.00" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+<g id="graph0" class="graph" transform="scale(1 1) rotate(0) translate(4 117.85)">
 <title>G</title>
-<polygon fill="white" stroke="transparent" points="-4,4 -4,-116.75 134.4,-116.75 134.4,4 -4,4"/>
+<polygon fill="white" stroke="none" points="-4,4 -4,-117.85 134,-117.85 134,4 -4,4"/>
 <!-- v1 -->
 <g id="node1" class="node">
 <title>v1</title>
-<ellipse fill="tan" stroke="tan" cx="24.22" cy="-22.75" rx="18" ry="18"/>
-<text text-anchor="middle" x="24.22" y="-19.05" font-family="Times,serif" font-size="14.00">1</text>
+<ellipse fill="tan" stroke="tan" cx="24.02" cy="-23.85" rx="18" ry="18"/>
+<text xml:space="preserve" text-anchor="middle" x="24.02" y="-19.18" font-family="Times,serif" font-size="14.00">1</text>
 </g>
 <!-- v2 -->
 <g id="node2" class="node">
 <title>v2</title>
-<ellipse fill="tan" stroke="tan" cx="24.22" cy="-94.75" rx="18" ry="18"/>
-<text text-anchor="middle" x="24.22" y="-91.05" font-family="Times,serif" font-size="14.00">5</text>
+<ellipse fill="tan" stroke="tan" cx="24.02" cy="-95.85" rx="18" ry="18"/>
+<text xml:space="preserve" text-anchor="middle" x="24.02" y="-91.18" font-family="Times,serif" font-size="14.00">5</text>
 </g>
 <!-- v3 -->
 <g id="node3" class="node">
 <title>v3</title>
-<ellipse fill="tan" stroke="tan" cx="96.22" cy="-22.75" rx="23" ry="23"/>
-<text text-anchor="middle" x="96.22" y="-19.05" font-family="Times,serif" font-size="14.00">24</text>
+<ellipse fill="tan" stroke="tan" cx="96.02" cy="-23.85" rx="23.85" ry="23.85"/>
+<text xml:space="preserve" text-anchor="middle" x="96.02" y="-19.18" font-family="Times,serif" font-size="14.00">24</text>
 </g>
 <!-- v4 -->
 <g id="node4" class="node">
 <title>v4</title>
-<ellipse fill="lightgreen" stroke="lightgreen" cx="96.22" cy="-94.75" rx="18" ry="18"/>
+<ellipse fill="lightgreen" stroke="lightgreen" cx="96.02" cy="-95.85" rx="18" ry="18"/>
 </g>
 <!-- w1 -->
 <g id="node5" class="node">
 <title>w1</title>
-<polygon fill="red" stroke="red" points="125.51,-37.1 103.51,-37.1 103.51,-15.1 125.51,-15.1 125.51,-37.1"/>
-<text text-anchor="middle" x="114.51" y="-22.4" font-family="Times,serif" font-size="14.00">1⁵</text>
+<polygon fill="red" stroke="red" points="125.11,-38 103.51,-38 103.51,-16.4 125.11,-16.4 125.11,-38"/>
+<text xml:space="preserve" text-anchor="middle" x="114.31" y="-22.52" font-family="Times,serif" font-size="14.00">1⁵</text>
 </g>
 <!-- w2 -->
 <g id="node6" class="node">
 <title>w2</title>
-<polygon fill="red" stroke="red" points="91.83,-34.48 69.83,-34.48 69.83,-12.48 91.83,-12.48 91.83,-34.48"/>
-<text text-anchor="middle" x="80.83" y="-19.78" font-family="Times,serif" font-size="14.00">2⁵</text>
+<polygon fill="red" stroke="red" points="91.43,-35.39 69.83,-35.39 69.83,-13.79 91.43,-13.79 91.43,-35.39"/>
+<text xml:space="preserve" text-anchor="middle" x="80.63" y="-19.91" font-family="Times,serif" font-size="14.00">2⁵</text>
 </g>
 <!-- s1 -->
 <g id="node7" class="node">
 <title>s1</title>
-<polygon fill="lightblue" stroke="lightblue" points="130.4,-37.88 108.4,-37.88 108.4,-15.88 130.4,-15.88 130.4,-37.88"/>
-<text text-anchor="middle" x="119.4" y="-23.18" font-family="Times,serif" font-size="14.00">1⁵</text>
+<polygon fill="lightblue" stroke="lightblue" points="130,-38.78 108.4,-38.78 108.4,-17.18 130,-17.18 130,-38.78"/>
+<text xml:space="preserve" text-anchor="middle" x="119.2" y="-23.31" font-family="Times,serif" font-size="14.00">1⁵</text>
 </g>
 <!-- s2 -->
 <g id="node8" class="node">
 <title>s2</title>
-<polygon fill="lightblue" stroke="lightblue" points="22,-35.87 0,-35.87 0,-13.87 22,-13.87 22,-35.87"/>
-<text text-anchor="middle" x="11" y="-21.17" font-family="Times,serif" font-size="14.00">2⁵</text>
+<polygon fill="lightblue" stroke="lightblue" points="21.6,-36.78 0,-36.78 0,-15.18 21.6,-15.18 21.6,-36.78"/>
+<text xml:space="preserve" text-anchor="middle" x="10.8" y="-21.3" font-family="Times,serif" font-size="14.00">2⁵</text>
 </g>
 </g>
 </svg>
@@ -351,60 +351,60 @@ end
 view_LV(hom(F2(S), init; initial=(Sheep=[2],)))</code></pre><img src='data:image/svg+xml;utf-8,<?xml version="1.0" encoding="UTF-8" standalone="no"?>
 <!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN"
  "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
-<!-- Generated by graphviz version 2.43.0 (0)
+<!-- Generated by graphviz version 15.1.0 (20260618.0150)
  -->
 <!-- Title: G Pages: 1 -->
-<svg width="140pt" height="121pt"
- viewBox="0.00 0.00 140.11 120.75" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
-<g id="graph0" class="graph" transform="scale(1 1) rotate(0) translate(4 116.75)">
+<svg width="140pt" height="122pt"
+ viewBox="0.00 0.00 140.00 122.00" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+<g id="graph0" class="graph" transform="scale(1 1) rotate(0) translate(4 117.85)">
 <title>G</title>
-<polygon fill="white" stroke="transparent" points="-4,4 -4,-116.75 136.11,-116.75 136.11,4 -4,4"/>
+<polygon fill="white" stroke="none" points="-4,4 -4,-117.85 135.71,-117.85 135.71,4 -4,4"/>
 <!-- v1 -->
 <g id="node1" class="node">
 <title>v1</title>
-<ellipse fill="tan" stroke="tan" cx="28.36" cy="-22.75" rx="18" ry="18"/>
-<text text-anchor="middle" x="28.36" y="-19.05" font-family="Times,serif" font-size="14.00">1</text>
+<ellipse fill="tan" stroke="tan" cx="28.16" cy="-23.85" rx="18" ry="18"/>
+<text xml:space="preserve" text-anchor="middle" x="28.16" y="-19.18" font-family="Times,serif" font-size="14.00">1</text>
 </g>
 <!-- v2 -->
 <g id="node2" class="node">
 <title>v2</title>
-<ellipse fill="tan" stroke="tan" cx="28.36" cy="-94.75" rx="18" ry="18"/>
-<text text-anchor="middle" x="28.36" y="-91.05" font-family="Times,serif" font-size="14.00">5</text>
+<ellipse fill="tan" stroke="tan" cx="28.16" cy="-95.85" rx="18" ry="18"/>
+<text xml:space="preserve" text-anchor="middle" x="28.16" y="-91.18" font-family="Times,serif" font-size="14.00">5</text>
 </g>
 <!-- v3 -->
 <g id="node3" class="node">
 <title>v3</title>
-<ellipse fill="tan" stroke="tan" cx="100.36" cy="-22.75" rx="23" ry="23"/>
-<text text-anchor="middle" x="100.36" y="-19.05" font-family="Times,serif" font-size="14.00">24</text>
+<ellipse fill="tan" stroke="tan" cx="100.16" cy="-23.85" rx="23.85" ry="23.85"/>
+<text xml:space="preserve" text-anchor="middle" x="100.16" y="-19.18" font-family="Times,serif" font-size="14.00">24</text>
 </g>
 <!-- v4 -->
 <g id="node4" class="node">
 <title>v4</title>
-<ellipse fill="lightgreen" stroke="lightgreen" cx="100.36" cy="-94.75" rx="18" ry="18"/>
+<ellipse fill="lightgreen" stroke="lightgreen" cx="100.16" cy="-95.85" rx="18" ry="18"/>
 </g>
 <!-- w1 -->
 <g id="node5" class="node">
 <title>w1</title>
-<polygon fill="red" stroke="red" points="131.36,-40.83 109.36,-40.83 109.36,-18.83 131.36,-18.83 131.36,-40.83"/>
-<text text-anchor="middle" x="120.36" y="-26.13" font-family="Times,serif" font-size="14.00">1⁵</text>
+<polygon fill="red" stroke="red" points="130.96,-41.73 109.36,-41.73 109.36,-20.13 130.96,-20.13 130.96,-41.73"/>
+<text xml:space="preserve" text-anchor="middle" x="120.16" y="-26.26" font-family="Times,serif" font-size="14.00">1⁵</text>
 </g>
 <!-- w2 -->
 <g id="node6" class="node">
 <title>w2</title>
-<polygon fill="red" stroke="red" points="99.71,-35.43 77.71,-35.43 77.71,-13.43 99.71,-13.43 99.71,-35.43"/>
-<text text-anchor="middle" x="88.71" y="-20.73" font-family="Times,serif" font-size="14.00">2⁵</text>
+<polygon fill="red" stroke="red" points="99.31,-36.34 77.71,-36.34 77.71,-14.74 99.31,-14.74 99.31,-36.34"/>
+<text xml:space="preserve" text-anchor="middle" x="88.51" y="-20.86" font-family="Times,serif" font-size="14.00">2⁵</text>
 </g>
 <!-- s1 -->
 <g id="node7" class="node">
 <title>s1</title>
-<polygon fill="lightblue" stroke="lightblue" points="132.11,-34.7 110.11,-34.7 110.11,-12.7 132.11,-12.7 132.11,-34.7"/>
-<text text-anchor="middle" x="121.11" y="-20" font-family="Times,serif" font-size="14.00">1⁵</text>
+<polygon fill="lightblue" stroke="lightblue" points="131.71,-35.6 110.11,-35.6 110.11,-14 131.71,-14 131.71,-35.6"/>
+<text xml:space="preserve" text-anchor="middle" x="120.91" y="-20.13" font-family="Times,serif" font-size="14.00">1⁵</text>
 </g>
 <!-- s2 -->
 <g id="node8" class="node">
 <title>s2</title>
-<polygon fill="lightblue" stroke="lightblue" points="22,-36.01 0,-36.01 0,-14.01 22,-14.01 22,-36.01"/>
-<text text-anchor="middle" x="11" y="-21.31" font-family="Times,serif" font-size="14.00">2⁵*</text>
+<polygon fill="lightblue" stroke="lightblue" points="21.6,-36.91 0,-36.91 0,-15.31 21.6,-15.31 21.6,-36.91"/>
+<text xml:space="preserve" text-anchor="middle" x="10.8" y="-21.43" font-family="Times,serif" font-size="14.00">2⁵*</text>
 </g>
 </g>
 </svg>
@@ -431,71 +431,71 @@ sheep_rotate_r = tryrule(RuleApp(:turn_right, rr, iS, iS));</code></pre><p>We ca
 view_sched(seq_sched; names=N)</code></pre><img src='data:image/svg+xml;utf-8,<?xml version="1.0" encoding="UTF-8" standalone="no"?>
 <!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN"
  "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
-<!-- Generated by graphviz version 2.43.0 (0)
+<!-- Generated by graphviz version 15.1.0 (20260618.0150)
  -->
 <!-- Title: G Pages: 1 -->
-<svg width="91pt" height="213pt"
- viewBox="0.00 0.00 91.00 213.00" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
-<g id="graph0" class="graph" transform="scale(1 1) rotate(0) translate(4 209)">
+<svg width="91pt" height="225pt"
+ viewBox="0.00 0.00 91.00 225.00" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+<g id="graph0" class="graph" transform="scale(1 1) rotate(0) translate(4 221.13)">
 <title>G</title>
-<polygon fill="white" stroke="transparent" points="-4,4 -4,-209 87,-209 87,4 -4,4"/>
+<polygon fill="white" stroke="none" points="-4,4 -4,-221.13 86.75,-221.13 86.75,4 -4,4"/>
 <!-- n0in1 -->
 <!-- n1 -->
 <!-- turn_left -->
 <g id="n1" class="node">
 <title>n1</title>
-<polygon fill="lightblue" stroke="transparent" points="78.5,-153 6.5,-153 6.5,-128 78.5,-128 78.5,-153"/>
-<polygon fill="none" stroke="black" points="6.5,-127.5 6.5,-152.5 78.5,-152.5 78.5,-127.5 6.5,-127.5"/>
-<text text-anchor="start" x="11.5" y="-136.3" font-family="Serif" font-size="14.00">turn_left</text>
+<polygon fill="lightblue" stroke="none" points="77.12,-162.44 5.62,-162.44 5.62,-135.19 77.12,-135.19 77.12,-162.44"/>
+<polygon fill="none" stroke="black" points="5.62,-135.19 5.62,-162.44 77.12,-162.44 77.12,-135.19 5.62,-135.19"/>
+<text xml:space="preserve" text-anchor="start" x="10.62" y="-143.94" font-family="Serif" font-size="14.00">turn_left</text>
 </g>
 <!-- n0in1&%2345;&gt;n1 -->
 <!-- S -->
 <g id="e1" class="edge">
 <title>n0in1:s&%2345;&gt;n1:n</title>
-<path fill="none" stroke="black" d="M42.5,-204C42.5,-183.1 42.5,-176.66 42.5,-158.02"/>
-<polygon fill="black" stroke="black" points="44.25,-158 42.5,-153 40.75,-158 44.25,-158"/>
-<text text-anchor="middle" x="47.5" y="-174.8" font-family="Serif" font-size="14.00">S</text>
+<path fill="none" stroke="black" d="M41.38,-215.69C41.38,-194.24 41.38,-187.37 41.38,-168.66"/>
+<polygon fill="black" stroke="black" points="43.13,-168.95 41.38,-163.95 39.63,-168.95 43.13,-168.95"/>
+<text xml:space="preserve" text-anchor="middle" x="46.25" y="-184.39" font-family="Serif" font-size="14.00">S</text>
 </g>
 <!-- n0out1 -->
 <!-- n2 -->
 <!-- turn_right -->
 <g id="n2" class="node">
 <title>n2</title>
-<polygon fill="lightblue" stroke="transparent" points="83,-77 0,-77 0,-52 83,-52 83,-77"/>
-<polygon fill="none" stroke="black" points="0.5,-51.5 0.5,-76.5 83.5,-76.5 83.5,-51.5 0.5,-51.5"/>
-<text text-anchor="start" x="5.5" y="-60.3" font-family="Serif" font-size="14.00">turn_right</text>
+<polygon fill="lightblue" stroke="none" points="82.75,-81.94 0,-81.94 0,-54.69 82.75,-54.69 82.75,-81.94"/>
+<polygon fill="none" stroke="black" points="0,-54.69 0,-81.94 82.75,-81.94 82.75,-54.69 0,-54.69"/>
+<text xml:space="preserve" text-anchor="start" x="5" y="-63.44" font-family="Serif" font-size="14.00">turn_right</text>
 </g>
 <!-- n1&%2345;&gt;n2 -->
 <!-- S -->
 <g id="e2" class="edge">
 <title>n1:s&%2345;&gt;n2:n</title>
-<path fill="none" stroke="black" d="M60.5,-128C60.5,-105.84 45.2,-101.62 42.81,-82.27"/>
-<polygon fill="black" stroke="black" points="44.54,-81.89 42.5,-77 41.05,-82.09 44.54,-81.89"/>
-<text text-anchor="middle" x="60.5" y="-98.8" font-family="Serif" font-size="14.00">S</text>
+<path fill="none" stroke="black" d="M59.25,-135.19C59.25,-112.57 44.57,-107.72 41.82,-88.43"/>
+<polygon fill="black" stroke="black" points="43.56,-88.32 41.48,-83.45 40.07,-88.56 43.56,-88.32"/>
+<text xml:space="preserve" text-anchor="middle" x="59.81" y="-103.89" font-family="Serif" font-size="14.00">S</text>
 </g>
 <!-- n1&%2345;&gt;n2 -->
 <!-- S -->
 <g id="e3" class="edge">
 <title>n1:s&%2345;&gt;n2:n</title>
-<path fill="none" stroke="black" d="M24.5,-128C24.5,-112.91 27.01,-109.06 32.5,-95 35.05,-88.47 39.56,-86.75 41.53,-82.2"/>
-<polygon fill="black" stroke="black" points="43.3,-82.24 42.5,-77 39.86,-81.59 43.3,-82.24"/>
-<text text-anchor="middle" x="37.5" y="-98.8" font-family="Serif" font-size="14.00">S</text>
+<path fill="none" stroke="black" d="M23.5,-135.19C23.5,-119.11 25.94,-114.98 31.62,-99.94 33.89,-93.96 37.79,-91.99 39.91,-88.18"/>
+<polygon fill="black" stroke="black" points="41.59,-88.68 41.03,-83.41 38.18,-87.88 41.59,-88.68"/>
+<text xml:space="preserve" text-anchor="middle" x="36.5" y="-103.89" font-family="Serif" font-size="14.00">S</text>
 </g>
 <!-- n2&%2345;&gt;n0out1 -->
 <!-- S -->
 <g id="e4" class="edge">
 <title>n2:s&%2345;&gt;n0out1:n</title>
-<path fill="none" stroke="black" d="M63.5,-52C63.5,-29.31 45.5,-25.93 42.83,-6.1"/>
-<polygon fill="black" stroke="black" points="44.57,-5.88 42.5,-1 41.08,-6.1 44.57,-5.88"/>
-<text text-anchor="middle" x="62.5" y="-22.8" font-family="Serif" font-size="14.00">S</text>
+<path fill="none" stroke="black" d="M62.06,-54.69C62.06,-31.58 44.93,-27.46 41.85,-7.76"/>
+<polygon fill="black" stroke="black" points="43.6,-7.81 41.49,-2.95 40.11,-8.07 43.6,-7.81"/>
+<text xml:space="preserve" text-anchor="middle" x="61.94" y="-23.39" font-family="Serif" font-size="14.00">S</text>
 </g>
 <!-- n2&%2345;&gt;n0out1 -->
 <!-- S -->
 <g id="e5" class="edge">
 <title>n2:s&%2345;&gt;n0out1:n</title>
-<path fill="none" stroke="black" d="M21.5,-52C21.5,-36.39 27.33,-33.34 33.5,-19 36.21,-12.71 40.04,-10.74 41.69,-6.15"/>
-<polygon fill="black" stroke="black" points="43.46,-6.21 42.5,-1 40,-5.67 43.46,-6.21"/>
-<text text-anchor="middle" x="38.5" y="-22.8" font-family="Serif" font-size="14.00">S</text>
+<path fill="none" stroke="black" d="M20.69,-54.69C20.69,-38.15 26.34,-34.74 32.62,-19.44 35,-13.65 38.36,-11.5 40.15,-7.64"/>
+<polygon fill="black" stroke="black" points="41.83,-8.17 41.08,-2.92 38.39,-7.49 41.83,-8.17"/>
+<text xml:space="preserve" text-anchor="middle" x="37.5" y="-23.39" font-family="Serif" font-size="14.00">S</text>
 </g>
 </g>
 </svg>
@@ -503,14 +503,14 @@ view_sched(seq_sched; names=N)</code></pre><img src='data:image/svg+xml;utf-8,<?
 view_sched(par_sched; names=N)</code></pre><img src='data:image/svg+xml;utf-8,<?xml version="1.0" encoding="UTF-8" standalone="no"?>
 <!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN"
  "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
-<!-- Generated by graphviz version 2.43.0 (0)
+<!-- Generated by graphviz version 15.1.0 (20260618.0150)
  -->
 <!-- Title: G Pages: 1 -->
-<svg width="182pt" height="137pt"
- viewBox="0.00 0.00 181.50 137.00" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
-<g id="graph0" class="graph" transform="scale(1 1) rotate(0) translate(4 133)">
+<svg width="180pt" height="145pt"
+ viewBox="0.00 0.00 180.00 145.00" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+<g id="graph0" class="graph" transform="scale(1 1) rotate(0) translate(4 140.63)">
 <title>G</title>
-<polygon fill="white" stroke="transparent" points="-4,4 -4,-133 177.5,-133 177.5,4 -4,4"/>
+<polygon fill="white" stroke="none" points="-4,4 -4,-140.63 176.12,-140.63 176.12,4 -4,4"/>
 <!-- n0in1 -->
 <!-- n0in2 -->
 <!-- n0in1&%2345;&gt;n0in2 -->
@@ -518,33 +518,33 @@ view_sched(par_sched; names=N)</code></pre><img src='data:image/svg+xml;utf-8,<?
 <!-- turn_left -->
 <g id="n1" class="node">
 <title>n1</title>
-<polygon fill="lightblue" stroke="transparent" points="72,-77 0,-77 0,-52 72,-52 72,-77"/>
-<polygon fill="none" stroke="black" points="0,-51.5 0,-76.5 72,-76.5 72,-51.5 0,-51.5"/>
-<text text-anchor="start" x="5" y="-60.3" font-family="Serif" font-size="14.00">turn_left</text>
+<polygon fill="lightblue" stroke="none" points="71.5,-81.94 0,-81.94 0,-54.69 71.5,-54.69 71.5,-81.94"/>
+<polygon fill="none" stroke="black" points="0,-54.69 0,-81.94 71.5,-81.94 71.5,-54.69 0,-54.69"/>
+<text xml:space="preserve" text-anchor="start" x="5" y="-63.44" font-family="Serif" font-size="14.00">turn_left</text>
 </g>
 <!-- n0in1&%2345;&gt;n1 -->
 <!-- S -->
 <g id="e1" class="edge">
 <title>n0in1:s&%2345;&gt;n1:n</title>
-<path fill="none" stroke="black" d="M63,-128C63,-104.16 39.66,-102.73 36.38,-82.04"/>
-<polygon fill="black" stroke="black" points="38.12,-81.85 36,-77 34.63,-82.12 38.12,-81.85"/>
-<text text-anchor="middle" x="62" y="-98.8" font-family="Serif" font-size="14.00">S</text>
+<path fill="none" stroke="black" d="M62.75,-135.19C62.75,-110.94 40.19,-108.7 36.31,-88.23"/>
+<polygon fill="black" stroke="black" points="38.07,-88.27 35.89,-83.45 34.59,-88.58 38.07,-88.27"/>
+<text xml:space="preserve" text-anchor="middle" x="61.79" y="-103.89" font-family="Serif" font-size="14.00">S</text>
 </g>
 <!-- n2 -->
 <!-- turn_right -->
 <g id="n2" class="node">
 <title>n2</title>
-<polygon fill="lightblue" stroke="transparent" points="173.5,-77 90.5,-77 90.5,-52 173.5,-52 173.5,-77"/>
-<polygon fill="none" stroke="black" points="91,-51.5 91,-76.5 174,-76.5 174,-51.5 91,-51.5"/>
-<text text-anchor="start" x="96" y="-60.3" font-family="Serif" font-size="14.00">turn_right</text>
+<polygon fill="lightblue" stroke="none" points="172.12,-81.94 89.38,-81.94 89.38,-54.69 172.12,-54.69 172.12,-81.94"/>
+<polygon fill="none" stroke="black" points="89.38,-54.69 89.38,-81.94 172.12,-81.94 172.12,-54.69 89.38,-54.69"/>
+<text xml:space="preserve" text-anchor="start" x="94.38" y="-63.44" font-family="Serif" font-size="14.00">turn_right</text>
 </g>
 <!-- n0in2&%2345;&gt;n2 -->
 <!-- S -->
 <g id="e2" class="edge">
 <title>n0in2:s&%2345;&gt;n2:n</title>
-<path fill="none" stroke="black" d="M128,-128C128,-107 132.25,-100.73 132.91,-82.04"/>
-<polygon fill="black" stroke="black" points="134.66,-82.03 133,-77 131.16,-81.97 134.66,-82.03"/>
-<text text-anchor="middle" x="136" y="-98.8" font-family="Serif" font-size="14.00">S</text>
+<path fill="none" stroke="black" d="M125.75,-135.19C125.75,-113.65 129.86,-106.94 130.63,-88.18"/>
+<polygon fill="black" stroke="black" points="132.37,-88.49 130.72,-83.45 128.87,-88.42 132.37,-88.49"/>
+<text xml:space="preserve" text-anchor="middle" x="134.42" y="-103.89" font-family="Serif" font-size="14.00">S</text>
 </g>
 <!-- n0out1 -->
 <!-- n0out2 -->
@@ -553,33 +553,33 @@ view_sched(par_sched; names=N)</code></pre><img src='data:image/svg+xml;utf-8,<?
 <!-- S -->
 <g id="e5" class="edge">
 <title>n1:s&%2345;&gt;n0out1:n</title>
-<path fill="none" stroke="black" d="M18,-52C18,-37.27 13.08,-31.42 21,-19 28.36,-7.46 45.96,-14.23 50.77,-6.25"/>
-<polygon fill="black" stroke="black" points="52.56,-6.27 52,-1 49.15,-5.47 52.56,-6.27"/>
-<text text-anchor="middle" x="26" y="-22.8" font-family="Serif" font-size="14.00">S</text>
+<path fill="none" stroke="black" d="M17.88,-54.69C17.88,-38.96 12.58,-32.73 21,-19.44 28.02,-8.36 44.5,-14.15 49.96,-7.47"/>
+<polygon fill="black" stroke="black" points="51.57,-8.18 51.32,-2.89 48.22,-7.19 51.57,-8.18"/>
+<text xml:space="preserve" text-anchor="middle" x="25.88" y="-23.39" font-family="Serif" font-size="14.00">S</text>
 </g>
 <!-- n1&%2345;&gt;n0out1 -->
 <!-- S -->
 <g id="e6" class="edge">
 <title>n1:s&%2345;&gt;n0out1:n</title>
-<path fill="none" stroke="black" d="M54,-52C54,-31.09 52.3,-24.67 52.03,-6.02"/>
-<polygon fill="black" stroke="black" points="53.78,-5.99 52,-1 50.28,-6.01 53.78,-5.99"/>
-<text text-anchor="middle" x="59" y="-22.8" font-family="Serif" font-size="14.00">S</text>
+<path fill="none" stroke="black" d="M53.62,-54.69C53.62,-33.23 52.09,-26.38 51.8,-7.66"/>
+<polygon fill="black" stroke="black" points="53.55,-7.94 51.76,-2.95 50.05,-7.97 53.55,-7.94"/>
+<text xml:space="preserve" text-anchor="middle" x="58.05" y="-23.39" font-family="Serif" font-size="14.00">S</text>
 </g>
 <!-- n2&%2345;&gt;n0out2 -->
 <!-- S -->
 <g id="e3" class="edge">
 <title>n2:s&%2345;&gt;n0out2:n</title>
-<path fill="none" stroke="black" d="M112,-52C112,-31.1 112,-24.66 112,-6.02"/>
-<polygon fill="black" stroke="black" points="113.75,-6 112,-1 110.25,-6 113.75,-6"/>
-<text text-anchor="middle" x="117" y="-22.8" font-family="Serif" font-size="14.00">S</text>
+<path fill="none" stroke="black" d="M110.06,-54.69C110.06,-33.24 110.63,-26.37 110.73,-7.66"/>
+<polygon fill="black" stroke="black" points="112.48,-7.96 110.75,-2.95 108.98,-7.95 112.48,-7.96"/>
+<text xml:space="preserve" text-anchor="middle" x="115.46" y="-23.39" font-family="Serif" font-size="14.00">S</text>
 </g>
 <!-- n2&%2345;&gt;n0out2 -->
 <!-- S -->
 <g id="e4" class="edge">
 <title>n2:s&%2345;&gt;n0out2:n</title>
-<path fill="none" stroke="black" d="M154,-52C154,-48.9 124.1,-17.34 114.76,-5.34"/>
-<polygon fill="black" stroke="black" points="116.16,-4.28 112,-1 113.2,-6.16 116.16,-4.28"/>
-<text text-anchor="middle" x="144" y="-22.8" font-family="Serif" font-size="14.00">S</text>
+<path fill="none" stroke="black" d="M151.44,-54.69C151.44,-35.04 136.71,-35.03 124.75,-19.44 120.22,-13.54 114.79,-12.06 112.23,-7.68"/>
+<polygon fill="black" stroke="black" points="113.96,-7.37 111.1,-2.91 110.55,-8.18 113.96,-7.37"/>
+<text xml:space="preserve" text-anchor="middle" x="148.67" y="-23.39" font-family="Serif" font-size="14.00">S</text>
 </g>
 </g>
 </svg>
@@ -772,11 +772,11 @@ rewrite!(g_inc_rule, ex; cat=ℒ)
     return starve([repro(out_repro), out_no_repro])
   end);
 
-view_sched(general; names=N)</code></pre><img src="12d502ef.svg" alt="Example block output"/><p>The above was content common to wolves and sheep. The difference is how they eat.</p><pre><code class="language-julia hljs">sheep = sheep_eat ⋅ general;   # executed once per sheep
+view_sched(general; names=N)</code></pre><img src="5306e0d4.svg" alt="Example block output"/><p>The above was content common to wolves and sheep. The difference is how they eat.</p><pre><code class="language-julia hljs">sheep = sheep_eat ⋅ general;   # executed once per sheep
 
-view_sched(sheep; names=N)</code></pre><img src="097a4fde.svg" alt="Example block output"/><p>We use the swap data migration functor <code>F</code> to translate the sheep routine into a wolf one so that it can be composed with the wolf eating step.</p><pre><code class="language-julia hljs">wolf = wolf_eat ⋅ F(general);  # executed once per wolf
+view_sched(sheep; names=N)</code></pre><img src="0b596381.svg" alt="Example block output"/><p>We use the swap data migration functor <code>F</code> to translate the sheep routine into a wolf one so that it can be composed with the wolf eating step.</p><pre><code class="language-julia hljs">wolf = wolf_eat ⋅ F(general);  # executed once per wolf
 
-view_sched(wolf; names=N)</code></pre><img src="510ca23c.svg" alt="Example block output"/><p>Do all sheep, then all wolves, then all daily operations</p><pre><code class="language-julia hljs">cycle = (agent(sheep; n=:sheep, ret=I)
+view_sched(wolf; names=N)</code></pre><img src="704a4bba.svg" alt="Example block output"/><p>Do all sheep, then all wolves, then all daily operations</p><pre><code class="language-julia hljs">cycle = (agent(sheep; n=:sheep, ret=I)
          ⋅
          agent(wolf; n=:wolves, ret=I)
          ⋅
@@ -791,92 +791,92 @@ everything coordinates.
 
 overall = while_schedule(cycle, curr -&gt; nparts(curr, :Wolf) &gt;= 0) |&gt; F2
 
-view_sched(overall; names=F2(N))</code></pre><img src="c0488b22.svg" alt="Example block output"/><h2 id="Running-the-simulation"><a class="docs-heading-anchor" href="#Running-the-simulation">Running the simulation</a><a id="Running-the-simulation-1"></a><a class="docs-heading-anchor-permalink" href="#Running-the-simulation" title="Permalink"></a></h2><pre><code class="language-julia hljs">X = initialize(3, 0.25, 0.25); # 3 × 3 grid, 2 sheep + wolves</code></pre><p>Encourage something exciting to happen by placing a wolf on top of a sheep</p><pre><code class="language-julia hljs">X[1, :wolf_loc] = X[1, :sheep_loc]
+view_sched(overall; names=F2(N))</code></pre><img src="26c6823b.svg" alt="Example block output"/><h2 id="Running-the-simulation"><a class="docs-heading-anchor" href="#Running-the-simulation">Running the simulation</a><a id="Running-the-simulation-1"></a><a class="docs-heading-anchor-permalink" href="#Running-the-simulation" title="Permalink"></a></h2><pre><code class="language-julia hljs">X = initialize(3, 0.25, 0.25); # 3 × 3 grid, 2 sheep + wolves</code></pre><p>Encourage something exciting to happen by placing a wolf on top of a sheep</p><pre><code class="language-julia hljs">X[1, :wolf_loc] = X[1, :sheep_loc]
 X[1, :wolf_dir] = X[1, :sheep_dir]
 
 view_LV(X)</code></pre><img src='data:image/svg+xml;utf-8,<?xml version="1.0" encoding="UTF-8" standalone="no"?>
 <!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN"
  "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
-<!-- Generated by graphviz version 2.43.0 (0)
+<!-- Generated by graphviz version 15.1.0 (20260618.0150)
  -->
 <!-- Title: G Pages: 1 -->
-<svg width="209pt" height="188pt"
- viewBox="0.00 0.00 209.02 188.00" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+<svg width="210pt" height="188pt"
+ viewBox="0.00 0.00 210.00 188.00" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
 <g id="graph0" class="graph" transform="scale(1 1) rotate(0) translate(4 184)">
 <title>G</title>
-<polygon fill="white" stroke="transparent" points="-4,4 -4,-184 205.02,-184 205.02,4 -4,4"/>
+<polygon fill="white" stroke="none" points="-4,4 -4,-184 205.92,-184 205.92,4 -4,4"/>
 <!-- v1 -->
 <g id="node1" class="node">
 <title>v1</title>
-<ellipse fill="lightgreen" stroke="lightgreen" cx="22.75" cy="-18" rx="18" ry="18"/>
+<ellipse fill="lightgreen" stroke="lightgreen" cx="23.85" cy="-18" rx="18" ry="18"/>
 </g>
 <!-- v2 -->
 <g id="node2" class="node">
 <title>v2</title>
-<ellipse fill="tan" stroke="tan" cx="22.75" cy="-90" rx="23" ry="23"/>
-<text text-anchor="middle" x="22.75" y="-86.3" font-family="Times,serif" font-size="14.00">13</text>
+<ellipse fill="tan" stroke="tan" cx="23.85" cy="-90" rx="23.85" ry="23.85"/>
+<text xml:space="preserve" text-anchor="middle" x="23.85" y="-85.32" font-family="Times,serif" font-size="14.00">13</text>
 </g>
 <!-- v3 -->
 <g id="node3" class="node">
 <title>v3</title>
-<ellipse fill="lightgreen" stroke="lightgreen" cx="22.75" cy="-162" rx="18" ry="18"/>
+<ellipse fill="lightgreen" stroke="lightgreen" cx="23.85" cy="-162" rx="18" ry="18"/>
 </g>
 <!-- v4 -->
 <g id="node4" class="node">
 <title>v4</title>
-<ellipse fill="lightgreen" stroke="lightgreen" cx="94.75" cy="-18" rx="18" ry="18"/>
+<ellipse fill="lightgreen" stroke="lightgreen" cx="95.85" cy="-18" rx="18" ry="18"/>
 </g>
 <!-- v5 -->
 <g id="node5" class="node">
 <title>v5</title>
-<ellipse fill="tan" stroke="tan" cx="94.75" cy="-90" rx="18" ry="18"/>
-<text text-anchor="middle" x="94.75" y="-86.3" font-family="Times,serif" font-size="14.00">5</text>
+<ellipse fill="tan" stroke="tan" cx="95.85" cy="-90" rx="18" ry="18"/>
+<text xml:space="preserve" text-anchor="middle" x="95.85" y="-85.32" font-family="Times,serif" font-size="14.00">5</text>
 </g>
 <!-- v6 -->
 <g id="node6" class="node">
 <title>v6</title>
-<ellipse fill="lightgreen" stroke="lightgreen" cx="94.75" cy="-162" rx="18" ry="18"/>
+<ellipse fill="lightgreen" stroke="lightgreen" cx="95.85" cy="-162" rx="18" ry="18"/>
 </g>
 <!-- v7 -->
 <g id="node7" class="node">
 <title>v7</title>
-<ellipse fill="lightgreen" stroke="lightgreen" cx="166.75" cy="-18" rx="18" ry="18"/>
+<ellipse fill="lightgreen" stroke="lightgreen" cx="167.85" cy="-18" rx="18" ry="18"/>
 </g>
 <!-- v8 -->
 <g id="node8" class="node">
 <title>v8</title>
-<ellipse fill="lightgreen" stroke="lightgreen" cx="166.75" cy="-90" rx="18" ry="18"/>
+<ellipse fill="lightgreen" stroke="lightgreen" cx="167.85" cy="-90" rx="18" ry="18"/>
 </g>
 <!-- v9 -->
 <g id="node9" class="node">
 <title>v9</title>
-<ellipse fill="lightgreen" stroke="lightgreen" cx="166.75" cy="-162" rx="18" ry="18"/>
+<ellipse fill="lightgreen" stroke="lightgreen" cx="167.85" cy="-162" rx="18" ry="18"/>
 </g>
 <!-- w1 -->
 <g id="node10" class="node">
 <title>w1</title>
-<polygon fill="red" stroke="red" points="40.24,-53.23 18.24,-53.23 18.24,-31.23 40.24,-31.23 40.24,-53.23"/>
-<text text-anchor="middle" x="29.24" y="-38.53" font-family="Times,serif" font-size="14.00">1⁵</text>
+<polygon fill="red" stroke="red" points="41.14,-53.03 19.54,-53.03 19.54,-31.43 41.14,-31.43 41.14,-53.03"/>
+<text xml:space="preserve" text-anchor="middle" x="30.34" y="-37.55" font-family="Times,serif" font-size="14.00">1⁵</text>
 </g>
 <!-- w2 -->
 <g id="node11" class="node">
 <title>w2</title>
-<polygon fill="red" stroke="red" points="201.02,-101.74 179.02,-101.74 179.02,-79.74 201.02,-79.74 201.02,-101.74"/>
-<text text-anchor="middle" x="190.02" y="-87.04" font-family="Times,serif" font-size="14.00">2⁵</text>
+<polygon fill="red" stroke="red" points="201.92,-101.54 180.32,-101.54 180.32,-79.94 201.92,-79.94 201.92,-101.54"/>
+<text xml:space="preserve" text-anchor="middle" x="191.12" y="-86.07" font-family="Times,serif" font-size="14.00">2⁵</text>
 </g>
 <!-- s1 -->
 <g id="node12" class="node">
 <title>s1</title>
-<polygon fill="lightblue" stroke="lightblue" points="37.98,-52.83 15.98,-52.83 15.98,-30.83 37.98,-30.83 37.98,-52.83"/>
-<text text-anchor="middle" x="26.98" y="-38.13" font-family="Times,serif" font-size="14.00">1⁵</text>
+<polygon fill="lightblue" stroke="lightblue" points="38.88,-52.63 17.28,-52.63 17.28,-31.03 38.88,-31.03 38.88,-52.63"/>
+<text xml:space="preserve" text-anchor="middle" x="28.08" y="-37.15" font-family="Times,serif" font-size="14.00">1⁵</text>
 </g>
 <!-- s2 -->
 <g id="node13" class="node">
 <title>s2</title>
-<polygon fill="lightblue" stroke="lightblue" points="197.36,-179.18 175.36,-179.18 175.36,-157.18 197.36,-157.18 197.36,-179.18"/>
-<text text-anchor="middle" x="186.36" y="-164.48" font-family="Times,serif" font-size="14.00">2⁵</text>
+<polygon fill="lightblue" stroke="lightblue" points="198.26,-178.98 176.66,-178.98 176.66,-157.38 198.26,-157.38 198.26,-178.98"/>
+<text xml:space="preserve" text-anchor="middle" x="187.46" y="-163.51" font-family="Times,serif" font-size="14.00">2⁵</text>
 </g>
 </g>
 </svg>
 '/><p>Run the simulation for 100 steps</p><pre><code class="language-julia hljs">res = interpret(overall, X; maxstep=100, cat=𝒟);
-length(res)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">61</code></pre><h2 id="Visualizing-the-results"><a class="docs-heading-anchor" href="#Visualizing-the-results">Visualizing the results</a><a id="Visualizing-the-results-1"></a><a class="docs-heading-anchor-permalink" href="#Visualizing-the-results" title="Permalink"></a></h2><p>Run this line to view the trajectory in the generated <code>traj</code> folder</p><pre><code class="language-julia hljs">view_traj(overall, res[1:10], view_LV; agent=true, names=F2(N));</code></pre></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../game_of_life/">« Conway&#39;s Game of Life</a><a class="docs-footer-nextpage" href="../ptg_simple/">Slice Bread »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="auto">Automatic (OS)</option><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option><option value="catppuccin-latte">catppuccin-latte</option><option value="catppuccin-frappe">catppuccin-frappe</option><option value="catppuccin-macchiato">catppuccin-macchiato</option><option value="catppuccin-mocha">catppuccin-mocha</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 1.17.0 on <span class="colophon-date" title="Monday 1 June 2026 18:54">Monday 1 June 2026</span>. Using Julia version 1.12.6.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
+length(res)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">61</code></pre><h2 id="Visualizing-the-results"><a class="docs-heading-anchor" href="#Visualizing-the-results">Visualizing the results</a><a id="Visualizing-the-results-1"></a><a class="docs-heading-anchor-permalink" href="#Visualizing-the-results" title="Permalink"></a></h2><p>Run this line to view the trajectory in the generated <code>traj</code> folder</p><pre><code class="language-julia hljs">view_traj(overall, res[1:10], view_LV; agent=true, names=F2(N));</code></pre></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../game_of_life/">« Conway&#39;s Game of Life</a><a class="docs-footer-nextpage" href="../ptg_simple/">Slice Bread »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="auto">Automatic (OS)</option><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option><option value="catppuccin-latte">catppuccin-latte</option><option value="catppuccin-frappe">catppuccin-frappe</option><option value="catppuccin-macchiato">catppuccin-macchiato</option><option value="catppuccin-mocha">catppuccin-mocha</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 1.20.0 on <span class="colophon-date" title="Tuesday 24 November 2026 20:06">Tuesday 24 November 2026</span>. Using Julia version 1.13.4.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>

@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/><title>Conway&#39;s Game of Life · AlgebraicRewriting.jl</title><meta name="title" content="Conway&#39;s Game of Life · AlgebraicRewriting.jl"/><meta property="og:title" content="Conway&#39;s Game of Life · AlgebraicRewriting.jl"/><meta property="twitter:title" content="Conway&#39;s Game of Life · AlgebraicRewriting.jl"/><meta name="description" content="Documentation for AlgebraicRewriting.jl."/><meta property="og:description" content="Documentation for AlgebraicRewriting.jl."/><meta property="twitter:description" content="Documentation for AlgebraicRewriting.jl."/><script data-outdated-warner src="../../assets/warner.js"></script><link href="https://cdnjs.cloudflare.com/ajax/libs/lato-font/3.0.0/css/lato-font.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/juliamono/0.050/juliamono.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/fontawesome.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/solid.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/brands.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.8/katex.min.css" rel="stylesheet" type="text/css"/><script>documenterBaseURL="../.."</script><script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.6/require.min.js" data-main="../../assets/documenter.js"></script><script src="../../search_index.js"></script><script src="../../siteinfo.js"></script><script src="../../../versions.js"></script><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/catppuccin-mocha.css" data-theme-name="catppuccin-mocha"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/catppuccin-macchiato.css" data-theme-name="catppuccin-macchiato"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/catppuccin-frappe.css" data-theme-name="catppuccin-frappe"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/catppuccin-latte.css" data-theme-name="catppuccin-latte"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/documenter-dark.css" data-theme-name="documenter-dark" data-theme-primary-dark/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/documenter-light.css" data-theme-name="documenter-light" data-theme-primary/><script src="../../assets/themeswap.js"></script></head><body><div id="documenter"><nav class="docs-sidebar"><a class="docs-logo" href="../../"><img src="../../assets/logo.png" alt="AlgebraicRewriting.jl logo"/></a><div class="docs-package-name"><span class="docs-autofit"><a href="../../">AlgebraicRewriting.jl</a></span></div><button class="docs-search-query input is-rounded is-small is-clickable my-2 mx-auto py-1 px-2" id="documenter-search-query">Search docs (Ctrl + /)</button><ul class="docs-menu"><li><a class="tocitem" href="../../">AlgebraicRewriting.jl</a></li><li><span class="tocitem">Examples</span><ul><li><a class="tocitem" href="../full_demo/">Full Demo</a></li><li class="is-active"><a class="tocitem" href>Conway&#39;s Game of Life</a><ul class="internal"><li class="toplevel"><a class="tocitem" href="#Ontology"><span>Ontology</span></a></li><li class="toplevel"><a class="tocitem" href="#Data-migration-functors"><span>Data migration functors</span></a></li><li class="toplevel"><a class="tocitem" href="#Helper-functions"><span>Helper functions</span></a></li><li class="toplevel"><a class="tocitem" href="#Rules"><span>Rules</span></a></li><li><a class="tocitem" href="#Assembling-rules-into-a-recipe"><span>Assembling rules into a recipe</span></a></li><li><a class="tocitem" href="#Running-the-simulation"><span>Running the simulation</span></a></li></ul></li><li><a class="tocitem" href="../lotka_volterra/">Lotka Volterra</a></li><li><a class="tocitem" href="../ptg_simple/">Slice Bread</a></li></ul></li><li><a class="tocitem" href="../../api/">Library Reference</a></li></ul><div class="docs-version-selector field has-addons"><div class="control"><span class="docs-label button is-static is-size-7">Version</span></div><div class="docs-selector control is-expanded"><div class="select is-fullwidth is-size-7"><select id="documenter-version-selector"></select></div></div></div></nav><div class="docs-main"><header class="docs-navbar"><a class="docs-sidebar-button docs-navbar-link fa-solid fa-bars is-hidden-desktop" id="documenter-sidebar-button" href="#"></a><nav class="breadcrumb"><ul class="is-hidden-mobile"><li><a class="is-disabled">Examples</a></li><li class="is-active"><a href>Conway&#39;s Game of Life</a></li></ul><ul class="is-hidden-tablet"><li class="is-active"><a href>Conway&#39;s Game of Life</a></li></ul></nav><div class="docs-right"><a class="docs-navbar-link" href="https://github.com/AlgebraicJulia/AlgebraicRewriting.jl" title="View the repository on GitHub"><span class="docs-icon fa-brands"></span><span class="docs-label is-hidden-touch">GitHub</span></a><a class="docs-navbar-link" href="https://github.com/AlgebraicJulia/AlgebraicRewriting.jl/blob/main/docs/literate/game_of_life.jl" title="Edit source on GitHub"><span class="docs-icon fa-solid"></span></a><a class="docs-settings-button docs-navbar-link fa-solid fa-gear" id="documenter-settings-button" href="#" title="Settings"></a><a class="docs-article-toggle-button fa-solid fa-chevron-up" id="documenter-article-toggle-button" href="javascript:;" title="Collapse all docstrings"></a></div></header><article class="content" id="documenter-page"><h1 id="Conway&#39;s-Game-of-Life"><a class="docs-heading-anchor" href="#Conway&#39;s-Game-of-Life">Conway&#39;s Game of Life</a><a id="Conway&#39;s-Game-of-Life-1"></a><a class="docs-heading-anchor-permalink" href="#Conway&#39;s-Game-of-Life" title="Permalink"></a></h1><p>This is a demonstration of the game of life as an agent-based model.</p><p>We start with importing some libraries.</p><pre><code class="language-julia hljs">using AlgebraicRewriting, Catlab, Test
+<html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/><meta name="referrer" content="no-referrer"/><title>Conway&#39;s Game of Life · AlgebraicRewriting.jl</title><meta name="title" content="Conway&#39;s Game of Life · AlgebraicRewriting.jl"/><meta property="og:title" content="Conway&#39;s Game of Life · AlgebraicRewriting.jl"/><meta property="twitter:title" content="Conway&#39;s Game of Life · AlgebraicRewriting.jl"/><meta name="description" content="Documentation for AlgebraicRewriting.jl."/><meta property="og:description" content="Documentation for AlgebraicRewriting.jl."/><meta property="twitter:description" content="Documentation for AlgebraicRewriting.jl."/><script data-outdated-warner src="../../assets/warner.js"></script><link href="https://cdnjs.cloudflare.com/ajax/libs/lato-font/3.0.0/css/lato-font.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/juliamono/0.63.2/juliamono.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/fontawesome.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/solid.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/brands.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.8/katex.min.css" rel="stylesheet" type="text/css"/><script>documenterBaseURL="../.."</script><script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.6/require.min.js" data-main="../../assets/documenter.js"></script><script src="../../search_index.js"></script><script src="../../siteinfo.js"></script><script src="../../../versions.js"></script><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/catppuccin-mocha.css" data-theme-name="catppuccin-mocha"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/catppuccin-macchiato.css" data-theme-name="catppuccin-macchiato"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/catppuccin-frappe.css" data-theme-name="catppuccin-frappe"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/catppuccin-latte.css" data-theme-name="catppuccin-latte"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/documenter-dark.css" data-theme-name="documenter-dark" data-theme-primary-dark/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/documenter-light.css" data-theme-name="documenter-light" data-theme-primary/><script src="../../assets/themeswap.js"></script></head><body><div id="documenter"><nav class="docs-sidebar"><a class="docs-logo" href="../../"><img src="../../assets/logo.png" alt="AlgebraicRewriting.jl logo"/></a><div class="docs-package-name"><span class="docs-autofit"><a href="../../">AlgebraicRewriting.jl</a></span></div><button class="docs-search-query input is-rounded is-small is-clickable my-2 mx-auto py-1 px-2" id="documenter-search-query">Search docs (Ctrl + /)</button><ul class="docs-menu"><li><a class="tocitem" href="../../">AlgebraicRewriting.jl</a></li><li><span class="tocitem">Examples</span><ul><li><a class="tocitem" href="../full_demo/">Full Demo</a></li><li class="is-active"><a class="tocitem" href>Conway&#39;s Game of Life</a><ul class="internal"><li class="toplevel"><a class="tocitem" href="#Ontology"><span>Ontology</span></a></li><li class="toplevel"><a class="tocitem" href="#Data-migration-functors"><span>Data migration functors</span></a></li><li class="toplevel"><a class="tocitem" href="#Helper-functions"><span>Helper functions</span></a></li><li class="toplevel"><a class="tocitem" href="#Rules"><span>Rules</span></a></li><li><a class="tocitem" href="#Assembling-rules-into-a-recipe"><span>Assembling rules into a recipe</span></a></li><li><a class="tocitem" href="#Running-the-simulation"><span>Running the simulation</span></a></li></ul></li><li><a class="tocitem" href="../lotka_volterra/">Lotka Volterra</a></li><li><a class="tocitem" href="../ptg_simple/">Slice Bread</a></li></ul></li><li><a class="tocitem" href="../../api/">Library Reference</a></li></ul><div class="docs-version-selector field has-addons"><div class="control"><span class="docs-label button is-static is-size-7">Version</span></div><div class="docs-selector control is-expanded"><div class="select is-fullwidth is-size-7"><select id="documenter-version-selector"></select></div></div></div></nav><div class="docs-main"><header class="docs-navbar"><a class="docs-sidebar-button docs-navbar-link fa-solid fa-bars is-hidden-desktop" id="documenter-sidebar-button" href="#"></a><nav class="breadcrumb"><ul class="is-hidden-mobile"><li><a class="is-disabled">Examples</a></li><li class="is-active"><a href>Conway&#39;s Game of Life</a></li></ul><ul class="is-hidden-tablet"><li class="is-active"><a href>Conway&#39;s Game of Life</a></li></ul></nav><div class="docs-right"><a class="docs-navbar-link" href="https://github.com/AlgebraicJulia/AlgebraicRewriting.jl" title="View the repository on GitHub"><span class="docs-icon fa-brands"></span><span class="docs-label is-hidden-touch">GitHub</span></a><a class="docs-navbar-link" href="https://github.com/AlgebraicJulia/AlgebraicRewriting.jl/blob/main/docs/literate/game_of_life.jl" title="Edit source on GitHub"><span class="docs-icon fa-solid"></span></a><a class="docs-settings-button docs-navbar-link fa-solid fa-gear" id="documenter-settings-button" href="#" title="Settings"></a><a class="docs-article-toggle-button fa-solid fa-chevron-up" id="documenter-article-toggle-button" href="javascript:;" title="Collapse all docstrings"></a></div></header><article class="content" id="documenter-page"><h1 id="Conway&#39;s-Game-of-Life"><a class="docs-heading-anchor" href="#Conway&#39;s-Game-of-Life">Conway&#39;s Game of Life</a><a id="Conway&#39;s-Game-of-Life-1"></a><a class="docs-heading-anchor-permalink" href="#Conway&#39;s-Game-of-Life" title="Permalink"></a></h1><p>This is a demonstration of the game of life as an agent-based model.</p><p>We start with importing some libraries.</p><pre><code class="language-julia hljs">using AlgebraicRewriting, Catlab, Test
 import Catlab.Graphics: to_graphviz
 using Catlab.Graphics.Graphviz: Attributes, Statement, Node, Edge, Digraph
 using PrettyTables</code></pre><p>The game of life has two rules: one which turns living things dead, and one that brings dead things to life. We model the terrain as a symmetric graph: cells are vertices. Neighboring cells have edges between them.</p><p>Implementation wise, if we are going to update cells one at a time, we must keep track of two bits of information (the cell&#39;s living status for the <em>current</em> timestep and whether it will be alive in the <em>next</em> timestep). Thus we need helper rule to overwrite the &quot;current&quot; life status with the &quot;next&quot; life status at the end of each timestep.</p><h1 id="Ontology"><a class="docs-heading-anchor" href="#Ontology">Ontology</a><a id="Ontology-1"></a><a class="docs-heading-anchor-permalink" href="#Ontology" title="Permalink"></a></h1><p>Defining an ontology is stating what data is required to specify a state of the simulation at some point in time. In AlgebraicJulia, this is done via declaring a <code>Presentation</code>, i.e. a database schema. Objects (<code>Ob</code>, or tables) are types of entities. Homs (<code>Hom</code>, or foreign keys) are functional relationships between the aforementioned entities. AttrTypes are placeholders for Julia types, which are assigned to <code>Ob</code> via attributes (<code>Attr</code>).</p><p>The schema below extends the schema for directed symmetric graphs, which consists in two tables (<code>E</code> and <code>V</code>, for edges and vertices) and two homs (<code>src</code> and <code>tgt</code>, <code>E→V</code>). Furthermore a hom <code>inv: E→E</code> enforces that each edge is paired with its opposite-pointing edge.</p><p>The schema below says there are two more types of entities, <code>Curr</code> and <code>Next</code>. Think of these as little tokens that can be assigned to vertices to mark them as currently-alive or to-be-alive-in-the-next-timestep, respectively. Thus, we can also thinking of them as picking out <em>subsets</em> of <code>V</code> via the maps <code>curr</code> and <code>next</code>.</p><pre><code class="language-julia hljs">@present SchLife &lt;: SchSymmetricGraph begin
@@ -16,72 +16,72 @@ const 𝒢 = ACSetCategory(MADCSetCat(Life()))
 to_graphviz(SchLife; prog=&quot;dot&quot;)</code></pre><img src='data:image/svg+xml;utf-8,<?xml version="1.0" encoding="UTF-8" standalone="no"?>
 <!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN"
  "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
-<!-- Generated by graphviz version 2.43.0 (0)
+<!-- Generated by graphviz version 15.1.0 (20260618.0150)
  -->
 <!-- Title: G Pages: 1 -->
-<svg width="246pt" height="131pt"
- viewBox="0.00 0.00 246.00 131.00" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
-<g id="graph0" class="graph" transform="scale(1 1) rotate(0) translate(4 127)">
+<svg width="246pt" height="133pt"
+ viewBox="0.00 0.00 246.00 133.00" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+<g id="graph0" class="graph" transform="scale(1 1) rotate(0) translate(4 129.25)">
 <title>G</title>
-<polygon fill="white" stroke="transparent" points="-4,4 -4,-127 242,-127 242,4 -4,4"/>
+<polygon fill="white" stroke="none" points="-4,4 -4,-129.25 242,-129.25 242,4 -4,4"/>
 <!-- n1 -->
 <g id="node1" class="node">
 <title>n1</title>
-<ellipse fill="none" stroke="black" cx="116" cy="-18" rx="27" ry="18"/>
-<text text-anchor="middle" x="116" y="-14.3" font-family="Times,serif" font-size="14.00">V</text>
+<ellipse fill="none" stroke="black" cx="114" cy="-18" rx="27" ry="18"/>
+<text xml:space="preserve" text-anchor="middle" x="114" y="-13.32" font-family="Times,serif" font-size="14.00">V</text>
 </g>
 <!-- n2 -->
 <g id="node2" class="node">
 <title>n2</title>
-<ellipse fill="none" stroke="black" cx="27" cy="-105" rx="27" ry="18"/>
-<text text-anchor="middle" x="27" y="-101.3" font-family="Times,serif" font-size="14.00">E</text>
+<ellipse fill="none" stroke="black" cx="27" cy="-107.25" rx="27" ry="18"/>
+<text xml:space="preserve" text-anchor="middle" x="27" y="-102.58" font-family="Times,serif" font-size="14.00">E</text>
 </g>
 <!-- n2&%2345;&gt;n1 -->
 <g id="edge1" class="edge">
 <title>n2&%2345;&gt;n1</title>
-<path fill="none" stroke="black" d="M29.36,-87.03C31.59,-76.48 35.87,-63.21 44,-54 53.99,-42.68 68.47,-34.66 81.82,-29.19"/>
-<polygon fill="black" stroke="black" points="83.14,-32.43 91.27,-25.64 80.68,-25.88 83.14,-32.43"/>
-<text text-anchor="middle" x="55" y="-57.8" font-family="Times,serif" font-size="14.00">src</text>
+<path fill="none" stroke="black" d="M29.6,-89.06C32.04,-77.97 36.65,-63.84 45.25,-54 54.31,-43.62 67.19,-35.93 79.36,-30.45"/>
+<polygon fill="black" stroke="black" points="80.43,-33.79 88.35,-26.76 77.77,-27.32 80.43,-33.79"/>
+<text xml:space="preserve" text-anchor="middle" x="56.12" y="-57.95" font-family="Times,serif" font-size="14.00">src</text>
 </g>
 <!-- n2&%2345;&gt;n1 -->
 <g id="edge2" class="edge">
 <title>n2&%2345;&gt;n1</title>
-<path fill="none" stroke="black" d="M42.74,-90.22C49.91,-83.85 58.47,-76.13 66,-69 75.51,-59.99 85.78,-49.8 94.53,-40.98"/>
-<polygon fill="black" stroke="black" points="97.23,-43.23 101.76,-33.65 92.25,-38.31 97.23,-43.23"/>
-<text text-anchor="middle" x="92" y="-57.8" font-family="Times,serif" font-size="14.00">tgt</text>
+<path fill="none" stroke="black" d="M43.36,-92.71C50.76,-86.39 59.51,-78.64 67,-71.25 76.12,-62.25 85.67,-51.85 93.75,-42.7"/>
+<polygon fill="black" stroke="black" points="96.35,-45.05 100.29,-35.21 91.08,-40.44 96.35,-45.05"/>
+<text xml:space="preserve" text-anchor="middle" x="93.57" y="-57.95" font-family="Times,serif" font-size="14.00">tgt</text>
 </g>
 <!-- n2&%2345;&gt;n2 -->
 <g id="edge3" class="edge">
 <title>n2&%2345;&gt;n2</title>
-<path fill="none" stroke="black" d="M51.53,-112.75C62.51,-113.49 72,-110.91 72,-105 72,-101.03 67.72,-98.56 61.57,-97.59"/>
-<polygon fill="black" stroke="black" points="61.65,-94.09 51.53,-97.25 61.41,-101.09 61.65,-94.09"/>
-<text text-anchor="middle" x="83" y="-101.3" font-family="Times,serif" font-size="14.00">inv</text>
+<path fill="none" stroke="black" d="M51.53,-115.49C62.51,-116.27 72,-113.53 72,-107.25 72,-103.33 68.29,-100.78 62.83,-99.62"/>
+<polygon fill="black" stroke="black" points="63.22,-96.14 53.04,-99.09 62.84,-103.13 63.22,-96.14"/>
+<text xml:space="preserve" text-anchor="middle" x="82.88" y="-102.58" font-family="Times,serif" font-size="14.00">inv</text>
 </g>
 <!-- n3 -->
 <g id="node3" class="node">
 <title>n3</title>
-<ellipse fill="none" stroke="black" cx="139" cy="-105" rx="27" ry="18"/>
-<text text-anchor="middle" x="139" y="-101.3" font-family="Times,serif" font-size="14.00">Curr</text>
+<ellipse fill="none" stroke="black" cx="139" cy="-107.25" rx="27" ry="18"/>
+<text xml:space="preserve" text-anchor="middle" x="139" y="-102.58" font-family="Times,serif" font-size="14.00">Curr</text>
 </g>
 <!-- n3&%2345;&gt;n1 -->
 <g id="edge4" class="edge">
 <title>n3&%2345;&gt;n1</title>
-<path fill="none" stroke="black" d="M134.46,-87.21C131.24,-75.33 126.87,-59.17 123.19,-45.56"/>
-<polygon fill="black" stroke="black" points="126.53,-44.5 120.53,-35.76 119.77,-46.33 126.53,-44.5"/>
-<text text-anchor="middle" x="143.5" y="-57.8" font-family="Times,serif" font-size="14.00">curr</text>
+<path fill="none" stroke="black" d="M134.18,-89.43C130.74,-77.43 126.04,-61.03 122.04,-47.07"/>
+<polygon fill="black" stroke="black" points="125.43,-46.17 119.31,-37.52 118.7,-48.1 125.43,-46.17"/>
+<text xml:space="preserve" text-anchor="middle" x="143.74" y="-57.95" font-family="Times,serif" font-size="14.00">curr</text>
 </g>
 <!-- n4 -->
 <g id="node4" class="node">
 <title>n4</title>
-<ellipse fill="none" stroke="black" cx="211" cy="-105" rx="27" ry="18"/>
-<text text-anchor="middle" x="211" y="-101.3" font-family="Times,serif" font-size="14.00">Next</text>
+<ellipse fill="none" stroke="black" cx="211" cy="-107.25" rx="27" ry="18"/>
+<text xml:space="preserve" text-anchor="middle" x="211" y="-102.58" font-family="Times,serif" font-size="14.00">Next</text>
 </g>
 <!-- n4&%2345;&gt;n1 -->
 <g id="edge5" class="edge">
 <title>n4&%2345;&gt;n1</title>
-<path fill="none" stroke="black" d="M197.74,-88.93C188.43,-78.66 175.45,-64.99 163,-54 156.67,-48.42 149.51,-42.77 142.71,-37.7"/>
-<polygon fill="black" stroke="black" points="144.54,-34.7 134.4,-31.62 140.41,-40.35 144.54,-34.7"/>
-<text text-anchor="middle" x="194" y="-57.8" font-family="Times,serif" font-size="14.00">next</text>
+<path fill="none" stroke="black" d="M198.72,-91.29C189.44,-80.4 176.1,-65.59 163,-54 156.54,-48.29 149.15,-42.62 142.11,-37.57"/>
+<polygon fill="black" stroke="black" points="144.28,-34.81 134.08,-31.97 140.28,-40.56 144.28,-34.81"/>
+<text xml:space="preserve" text-anchor="middle" x="195.54" y="-57.95" font-family="Times,serif" font-size="14.00">next</text>
 </g>
 </g>
 </svg>
@@ -143,7 +143,7 @@ function view_life(X::LifeCoords, pth=tempname(); star=nothing)
         res = c ? (x ? &quot;O&quot; : &quot;o&quot;) : (x ? &quot;X&quot; : &quot;x&quot;)
         return res * ((star == coords[(i, j)]) ? &quot;.&quot; : &quot;&quot;)
       end
-    end); show_header=false, tf=tf_markdown)
+    end); show_column_labels=false, backend=:markdown)
   open(pth, &quot;w&quot;) do io
     write(io, mat)
   end
@@ -151,10 +151,12 @@ function view_life(X::LifeCoords, pth=tempname(); star=nothing)
 end
 
 init = make_grid(3,  true)
-view_life(init) |&gt; println</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">| o | x | o |
+view_life(init) |&gt; println</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">|--:|--:|--:|
+| o | x | o |
 | o | x | o |
 | x | x | x |</code></pre><p>We can also visualize a grid with a distinguished <em>agent</em>. Here an agent living in a game state <code>X</code> is a map <code>A → X</code> where <code>A</code> is the shape of the agent. The only kind of agent we&#39;ll consider in this model is that of a lone vertex.</p><p>Note that <code>A</code> below is defined without coordinates, whereas <code>init</code> is an instance of <code>LifeCoords</code>. So in order to relate them via a mapping (which requires them to share a schema) we promote <code>A</code> to <code>LifeCoords</code> using the data migration, <code>F</code>.</p><pre><code class="language-julia hljs">A = Life(1)
-view_life(homomorphism(F(A), init; any=true)) |&gt; println</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">| o. | x | o |
+view_life(homomorphism(F(A), init; any=true)) |&gt; println</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">|---:|--:|--:|
+| o. | x | o |
 |  o | x | o |
 |  x | x | x |</code></pre><p>We must also work with miniature game states that are <em>not</em> grids in order for us to define the dynamics, as they are what the patterns and replacements of rewrite rules are made of. In order to visualize these, we will use another visualization function.</p><pre><code class="language-julia hljs">function view_life_graph(X::Union{Life,LifeCoords}, pth=tempname(); star=nothing)
   pg = PropertyGraph{Any}(; prog=&quot;neato&quot;, graph=Dict(),
@@ -179,14 +181,14 @@ end;
 view_life_graph(init)</code></pre><img src='data:image/svg+xml;utf-8,<?xml version="1.0" encoding="UTF-8" standalone="no"?>
 <!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN"
  "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
-<!-- Generated by graphviz version 2.43.0 (0)
+<!-- Generated by graphviz version 15.1.0 (20260618.0150)
  -->
 <!-- Title: G Pages: 1 -->
 <svg width="218pt" height="218pt"
- viewBox="0.00 0.00 217.57 217.51" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+ viewBox="0.00 0.00 218.00 218.00" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
 <g id="graph0" class="graph" transform="scale(1 1) rotate(0) translate(4 213.51)">
 <title>G</title>
-<polygon fill="white" stroke="transparent" points="-4,4 -4,-213.51 213.57,-213.51 213.57,4 -4,4"/>
+<polygon fill="white" stroke="none" points="-4,4 -4,-213.51 213.57,-213.51 213.57,4 -4,4"/>
 <!-- n1 -->
 <g id="node1" class="node">
 <title>n1</title>
@@ -200,7 +202,7 @@ view_life_graph(init)</code></pre><img src='data:image/svg+xml;utf-8,<?xml versi
 <!-- n1&%2345;&gt;n2 -->
 <g id="edge2" class="edge">
 <title>n1&%2345;&gt;n2</title>
-<path fill="none" stroke="black" d="M129.49,-176.55C134.08,-169.75 139.5,-161.72 144.09,-154.9"/>
+<path fill="none" stroke="black" d="M129.68,-176.27C134.18,-169.6 139.45,-161.79 143.96,-155.11"/>
 </g>
 <!-- n4 -->
 <g id="node4" class="node">
@@ -230,17 +232,17 @@ view_life_graph(init)</code></pre><img src='data:image/svg+xml;utf-8,<?xml versi
 <!-- n2&%2345;&gt;n3 -->
 <g id="edge5" class="edge">
 <title>n2&%2345;&gt;n3</title>
-<path fill="none" stroke="black" d="M165.06,-125.36C169.97,-118.79 175.76,-111.03 180.68,-104.45"/>
+<path fill="none" stroke="black" d="M165.26,-125.09C170.08,-118.65 175.71,-111.1 180.53,-104.65"/>
 </g>
 <!-- n2&%2345;&gt;n4 -->
 <g id="edge7" class="edge">
 <title>n2&%2345;&gt;n4</title>
-<path fill="none" stroke="black" d="M136.33,-142.84C121.97,-145.28 101.93,-148.67 87.58,-151.11"/>
+<path fill="none" stroke="black" d="M136.33,-142.84C122.07,-145.26 102.2,-148.63 87.87,-151.06"/>
 </g>
 <!-- n2&%2345;&gt;n5 -->
 <g id="edge4" class="edge">
 <title>n2&%2345;&gt;n5</title>
-<path fill="none" stroke="black" d="M139.47,-129.28C133.23,-124.85 125.97,-119.69 119.73,-115.26"/>
+<path fill="none" stroke="black" d="M139.2,-129.09C133.08,-124.74 126.03,-119.73 119.92,-115.39"/>
 </g>
 <!-- n6 -->
 <g id="node6" class="node">
@@ -250,17 +252,17 @@ view_life_graph(init)</code></pre><img src='data:image/svg+xml;utf-8,<?xml versi
 <!-- n2&%2345;&gt;n6 -->
 <g id="edge6" class="edge">
 <title>n2&%2345;&gt;n6</title>
-<path fill="none" stroke="black" d="M151.22,-121.84C148.78,-107.47 145.37,-87.42 142.93,-73.06"/>
+<path fill="none" stroke="black" d="M151.22,-121.84C148.79,-107.57 145.41,-87.69 142.97,-73.35"/>
 </g>
 <!-- n3&%2345;&gt;n5 -->
 <g id="edge9" class="edge">
 <title>n3&%2345;&gt;n5</title>
-<path fill="none" stroke="black" d="M173.62,-92.95C158.75,-95.5 137.73,-99.11 122.87,-101.67"/>
+<path fill="none" stroke="black" d="M173.62,-92.95C158.85,-95.49 138.01,-99.07 123.16,-101.62"/>
 </g>
 <!-- n3&%2345;&gt;n6 -->
 <g id="edge8" class="edge">
 <title>n3&%2345;&gt;n6</title>
-<path fill="none" stroke="black" d="M176.62,-79.82C169.82,-75.25 161.79,-69.85 154.97,-65.27"/>
+<path fill="none" stroke="black" d="M176.34,-79.63C169.67,-75.15 161.86,-69.9 155.18,-65.41"/>
 </g>
 <!-- n4&%2345;&gt;n5 -->
 <g id="edge11" class="edge">
@@ -275,7 +277,7 @@ view_life_graph(init)</code></pre><img src='data:image/svg+xml;utf-8,<?xml versi
 <!-- n4&%2345;&gt;n7 -->
 <g id="edge10" class="edge">
 <title>n4&%2345;&gt;n7</title>
-<path fill="none" stroke="black" d="M54.72,-144.04C47.92,-139.44 39.9,-134.01 33.09,-129.4"/>
+<path fill="none" stroke="black" d="M54.44,-143.85C47.77,-139.34 39.96,-134.06 33.29,-129.54"/>
 </g>
 <!-- n8 -->
 <g id="node8" class="node">
@@ -285,7 +287,7 @@ view_life_graph(init)</code></pre><img src='data:image/svg+xml;utf-8,<?xml versi
 <!-- n4&%2345;&gt;n8 -->
 <g id="edge12" class="edge">
 <title>n4&%2345;&gt;n8</title>
-<path fill="none" stroke="black" d="M66.67,-136.25C64.27,-121.94 60.93,-101.96 58.54,-87.65"/>
+<path fill="none" stroke="black" d="M66.67,-136.25C64.29,-122.03 60.98,-102.23 58.59,-87.94"/>
 </g>
 <!-- n5&%2345;&gt;n6 -->
 <g id="edge14" class="edge">
@@ -300,7 +302,7 @@ view_life_graph(init)</code></pre><img src='data:image/svg+xml;utf-8,<?xml versi
 <!-- n5&%2345;&gt;n8 -->
 <g id="edge13" class="edge">
 <title>n5&%2345;&gt;n8</title>
-<path fill="none" stroke="black" d="M90.12,-94.26C83.87,-89.83 76.61,-84.69 70.36,-80.27"/>
+<path fill="none" stroke="black" d="M89.85,-94.07C83.73,-89.73 76.66,-84.73 70.55,-80.4"/>
 </g>
 <!-- n9 -->
 <g id="node9" class="node">
@@ -315,12 +317,12 @@ view_life_graph(init)</code></pre><img src='data:image/svg+xml;utf-8,<?xml versi
 <!-- n6&%2345;&gt;n8 -->
 <g id="edge18" class="edge">
 <title>n6&%2345;&gt;n8</title>
-<path fill="none" stroke="black" d="M121.99,-58.24C107.68,-60.72 87.71,-64.2 73.41,-66.68"/>
+<path fill="none" stroke="black" d="M121.99,-58.24C107.78,-60.71 87.98,-64.15 73.7,-66.63"/>
 </g>
 <!-- n6&%2345;&gt;n9 -->
 <g id="edge17" class="edge">
 <title>n6&%2345;&gt;n9</title>
-<path fill="none" stroke="black" d="M125.36,-44.39C118.76,-39.51 110.96,-33.74 104.35,-28.84"/>
+<path fill="none" stroke="black" d="M125.09,-44.19C118.61,-39.4 111.03,-33.79 104.54,-28.99"/>
 </g>
 <!-- n7&%2345;&gt;n8 -->
 <g id="edge19" class="edge">
@@ -339,14 +341,14 @@ view_life_graph(init)</code></pre><img src='data:image/svg+xml;utf-8,<?xml versi
 view_life_graph(Next())</code></pre><img src='data:image/svg+xml;utf-8,<?xml version="1.0" encoding="UTF-8" standalone="no"?>
 <!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN"
  "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
-<!-- Generated by graphviz version 2.43.0 (0)
+<!-- Generated by graphviz version 15.1.0 (20260618.0150)
  -->
 <!-- Title: G Pages: 1 -->
 <svg width="44pt" height="44pt"
  viewBox="0.00 0.00 44.00 44.00" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
 <g id="graph0" class="graph" transform="scale(1 1) rotate(0) translate(4 40)">
 <title>G</title>
-<polygon fill="white" stroke="transparent" points="-4,4 -4,-40 40,-40 40,4 -4,4"/>
+<polygon fill="white" stroke="none" points="-4,4 -4,-40 40,-40 40,4 -4,4"/>
 <!-- n1 -->
 <g id="node1" class="node">
 <title>n1</title>
@@ -358,14 +360,14 @@ view_life_graph(Next())</code></pre><img src='data:image/svg+xml;utf-8,<?xml ver
 view_life_graph(Curr())</code></pre><img src='data:image/svg+xml;utf-8,<?xml version="1.0" encoding="UTF-8" standalone="no"?>
 <!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN"
  "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
-<!-- Generated by graphviz version 2.43.0 (0)
+<!-- Generated by graphviz version 15.1.0 (20260618.0150)
  -->
 <!-- Title: G Pages: 1 -->
 <svg width="44pt" height="44pt"
  viewBox="0.00 0.00 44.00 44.00" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
 <g id="graph0" class="graph" transform="scale(1 1) rotate(0) translate(4 40)">
 <title>G</title>
-<polygon fill="white" stroke="transparent" points="-4,4 -4,-40 40,-40 40,4 -4,4"/>
+<polygon fill="white" stroke="none" points="-4,4 -4,-40 40,-40 40,4 -4,4"/>
 <!-- n1 -->
 <g id="node1" class="node">
 <title>n1</title>
@@ -388,14 +390,14 @@ end
 view_life_graph(living_neighbors(3))</code></pre><img src='data:image/svg+xml;utf-8,<?xml version="1.0" encoding="UTF-8" standalone="no"?>
 <!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN"
  "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
-<!-- Generated by graphviz version 2.43.0 (0)
+<!-- Generated by graphviz version 15.1.0 (20260618.0150)
  -->
 <!-- Title: G Pages: 1 -->
 <svg width="168pt" height="176pt"
- viewBox="0.00 0.00 167.76 175.70" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+ viewBox="0.00 0.00 168.00 176.00" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
 <g id="graph0" class="graph" transform="scale(1 1) rotate(0) translate(4 171.7)">
 <title>G</title>
-<polygon fill="white" stroke="transparent" points="-4,4 -4,-171.7 163.76,-171.7 163.76,4 -4,4"/>
+<polygon fill="white" stroke="none" points="-4,4 -4,-171.7 163.76,-171.7 163.76,4 -4,4"/>
 <!-- n1 -->
 <g id="node1" class="node">
 <title>n1</title>
@@ -409,7 +411,7 @@ view_life_graph(living_neighbors(3))</code></pre><img src='data:image/svg+xml;ut
 <!-- n2&%2345;&gt;n1 -->
 <g id="edge1" class="edge">
 <title>n2&%2345;&gt;n1</title>
-<path fill="none" stroke="black" d="M123.78,-98.7C111.68,-96.82 95.8,-94.36 83.74,-92.48"/>
+<path fill="none" stroke="black" d="M123.78,-98.7C111.77,-96.83 96.03,-94.39 84,-92.52"/>
 </g>
 <!-- n3 -->
 <g id="node3" class="node">
@@ -436,14 +438,14 @@ view_life_graph(living_neighbors(3))</code></pre><img src='data:image/svg+xml;ut
 '/><p>We can control whether the central cell is itself alive or not</p><pre><code class="language-julia hljs">view_life_graph(living_neighbors(3; alive=true))</code></pre><img src='data:image/svg+xml;utf-8,<?xml version="1.0" encoding="UTF-8" standalone="no"?>
 <!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN"
  "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
-<!-- Generated by graphviz version 2.43.0 (0)
+<!-- Generated by graphviz version 15.1.0 (20260618.0150)
  -->
 <!-- Title: G Pages: 1 -->
 <svg width="168pt" height="176pt"
- viewBox="0.00 0.00 167.76 175.70" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+ viewBox="0.00 0.00 168.00 176.00" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
 <g id="graph0" class="graph" transform="scale(1 1) rotate(0) translate(4 171.7)">
 <title>G</title>
-<polygon fill="white" stroke="transparent" points="-4,4 -4,-171.7 163.76,-171.7 163.76,4 -4,4"/>
+<polygon fill="white" stroke="none" points="-4,4 -4,-171.7 163.76,-171.7 163.76,4 -4,4"/>
 <!-- n1 -->
 <g id="node1" class="node">
 <title>n1</title>
@@ -457,7 +459,7 @@ view_life_graph(living_neighbors(3))</code></pre><img src='data:image/svg+xml;ut
 <!-- n2&%2345;&gt;n1 -->
 <g id="edge1" class="edge">
 <title>n2&%2345;&gt;n1</title>
-<path fill="none" stroke="black" d="M123.78,-98.7C111.68,-96.82 95.8,-94.36 83.74,-92.48"/>
+<path fill="none" stroke="black" d="M123.78,-98.7C111.77,-96.83 96.03,-94.39 84,-92.52"/>
 </g>
 <!-- n3 -->
 <g id="node3" class="node">
@@ -500,41 +502,41 @@ Persist = Rule(id[𝒢](Curr()), DR; ac=pac, cat=𝒢);</code></pre><h3 id="remo
 view_sched(rBirth)</code></pre><img src='data:image/svg+xml;utf-8,<?xml version="1.0" encoding="UTF-8" standalone="no"?>
 <!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN"
  "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
-<!-- Generated by graphviz version 2.43.0 (0)
+<!-- Generated by graphviz version 15.1.0 (20260618.0150)
  -->
 <!-- Title: G Pages: 1 -->
-<svg width="56pt" height="107pt"
- viewBox="0.00 0.00 56.00 107.00" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
-<g id="graph0" class="graph" transform="scale(1 1) rotate(0) translate(4 103)">
+<svg width="56pt" height="110pt"
+ viewBox="0.00 0.00 56.00 110.00" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+<g id="graph0" class="graph" transform="scale(1 1) rotate(0) translate(4 106.13)">
 <title>G</title>
-<polygon fill="white" stroke="transparent" points="-4,4 -4,-103 52,-103 52,4 -4,4"/>
+<polygon fill="white" stroke="none" points="-4,4 -4,-106.13 52,-106.13 52,4 -4,4"/>
 <!-- n0in1 -->
 <!-- n1 -->
 <!-- Birth -->
 <g id="n1" class="node">
 <title>n1</title>
-<polygon fill="lightblue" stroke="transparent" points="48,-62 0,-62 0,-37 48,-37 48,-62"/>
-<polygon fill="none" stroke="black" points="0,-36.5 0,-61.5 48,-61.5 48,-36.5 0,-36.5"/>
-<text text-anchor="start" x="5.5" y="-45.3" font-family="Serif" font-size="14.00">Birth</text>
+<polygon fill="lightblue" stroke="none" points="48,-64.69 0,-64.69 0,-37.44 48,-37.44 48,-64.69"/>
+<polygon fill="none" stroke="black" points="0,-37.44 0,-64.69 48,-64.69 48,-37.44 0,-37.44"/>
+<text xml:space="preserve" text-anchor="start" x="5.62" y="-46.19" font-family="Serif" font-size="14.00">Birth</text>
 </g>
 <!-- n0in1&%2345;&gt;n1 -->
 <g id="e1" class="edge">
 <title>n0in1:s&%2345;&gt;n1:n</title>
-<path fill="none" stroke="black" d="M24,-98C24,-83.88 24,-79.1 24,-67.17"/>
-<polygon fill="black" stroke="black" points="25.75,-67 24,-62 22.25,-67 25.75,-67"/>
+<path fill="none" stroke="black" d="M24,-100.69C24,-87.06 24,-82.14 24,-71.1"/>
+<polygon fill="black" stroke="black" points="25.75,-71.2 24,-66.2 22.25,-71.2 25.75,-71.2"/>
 </g>
 <!-- n0out1 -->
 <!-- n1&%2345;&gt;n0out1 -->
 <g id="e2" class="edge">
 <title>n1:s&%2345;&gt;n0out1:n</title>
-<path fill="none" stroke="black" d="M12,-37C12,-21.98 21.52,-18.54 23.6,-6.05"/>
-<polygon fill="black" stroke="black" points="25.35,-6.12 24,-1 21.86,-5.85 25.35,-6.12"/>
+<path fill="none" stroke="black" d="M12,-37.44C12,-22.95 20.86,-19.23 23.35,-7.77"/>
+<polygon fill="black" stroke="black" points="25.08,-8.1 23.85,-2.95 21.6,-7.74 25.08,-8.1"/>
 </g>
 <!-- n1&%2345;&gt;n0out1 -->
 <g id="e3" class="edge">
 <title>n1:s&%2345;&gt;n0out1:n</title>
-<path fill="none" stroke="black" d="M36,-37C36,-21.98 26.48,-18.54 24.4,-6.05"/>
-<polygon fill="black" stroke="black" points="26.14,-5.85 24,-1 22.65,-6.12 26.14,-5.85"/>
+<path fill="none" stroke="black" d="M36,-37.44C36,-22.95 27.14,-19.23 24.65,-7.77"/>
+<polygon fill="black" stroke="black" points="26.4,-7.74 24.15,-2.95 22.92,-8.1 26.4,-7.74"/>
 </g>
 </g>
 </svg>
@@ -543,95 +545,95 @@ view_sched(rBirth)</code></pre><img src='data:image/svg+xml;utf-8,<?xml version=
 view_sched(update_next)</code></pre><img src='data:image/svg+xml;utf-8,<?xml version="1.0" encoding="UTF-8" standalone="no"?>
 <!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN"
  "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
-<!-- Generated by graphviz version 2.43.0 (0)
+<!-- Generated by graphviz version 15.1.0 (20260618.0150)
  -->
 <!-- Title: G Pages: 1 -->
-<svg width="228pt" height="229pt"
- viewBox="0.00 0.00 227.50 229.00" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
-<g id="graph0" class="graph" transform="scale(1 1) rotate(0) translate(4 225)">
+<svg width="226pt" height="237pt"
+ viewBox="0.00 0.00 226.00 237.00" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+<g id="graph0" class="graph" transform="scale(1 1) rotate(0) translate(4 232.63)">
 <title>G</title>
-<polygon fill="white" stroke="transparent" points="-4,4 -4,-225 223.5,-225 223.5,4 -4,4"/>
+<polygon fill="white" stroke="none" points="-4,4 -4,-232.63 222.11,-232.63 222.11,4 -4,4"/>
 <!-- n0in1 -->
 <!-- n1 -->
 <!-- Query Cell -->
 <g id="n1" class="node">
 <title>n1</title>
-<polygon fill="yellow" stroke="transparent" points="144,-184 58,-184 58,-159 144,-159 144,-184"/>
-<polygon fill="none" stroke="black" points="58,-158.5 58,-183.5 144,-183.5 144,-158.5 58,-158.5"/>
-<text text-anchor="start" x="63" y="-167.3" font-family="Serif" font-size="14.00">Query Cell</text>
+<polygon fill="yellow" stroke="none" points="144.86,-191.19 59.11,-191.19 59.11,-163.94 144.86,-163.94 144.86,-191.19"/>
+<polygon fill="none" stroke="black" points="59.11,-163.94 59.11,-191.19 144.86,-191.19 144.86,-163.94 59.11,-163.94"/>
+<text xml:space="preserve" text-anchor="start" x="64.11" y="-172.69" font-family="Serif" font-size="14.00">Query Cell</text>
 </g>
 <!-- n0in1&%2345;&gt;n1 -->
 <g id="e1" class="edge">
 <title>n0in1:s&%2345;&gt;n1:n</title>
-<path fill="none" stroke="black" d="M79,-220C79,-205.88 79,-201.1 79,-189.17"/>
-<polygon fill="black" stroke="black" points="80.75,-189 79,-184 77.25,-189 80.75,-189"/>
+<path fill="none" stroke="black" d="M80.99,-227.19C80.99,-213.56 80.67,-208.64 80.58,-197.6"/>
+<polygon fill="black" stroke="black" points="82.33,-197.7 80.56,-192.7 78.83,-197.71 82.33,-197.7"/>
 </g>
 <!-- n0out1 -->
 <!-- n1&%2345;&gt;n0out1 -->
 <g id="e8" class="edge">
 <title>n1:s&%2345;&gt;n0out1:n</title>
-<path fill="none" stroke="black" d="M72,-159C72,-141.83 64.14,-139.03 58,-123 37.92,-70.58 13.58,-59.61 12.07,-6.29"/>
-<polygon fill="black" stroke="black" points="13.82,-5.98 12,-1 10.32,-6.02 13.82,-5.98"/>
+<path fill="none" stroke="black" d="M73.4,-163.94C73.4,-146.53 64.39,-144.13 57.99,-127.94 36.8,-74.37 13.77,-62.15 12.09,-7.9"/>
+<polygon fill="black" stroke="black" points="13.84,-7.93 12.01,-2.95 10.34,-7.98 13.84,-7.93"/>
 </g>
 <!-- n2 -->
 <!-- Fail -->
 <g id="n2" class="node">
 <title>n2</title>
-<polygon fill="red" stroke="transparent" points="219.5,-123 182.5,-123 182.5,-98 219.5,-98 219.5,-123"/>
-<polygon fill="none" stroke="black" points="183,-97.5 183,-122.5 220,-122.5 220,-97.5 183,-97.5"/>
-<text text-anchor="start" x="188" y="-106.3" font-family="Serif" font-size="14.00">Fail</text>
+<polygon fill="red" stroke="none" points="218.11,-127.94 181.86,-127.94 181.86,-100.69 218.11,-100.69 218.11,-127.94"/>
+<polygon fill="none" stroke="black" points="181.86,-100.69 181.86,-127.94 218.11,-127.94 218.11,-100.69 181.86,-100.69"/>
+<text xml:space="preserve" text-anchor="start" x="186.86" y="-109.44" font-family="Serif" font-size="14.00">Fail</text>
 </g>
 <!-- n1&%2345;&gt;n2 -->
 <g id="e5" class="edge">
 <title>n1:s&%2345;&gt;n2:n</title>
-<path fill="none" stroke="black" d="M130,-159C130,-125.18 194.34,-155.1 201.38,-128.25"/>
-<polygon fill="black" stroke="black" points="203.15,-128.17 202,-123 199.67,-127.76 203.15,-128.17"/>
+<path fill="none" stroke="black" d="M130.57,-163.94C130.57,-131.63 190.57,-158.32 199.01,-134.31"/>
+<polygon fill="black" stroke="black" points="200.73,-134.64 199.76,-129.44 197.27,-134.11 200.73,-134.64"/>
 </g>
 <!-- n3 -->
 <!-- Birth -->
 <g id="n3" class="node">
 <title>n3</title>
-<polygon fill="lightblue" stroke="transparent" points="126,-123 78,-123 78,-98 126,-98 126,-123"/>
-<polygon fill="none" stroke="black" points="78,-97.5 78,-122.5 126,-122.5 126,-97.5 78,-97.5"/>
-<text text-anchor="start" x="83.5" y="-106.3" font-family="Serif" font-size="14.00">Birth</text>
+<polygon fill="lightblue" stroke="none" points="125.99,-127.94 77.99,-127.94 77.99,-100.69 125.99,-100.69 125.99,-127.94"/>
+<polygon fill="none" stroke="black" points="77.99,-100.69 77.99,-127.94 125.99,-127.94 125.99,-100.69 77.99,-100.69"/>
+<text xml:space="preserve" text-anchor="start" x="83.61" y="-109.44" font-family="Serif" font-size="14.00">Birth</text>
 </g>
 <!-- n1&%2345;&gt;n3 -->
 <g id="e2" class="edge">
 <title>n1:s&%2345;&gt;n3:n</title>
-<path fill="none" stroke="black" d="M102,-159C102,-144.88 102,-140.1 102,-128.17"/>
-<polygon fill="black" stroke="black" points="103.75,-128 102,-123 100.25,-128 103.75,-128"/>
+<path fill="none" stroke="black" d="M101.99,-163.94C101.99,-150.31 101.99,-145.39 101.99,-134.35"/>
+<polygon fill="black" stroke="black" points="103.74,-134.45 101.99,-129.45 100.24,-134.45 103.74,-134.45"/>
 </g>
 <!-- n4 -->
 <!-- Persist -->
 <g id="n4" class="node">
 <title>n4</title>
-<polygon fill="lightblue" stroke="transparent" points="132,-62 72,-62 72,-37 132,-37 132,-62"/>
-<polygon fill="none" stroke="black" points="72,-36.5 72,-61.5 132,-61.5 132,-36.5 72,-36.5"/>
-<text text-anchor="start" x="77" y="-45.3" font-family="Serif" font-size="14.00">Persist</text>
+<polygon fill="lightblue" stroke="none" points="131.74,-64.69 72.24,-64.69 72.24,-37.44 131.74,-37.44 131.74,-64.69"/>
+<polygon fill="none" stroke="black" points="72.24,-37.44 72.24,-64.69 131.74,-64.69 131.74,-37.44 72.24,-37.44"/>
+<text xml:space="preserve" text-anchor="start" x="77.24" y="-46.19" font-family="Serif" font-size="14.00">Persist</text>
 </g>
 <!-- n3&%2345;&gt;n4 -->
 <g id="e3" class="edge">
 <title>n3:s&%2345;&gt;n4:n</title>
-<path fill="none" stroke="black" d="M114,-98C114,-82.98 104.48,-79.54 102.4,-67.05"/>
-<polygon fill="black" stroke="black" points="104.14,-66.85 102,-62 100.65,-67.12 104.14,-66.85"/>
+<path fill="none" stroke="black" d="M113.99,-100.69C113.99,-86.2 105.13,-82.48 102.63,-71.02"/>
+<polygon fill="black" stroke="black" points="104.39,-70.99 102.14,-66.2 100.91,-71.35 104.39,-70.99"/>
 </g>
 <!-- n3&%2345;&gt;n4 -->
 <g id="e4" class="edge">
 <title>n3:s&%2345;&gt;n4:n</title>
-<path fill="none" stroke="black" d="M90,-98C90,-82.98 99.52,-79.54 101.6,-67.05"/>
-<polygon fill="black" stroke="black" points="103.35,-67.12 102,-62 99.86,-66.85 103.35,-67.12"/>
+<path fill="none" stroke="black" d="M89.99,-100.69C89.99,-86.2 98.85,-82.48 101.34,-71.02"/>
+<polygon fill="black" stroke="black" points="103.07,-71.35 101.83,-66.2 99.59,-70.99 103.07,-71.35"/>
 </g>
 <!-- n4&%2345;&gt;n1 -->
 <g id="e6" class="edge">
 <title>n4:s&%2345;&gt;n1:n</title>
-<path fill="none" stroke="black" d="M87,-35.5C87,-28.82 76.68,-31.73 72,-36.5 53.14,-55.7 59.5,-107.9 69,-123 88.69,-154.29 124.31,-127.71 144,-159 149.8,-168.22 151.51,-175.62 144,-183.5 139.16,-188.57 129.77,-191.85 125.37,-189.24"/>
-<polygon fill="black" stroke="black" points="126.81,-188.19 123,-184.5 123.68,-189.75 126.81,-188.19"/>
+<path fill="none" stroke="black" d="M87.11,-36.44C87.11,-29.81 76.89,-32.72 72.24,-37.44 54.68,-55.28 59.3,-112.62 68.99,-127.94 88.94,-159.49 124.91,-132.39 144.86,-163.94 151.34,-174.18 153.22,-182.43 144.86,-191.19 140.34,-195.93 131.9,-199.14 127.07,-197.57"/>
+<polygon fill="black" stroke="black" points="128.53,-196.6 124.27,-193.44 125.63,-198.56 128.53,-196.6"/>
 </g>
 <!-- n4&%2345;&gt;n1 -->
 <g id="e7" class="edge">
 <title>n4:s&%2345;&gt;n1:n</title>
-<path fill="none" stroke="black" d="M117,-35.5C117,-28.82 127.2,-31.85 132,-36.5 171.28,-74.58 141.33,-104.36 144,-159 144.53,-169.88 151.51,-175.62 144,-183.5 139.16,-188.57 129.77,-191.85 125.37,-189.24"/>
-<polygon fill="black" stroke="black" points="126.81,-188.19 123,-184.5 123.68,-189.75 126.81,-188.19"/>
+<path fill="none" stroke="black" d="M116.86,-36.44C116.86,-29.81 126.97,-32.84 131.74,-37.44 172.42,-76.68 141.94,-107.49 144.86,-163.94 145.49,-176.03 153.22,-182.43 144.86,-191.19 140.34,-195.93 131.9,-199.14 127.07,-197.57"/>
+<polygon fill="black" stroke="black" points="128.53,-196.6 124.27,-193.44 125.63,-198.56 128.53,-196.6"/>
 </g>
 </g>
 </svg>
@@ -640,115 +642,115 @@ view_sched(update_next)</code></pre><img src='data:image/svg+xml;utf-8,<?xml ver
 view_sched(next_step)</code></pre><img src='data:image/svg+xml;utf-8,<?xml version="1.0" encoding="UTF-8" standalone="no"?>
 <!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN"
  "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
-<!-- Generated by graphviz version 2.43.0 (0)
+<!-- Generated by graphviz version 15.1.0 (20260618.0150)
  -->
 <!-- Title: G Pages: 1 -->
-<svg width="262pt" height="290pt"
- viewBox="0.00 0.00 261.50 290.00" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
-<g id="graph0" class="graph" transform="scale(1 1) rotate(0) translate(4 286)">
+<svg width="260pt" height="300pt"
+ viewBox="0.00 0.00 260.00 300.00" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+<g id="graph0" class="graph" transform="scale(1 1) rotate(0) translate(4 295.88)">
 <title>G</title>
-<polygon fill="white" stroke="transparent" points="-4,4 -4,-286 257.5,-286 257.5,4 -4,4"/>
+<polygon fill="white" stroke="none" points="-4,4 -4,-295.88 256.11,-295.88 256.11,4 -4,4"/>
 <!-- n0in1 -->
 <!-- n1 -->
 <!-- Query Cell -->
 <g id="n1" class="node">
 <title>n1</title>
-<polygon fill="yellow" stroke="transparent" points="161,-245 75,-245 75,-220 161,-220 161,-245"/>
-<polygon fill="none" stroke="black" points="75,-219.5 75,-244.5 161,-244.5 161,-219.5 75,-219.5"/>
-<text text-anchor="start" x="80" y="-228.3" font-family="Serif" font-size="14.00">Query Cell</text>
+<polygon fill="yellow" stroke="none" points="161.86,-254.44 76.11,-254.44 76.11,-227.19 161.86,-227.19 161.86,-254.44"/>
+<polygon fill="none" stroke="black" points="76.11,-227.19 76.11,-254.44 161.86,-254.44 161.86,-227.19 76.11,-227.19"/>
+<text xml:space="preserve" text-anchor="start" x="81.11" y="-235.94" font-family="Serif" font-size="14.00">Query Cell</text>
 </g>
 <!-- n0in1&%2345;&gt;n1 -->
 <g id="e1" class="edge">
 <title>n0in1:s&%2345;&gt;n1:n</title>
-<path fill="none" stroke="black" d="M96,-281C96,-266.88 96,-262.1 96,-250.17"/>
-<polygon fill="black" stroke="black" points="97.75,-250 96,-245 94.25,-250 97.75,-250"/>
+<path fill="none" stroke="black" d="M97.99,-290.44C97.99,-276.81 97.67,-271.89 97.58,-260.85"/>
+<polygon fill="black" stroke="black" points="99.33,-260.95 97.56,-255.95 95.83,-260.96 99.33,-260.95"/>
 </g>
 <!-- n0out1 -->
 <!-- n1&%2345;&gt;n0out1 -->
 <g id="e10" class="edge">
 <title>n1:s&%2345;&gt;n0out1:n</title>
-<path fill="none" stroke="black" d="M89,-220C89,-196.41 61.67,-204.5 50,-184 40.94,-168.09 13.99,-56.97 12.1,-6.29"/>
-<polygon fill="black" stroke="black" points="13.85,-5.96 12,-1 10.35,-6.03 13.85,-5.96"/>
+<path fill="none" stroke="black" d="M90.4,-227.19C90.4,-203.13 62.16,-211.94 49.99,-191.19 38.35,-171.35 14.47,-54.01 12.17,-7.95"/>
+<polygon fill="black" stroke="black" points="13.92,-7.9 12.03,-2.95 10.42,-8 13.92,-7.9"/>
 </g>
 <!-- n2 -->
 <!-- Fail -->
 <g id="n2" class="node">
 <title>n2</title>
-<polygon fill="red" stroke="transparent" points="253.5,-184 216.5,-184 216.5,-159 253.5,-159 253.5,-184"/>
-<polygon fill="none" stroke="black" points="217,-158.5 217,-183.5 254,-183.5 254,-158.5 217,-158.5"/>
-<text text-anchor="start" x="222" y="-167.3" font-family="Serif" font-size="14.00">Fail</text>
+<polygon fill="red" stroke="none" points="252.11,-191.19 215.86,-191.19 215.86,-163.94 252.11,-163.94 252.11,-191.19"/>
+<polygon fill="none" stroke="black" points="215.86,-163.94 215.86,-191.19 252.11,-191.19 252.11,-163.94 215.86,-163.94"/>
+<text xml:space="preserve" text-anchor="start" x="220.86" y="-172.69" font-family="Serif" font-size="14.00">Fail</text>
 </g>
 <!-- n1&%2345;&gt;n2 -->
 <g id="e9" class="edge">
 <title>n1:s&%2345;&gt;n2:n</title>
-<path fill="none" stroke="black" d="M147,-220C147,-179.16 228.52,-222.6 235.52,-189.01"/>
-<polygon fill="black" stroke="black" points="237.27,-189.14 236,-184 233.78,-188.81 237.27,-189.14"/>
+<path fill="none" stroke="black" d="M147.57,-227.19C147.57,-188.02 224.16,-227.57 233.13,-197.62"/>
+<polygon fill="black" stroke="black" points="234.86,-197.88 233.79,-192.69 231.39,-197.42 234.86,-197.88"/>
 </g>
 <!-- n3 -->
 <!-- ClearCurr -->
 <g id="n3" class="node">
 <title>n3</title>
-<polygon fill="lightblue" stroke="transparent" points="160,-184 78,-184 78,-159 160,-159 160,-184"/>
-<polygon fill="none" stroke="black" points="78,-158.5 78,-183.5 160,-183.5 160,-158.5 78,-158.5"/>
-<text text-anchor="start" x="83" y="-167.3" font-family="Serif" font-size="14.00">ClearCurr</text>
+<polygon fill="lightblue" stroke="none" points="159.61,-191.19 78.36,-191.19 78.36,-163.94 159.61,-163.94 159.61,-191.19"/>
+<polygon fill="none" stroke="black" points="78.36,-163.94 78.36,-191.19 159.61,-191.19 159.61,-163.94 78.36,-163.94"/>
+<text xml:space="preserve" text-anchor="start" x="83.36" y="-172.69" font-family="Serif" font-size="14.00">ClearCurr</text>
 </g>
 <!-- n1&%2345;&gt;n3 -->
 <g id="e8" class="edge">
 <title>n1:s&%2345;&gt;n3:n</title>
-<path fill="none" stroke="black" d="M119,-220C119,-205.88 119,-201.1 119,-189.17"/>
-<polygon fill="black" stroke="black" points="120.75,-189 119,-184 117.25,-189 120.75,-189"/>
+<path fill="none" stroke="black" d="M118.99,-227.19C118.99,-213.56 118.99,-208.64 118.99,-197.6"/>
+<polygon fill="black" stroke="black" points="120.74,-197.7 118.99,-192.7 117.24,-197.7 120.74,-197.7"/>
 </g>
 <!-- n4 -->
 <!-- CopyNext -->
 <g id="n4" class="node">
 <title>n4</title>
-<polygon fill="lightblue" stroke="transparent" points="159.5,-123 78.5,-123 78.5,-98 159.5,-98 159.5,-123"/>
-<polygon fill="none" stroke="black" points="79,-97.5 79,-122.5 160,-122.5 160,-97.5 79,-97.5"/>
-<text text-anchor="start" x="84" y="-106.3" font-family="Serif" font-size="14.00">CopyNext</text>
+<polygon fill="lightblue" stroke="none" points="159.24,-127.94 78.74,-127.94 78.74,-100.69 159.24,-100.69 159.24,-127.94"/>
+<polygon fill="none" stroke="black" points="78.74,-100.69 78.74,-127.94 159.24,-127.94 159.24,-100.69 78.74,-100.69"/>
+<text xml:space="preserve" text-anchor="start" x="83.74" y="-109.44" font-family="Serif" font-size="14.00">CopyNext</text>
 </g>
 <!-- n3&%2345;&gt;n4 -->
 <g id="e4" class="edge">
 <title>n3:s&%2345;&gt;n4:n</title>
-<path fill="none" stroke="black" d="M98,-159C98,-142.15 115.76,-141.65 119.37,-128.13"/>
-<polygon fill="black" stroke="black" points="121.12,-128.18 120,-123 117.65,-127.75 121.12,-128.18"/>
+<path fill="none" stroke="black" d="M98.68,-163.94C98.68,-148.01 113.95,-146.45 118.01,-134.34"/>
+<polygon fill="black" stroke="black" points="119.73,-134.64 118.76,-129.44 116.27,-134.11 119.73,-134.64"/>
 </g>
 <!-- n3&%2345;&gt;n4 -->
 <g id="e5" class="edge">
 <title>n3:s&%2345;&gt;n4:n</title>
-<path fill="none" stroke="black" d="M140,-159C140,-142.56 123.86,-141.38 120.58,-128.03"/>
-<polygon fill="black" stroke="black" points="122.31,-127.77 120,-123 118.83,-128.17 122.31,-127.77"/>
+<path fill="none" stroke="black" d="M139.3,-163.94C139.3,-148.01 124.03,-146.45 119.97,-134.34"/>
+<polygon fill="black" stroke="black" points="121.7,-134.11 119.22,-129.44 118.24,-134.64 121.7,-134.11"/>
 </g>
 <!-- n5 -->
 <!-- ClearNext -->
 <g id="n5" class="node">
 <title>n5</title>
-<polygon fill="lightblue" stroke="transparent" points="159.5,-62 76.5,-62 76.5,-37 159.5,-37 159.5,-62"/>
-<polygon fill="none" stroke="black" points="77,-36.5 77,-61.5 160,-61.5 160,-36.5 77,-36.5"/>
-<text text-anchor="start" x="82" y="-45.3" font-family="Serif" font-size="14.00">ClearNext</text>
+<polygon fill="lightblue" stroke="none" points="160.36,-64.69 77.61,-64.69 77.61,-37.44 160.36,-37.44 160.36,-64.69"/>
+<polygon fill="none" stroke="black" points="77.61,-37.44 77.61,-64.69 160.36,-64.69 160.36,-37.44 77.61,-37.44"/>
+<text xml:space="preserve" text-anchor="start" x="82.61" y="-46.19" font-family="Serif" font-size="14.00">ClearNext</text>
 </g>
 <!-- n4&%2345;&gt;n5 -->
 <g id="e2" class="edge">
 <title>n4:s&%2345;&gt;n5:n</title>
-<path fill="none" stroke="black" d="M140,-98C140,-81.36 123.05,-80.51 119.61,-67.08"/>
-<polygon fill="black" stroke="black" points="121.33,-66.76 119,-62 117.85,-67.17 121.33,-66.76"/>
+<path fill="none" stroke="black" d="M139.11,-100.69C139.11,-84.79 123.98,-83.18 119.96,-71.08"/>
+<polygon fill="black" stroke="black" points="121.7,-70.87 119.22,-66.19 118.24,-71.39 121.7,-70.87"/>
 </g>
 <!-- n4&%2345;&gt;n5 -->
 <g id="e3" class="edge">
 <title>n4:s&%2345;&gt;n5:n</title>
-<path fill="none" stroke="black" d="M99,-98C99,-81.56 115.14,-80.38 118.42,-67.03"/>
-<polygon fill="black" stroke="black" points="120.17,-67.17 119,-62 116.69,-66.77 120.17,-67.17"/>
+<path fill="none" stroke="black" d="M98.86,-100.69C98.86,-84.79 114,-83.18 118.02,-71.08"/>
+<polygon fill="black" stroke="black" points="119.74,-71.39 118.76,-66.19 116.28,-70.87 119.74,-71.39"/>
 </g>
 <!-- n5&%2345;&gt;n1 -->
 <g id="e6" class="edge">
 <title>n5:s&%2345;&gt;n1:n</title>
-<path fill="none" stroke="black" d="M140,-35.5C140,-26.82 153.06,-30.68 159.5,-36.5 180.03,-55.03 166.88,-70.42 169,-98 169.36,-102.65 176.93,-229.85 161,-244.5 155.84,-249.24 146.61,-252.69 142.31,-250.18"/>
-<polygon fill="black" stroke="black" points="143.79,-249.2 140,-245.5 140.65,-250.76 143.79,-249.2"/>
+<path fill="none" stroke="black" d="M139.68,-36.44C139.68,-27.23 153.62,-31.17 160.36,-37.44 210.46,-84.07 172.82,-122.86 168.99,-191.19 167.4,-219.43 182.51,-235.1 161.86,-254.44 157.08,-258.92 148.74,-262.22 144,-260.75"/>
+<polygon fill="black" stroke="black" points="145.51,-259.87 141.27,-256.7 142.61,-261.82 145.51,-259.87"/>
 </g>
 <!-- n5&%2345;&gt;n1 -->
 <g id="e7" class="edge">
 <title>n5:s&%2345;&gt;n1:n</title>
-<path fill="none" stroke="black" d="M98,-35.5C98,-25.93 83.46,-29.94 76.5,-36.5 28.74,-81.53 32,-129.78 69,-184 93.75,-220.27 136.25,-183.73 161,-220 167.14,-228.99 168.51,-236.62 161,-244.5 156.16,-249.57 146.77,-252.85 142.37,-250.24"/>
-<polygon fill="black" stroke="black" points="143.81,-249.19 140,-245.5 140.68,-250.75 143.81,-249.19"/>
+<path fill="none" stroke="black" d="M98.3,-36.44C98.3,-27.23 84.35,-31.17 77.61,-37.44 27.52,-84.07 30.31,-134.72 68.99,-191.19 94,-227.72 136.85,-190.66 161.86,-227.19 168.71,-237.18 170.22,-245.68 161.86,-254.44 157.34,-259.18 148.9,-262.39 144.07,-260.82"/>
+<polygon fill="black" stroke="black" points="145.53,-259.85 141.27,-256.69 142.63,-261.81 145.53,-259.85"/>
 </g>
 </g>
 </svg>
@@ -756,14 +758,16 @@ view_sched(next_step)</code></pre><img src='data:image/svg+xml;utf-8,<?xml versi
 
 const L1 = life(1); # Game of life simulation that runs just one (global) timestep
 
-view_sched(L1)</code></pre><img src="66625b20.svg" alt="Example block output"/><h2 id="Running-the-simulation"><a class="docs-heading-anchor" href="#Running-the-simulation">Running the simulation</a><a id="Running-the-simulation-1"></a><a class="docs-heading-anchor-permalink" href="#Running-the-simulation" title="Permalink"></a></h2><p>Make an initial state</p><pre><code class="language-julia hljs">G = make_grid([1 0 1 0 1; 0 1 0 1 0; 0 1 0 1 0; 1 0 1 0 1; 1 0 1 0 1])
+view_sched(L1)</code></pre><img src="92fd53d4.svg" alt="Example block output"/><h2 id="Running-the-simulation"><a class="docs-heading-anchor" href="#Running-the-simulation">Running the simulation</a><a id="Running-the-simulation-1"></a><a class="docs-heading-anchor-permalink" href="#Running-the-simulation" title="Permalink"></a></h2><p>Make an initial state</p><pre><code class="language-julia hljs">G = make_grid([1 0 1 0 1; 0 1 0 1 0; 0 1 0 1 0; 1 0 1 0 1; 1 0 1 0 1])
 
-view_life_graph(G)</code></pre><img src="a9979819.svg" alt="Example block output"/><p>(or, viewed in plaintext)</p><pre><code class="language-julia hljs">view_life(G) |&gt; println</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">| o | x | x | o | o |
+view_life_graph(G)</code></pre><img src="2e74153a.svg" alt="Example block output"/><p>(or, viewed in plaintext)</p><pre><code class="language-julia hljs">view_life(G) |&gt; println</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">|--:|--:|--:|--:|--:|
+| o | x | x | o | o |
 | x | o | o | x | x |
 | o | x | x | o | o |
 | x | o | o | x | x |
-| o | x | x | o | o |</code></pre><p>Run the simulation</p><pre><code class="language-julia hljs">res = interpret(L1, G; maxstep=1000, cat=𝒢′);</code></pre><p>Look at the end state</p><pre><code class="language-julia hljs">res[end][1] |&gt; codom |&gt; view_life |&gt; println</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">| x | o | o | o | x |
+| o | x | x | o | o |</code></pre><p>Run the simulation</p><pre><code class="language-julia hljs">res = interpret(L1, G; maxstep=1000, cat=𝒢′);</code></pre><p>Look at the end state</p><pre><code class="language-julia hljs">res[end][1] |&gt; codom |&gt; view_life |&gt; println</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">|--:|--:|--:|--:|--:|
+| x | o | o | o | x |
 | o | o | o | x | x |
 | o | x | x | o | x |
 | o | o | o | x | x |
-| x | o | o | o | x |</code></pre><p>Visualize the results in the <code>traj</code> folder</p><pre><code class="language-julia hljs">view_traj(L1, res[1:10], view_life; agent=true)</code></pre></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../full_demo/">« Full Demo</a><a class="docs-footer-nextpage" href="../lotka_volterra/">Lotka Volterra »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="auto">Automatic (OS)</option><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option><option value="catppuccin-latte">catppuccin-latte</option><option value="catppuccin-frappe">catppuccin-frappe</option><option value="catppuccin-macchiato">catppuccin-macchiato</option><option value="catppuccin-mocha">catppuccin-mocha</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 1.17.0 on <span class="colophon-date" title="Monday 1 June 2026 18:54">Monday 1 June 2026</span>. Using Julia version 1.12.6.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
+| x | o | o | o | x |</code></pre><p>Visualize the results in the <code>traj</code> folder</p><pre><code class="language-julia hljs">view_traj(L1, res[1:10], view_life; agent=true)</code></pre></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../full_demo/">« Full Demo</a><a class="docs-footer-nextpage" href="../lotka_volterra/">Lotka Volterra »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="auto">Automatic (OS)</option><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option><option value="catppuccin-latte">catppuccin-latte</option><option value="catppuccin-frappe">catppuccin-frappe</option><option value="catppuccin-macchiato">catppuccin-macchiato</option><option value="catppuccin-mocha">catppuccin-mocha</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 1.20.0 on <span class="colophon-date" title="Tuesday 24 November 2026 20:06">Tuesday 24 November 2026</span>. Using Julia version 1.13.4.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
