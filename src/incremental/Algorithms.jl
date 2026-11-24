@@ -2,6 +2,7 @@ module Algorithms
 
 using DataStructures
 using Catlab
+import Catlab: ACSetTransformation
 using ...CategoricalAlgebra.CSets: invert_iso, var_reference
 using ...Rewrite.Migration: pres_hash
 using ACSets.DenseACSets: attrtype_type
