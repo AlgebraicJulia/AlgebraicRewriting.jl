@@ -6,6 +6,11 @@ using AlgebraicRewriting
 
 # using DataMigrations # @test length(methods(Rule)) > 1
 
+# Render Graphviz figures with the bundled Graphviz_jll binaries (via Catlab's
+# package extension) rather than the system Graphviz: Ubuntu 26.04's `graphviz`
+# package ships without the neato layout plugin, which the demos below use.
+using Graphviz_jll
+
 module Demos 
   include("../docs/literate/full_demo.jl")
   include("../docs/literate/lotka_volterra.jl")
