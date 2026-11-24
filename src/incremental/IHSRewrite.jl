@@ -3,6 +3,7 @@ Maps into cokernels induce overlaps with R which hopefully are always
 subobjects of the pullback of new matches with R->G2.
 """
 module IHSRewrite 
+import Base: collect
 export rewrite_matches!
 
 using StructEquality, DataStructures, Combinatorics

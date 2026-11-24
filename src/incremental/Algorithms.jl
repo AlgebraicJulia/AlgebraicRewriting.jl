@@ -1,5 +1,7 @@
 module Algorithms 
 
+import Base: collect
+
 using DataStructures
 using Catlab
 import Catlab: ACSetTransformation

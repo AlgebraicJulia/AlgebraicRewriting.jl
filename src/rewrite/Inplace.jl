@@ -1,4 +1,5 @@
 module Inplace
+import Base: collect
 export compile_rewrite, RewriteProgram, rewrite!, rewrite_match!
 
 using MLStyle

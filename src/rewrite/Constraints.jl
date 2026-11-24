@@ -1,4 +1,5 @@
 module Constraints 
+import Base: collect
 export apply_constraint, Constraint, CGraph, arity,
        ∀, ∃, ∃!, True, False, Commutes,
        AppCond, LiftCond, Trivial, PAC, NAC

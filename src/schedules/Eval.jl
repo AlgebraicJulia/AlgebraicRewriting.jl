@@ -20,8 +20,10 @@ interpret(s::Schedule, g; kw...) = interpret(s.d, g; kw...)
 
 interpret!(s::Schedule, g; kw...) = interpret!(s.d, g; kw...)
 
-interpret!(wd::WiringDiagram, g::ACSet{<:MarkAsDeleted}; cat, kw...) = 
+function interpret!(wd::WiringDiagram, g::ACSet{<:MarkAsDeleted}; cat=nothing, kw...)
+  cat = isnothing(cat) ? infer_acset_cat(g) : cat
   interpret!(wd, create[cat](g); cat, kw...)
+end
 
 function interpret(wd::WiringDiagram, g::ACSet{<:MarkAsDeleted}; cat=nothing, kw...) 
   cat = isnothing(cat) ? infer_acset_cat(g) : cat
@@ -31,7 +33,8 @@ end
 """interpret a wiring diagram, with each box updating its state in place"""
 function interpret!(wd::WiringDiagram, 
                     g::ACSetTransformation; # {<:ACSet{<:MarkAsDeleted}}; TODO use MAD model
-                    maxstep=1000000, cat)
+                    maxstep=1000000, cat=nothing)
+  cat = isnothing(cat) ? infer_acset_cat(g) : cat
   targets = Dict(map(wires(wd)) do w 
     (w.source.box, w.source.port) => (w.target.box,w.target.port) 
   end)

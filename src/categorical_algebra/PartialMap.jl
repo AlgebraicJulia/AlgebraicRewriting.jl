@@ -1,4 +1,5 @@
 module PartialMap
+import Base: collect
 export partial_map_classifier_universal_property, partial_map_functor_hom,
       partial_map_classifier_eta
 using DataStructures
