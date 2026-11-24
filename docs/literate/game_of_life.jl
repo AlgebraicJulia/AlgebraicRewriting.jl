@@ -150,7 +150,7 @@ function view_life(X::LifeCoords, pth=tempname(); star=nothing)
         res = c ? (x ? "O" : "o") : (x ? "X" : "x")
         return res * ((star == coords[(i, j)]) ? "." : "")
       end
-    end); show_header=false, tf=tf_markdown)
+    end); show_column_labels=false, backend=:markdown)
   open(pth, "w") do io
     write(io, mat)
   end

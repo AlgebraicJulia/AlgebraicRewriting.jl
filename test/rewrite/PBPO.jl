@@ -107,12 +107,12 @@ end
 tk = ACSetTransformation(K,K′;V=[1,4])
 l′ = homomorphism(K′,L′; initial=(V=[1,2,3,1,2],))
 
-"""      ∀₂                  ∀₂
-    [•]₁ --> G₂        [•] ---> G₂
-    ₄↓  ↗∃₃  ↓ λ₁  or  ₄↓  ↗∃₃  ↓ λ₁
-   [•→•]₃--> L′₄      [•→•]₃--> L′₄
-    1 2  ⁵            2 2    ⁶
-"""
+#        ∀₂                  ∀₂
+#   [•]₁ --> G₂        [•] ---> G₂
+#   ₄↓  ↗∃₃  ↓ λ₁  or  ₄↓  ↗∃₃  ↓ λ₁
+#  [•→•]₃--> L′₄      [•→•]₃--> L′₄
+#   1 2  ⁵            2 2    ⁶
+
 G1, arr = Graph(1), path_graph(Graph,2)
 vertical = ACSetTransformation(G1, arr; V=[2])
 bottom_5 = homomorphism(arr, L′; initial=(V=[1,2],))
@@ -231,15 +231,14 @@ l′ = homomorphism(K′,L′; monic=true, initial=(V=[1,2,3,4],),cat=𝒞WG)
 loop = @acset WG begin V=1;E=1;Weight=1;src=1;tgt=1;weight=[AttrVar(1)]end 
 ac = NAC(homomorphism(L,loop)) # cannot bind pattern to loop
 
-"""
-        ∀
-   [•] ----> G 
-   s↓   ↗∃   ↓ λ
-   [•→•] ↪ [↻•→•->• ]
-           [ ↖↘↓ ↗↙ ]
-           [   •    ]
 
-"""
+#       ∀
+#  [•] ----> G 
+#  s↓   ↗∃   ↓ λ
+#  [•→•] ↪ [↻•→•->• ]
+#          [ ↖↘↓ ↗↙ ]
+#          [   •    ]
+
 lc = LiftCond(homomorphism(R, L; initial=(V=[1],), cat=𝒞WG), # vertical
               homomorphism(L, L′; initial=(E=[4],), cat=𝒞WG))
 

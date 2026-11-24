@@ -171,9 +171,9 @@ function to_datalog_json(db::IHS, JSON_FILE::String; rename=Dict())
 
   data = ((;L, R, X, subobjects, qrules)) # Dict(pairs
   open(JSON_FILE, "w") do io 
-    write(io, json(data, 2))
+    write(io, JSON.json(data, 2))
   end
-  println(json(data, 2))
+  println(JSON.json(data, 2))
   data
 end
 

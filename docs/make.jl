@@ -7,6 +7,11 @@ const generated_dir = joinpath(@__DIR__, "src", "generated")
 @info "Loading AlgebraicRewriting"
 using AlgebraicRewriting
 
+# Render Graphviz figures with the bundled Graphviz_jll binaries (via Catlab's
+# package extension) rather than the system Graphviz: Ubuntu 26.04's `graphviz`
+# package ships without the neato layout plugin, which the docs use.
+using Graphviz_jll
+
 const no_literate = "--no-literate" in ARGS
 if !no_literate
   @info "Building Literate.jl docs"
